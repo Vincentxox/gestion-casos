@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Calidad y pruebas
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v6
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Verificar dependencias de Expo
+        run: npx expo-doctor
+
+      - name: Verificar formato
+        run: npm run format:check
+
+      - name: Verificar TypeScript
+        run: npm run typecheck
+
+      - name: Ejecutar ESLint
+        run: npm run lint -- --max-warnings=0
+
+      - name: Ejecutar pruebas y cobertura
+        run: npm run test:coverage

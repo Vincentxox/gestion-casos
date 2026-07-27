@@ -5,6 +5,9 @@ node_modules/
 
 # Expo
 .expo/
+.expo-export-check/
+.expo-export-check-ios/
+coverage/
 dist/
 web-build/
 expo-env.d.ts
