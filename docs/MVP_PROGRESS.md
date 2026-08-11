@@ -89,13 +89,19 @@ Fuera del alcance obligatorio de este MVP inicial:
 
 ## Etapa 3 — Gestión principal de casos
 
-Estado: pendiente.
+Estado: en progreso. Primer incremento funcional preparado el 10 de agosto de 2026.
 
-- [ ] Menú principal y dashboard.
-- [ ] Listado, búsqueda y filtros.
-- [ ] Creación y edición.
-- [ ] Detalle, cambio de estado y asignación.
-- [ ] Historial de estados.
+- [x] Menú principal y acceso al módulo.
+- [x] Modelo de casos, prioridades y estados en Supabase.
+- [x] RLS y permisos iniciales para administrador, auditor y visualizador.
+- [x] Listado con búsqueda, filtros, actualización y estados de carga/error/vacío.
+- [x] Creación básica con validación y permisos.
+- [x] Historial automático de estado en base de datos.
+- [x] Detalle del caso.
+- [ ] Edición.
+- [ ] Cambio de estado con comentario.
+- [ ] Asignación de personal.
+- [x] Visualización del historial.
 
 ## Etapa 4 — Documentos y funciones complementarias
 
@@ -121,19 +127,14 @@ Estado: pendiente.
 
 ## Próxima acción
 
-Ejecutar en Supabase SQL Editor:
+Validar el primer incremento de la etapa 3 en Android con una cuenta
+administradora. Después implementar detalle, edición, cambio de estado,
+asignación y visualización del historial.
 
-`supabase/migrations/202607270001_create_profiles_and_roles.sql`
+Comprobación remota de la etapa 3:
 
-Después de ejecutarla, verificar la existencia de la tabla `public.profiles`, el
-tipo `public.app_role`, las políticas RLS y el trigger `on_auth_user_created`.
-
-Comprobación remota:
-
-- `public.profiles` existe.
-- RLS está habilitado.
-- Roles: `administrador`, `auditor` y `visualizador`.
-- Existen dos políticas iniciales para lectura y actualización.
-- El trigger `on_auth_user_created` está activo.
-- La función `set_user_role(uuid, app_role)` existe.
-- El rol anónimo no tiene permiso de lectura sobre `profiles`.
+- `public.cases` existe y tiene RLS habilitado.
+- `public.case_status_history` existe y tiene RLS habilitado.
+- `cases` tiene tres políticas y `case_status_history` tiene una política.
+- El historial inicial se crea mediante un trigger protegido.
+- Las funciones de trigger no son ejecutables por usuarios anónimos.

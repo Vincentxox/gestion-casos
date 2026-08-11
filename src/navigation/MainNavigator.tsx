@@ -1,0 +1,36 @@
+import { createNativeStackNavigator } from '@react-navigation/native-stack'
+
+import { CasesListScreen } from '@/features/cases/screens/CasesListScreen'
+import { CaseDetailScreen } from '@/features/cases/screens/CaseDetailScreen'
+import { CreateCaseScreen } from '@/features/cases/screens/CreateCaseScreen'
+import { HomeScreen } from '@/features/home/HomeScreen'
+import { colors } from '@/theme/tokens'
+
+import type { MainStackParamList } from './types'
+
+const Stack = createNativeStackNavigator<MainStackParamList>()
+
+export function MainNavigator() {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        contentStyle: { backgroundColor: colors.background },
+        headerShadowVisible: false,
+        headerTintColor: colors.primary,
+      }}
+    >
+      <Stack.Screen component={HomeScreen} name="Home" options={{ headerShown: false }} />
+      <Stack.Screen component={CasesListScreen} name="Cases" options={{ title: 'Casos' }} />
+      <Stack.Screen
+        component={CreateCaseScreen}
+        name="CreateCase"
+        options={{ title: 'Crear caso' }}
+      />
+      <Stack.Screen
+        component={CaseDetailScreen}
+        name="CaseDetail"
+        options={{ title: 'Detalle del caso' }}
+      />
+    </Stack.Navigator>
+  )
+}

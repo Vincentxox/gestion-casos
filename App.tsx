@@ -6,8 +6,8 @@ import { StyleSheet, View } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import { AuthLoadingScreen } from '@/features/auth/screens/AuthLoadingScreen'
-import { HomeScreen } from '@/features/home/HomeScreen'
 import { AuthNavigator } from '@/navigation/AuthNavigator'
+import { MainNavigator } from '@/navigation/MainNavigator'
 import { supabase } from '@/services/supabase/client'
 import { useAuthStore } from '@/store/authStore'
 import { colors } from '@/theme/tokens'
@@ -39,7 +39,7 @@ function RootContent() {
 
   return (
     <NavigationContainer>
-      {status === 'authenticated' ? <HomeScreen /> : <AuthNavigator />}
+      {status === 'authenticated' ? <MainNavigator /> : <AuthNavigator />}
     </NavigationContainer>
   )
 }

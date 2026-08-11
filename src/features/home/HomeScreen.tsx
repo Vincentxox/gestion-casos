@@ -1,11 +1,15 @@
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native'
+import type { NativeStackScreenProps } from '@react-navigation/native-stack'
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { PrimaryButton } from '@/components/buttons/PrimaryButton'
+import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
 import { colors, radius, spacing } from '@/theme/tokens'
 
-export function HomeScreen() {
+type Props = NativeStackScreenProps<MainStackParamList, 'Home'>
+
+export function HomeScreen({ navigation }: Props) {
   const profile = useAuthStore((state) => state.profile)
   const logout = useAuthStore((state) => state.logout)
 
@@ -30,11 +34,26 @@ export function HomeScreen() {
           </Text>
         </View>
 
+        <Pressable
+          accessibilityHint="Abre el listado, búsqueda y filtros de casos"
+          accessibilityRole="button"
+          onPress={() => navigation.navigate('Cases')}
+          style={styles.moduleCard}
+        >
+          <View style={styles.moduleBadge}>
+            <Text style={styles.moduleBadgeText}>03</Text>
+          </View>
+          <View style={styles.moduleContent}>
+            <Text style={styles.moduleTitle}>Gestión de casos</Text>
+            <Text style={styles.moduleText}>Consulta, busca, filtra y registra casos.</Text>
+          </View>
+          <Text style={styles.chevron}>›</Text>
+        </Pressable>
+
         <View style={styles.notice}>
-          <Text style={styles.noticeTitle}>Autenticación conectada</Text>
+          <Text style={styles.noticeTitle}>Etapa 3 en desarrollo</Text>
           <Text style={styles.noticeText}>
-            Los módulos de casos, documentos y reportes se habilitarán en las siguientes etapas del
-            MVP.
+            Listado, filtros y creación básica disponibles para la demostración.
           </Text>
         </View>
 
@@ -89,4 +108,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
   },
+  moduleCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+  },
+  moduleBadge: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.md,
+    backgroundColor: colors.primary,
+  },
+  moduleBadgeText: { color: colors.white, fontSize: 16, fontWeight: '800' },
+  moduleContent: { flex: 1, gap: spacing.xs },
+  moduleTitle: { color: colors.text, fontSize: 17, fontWeight: '800' },
+  moduleText: { color: colors.textMuted, fontSize: 13 },
+  chevron: { color: colors.primary, fontSize: 30, fontWeight: '600' },
 })

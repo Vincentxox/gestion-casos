@@ -5,6 +5,7 @@ node_modules/
 
 # Expo
 .expo/
+.expo-stage3-check/
 .expo-export-check/
 .expo-export-check-ios/
 coverage/
