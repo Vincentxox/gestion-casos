@@ -27,6 +27,19 @@ export interface CreateCaseInput {
   priority: CasePriority
 }
 
+export type UpdateCaseInput = CreateCaseInput
+
+export interface ChangeCaseStatusInput {
+  status: CaseStatus
+  comment: string
+}
+
+export interface AssignableProfile {
+  id: string
+  fullName: string
+  role: 'administrador' | 'auditor' | 'visualizador'
+}
+
 export interface CaseStatusHistoryRecord {
   id: number
   previousStatus: CaseStatus | null

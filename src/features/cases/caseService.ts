@@ -1,6 +1,14 @@
 import { supabase } from '@/services/supabase/client'
 
-import type { CaseRecord, CaseStatusHistoryRecord, CreateCaseInput } from './types'
+import type {
+  AssignableProfile,
+  CaseRecord,
+  CaseStatus,
+  CaseStatusHistoryRecord,
+  ChangeCaseStatusInput,
+  CreateCaseInput,
+  UpdateCaseInput,
+} from './types'
 
 interface CaseRow {
   id: string
@@ -67,6 +75,70 @@ export async function getCase(caseId: string): Promise<CaseRecord> {
   const { data, error } = await supabase.from('cases').select('*').eq('id', caseId).single()
   if (error) throw error
   return mapCase(data as CaseRow)
+}
+
+export async function updateCase(caseId: string, input: UpdateCaseInput): Promise<CaseRecord> {
+  const { data, error } = await supabase
+    .from('cases')
+    .update({
+      title: input.title.trim(),
+      description: input.description.trim(),
+      category: input.category.trim(),
+      location: input.location.trim(),
+      priority: input.priority,
+    })
+    .eq('id', caseId)
+    .select('*')
+    .single()
+
+  if (error) throw error
+  return mapCase(data as CaseRow)
+}
+
+export async function changeCaseStatus(
+  caseId: string,
+  input: ChangeCaseStatusInput,
+): Promise<CaseRecord> {
+  const { data, error } = await supabase
+    .rpc('change_case_status', {
+      target_case_id: caseId,
+      requested_status: input.status,
+      status_comment: input.comment.trim(),
+    })
+    .single()
+
+  if (error) throw error
+  return mapCase(data as CaseRow)
+}
+
+export async function listAssignableProfiles(): Promise<AssignableProfile[]> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, full_name, role')
+    .order('full_name', { ascending: true })
+
+  if (error) throw error
+  return data.map((row) => ({
+    id: row.id as string,
+    fullName: (row.full_name as string) || 'Usuario sin nombre',
+    role: row.role as AssignableProfile['role'],
+  }))
+}
+
+export async function assignCase(caseId: string, assignedTo: string | null): Promise<CaseRecord> {
+  const { data, error } = await supabase
+    .from('cases')
+    .update({ assigned_to: assignedTo })
+    .eq('id', caseId)
+    .select('*')
+    .single()
+
+  if (error) throw error
+  return mapCase(data as CaseRow)
+}
+
+export function getStatusLabel(status: CaseStatus) {
+  return status === 'en_progreso' ? 'En progreso' : status.charAt(0).toUpperCase() + status.slice(1)
 }
 
 export async function listCaseHistory(caseId: string): Promise<CaseStatusHistoryRecord[]> {

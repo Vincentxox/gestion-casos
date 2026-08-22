@@ -1,4 +1,4 @@
-import { createCaseSchema } from '../schemas'
+import { changeCaseStatusSchema, createCaseSchema } from '../schemas'
 
 describe('createCaseSchema', () => {
   const validCase = {
@@ -21,6 +21,30 @@ describe('createCaseSchema', () => {
       category: '',
       location: '',
       priority: 'urgente',
+    })
+    expect(result.success).toBe(false)
+  })
+})
+
+describe('changeCaseStatusSchema', () => {
+  it('accepts and trims a valid status comment', () => {
+    const result = changeCaseStatusSchema.parse({
+      status: 'en_progreso',
+      comment: '  Se inició la atención del caso.  ',
+    })
+
+    expect(result.comment).toBe('Se inició la atención del caso.')
+  })
+
+  it('rejects an empty status comment', () => {
+    const result = changeCaseStatusSchema.safeParse({ status: 'cerrado', comment: '  ' })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects an unsupported status', () => {
+    const result = changeCaseStatusSchema.safeParse({
+      status: 'cancelado',
+      comment: 'Este estado no pertenece al flujo.',
     })
     expect(result.success).toBe(false)
   })

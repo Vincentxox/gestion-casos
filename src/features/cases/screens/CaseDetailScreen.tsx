@@ -1,8 +1,10 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
+import { hasPermission } from '@/features/auth/permissions'
 import type { MainStackParamList } from '@/navigation/types'
+import { useAuthStore } from '@/store/authStore'
 import { colors, radius, spacing } from '@/theme/tokens'
 
 import { useCaseDetail, useCaseHistory } from '../useCases'
@@ -24,10 +26,13 @@ function Field({ label, value }: { label: string; value: string }) {
   )
 }
 
-export function CaseDetailScreen({ route }: Props) {
+export function CaseDetailScreen({ navigation, route }: Props) {
   const { caseId } = route.params
+  const profile = useAuthStore((state) => state.profile)
   const detail = useCaseDetail(caseId)
   const history = useCaseHistory(caseId)
+  const canUpdate = hasPermission(profile?.role, 'cases.update')
+  const canAssign = hasPermission(profile?.role, 'cases.assign')
 
   if (detail.isLoading) {
     return (
@@ -73,6 +78,30 @@ export function CaseDetailScreen({ route }: Props) {
           <Field label="Creado" value={new Date(item.createdAt).toLocaleString('es-GT')} />
         </View>
 
+        {canUpdate || canAssign ? (
+          <View style={styles.actions}>
+            <Text style={styles.panelTitle}>Acciones</Text>
+            {canUpdate ? (
+              <>
+                <ActionButton
+                  label="Editar información"
+                  onPress={() => navigation.navigate('EditCase', { caseId })}
+                />
+                <ActionButton
+                  label="Cambiar estado"
+                  onPress={() => navigation.navigate('ChangeCaseStatus', { caseId })}
+                />
+              </>
+            ) : null}
+            {canAssign ? (
+              <ActionButton
+                label="Asignar personal"
+                onPress={() => navigation.navigate('AssignCase', { caseId })}
+              />
+            ) : null}
+          </View>
+        ) : null}
+
         <View style={styles.panel}>
           <Text style={styles.panelTitle}>Historial de estados</Text>
           {history.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
@@ -97,6 +126,15 @@ export function CaseDetailScreen({ route }: Props) {
         </View>
       </ScrollView>
     </SafeAreaView>
+  )
+}
+
+function ActionButton({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" onPress={onPress} style={styles.actionButton}>
+      <Text style={styles.actionButtonText}>{label}</Text>
+      <Text style={styles.actionChevron}>›</Text>
+    </Pressable>
   )
 }
 
@@ -134,6 +172,25 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   panelTitle: { color: colors.text, fontSize: 17, fontWeight: '800' },
+  actions: {
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+  },
+  actionButton: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: radius.md,
+    backgroundColor: colors.primarySoft,
+    paddingHorizontal: spacing.md,
+  },
+  actionButtonText: { color: colors.primary, fontWeight: '800' },
+  actionChevron: { color: colors.primary, fontSize: 24, fontWeight: '700' },
   field: { gap: spacing.xs },
   fieldLabel: { color: colors.textMuted, fontSize: 12, fontWeight: '700' },
   fieldValue: { color: colors.text, fontSize: 15 },

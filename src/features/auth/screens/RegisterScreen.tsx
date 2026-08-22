@@ -1,18 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { Controller, useForm } from 'react-hook-form'
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native'
+import { Alert, StyleSheet, Text, View } from 'react-native'
 
 import { PrimaryButton } from '@/components/buttons/PrimaryButton'
 import { FormField } from '@/components/forms/FormField'
+import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
 import { registrationSchema, type RegistrationInput } from '@/features/auth/schemas'
 import type { AuthStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
@@ -56,102 +49,93 @@ export function RegisterScreen({ navigation }: Props) {
   })
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={styles.flex}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        <View style={styles.heading}>
-          <Text accessibilityRole="header" style={styles.title}>
-            Crear cuenta
-          </Text>
-          <Text style={styles.subtitle}>
-            Completa tus datos. Tu rol será asignado de forma segura por un administrador.
-          </Text>
-        </View>
+    <KeyboardFormScrollView contentContainerStyle={styles.scrollContent} style={styles.flex}>
+      <View style={styles.heading}>
+        <Text accessibilityRole="header" style={styles.title}>
+          Crear cuenta
+        </Text>
+        <Text style={styles.subtitle}>
+          Completa tus datos. Tu rol será asignado de forma segura por un administrador.
+        </Text>
+      </View>
 
-        <View style={styles.card}>
-          <Controller
-            control={control}
-            name="fullName"
-            render={({ field: { onBlur, onChange, value } }) => (
-              <FormField
-                autoCapitalize="words"
-                autoComplete="name"
-                error={errors.fullName?.message}
-                label="Nombre completo"
-                onBlur={onBlur}
-                onChangeText={onChange}
-                placeholder="Nombre y apellido"
-                value={value}
-              />
-            )}
-          />
+      <View style={styles.card}>
+        <Controller
+          control={control}
+          name="fullName"
+          render={({ field: { onBlur, onChange, value } }) => (
+            <FormField
+              autoCapitalize="words"
+              autoComplete="name"
+              error={errors.fullName?.message}
+              label="Nombre completo"
+              onBlur={onBlur}
+              onChangeText={onChange}
+              placeholder="Nombre y apellido"
+              value={value}
+            />
+          )}
+        />
 
-          <Controller
-            control={control}
-            name="email"
-            render={({ field: { onBlur, onChange, value } }) => (
-              <FormField
-                autoCapitalize="none"
-                autoComplete="email"
-                error={errors.email?.message}
-                keyboardType="email-address"
-                label="Correo electrónico"
-                onBlur={onBlur}
-                onChangeText={onChange}
-                placeholder="nombre@empresa.com"
-                value={value}
-              />
-            )}
-          />
+        <Controller
+          control={control}
+          name="email"
+          render={({ field: { onBlur, onChange, value } }) => (
+            <FormField
+              autoCapitalize="none"
+              autoComplete="email"
+              error={errors.email?.message}
+              keyboardType="email-address"
+              label="Correo electrónico"
+              onBlur={onBlur}
+              onChangeText={onChange}
+              placeholder="nombre@empresa.com"
+              value={value}
+            />
+          )}
+        />
 
-          <Controller
-            control={control}
-            name="password"
-            render={({ field: { onBlur, onChange, value } }) => (
-              <FormField
-                autoCapitalize="none"
-                autoComplete="new-password"
-                error={errors.password?.message}
-                label="Contraseña"
-                onBlur={onBlur}
-                onChangeText={onChange}
-                placeholder="Mínimo 8 caracteres"
-                secureTextEntry
-                value={value}
-              />
-            )}
-          />
+        <Controller
+          control={control}
+          name="password"
+          render={({ field: { onBlur, onChange, value } }) => (
+            <FormField
+              autoCapitalize="none"
+              autoComplete="new-password"
+              error={errors.password?.message}
+              label="Contraseña"
+              onBlur={onBlur}
+              onChangeText={onChange}
+              placeholder="Mínimo 8 caracteres"
+              secureTextEntry
+              value={value}
+            />
+          )}
+        />
 
-          <Controller
-            control={control}
-            name="passwordConfirmation"
-            render={({ field: { onBlur, onChange, value } }) => (
-              <FormField
-                autoCapitalize="none"
-                autoComplete="new-password"
-                error={errors.passwordConfirmation?.message}
-                label="Confirmar contraseña"
-                onBlur={onBlur}
-                onChangeText={onChange}
-                onSubmitEditing={() => void submit()}
-                placeholder="Repite tu contraseña"
-                returnKeyType="done"
-                secureTextEntry
-                value={value}
-              />
-            )}
-          />
+        <Controller
+          control={control}
+          name="passwordConfirmation"
+          render={({ field: { onBlur, onChange, value } }) => (
+            <FormField
+              autoCapitalize="none"
+              autoComplete="new-password"
+              error={errors.passwordConfirmation?.message}
+              label="Confirmar contraseña"
+              onBlur={onBlur}
+              onChangeText={onChange}
+              onSubmitEditing={() => void submit()}
+              placeholder="Repite tu contraseña"
+              returnKeyType="done"
+              secureTextEntry
+              value={value}
+            />
+          )}
+        />
 
-          <PrimaryButton
-            label="Crear cuenta"
-            loading={isSubmitting}
-            onPress={() => void submit()}
-          />
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        <PrimaryButton label="Crear cuenta" loading={isSubmitting} onPress={() => void submit()} />
+      </View>
+    </KeyboardFormScrollView>
   )
 }
 

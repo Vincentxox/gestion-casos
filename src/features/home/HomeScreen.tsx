@@ -51,9 +51,9 @@ export function HomeScreen({ navigation }: Props) {
         </Pressable>
 
         <View style={styles.notice}>
-          <Text style={styles.noticeTitle}>Etapa 3 en desarrollo</Text>
+          <Text style={styles.noticeTitle}>Gestión de casos disponible</Text>
           <Text style={styles.noticeText}>
-            Listado, filtros y creación básica disponibles para la demostración.
+            Consulta, creación, edición, estados, asignación e historial habilitados según tu rol.
           </Text>
         </View>
 

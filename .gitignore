@@ -45,6 +45,7 @@ yarn-error.*
 /android
 
 #Supabase
+supabase/.temp/
 .env
 .env.local
 .env.*.local

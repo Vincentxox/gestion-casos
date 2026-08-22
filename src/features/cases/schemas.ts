@@ -8,4 +8,16 @@ export const createCaseSchema = z.object({
   priority: z.enum(['alta', 'media', 'baja']),
 })
 
+export const updateCaseSchema = createCaseSchema
+
+export const changeCaseStatusSchema = z.object({
+  status: z.enum(['abierto', 'en_progreso', 'cerrado']),
+  comment: z
+    .string()
+    .trim()
+    .min(3, 'Explica el cambio con al menos 3 caracteres')
+    .max(500, 'El comentario no puede exceder 500 caracteres'),
+})
+
 export type CreateCaseForm = z.infer<typeof createCaseSchema>
+export type ChangeCaseStatusForm = z.infer<typeof changeCaseStatusSchema>

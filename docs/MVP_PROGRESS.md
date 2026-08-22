@@ -1,6 +1,6 @@
 # Seguimiento del MVP
 
-Última actualización: 27 de julio de 2026.
+Última actualización: 22 de agosto de 2026.
 
 ## Etapa 1 — Preparación y configuración base
 
@@ -89,7 +89,7 @@ Fuera del alcance obligatorio de este MVP inicial:
 
 ## Etapa 3 — Gestión principal de casos
 
-Estado: en progreso. Primer incremento funcional preparado el 10 de agosto de 2026.
+Estado: completada para el alcance funcional y técnico del MVP inicial.
 
 - [x] Menú principal y acceso al módulo.
 - [x] Modelo de casos, prioridades y estados en Supabase.
@@ -98,10 +98,30 @@ Estado: en progreso. Primer incremento funcional preparado el 10 de agosto de 20
 - [x] Creación básica con validación y permisos.
 - [x] Historial automático de estado en base de datos.
 - [x] Detalle del caso.
-- [ ] Edición.
-- [ ] Cambio de estado con comentario.
-- [ ] Asignación de personal.
+- [x] Edición con validación y permisos.
+- [x] Cambio de estado con comentario obligatorio y registro atómico.
+- [x] Asignación y retiro de personal responsable.
 - [x] Visualización del historial.
+
+Evidencia técnica:
+
+- [x] Formulario reutilizable para creación y edición.
+- [x] Navegación hacia edición, cambio de estado y asignación desde el detalle.
+- [x] Acciones visibles únicamente según la matriz de permisos.
+- [x] RLS mantiene las escrituras restringidas al administrador.
+- [x] RPC de cambio de estado ejecutada como `SECURITY INVOKER`.
+- [x] Comentario obligatorio entre 3 y 500 caracteres validado en móvil y PostgreSQL.
+- [x] Trigger registra automáticamente estado anterior, nuevo estado, usuario y comentario.
+- [x] Usuarios anónimos no pueden ejecutar el cambio de estado.
+- [x] Migraciones aplicadas al proyecto remoto de Supabase.
+- [x] Prueba transaccional remota aprobada sin modificar datos permanentes.
+- [x] Bundle Android generado correctamente.
+- [x] TypeScript, ESLint, Prettier y 43 pruebas automatizadas aprobadas.
+
+Validación manual recomendada:
+
+- [ ] Recorrer creación, edición, estado y asignación en un dispositivo Android con la cuenta administradora.
+- [ ] Confirmar que auditor y visualizador no reciben acciones administrativas.
 
 ## Etapa 4 — Documentos y funciones complementarias
 
@@ -127,9 +147,8 @@ Estado: pendiente.
 
 ## Próxima acción
 
-Validar el primer incremento de la etapa 3 en Android con una cuenta
-administradora. Después implementar detalle, edición, cambio de estado,
-asignación y visualización del historial.
+Realizar la validación manual final de la etapa 3 en Android y comenzar la etapa
+4 con adjuntos y políticas de Supabase Storage.
 
 Comprobación remota de la etapa 3:
 
@@ -138,3 +157,5 @@ Comprobación remota de la etapa 3:
 - `cases` tiene tres políticas y `case_status_history` tiene una política.
 - El historial inicial se crea mediante un trigger protegido.
 - Las funciones de trigger no son ejecutables por usuarios anónimos.
+- El cambio de estado requiere comentario y se ejecuta respetando RLS.
+- Existe una cuenta administradora para validar las acciones de escritura.

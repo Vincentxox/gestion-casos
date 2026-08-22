@@ -1,19 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { Controller, useForm } from 'react-hook-form'
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native'
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { PrimaryButton } from '@/components/buttons/PrimaryButton'
 import { FormField } from '@/components/forms/FormField'
+import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
 import { loginSchema, type LoginInput } from '@/features/auth/schemas'
 import type { AuthStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
@@ -47,77 +39,72 @@ export function LoginScreen({ navigation }: Props) {
   })
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={styles.flex}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        <View style={styles.brand}>
-          <View accessibilityElementsHidden style={styles.logo}>
-            <Text style={styles.logoText}>GC</Text>
-          </View>
-          <Text accessibilityRole="header" style={styles.title}>
-            Gestión de casos
-          </Text>
-          <Text style={styles.subtitle}>Accede de forma segura a tus casos y documentos.</Text>
+    <KeyboardFormScrollView contentContainerStyle={styles.scrollContent} style={styles.flex}>
+      <View style={styles.brand}>
+        <View accessibilityElementsHidden style={styles.logo}>
+          <Text style={styles.logoText}>GC</Text>
         </View>
+        <Text accessibilityRole="header" style={styles.title}>
+          Gestión de casos
+        </Text>
+        <Text style={styles.subtitle}>Accede de forma segura a tus casos y documentos.</Text>
+      </View>
 
-        <View style={styles.card}>
-          <Text accessibilityRole="header" style={styles.cardTitle}>
-            Iniciar sesión
-          </Text>
+      <View style={styles.card}>
+        <Text accessibilityRole="header" style={styles.cardTitle}>
+          Iniciar sesión
+        </Text>
 
-          <Controller
-            control={control}
-            name="email"
-            render={({ field: { onBlur, onChange, value } }) => (
-              <FormField
-                autoCapitalize="none"
-                autoComplete="email"
-                error={errors.email?.message}
-                keyboardType="email-address"
-                label="Correo electrónico"
-                onBlur={onBlur}
-                onChangeText={onChange}
-                placeholder="nombre@empresa.com"
-                returnKeyType="next"
-                value={value}
-              />
-            )}
-          />
+        <Controller
+          control={control}
+          name="email"
+          render={({ field: { onBlur, onChange, value } }) => (
+            <FormField
+              autoCapitalize="none"
+              autoComplete="email"
+              error={errors.email?.message}
+              keyboardType="email-address"
+              label="Correo electrónico"
+              onBlur={onBlur}
+              onChangeText={onChange}
+              placeholder="nombre@empresa.com"
+              returnKeyType="next"
+              value={value}
+            />
+          )}
+        />
 
-          <Controller
-            control={control}
-            name="password"
-            render={({ field: { onBlur, onChange, value } }) => (
-              <FormField
-                autoCapitalize="none"
-                autoComplete="current-password"
-                error={errors.password?.message}
-                label="Contraseña"
-                onBlur={onBlur}
-                onChangeText={onChange}
-                onSubmitEditing={() => void submit()}
-                placeholder="Ingresa tu contraseña"
-                returnKeyType="done"
-                secureTextEntry
-                value={value}
-              />
-            )}
-          />
+        <Controller
+          control={control}
+          name="password"
+          render={({ field: { onBlur, onChange, value } }) => (
+            <FormField
+              autoCapitalize="none"
+              autoComplete="current-password"
+              error={errors.password?.message}
+              label="Contraseña"
+              onBlur={onBlur}
+              onChangeText={onChange}
+              onSubmitEditing={() => void submit()}
+              placeholder="Ingresa tu contraseña"
+              returnKeyType="done"
+              secureTextEntry
+              value={value}
+            />
+          )}
+        />
 
-          <PrimaryButton label="Ingresar" loading={isSubmitting} onPress={() => void submit()} />
+        <PrimaryButton label="Ingresar" loading={isSubmitting} onPress={() => void submit()} />
 
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => navigation.navigate('Register')}
-            style={styles.linkButton}
-          >
-            <Text style={styles.linkText}>¿No tienes una cuenta? Crear cuenta</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => navigation.navigate('Register')}
+          style={styles.linkButton}
+        >
+          <Text style={styles.linkText}>¿No tienes una cuenta? Crear cuenta</Text>
+        </Pressable>
+      </View>
+    </KeyboardFormScrollView>
   )
 }
 
