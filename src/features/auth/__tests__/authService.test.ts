@@ -7,6 +7,7 @@ import {
   getProfile,
   resolveSessionProfile,
   signIn,
+  signInWithGoogle,
   signOut,
   signUp,
 } from '../authService'
@@ -16,6 +17,8 @@ jest.mock('@/services/supabase/client', () => ({
     auth: {
       getSession: jest.fn(),
       signInWithPassword: jest.fn(),
+      signInWithOAuth: jest.fn(),
+      setSession: jest.fn(),
       signUp: jest.fn(),
       signOut: jest.fn(),
     },
@@ -23,9 +26,24 @@ jest.mock('@/services/supabase/client', () => ({
   },
 }))
 
+jest.mock('expo-auth-session', () => ({
+  makeRedirectUri: jest.fn(() => 'gestion-casos://auth/callback'),
+}))
+
+jest.mock('expo-web-browser', () => ({
+  maybeCompleteAuthSession: jest.fn(),
+  openAuthSessionAsync: jest.fn(),
+}))
+
+const webBrowser = jest.requireMock('expo-web-browser') as {
+  openAuthSessionAsync: jest.Mock
+}
+
 const auth = supabase.auth as unknown as {
   getSession: jest.Mock
   signInWithPassword: jest.Mock
+  signInWithOAuth: jest.Mock
+  setSession: jest.Mock
   signUp: jest.Mock
   signOut: jest.Mock
 }
@@ -68,6 +86,49 @@ describe('servicio de autenticación', () => {
     auth.signInWithPassword.mockResolvedValue({ data: {}, error })
 
     await expect(signIn('user@example.com', 'Password1!')).rejects.toBe(error)
+  })
+
+  test('inicia sesión con Google y establece la sesión devuelta', async () => {
+    auth.signInWithOAuth.mockResolvedValue({
+      data: { url: 'https://example.supabase.co/auth/v1/authorize' },
+      error: null,
+    })
+    webBrowser.openAuthSessionAsync.mockResolvedValue({
+      type: 'success',
+      url: 'gestion-casos://auth/callback#access_token=access&refresh_token=refresh',
+    })
+    auth.setSession.mockResolvedValue({ data: { session }, error: null })
+
+    await expect(signInWithGoogle()).resolves.toBe(session)
+    expect(auth.signInWithOAuth).toHaveBeenCalledWith({
+      provider: 'google',
+      options: {
+        redirectTo: 'gestion-casos://auth/callback',
+        skipBrowserRedirect: true,
+      },
+    })
+    expect(auth.setSession).toHaveBeenCalledWith({
+      access_token: 'access',
+      refresh_token: 'refresh',
+    })
+  })
+
+  test('no crea una sesión cuando el usuario cancela Google', async () => {
+    auth.signInWithOAuth.mockResolvedValue({
+      data: { url: 'https://example.supabase.co/auth/v1/authorize' },
+      error: null,
+    })
+    webBrowser.openAuthSessionAsync.mockResolvedValue({ type: 'cancel' })
+
+    await expect(signInWithGoogle()).resolves.toBeNull()
+    expect(auth.setSession).not.toHaveBeenCalled()
+  })
+
+  test('propaga errores al iniciar la autorización con Google', async () => {
+    const error = new Error('oauth error')
+    auth.signInWithOAuth.mockResolvedValue({ data: {}, error })
+
+    await expect(signInWithGoogle()).rejects.toBe(error)
   })
 
   test('registra el nombre como metadato sin aceptar un rol', async () => {

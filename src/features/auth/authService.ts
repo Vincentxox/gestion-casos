@@ -1,8 +1,17 @@
 import type { Session } from '@supabase/supabase-js'
+import { makeRedirectUri } from 'expo-auth-session'
+import * as WebBrowser from 'expo-web-browser'
 
 import { supabase } from '@/services/supabase/client'
 
 import { APP_ROLES, type AppRole, type Profile } from './types'
+
+WebBrowser.maybeCompleteAuthSession()
+
+export const googleAuthRedirectUrl = makeRedirectUri({
+  scheme: 'gestion-casos',
+  path: 'auth/callback',
+})
 
 interface ProfileRow {
   id: string
@@ -63,6 +72,61 @@ export async function signIn(email: string, password: string) {
   }
 
   return data.session
+}
+
+function getOAuthTokens(callbackUrl: string) {
+  const url = new URL(callbackUrl)
+  const query = new URLSearchParams(url.search)
+  const fragment = new URLSearchParams(url.hash.replace(/^#/, ''))
+  const params = url.hash ? fragment : query
+  const errorDescription = params.get('error_description') ?? params.get('error')
+
+  if (errorDescription) {
+    throw new Error(errorDescription)
+  }
+
+  const accessToken = params.get('access_token')
+  const refreshToken = params.get('refresh_token')
+
+  if (!accessToken || !refreshToken) {
+    throw new Error('Google no devolvió una sesión válida')
+  }
+
+  return { access_token: accessToken, refresh_token: refreshToken }
+}
+
+export async function signInWithGoogle() {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: googleAuthRedirectUrl,
+      skipBrowserRedirect: true,
+    },
+  })
+
+  if (error) {
+    throw error
+  }
+
+  if (!data.url) {
+    throw new Error('No fue posible iniciar la autorización con Google')
+  }
+
+  const result = await WebBrowser.openAuthSessionAsync(data.url, googleAuthRedirectUrl)
+
+  if (result.type !== 'success') {
+    return null
+  }
+
+  const { data: sessionData, error: sessionError } = await supabase.auth.setSession(
+    getOAuthTokens(result.url),
+  )
+
+  if (sessionError) {
+    throw sessionError
+  }
+
+  return sessionData.session
 }
 
 export async function signUp(email: string, password: string, fullName: string) {

@@ -22,7 +22,7 @@ export function HomeScreen({ navigation }: Props) {
   }
 
   return (
-    <SafeAreaView edges={['bottom']} style={styles.safeArea}>
+    <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <Text style={styles.eyebrow}>MENÚ PRINCIPAL</Text>

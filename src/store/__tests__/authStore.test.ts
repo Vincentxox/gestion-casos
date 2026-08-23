@@ -4,6 +4,7 @@ import {
   getCurrentSession,
   resolveSessionProfile,
   signIn,
+  signInWithGoogle,
   signOut,
   signUp,
 } from '@/features/auth/authService'
@@ -15,6 +16,7 @@ jest.mock('@/features/auth/authService', () => ({
   getCurrentSession: jest.fn(),
   resolveSessionProfile: jest.fn(),
   signIn: jest.fn(),
+  signInWithGoogle: jest.fn(),
   signOut: jest.fn(),
   signUp: jest.fn(),
 }))
@@ -22,6 +24,7 @@ jest.mock('@/features/auth/authService', () => ({
 const mockGetCurrentSession = jest.mocked(getCurrentSession)
 const mockResolveSessionProfile = jest.mocked(resolveSessionProfile)
 const mockSignIn = jest.mocked(signIn)
+const mockSignInWithGoogle = jest.mocked(signInWithGoogle)
 const mockSignOut = jest.mocked(signOut)
 const mockSignUp = jest.mocked(signUp)
 
@@ -85,6 +88,26 @@ describe('estado global de autenticación', () => {
       profile,
       status: 'authenticated',
     })
+  })
+
+  test('inicia sesión con Google y carga el perfil', async () => {
+    mockSignInWithGoogle.mockResolvedValue(session)
+    mockResolveSessionProfile.mockResolvedValue(profile)
+
+    await expect(useAuthStore.getState().loginWithGoogle()).resolves.toBe(true)
+
+    expect(useAuthStore.getState()).toMatchObject({
+      session,
+      profile,
+      status: 'authenticated',
+    })
+  })
+
+  test('mantiene el estado cuando se cancela el acceso con Google', async () => {
+    mockSignInWithGoogle.mockResolvedValue(null)
+
+    await expect(useAuthStore.getState().loginWithGoogle()).resolves.toBe(false)
+    expect(mockResolveSessionProfile).not.toHaveBeenCalled()
   })
 
   test('registra una cuenta con sesión inmediata', async () => {

@@ -2,14 +2,17 @@
   "expo": {
     "name": "gestion-casos",
     "slug": "gestion-casos",
+    "scheme": "gestion-casos",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.gestioncasos.app"
     },
     "android": {
+      "package": "com.gestioncasos.app",
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -22,6 +25,12 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["expo-secure-store", "expo-sqlite", "expo-font"]
+    "plugins": ["expo-secure-store", "expo-sqlite", "expo-font", "expo-web-browser"],
+    "extra": {
+      "eas": {
+        "projectId": "058a8d06-fccc-44e1-91bf-18d69a111d03"
+      }
+    },
+    "owner": "vincentxox"
   }
 }

@@ -1,5 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
+import { FontAwesome } from '@expo/vector-icons'
+import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
 
@@ -15,6 +17,8 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>
 
 export function LoginScreen({ navigation }: Props) {
   const login = useAuthStore((state) => state.login)
+  const loginWithGoogle = useAuthStore((state) => state.loginWithGoogle)
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false)
   const {
     control,
     handleSubmit,
@@ -37,6 +41,20 @@ export function LoginScreen({ navigation }: Props) {
       )
     }
   })
+
+  const submitGoogle = async () => {
+    try {
+      setIsGoogleSubmitting(true)
+      await loginWithGoogle()
+    } catch {
+      Alert.alert(
+        'No fue posible iniciar sesión con Google',
+        'Verifica la configuración de Google, Supabase y tu conexión a internet.',
+      )
+    } finally {
+      setIsGoogleSubmitting(false)
+    }
+  }
 
   return (
     <KeyboardFormScrollView contentContainerStyle={styles.scrollContent} style={styles.flex}>
@@ -95,6 +113,29 @@ export function LoginScreen({ navigation }: Props) {
         />
 
         <PrimaryButton label="Ingresar" loading={isSubmitting} onPress={() => void submit()} />
+
+        <View accessibilityElementsHidden style={styles.dividerRow}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>o continúa con</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ busy: isGoogleSubmitting, disabled: isGoogleSubmitting }}
+          disabled={isGoogleSubmitting || isSubmitting}
+          onPress={() => void submitGoogle()}
+          style={({ pressed }) => [
+            styles.googleButton,
+            pressed ? styles.googleButtonPressed : null,
+            isGoogleSubmitting || isSubmitting ? styles.googleButtonDisabled : null,
+          ]}
+        >
+          <FontAwesome color="#4285F4" name="google" size={20} />
+          <Text style={styles.googleButtonText}>
+            {isGoogleSubmitting ? 'Conectando…' : 'Continuar con Google'}
+          </Text>
+        </Pressable>
 
         <Pressable
           accessibilityRole="button"
@@ -168,6 +209,42 @@ const styles = StyleSheet.create({
     minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  dividerLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+  },
+  dividerText: {
+    color: colors.textMuted,
+    fontSize: 13,
+  },
+  googleButton: {
+    minHeight: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+  },
+  googleButtonPressed: {
+    backgroundColor: colors.primarySoft,
+  },
+  googleButtonDisabled: {
+    opacity: 0.55,
+  },
+  googleButtonText: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '700',
   },
   linkText: {
     color: colors.primary,

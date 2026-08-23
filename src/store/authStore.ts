@@ -5,6 +5,7 @@ import {
   getCurrentSession,
   resolveSessionProfile,
   signIn,
+  signInWithGoogle,
   signOut,
   signUp,
 } from '@/features/auth/authService'
@@ -20,6 +21,7 @@ interface AuthStore {
   initializationError: string | null
   initialize: () => Promise<void>
   login: (email: string, password: string) => Promise<void>
+  loginWithGoogle: () => Promise<boolean>
   register: (input: RegistrationInput) => Promise<boolean>
   logout: () => Promise<void>
   applySession: (session: Session | null) => Promise<void>
@@ -61,6 +63,17 @@ export const useAuthStore = create<AuthStore>((set) => ({
   async login(email, password) {
     const session = await signIn(email, password)
     set(await getAuthValues(session))
+  },
+
+  async loginWithGoogle() {
+    const session = await signInWithGoogle()
+
+    if (!session) {
+      return false
+    }
+
+    set(await getAuthValues(session))
+    return true
   },
 
   async register({ email, password, fullName }) {

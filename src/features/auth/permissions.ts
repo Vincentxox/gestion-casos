@@ -15,7 +15,7 @@ export type AppPermission = (typeof APP_PERMISSIONS)[number]
 const ROLE_PERMISSIONS: Record<AppRole, ReadonlySet<AppPermission>> = {
   administrador: new Set(APP_PERMISSIONS),
   auditor: new Set(['cases.read', 'reports.read', 'audit.read']),
-  visualizador: new Set(['cases.read']),
+  visualizador: new Set(['cases.read', 'cases.create']),
 }
 
 export function hasPermission(role: AppRole | null | undefined, permission: AppPermission) {

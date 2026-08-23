@@ -21,10 +21,12 @@ describe('matriz RBAC', () => {
     expect(hasPermission('auditor', 'users.manage')).toBe(false)
   })
 
-  test('el visualizador solo puede consultar casos', () => {
-    expect(getPermissions('visualizador')).toEqual(['cases.read'])
+  test('el visualizador puede consultar y crear casos', () => {
+    expect(getPermissions('visualizador')).toEqual(['cases.read', 'cases.create'])
     expect(hasPermission('visualizador', 'cases.read')).toBe(true)
+    expect(hasPermission('visualizador', 'cases.create')).toBe(true)
     expect(hasPermission('visualizador', 'cases.update')).toBe(false)
+    expect(hasPermission('visualizador', 'cases.assign')).toBe(false)
     expect(hasPermission('visualizador', 'reports.read')).toBe(false)
   })
 
