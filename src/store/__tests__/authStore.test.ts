@@ -103,6 +103,27 @@ describe('estado global de autenticación', () => {
     })
   })
 
+  test('no informa un falso error si el evento de Auth ya aplicó la sesión de Google', async () => {
+    mockSignInWithGoogle.mockResolvedValue(session)
+    mockResolveSessionProfile.mockImplementation(async () => {
+      useAuthStore.setState({
+        session,
+        profile,
+        status: 'authenticated',
+        initializationError: null,
+      })
+      throw new Error('carga duplicada')
+    })
+
+    await expect(useAuthStore.getState().loginWithGoogle()).resolves.toBe(true)
+
+    expect(useAuthStore.getState()).toMatchObject({
+      session,
+      profile,
+      status: 'authenticated',
+    })
+  })
+
   test('mantiene el estado cuando se cancela el acceso con Google', async () => {
     mockSignInWithGoogle.mockResolvedValue(null)
 

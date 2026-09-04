@@ -37,7 +37,7 @@ async function getAuthValues(session: Session | null) {
   }
 }
 
-export const useAuthStore = create<AuthStore>((set) => ({
+export const useAuthStore = create<AuthStore>((set, get) => ({
   session: null,
   profile: null,
   status: 'initializing',
@@ -74,7 +74,23 @@ export const useAuthStore = create<AuthStore>((set) => ({
       return false
     }
 
-    set({ ...(await getAuthValues(session)), initializationError: null })
+    try {
+      set({ ...(await getAuthValues(session)), initializationError: null })
+    } catch (error) {
+      // setSession también emite onAuthStateChange. Si ese flujo ya cargó el
+      // mismo usuario, no debemos convertir una segunda carga fallida en un
+      // falso error después de que la autenticación concluyó correctamente.
+      const currentState = get()
+      const sessionWasApplied =
+        currentState.status === 'authenticated' &&
+        currentState.session?.user.id === session.user.id &&
+        currentState.profile !== null
+
+      if (!sessionWasApplied) {
+        throw error
+      }
+    }
+
     return true
   },
 

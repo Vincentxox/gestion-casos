@@ -1,0 +1,16 @@
+diff --git a/node_modules/react-native/ReactAndroid/cmake-utils/ReactNative-application.cmake b/node_modules/react-native/ReactAndroid/cmake-utils/ReactNative-application.cmake
+index c1bf54d..3e9cc92 100644
+--- a/node_modules/react-native/ReactAndroid/cmake-utils/ReactNative-application.cmake
++++ b/node_modules/react-native/ReactAndroid/cmake-utils/ReactNative-application.cmake
+@@ -80,5 +80,6 @@ add_library(fbjni ALIAS fbjni::fbjni)
+ 
+ target_link_libraries(${CMAKE_PROJECT_NAME}
++        c++_shared
+         fbjni                               # via 3rd party prefab
+         jsi                                 # prefab ready
+         reactnative                         # prefab ready
+@@ -88,3 +89,4 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
+ # such as the folly flags or others.
+ add_library(common_flags INTERFACE)
+ target_compile_options(common_flags INTERFACE ${folly_FLAGS})
++target_link_libraries(common_flags INTERFACE c++_shared)
