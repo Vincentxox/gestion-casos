@@ -8,6 +8,7 @@ import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
 import { PrimaryButton } from '@/components/buttons/PrimaryButton'
 import { FormField } from '@/components/forms/FormField'
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
+import { getAuthErrorMessage } from '@/features/auth/authErrors'
 import { loginSchema, type LoginInput } from '@/features/auth/schemas'
 import type { AuthStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
@@ -18,6 +19,8 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>
 export function LoginScreen({ navigation }: Props) {
   const login = useAuthStore((state) => state.login)
   const loginWithGoogle = useAuthStore((state) => state.loginWithGoogle)
+  const initialize = useAuthStore((state) => state.initialize)
+  const initializationError = useAuthStore((state) => state.initializationError)
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false)
   const {
     control,
@@ -34,10 +37,13 @@ export function LoginScreen({ navigation }: Props) {
   const submit = handleSubmit(async (values) => {
     try {
       await login(values.email, values.password)
-    } catch {
+    } catch (error) {
       Alert.alert(
         'No fue posible iniciar sesión',
-        'Verifica tus credenciales y tu conexión a internet.',
+        getAuthErrorMessage(
+          error,
+          'No fue posible iniciar sesión. Verifica tus datos e inténtalo nuevamente.',
+        ),
       )
     }
   })
@@ -46,10 +52,13 @@ export function LoginScreen({ navigation }: Props) {
     try {
       setIsGoogleSubmitting(true)
       await loginWithGoogle()
-    } catch {
+    } catch (error) {
       Alert.alert(
         'No fue posible iniciar sesión con Google',
-        'Verifica la configuración de Google, Supabase y tu conexión a internet.',
+        getAuthErrorMessage(
+          error,
+          'Google no pudo completar el acceso. Verifica la configuración e inténtalo nuevamente.',
+        ),
       )
     } finally {
       setIsGoogleSubmitting(false)
@@ -72,6 +81,19 @@ export function LoginScreen({ navigation }: Props) {
         <Text accessibilityRole="header" style={styles.cardTitle}>
           Iniciar sesión
         </Text>
+
+        {initializationError ? (
+          <View accessibilityLiveRegion="polite" style={styles.sessionNotice}>
+            <Text style={styles.sessionNoticeText}>{initializationError}</Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => void initialize()}
+              style={styles.retryButton}
+            >
+              <Text style={styles.retryButtonText}>Reintentar</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         <Controller
           control={control}
@@ -112,7 +134,12 @@ export function LoginScreen({ navigation }: Props) {
           )}
         />
 
-        <PrimaryButton label="Ingresar" loading={isSubmitting} onPress={() => void submit()} />
+        <PrimaryButton
+          disabled={isGoogleSubmitting}
+          label="Ingresar"
+          loading={isSubmitting}
+          onPress={() => void submit()}
+        />
 
         <View accessibilityElementsHidden style={styles.dividerRow}>
           <View style={styles.dividerLine} />
@@ -204,6 +231,26 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 22,
     fontWeight: '700',
+  },
+  sessionNotice: {
+    gap: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.warningSoft,
+    padding: spacing.md,
+  },
+  sessionNoticeText: {
+    color: colors.text,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  retryButton: {
+    alignSelf: 'flex-start',
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  retryButtonText: {
+    color: colors.primary,
+    fontWeight: '800',
   },
   linkButton: {
     minHeight: 44,

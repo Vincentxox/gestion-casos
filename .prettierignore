@@ -1,6 +1,8 @@
 node_modules
 .expo
+.expo-*
 dist
 coverage
 android
 ios
+supabase/.temp

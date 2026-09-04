@@ -6,6 +6,7 @@ import { Alert, StyleSheet, Text, View } from 'react-native'
 import { PrimaryButton } from '@/components/buttons/PrimaryButton'
 import { FormField } from '@/components/forms/FormField'
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
+import { getAuthErrorMessage } from '@/features/auth/authErrors'
 import { registrationSchema, type RegistrationInput } from '@/features/auth/schemas'
 import type { AuthStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
@@ -40,10 +41,13 @@ export function RegisterScreen({ navigation }: Props) {
           [{ text: 'Entendido', onPress: () => navigation.navigate('Login') }],
         )
       }
-    } catch {
+    } catch (error) {
       Alert.alert(
         'No fue posible crear la cuenta',
-        'Revisa los datos ingresados e inténtalo nuevamente.',
+        getAuthErrorMessage(
+          error,
+          'No fue posible crear la cuenta. Revisa los datos e inténtalo nuevamente.',
+        ),
       )
     }
   })

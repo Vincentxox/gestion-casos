@@ -44,6 +44,8 @@ export const useAuthStore = create<AuthStore>((set) => ({
   initializationError: null,
 
   async initialize() {
+    set({ status: 'initializing', initializationError: null })
+
     try {
       const session = await getCurrentSession()
       set({
@@ -62,7 +64,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
   async login(email, password) {
     const session = await signIn(email, password)
-    set(await getAuthValues(session))
+    set({ ...(await getAuthValues(session)), initializationError: null })
   },
 
   async loginWithGoogle() {
@@ -72,7 +74,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
       return false
     }
 
-    set(await getAuthValues(session))
+    set({ ...(await getAuthValues(session)), initializationError: null })
     return true
   },
 
@@ -80,7 +82,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
     const { session } = await signUp(email, password, fullName)
 
     if (session) {
-      set(await getAuthValues(session))
+      set({ ...(await getAuthValues(session)), initializationError: null })
     }
 
     return session !== null
@@ -92,6 +94,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
       session: null,
       profile: null,
       status: 'unauthenticated',
+      initializationError: null,
     })
   },
 

@@ -8,7 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { AuthLoadingScreen } from '@/features/auth/screens/AuthLoadingScreen'
 import { AuthNavigator } from '@/navigation/AuthNavigator'
 import { MainNavigator } from '@/navigation/MainNavigator'
-import { supabase } from '@/services/supabase/client'
+import { registerAuthAutoRefresh, supabase } from '@/services/supabase/client'
 import { useAuthStore } from '@/store/authStore'
 import { colors } from '@/theme/tokens'
 
@@ -20,17 +20,26 @@ function RootContent() {
   const applySession = useAuthStore((state) => state.applySession)
 
   useEffect(() => {
+    const unregisterAutoRefresh = registerAuthAutoRefresh()
+    const pendingCallbacks = new Set<ReturnType<typeof setTimeout>>()
+
     void initialize()
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setTimeout(() => {
+      const callback = setTimeout(() => {
+        pendingCallbacks.delete(callback)
         void applySession(session)
       }, 0)
+      pendingCallbacks.add(callback)
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      subscription.unsubscribe()
+      unregisterAutoRefresh()
+      pendingCallbacks.forEach(clearTimeout)
+    }
   }, [applySession, initialize])
 
   if (status === 'initializing') {

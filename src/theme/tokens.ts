@@ -9,6 +9,9 @@ export const colors = {
   border: '#D7DEE8',
   error: '#B42318',
   success: '#16803B',
+  successSoft: '#E8F5EE',
+  warning: '#9A6700',
+  warningSoft: '#FFF4D6',
   white: '#FFFFFF',
 } as const
 

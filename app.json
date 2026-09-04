@@ -1,18 +1,24 @@
 {
   "expo": {
-    "name": "gestion-casos",
+    "name": "Gestión de Casos",
     "slug": "gestion-casos",
-    "scheme": "gestion-casos",
+    "description": "Aplicación móvil para registrar y dar seguimiento a casos.",
     "version": "1.0.0",
+    "platforms": ["android", "ios"],
+    "scheme": "gestion-casos",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "backgroundColor": "#F4F7FB",
+    "primaryColor": "#0868B7",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.gestioncasos.app"
+      "bundleIdentifier": "com.gestioncasos.app",
+      "buildNumber": "1"
     },
     "android": {
       "package": "com.gestioncasos.app",
+      "versionCode": 1,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -25,7 +31,7 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["expo-secure-store", "expo-sqlite", "expo-font", "expo-web-browser"],
+    "plugins": ["expo-secure-store", "expo-sqlite", "expo-font", "expo-web-browser", "expo-asset"],
     "extra": {
       "eas": {
         "projectId": "058a8d06-fccc-44e1-91bf-18d69a111d03"

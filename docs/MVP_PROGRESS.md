@@ -1,6 +1,6 @@
 # Seguimiento del MVP
 
-Última actualización: 22 de agosto de 2026.
+Última actualización: 4 de septiembre de 2026.
 
 ## Etapa 1 — Preparación y configuración base
 
@@ -16,6 +16,8 @@ Estado: completada.
 - [x] Rama `feature/authentication` sincronizada con el repositorio remoto.
 - [x] TypeScript, ESLint, Prettier y Expo Doctor aprobados.
 - [x] Flujo CI preparado para calidad y pruebas en GitHub Actions.
+- [x] Variables públicas validadas y claves privilegiadas rechazadas en el cliente.
+- [x] Dependencias alineadas con las versiones estables de Expo SDK 57.
 
 ## Etapa 2 — Autenticación, perfiles y control de acceso
 
@@ -30,6 +32,11 @@ Estado: completada para el alcance del MVP inicial.
 - [x] Registro con validación de contraseña.
 - [x] Inicio de sesión con correo y contraseña.
 - [x] Cierre de sesión y limpieza de datos sensibles.
+- [x] Inicio de sesión con Google mediante Supabase OAuth.
+- [x] Mensajes de error traducidos a partir de códigos estables de Supabase Auth.
+- [x] Recuperación visible cuando falla la restauración de una sesión.
+- [x] Mostrar y ocultar contraseñas con controles accesibles.
+- [x] Registro y limpieza del ciclo de renovación automática de tokens.
 - [x] Estado global y hook `useAuth`.
 - [x] Navegación protegida.
 - [x] Matriz de permisos y restricciones por rol.
@@ -73,7 +80,7 @@ permitidas por su rol. Las políticas RLS deben impedir la elevación de privile
 
 Mejora posterior al MVP:
 
-- [ ] Evaluar e implementar inicio de sesión con Google.
+- [x] Evaluar e implementar inicio de sesión con Google.
 - [ ] Evaluar e implementar inicio de sesión con Apple.
 
 Estas opciones no bloquean el cierre de la etapa 2. Si la aplicación pública para

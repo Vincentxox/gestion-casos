@@ -1,18 +1,15 @@
 import 'react-native-url-polyfill/auto'
 
 import { createClient, processLock } from '@supabase/supabase-js'
-import { AppState, Platform } from 'react-native'
+import { AppState, Platform, type AppStateStatus } from 'react-native'
 
 import { secureSessionStorage } from './secureStorage'
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL
-const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+import { getPublicEnvironment } from '@/config/env'
 
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error('Missing Supabase environment variables')
-}
+const { supabaseUrl, supabasePublishableKey } = getPublicEnvironment()
 
-export const supabase = createClient(supabaseUrl, supabaseKey, {
+export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
   auth: {
     ...(Platform.OS !== 'web' ? { storage: secureSessionStorage } : {}),
     autoRefreshToken: true,
@@ -22,12 +19,23 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
   },
 })
 
-if (Platform.OS !== 'web') {
-  AppState.addEventListener('change', (state) => {
-    if (state === 'active') {
-      supabase.auth.startAutoRefresh()
-    } else {
-      supabase.auth.stopAutoRefresh()
-    }
-  })
+function synchronizeAutoRefresh(state: AppStateStatus) {
+  if (state === 'active') {
+    supabase.auth.startAutoRefresh()
+  } else {
+    supabase.auth.stopAutoRefresh()
+  }
+}
+
+/** Registra una sola renovación automática y devuelve su función de limpieza. */
+export function registerAuthAutoRefresh() {
+  if (Platform.OS === 'web') return () => undefined
+
+  synchronizeAutoRefresh(AppState.currentState)
+  const subscription = AppState.addEventListener('change', synchronizeAutoRefresh)
+
+  return () => {
+    subscription.remove()
+    supabase.auth.stopAutoRefresh()
+  }
 }
