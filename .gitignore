@@ -5,9 +5,11 @@ node_modules/
 
 # Expo
 .expo/
+.expo-*/
 dist/
 web-build/
 expo-env.d.ts
+coverage/
 
 # Native
 .kotlin/
@@ -44,3 +46,4 @@ yarn-error.*
 .env
 .env.local
 .env.*.local
+supabase/.temp/
