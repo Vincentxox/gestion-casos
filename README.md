@@ -1,6 +1,6 @@
-# Gestión de Casos
+# Nexo Casos
 
-Aplicación móvil para registrar y dar seguimiento a casos desde Android y iOS.
+Aplicación móvil para conectar el registro, la asignación y el seguimiento de casos.
 El proyecto utiliza React Native, Expo SDK 57, TypeScript y Supabase.
 
 ## Requisitos

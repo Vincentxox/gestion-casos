@@ -1,6 +1,6 @@
 # Seguimiento del MVP
 
-Última actualización: 4 de septiembre de 2026.
+Última actualización: 7 de septiembre de 2026.
 
 ## Etapa 1 — Preparación y configuración base
 
@@ -151,6 +151,19 @@ Estado: pendiente.
 - [ ] Revisión de seguridad y RLS.
 - [ ] Documentación de instalación y uso.
 - [ ] Build de entrega.
+
+## Etapa 6 — Identidad e introducción de la aplicación
+
+Estado: completada para Android y Expo Go.
+
+- [x] Nombre visible actualizado a `Nexo Casos`.
+- [x] Identificador técnico, paquete y esquema OAuth conservados para evitar regresiones.
+- [x] Nueva marca visual adaptada al propósito de conexión y seguimiento.
+- [x] Icono principal, icono adaptativo de Android, versión monocromática y favicon.
+- [x] Recurso gráfico para la introducción y pantalla de acceso.
+- [x] Introducción animada con entrada, permanencia y salida.
+- [x] Respeto de la preferencia de reducción de movimiento del dispositivo.
+- [x] Implementación con `Animated` de React Native, sin dependencias adicionales.
 
 ## Próxima acción
 

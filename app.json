@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Gestión de Casos",
+    "name": "Nexo Casos",
     "slug": "gestion-casos",
-    "description": "Aplicación móvil para registrar y dar seguimiento a casos.",
+    "description": "Conecta cada caso con su seguimiento y solución.",
     "version": "1.0.0",
     "platforms": ["android", "ios"],
     "scheme": "gestion-casos",

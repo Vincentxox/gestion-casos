@@ -3,7 +3,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { FontAwesome } from '@expo/vector-icons'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { PrimaryButton } from '@/components/buttons/PrimaryButton'
 import { FormField } from '@/components/forms/FormField'
@@ -15,6 +15,8 @@ import { useAuthStore } from '@/store/authStore'
 import { colors, radius, spacing } from '@/theme/tokens'
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>
+
+const logoSource = require('../../../../assets/logo-mark.png')
 
 export function LoginScreen({ navigation }: Props) {
   const login = useAuthStore((state) => state.login)
@@ -68,11 +70,14 @@ export function LoginScreen({ navigation }: Props) {
   return (
     <KeyboardFormScrollView contentContainerStyle={styles.scrollContent} style={styles.flex}>
       <View style={styles.brand}>
-        <View accessibilityElementsHidden style={styles.logo}>
-          <Text style={styles.logoText}>GC</Text>
-        </View>
+        <Image
+          accessibilityLabel="Logo de Nexo Casos"
+          resizeMode="contain"
+          source={logoSource}
+          style={styles.logo}
+        />
         <Text accessibilityRole="header" style={styles.title}>
-          Gestión de casos
+          Nexo Casos
         </Text>
         <Text style={styles.subtitle}>Accede de forma segura a tus casos y documentos.</Text>
       </View>
@@ -192,17 +197,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   logo: {
-    width: 72,
-    height: 72,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.lg,
-    backgroundColor: colors.primary,
-  },
-  logoText: {
-    color: colors.white,
-    fontSize: 26,
-    fontWeight: '800',
+    width: 88,
+    height: 88,
   },
   title: {
     color: colors.text,

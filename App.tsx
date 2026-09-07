@@ -1,10 +1,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { NavigationContainer } from '@react-navigation/native'
 import { StatusBar } from 'expo-status-bar'
-import { useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
+import { BrandIntroScreen } from '@/components/branding/BrandIntroScreen'
 import { AuthLoadingScreen } from '@/features/auth/screens/AuthLoadingScreen'
 import { AuthNavigator } from '@/navigation/AuthNavigator'
 import { MainNavigator } from '@/navigation/MainNavigator'
@@ -15,6 +16,7 @@ import { colors } from '@/theme/tokens'
 const queryClient = new QueryClient()
 
 function RootContent() {
+  const [showIntro, setShowIntro] = useState(true)
   const status = useAuthStore((state) => state.status)
   const initialize = useAuthStore((state) => state.initialize)
   const applySession = useAuthStore((state) => state.applySession)
@@ -41,6 +43,12 @@ function RootContent() {
       pendingCallbacks.forEach(clearTimeout)
     }
   }, [applySession, initialize])
+
+  const finishIntro = useCallback(() => setShowIntro(false), [])
+
+  if (showIntro) {
+    return <BrandIntroScreen onFinish={finishIntro} />
+  }
 
   if (status === 'initializing') {
     return <AuthLoadingScreen />
