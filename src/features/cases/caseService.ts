@@ -114,14 +114,22 @@ export async function changeCaseStatus(
 export async function listAssignableProfiles(): Promise<AssignableProfile[]> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, full_name, role')
+    .select('id, full_name, role, area:areas(name)')
     .order('full_name', { ascending: true })
 
   if (error) throw error
-  return data.map((row) => ({
-    id: row.id as string,
-    fullName: (row.full_name as string) || 'Usuario sin nombre',
-    role: row.role as AssignableProfile['role'],
+  return (
+    data as unknown as {
+      id: string
+      full_name: string
+      role: AssignableProfile['role']
+      area: { name: string } | null
+    }[]
+  ).map((row) => ({
+    id: row.id,
+    fullName: row.full_name || 'Usuario sin nombre',
+    role: row.role,
+    areaName: row.area?.name ?? null,
   }))
 }
 

@@ -25,6 +25,7 @@ interface AuthStore {
   register: (input: RegistrationInput) => Promise<boolean>
   logout: () => Promise<void>
   applySession: (session: Session | null) => Promise<void>
+  applyOwnAreaAssignment: (userId: string, areaId: string | null, areaName: string | null) => void
 }
 
 async function getAuthValues(session: Session | null) {
@@ -128,5 +129,11 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         initializationError: 'No fue posible cargar el perfil del usuario.',
       })
     }
+  },
+
+  applyOwnAreaAssignment(userId, areaId, areaName) {
+    const profile = get().profile
+    if (profile?.id !== userId) return
+    set({ profile: { ...profile, areaId, areaName } })
   },
 }))

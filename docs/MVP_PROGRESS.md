@@ -1,6 +1,6 @@
 # Seguimiento del MVP
 
-Última actualización: 7 de septiembre de 2026.
+Última actualización: 10 de septiembre de 2026.
 
 ## Etapa 1 — Preparación y configuración base
 
@@ -139,6 +139,21 @@ Estado: pendiente.
 - [ ] Notificaciones.
 - [ ] Reportes esenciales del MVP.
 - [ ] Preferencias y perfil.
+
+## Ampliación priorizada para el cierre del MVP
+
+- [x] Navegación principal con barra inferior para Inicio, Casos y Perfil.
+- [x] Accesos y acciones visibles de acuerdo con los permisos del rol.
+- [x] Perfil de consulta con cierre seguro de sesión.
+- [x] Catálogo administrable de áreas o departamentos con RLS.
+- [x] Categorías administrables relacionadas con áreas y protegidas con RLS.
+- [ ] Vistas de casos por usuario y área, con filtros ampliados.
+- [ ] Dashboard con indicadores operativos.
+- [ ] Datos legibles de creador y responsable en el detalle.
+- [ ] Notas de seguimiento.
+- [ ] Adjuntos privados.
+- [ ] Administración básica de usuarios y catálogos.
+- [ ] Reporte básico.
 
 ## Etapa 5 — Estabilización y entrega
 

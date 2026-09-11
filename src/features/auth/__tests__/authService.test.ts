@@ -174,6 +174,8 @@ describe('servicio de autenticación', () => {
         full_name: 'Usuario',
         avatar_url: null,
         role: 'auditor',
+        area_id: 'area-1',
+        area: { name: 'Tecnología' },
       },
       error: null,
     })
@@ -186,6 +188,8 @@ describe('servicio de autenticación', () => {
       fullName: 'Usuario',
       avatarUrl: null,
       role: 'auditor',
+      areaId: 'area-1',
+      areaName: 'Tecnología',
     })
   })
 
@@ -196,6 +200,8 @@ describe('servicio de autenticación', () => {
         full_name: 'Usuario',
         avatar_url: null,
         role: 'superadmin',
+        area_id: null,
+        area: null,
       },
       error: null,
     })

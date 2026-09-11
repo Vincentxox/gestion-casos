@@ -37,6 +37,8 @@ const profile: Profile = {
   fullName: 'Usuario',
   avatarUrl: null,
   role: 'visualizador',
+  areaId: null,
+  areaName: null,
 }
 
 describe('estado global de autenticación', () => {

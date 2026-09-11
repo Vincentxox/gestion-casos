@@ -1,25 +1,17 @@
-import type { NativeStackScreenProps } from '@react-navigation/native-stack'
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-import { PrimaryButton } from '@/components/buttons/PrimaryButton'
-import type { MainStackParamList } from '@/navigation/types'
+import { hasPermission } from '@/features/auth/permissions'
+import type { MainTabParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
 import { colors, radius, spacing } from '@/theme/tokens'
 
-type Props = NativeStackScreenProps<MainStackParamList, 'Home'>
+type Props = BottomTabScreenProps<MainTabParamList, 'Home'>
 
 export function HomeScreen({ navigation }: Props) {
   const profile = useAuthStore((state) => state.profile)
-  const logout = useAuthStore((state) => state.logout)
-
-  async function handleLogout() {
-    try {
-      await logout()
-    } catch {
-      Alert.alert('No fue posible cerrar sesión', 'Comprueba tu conexión e inténtalo nuevamente.')
-    }
-  }
+  const canCreate = hasPermission(profile?.role, 'cases.create')
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
@@ -37,7 +29,7 @@ export function HomeScreen({ navigation }: Props) {
         <Pressable
           accessibilityHint="Abre el listado, búsqueda y filtros de casos"
           accessibilityRole="button"
-          onPress={() => navigation.navigate('Cases')}
+          onPress={() => navigation.navigate('CasesTab', { screen: 'Cases' })}
           style={styles.moduleCard}
         >
           <View style={styles.moduleBadge}>
@@ -50,6 +42,21 @@ export function HomeScreen({ navigation }: Props) {
           <Text style={styles.chevron}>›</Text>
         </Pressable>
 
+        {canCreate ? (
+          <Pressable
+            accessibilityHint="Abre el formulario para registrar un caso"
+            accessibilityRole="button"
+            onPress={() => navigation.navigate('CasesTab', { screen: 'CreateCase' })}
+            style={styles.quickAction}
+          >
+            <Text style={styles.quickActionSymbol}>＋</Text>
+            <View style={styles.moduleContent}>
+              <Text style={styles.quickActionTitle}>Crear un caso</Text>
+              <Text style={styles.moduleText}>Registra una nueva solicitud de seguimiento.</Text>
+            </View>
+          </Pressable>
+        ) : null}
+
         <View style={styles.notice}>
           <Text style={styles.noticeTitle}>Gestión de casos disponible</Text>
           <Text style={styles.noticeText}>
@@ -57,7 +64,15 @@ export function HomeScreen({ navigation }: Props) {
           </Text>
         </View>
 
-        <PrimaryButton label="Cerrar sesión" onPress={() => void handleLogout()} />
+        <Pressable
+          accessibilityHint="Abre los datos de tu cuenta y la opción para cerrar sesión"
+          accessibilityRole="button"
+          onPress={() => navigation.navigate('Profile')}
+          style={styles.accountLink}
+        >
+          <Text style={styles.accountLinkText}>Ver mi perfil y opciones de sesión</Text>
+          <Text style={styles.accountChevron}>›</Text>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   )
@@ -131,4 +146,24 @@ const styles = StyleSheet.create({
   moduleTitle: { color: colors.text, fontSize: 17, fontWeight: '800' },
   moduleText: { color: colors.textMuted, fontSize: 13 },
   chevron: { color: colors.primary, fontSize: 30, fontWeight: '600' },
+  quickAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primarySoft,
+    padding: spacing.md,
+  },
+  quickActionSymbol: { color: colors.primary, fontSize: 32, fontWeight: '500' },
+  quickActionTitle: { color: colors.primaryDark, fontSize: 16, fontWeight: '800' },
+  accountLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingVertical: spacing.md,
+  },
+  accountLinkText: { color: colors.primary, fontSize: 14, fontWeight: '700' },
+  accountChevron: { color: colors.primary, fontSize: 24 },
 })

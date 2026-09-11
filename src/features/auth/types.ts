@@ -7,4 +7,6 @@ export interface Profile {
   fullName: string
   avatarUrl: string | null
   role: AppRole
+  areaId: string | null
+  areaName: string | null
 }

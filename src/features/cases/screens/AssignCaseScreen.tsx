@@ -78,7 +78,7 @@ export function AssignCaseScreen({ navigation, route }: Props) {
             label={item.fullName}
             onPress={() => setSelectedId(item.id)}
             selected={effectiveSelectedId === item.id}
-            subtitle={ROLE_LABELS[item.role]}
+            subtitle={`${ROLE_LABELS[item.role]} · ${item.areaName || 'Sin área'}`}
           />
         ))}
         <PrimaryButton

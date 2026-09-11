@@ -1,6 +1,6 @@
 import 'react-native-url-polyfill/auto'
 
-import { createClient, processLock } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js'
 import { AppState, Platform, type AppStateStatus } from 'react-native'
 
 import { secureSessionStorage } from './secureStorage'
@@ -15,7 +15,6 @@ export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
-    lock: processLock,
   },
 })
 

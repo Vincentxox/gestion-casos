@@ -1,8 +1,9 @@
 diff --git a/node_modules/expo-modules-core/android/cmake/main.cmake b/node_modules/expo-modules-core/android/cmake/main.cmake
-index 7e584e1..a4421af 100644
+index 05fae2c..b02c4a7 100644
 --- a/node_modules/expo-modules-core/android/cmake/main.cmake
 +++ b/node_modules/expo-modules-core/android/cmake/main.cmake
-@@ -61,5 +61,6 @@ target_link_libraries(
+@@ -60,6 +60,7 @@ endif ()
+ target_link_libraries(
    expo-modules-core
    PRIVATE
 +  c++_shared

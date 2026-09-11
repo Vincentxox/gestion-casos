@@ -38,6 +38,7 @@ export interface AssignableProfile {
   id: string
   fullName: string
   role: 'administrador' | 'auditor' | 'visualizador'
+  areaName: string | null
 }
 
 export interface CaseStatusHistoryRecord {

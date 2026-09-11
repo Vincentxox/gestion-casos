@@ -4,10 +4,12 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { PrimaryButton } from '@/components/buttons/PrimaryButton'
 import { FormField } from '@/components/forms/FormField'
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
+import { useCategories } from '@/features/categories/useCategories'
 import { colors, radius, spacing } from '@/theme/tokens'
 
 import { updateCaseSchema } from '../schemas'
 import type { CasePriority, UpdateCaseInput } from '../types'
+import { CategorySelectField } from './CategorySelectField'
 
 const PRIORITIES: CasePriority[] = ['alta', 'media', 'baja']
 
@@ -34,9 +36,20 @@ export function CaseForm({
 }: Props) {
   const [values, setValues] = useState(initialValues)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [categorySelectorOpen, setCategorySelectorOpen] = useState(false)
+  const categoriesQuery = useCategories()
+  const availableCategories = (categoriesQuery.data ?? []).filter(
+    (category) => category.isActive || category.name === values.category,
+  )
 
   function updateValue<Key extends keyof UpdateCaseInput>(key: Key, value: UpdateCaseInput[Key]) {
     setValues((current) => ({ ...current, [key]: value }))
+    setErrors((current) => {
+      if (!current[key]) return current
+      const next = { ...current }
+      delete next[key]
+      return next
+    })
   }
 
   async function handleSubmit() {
@@ -73,14 +86,24 @@ export function CaseForm({
         textAlignVertical="top"
         value={values.description}
       />
-      <FormField
+      <CategorySelectField
+        categories={availableCategories}
+        disabled={categoriesQuery.isError || availableCategories.length === 0}
         error={errors.category}
-        label="Categoría"
-        maxLength={80}
-        onChangeText={(value) => updateValue('category', value)}
-        placeholder="Ej. Agua potable"
+        loading={categoriesQuery.isLoading}
+        onChange={(value) => updateValue('category', value)}
+        onClose={() => setCategorySelectorOpen(false)}
+        onOpen={() => setCategorySelectorOpen(true)}
+        open={categorySelectorOpen}
         value={values.category}
       />
+      {categoriesQuery.isError ? (
+        <Pressable onPress={() => void categoriesQuery.refetch()}>
+          <Text style={styles.catalogError}>
+            No se cargaron las categorías. Toca para reintentar.
+          </Text>
+        </Pressable>
+      ) : null}
       <FormField
         error={errors.location}
         label="Ubicación"
@@ -120,6 +143,7 @@ export function CaseForm({
 const styles = StyleSheet.create({
   content: { gap: spacing.md, padding: spacing.lg, paddingBottom: spacing.xl },
   multiline: { minHeight: 110, paddingTop: spacing.md },
+  catalogError: { color: colors.error, fontSize: 12, fontWeight: '600' },
   priorityGroup: { gap: spacing.sm },
   label: { color: colors.text, fontSize: 14, fontWeight: '600' },
   priorityRow: { flexDirection: 'row', gap: spacing.sm },

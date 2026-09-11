@@ -8,6 +8,7 @@ export const APP_PERMISSIONS = [
   'reports.read',
   'audit.read',
   'users.manage',
+  'areas.manage',
 ] as const
 
 export type AppPermission = (typeof APP_PERMISSIONS)[number]
