@@ -130,13 +130,14 @@ Reglas comunes:
 - Todos pueden ver los nombres del creador, el técnico y los firmantes de los casos que
   pueden leer, mediante una vista o RPC que expone solo `id`, nombre y área.
 
-### 5.5 Precisiones de implementación (pendientes de confirmar)
+### 5.5 Precisiones de implementación
 
-La implementación de la base de datos (rama `agent/claude/business-model-backend`)
-precisó estas reglas. El responsable debe confirmarlas o corregirlas:
+Precisadas al implementar la base de datos y confirmadas por el responsable el
+22/09/2026:
 
-1. El **administrador** puede suplir al jefe del área técnica en aceptar, rechazar y
-   asignar, y al jefe del área solicitante en cancelar. No puede firmar.
+1. El **administrador** puede suplir **siempre** al jefe del área técnica en aceptar,
+   rechazar y asignar, y al jefe del área solicitante en cancelar. La acción queda en el
+   historial con su rol. Nunca puede firmar.
 2. Se puede asignar a un **técnico o a un jefe** del área destino.
 3. La **reasignación** solo se permite mientras la solicitud está en `asignado`. Para
    reasignar un trabajo en ejecución habría que ampliar la regla.
@@ -234,13 +235,16 @@ Reglas:
 - Las áreas no tienen tipo y un perfil tiene como máximo una.
 - No hay recursos, reportes, firmas, Storage, notificaciones ni indicadores.
 
-Tratamiento de los datos existentes (aprobado por el responsable el 22/09/2026):
+Tratamiento de los datos existentes (confirmado por el responsable el 22/09/2026):
 
-- Los casos y su historial anteriores se descartan.
+- Los 7 casos y su historial anteriores se descartan. Se conservan los 11 usuarios.
+- Los perfiles sin área (9 al 22/09/2026) no se asignan en la migración: el
+  administrador les asigna área y rol desde la app. Mientras tanto no pueden crear
+  solicitudes.
 - Usuarios, perfiles, áreas y tipos de servicio de áreas técnicas pasan a la empresa
   «Organización inicial». `visualizador` pasa a `solicitante`.
 - Tecnología y Mantenimiento quedan como áreas técnicas; las demás, como solicitantes.
-  Los tipos de servicio de áreas solicitantes se eliminan.
+  Los 4 tipos de servicio de áreas solicitantes se eliminan.
 
 ## 11. Decisiones pendientes
 

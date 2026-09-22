@@ -91,9 +91,10 @@ fuera de este análisis por decisión del responsable; se analizará después.
   `validar_reporte`, `devolver_reporte` y `aprobar_reporte` ya existen en el enum, pero la
   RPC responde «Acción no disponible». Se analizarán después.
 - **Tiempos por prioridad y notificaciones** (fase 5).
-- **Historial de migraciones** (T-002): renombrar los archivos antiguos para que coincidan
-  con las versiones del proyecto remoto. Se deja para cuando se resuelvan los cambios
-  locales que son solo de CRLF, porque renombrarlos ahora chocaría con esa copia de trabajo.
+- **Historial de migraciones** (T-002, resuelto en esta rama): los archivos antiguos se
+  renombraron a las versiones registradas en el proyecto remoto. La primera migración
+  pasó de `202607270001` a `20260727000000`; no está registrada en remoto y se registrará
+  en el despliegue (ver sección 6).
 
 ## 3. Frontend (lo implementa Codex)
 
@@ -217,8 +218,36 @@ El responsable autorizó que Codex proponga diseños. Recomendaciones:
 - **Roles reales**: después de aplicar, todos los usuarios que no son administradores ni
   auditores quedan como `solicitante`. Hay que asignar jefes y técnicos desde la app o con
   `set_member_access`.
+- **Perfiles sin área**: 9 de los 11 perfiles no tienen área. El administrador la
+  asignará desde la app (decisión del responsable), así que la pantalla de Usuarios de
+  T-104 es imprescindible para el despliegue.
 - **Nombre de la empresa inicial**: queda como «Organización inicial». El administrador
   puede renombrarla.
 - **Ajustes a las reglas de negocio**: la implementación precisó algunas reglas
   (sección 5 de `docs/BUSINESS_RULES.md`, marcadas como «Precisión de implementación»).
   Requieren la confirmación del responsable.
+
+## 6. Decisiones del responsable y plan de despliegue
+
+Decisiones del 22/09/2026:
+
+1. Se borran los 7 casos y las 4 categorías de áreas no técnicas; se conservan los
+   usuarios.
+2. El administrador asigna área y rol a los perfiles desde la app después del despliegue.
+3. El administrador puede suplir siempre al jefe de área en aceptar, rechazar, asignar y
+   cancelar; nunca firma.
+4. Se descartaron los cambios locales solo de CRLF y se alineó el historial de migraciones
+   (T-002).
+5. No se aplica nada en Supabase hasta que la app esté lista para el nuevo esquema
+   (recomendación de Codex).
+
+Despliegue, cuando Codex apruebe el backend y el frontend de T-104 y T-202 esté listo:
+
+1. Respaldar en JSON los datos actuales de `profiles`, `areas`, `categories`, `cases` y
+   `case_status_history`.
+2. Registrar en `supabase_migrations.schema_migrations` la versión `20260727000000`
+   (sus objetos ya existen en remoto).
+3. Aplicar las migraciones `20260922200000` a `20260922200500` en orden, cada una
+   registrada con la versión de su archivo.
+4. Revisar los avisos de seguridad y rendimiento de Supabase.
+5. Publicar la nueva versión de la app y asignar áreas y roles desde Usuarios.
