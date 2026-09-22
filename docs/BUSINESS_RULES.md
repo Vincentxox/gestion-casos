@@ -130,6 +130,33 @@ Reglas comunes:
 - Todos pueden ver los nombres del creador, el técnico y los firmantes de los casos que
   pueden leer, mediante una vista o RPC que expone solo `id`, nombre y área.
 
+### 5.5 Precisiones de implementación (pendientes de confirmar)
+
+La implementación de la base de datos (rama `agent/claude/business-model-backend`)
+precisó estas reglas. El responsable debe confirmarlas o corregirlas:
+
+1. El **administrador** puede suplir al jefe del área técnica en aceptar, rechazar y
+   asignar, y al jefe del área solicitante en cancelar. No puede firmar.
+2. Se puede asignar a un **técnico o a un jefe** del área destino.
+3. La **reasignación** solo se permite mientras la solicitud está en `asignado`. Para
+   reasignar un trabajo en ejecución habría que ampliar la regla.
+4. **Edición de datos**: el creador edita título, descripción, ubicación, prioridad y
+   tipo de servicio solo mientras la solicitud está en `solicitado`. El jefe del área
+   destino y el administrador pueden editarlos mientras no esté cerrada. El tipo de
+   servicio solo cambia en `solicitado`.
+5. El **auditor** no crea solicitudes. Para crear una solicitud, el usuario necesita un
+   área asignada.
+6. **Visibilidad**: además de lo indicado en 5.4, cada persona ve siempre las solicitudes
+   que creó. Los perfiles (nombre, rol y área) son visibles para todos los miembros de la
+   misma empresa, sin necesidad de una vista aparte.
+7. **Numeración**: `CAS-<año>-<secuencia de 5 dígitos>`, consecutiva por empresa y año.
+8. **Invitaciones**:
+   - un correo puede tener una invitación pendiente por empresa;
+   - si varias empresas lo invitan, se acepta la más antigua;
+   - no se revela si el correo ya pertenece a otra empresa.
+9. **Alta de empresas**: la hace el operador de la plataforma con
+   `private.create_organization(nombre, correo_del_administrador)` desde el SQL editor.
+
 ## 6. Recursos
 
 ### 6.1 Catálogo
@@ -192,7 +219,10 @@ Reglas:
 - **Panel**: casos por estado, por área y por prioridad; tiempo promedio de aceptación y
   de resolución; casos vencidos y costo de recursos por área.
 
-## 10. Estado actual del código (punto de partida)
+## 10. Estado del código antes del nuevo modelo
+
+> Esta sección describe el punto de partida. El nuevo modelo de base de datos está en la
+> rama `agent/claude/business-model-backend`; ver `docs/GAP_ANALYSIS.md`.
 
 - Roles actuales: `administrador`, `auditor` y `visualizador`, globales y sin empresa.
 - Estados actuales: `abierto`, `en_progreso` y `cerrado`, con cualquier transición
@@ -204,13 +234,13 @@ Reglas:
 - Las áreas no tienen tipo y un perfil tiene como máximo una.
 - No hay recursos, reportes, firmas, Storage, notificaciones ni indicadores.
 
-Mapeo de datos existentes en la migración:
+Tratamiento de los datos existentes (aprobado por el responsable el 22/09/2026):
 
-- `abierto → solicitado`, `en_progreso → en_ejecucion`.
-- `cerrado` se conserva como estado **heredado**, final y de solo lectura (`cerrado`), que
-  el flujo nuevo no puede alcanzar.
-- `cases.category` (texto) se conserva; se agrega `category_id` y se rellena buscando por
-  nombre. Los casos sin coincidencia quedan con `category_id` nulo y se marcan para revisión.
+- Los casos y su historial anteriores se descartan.
+- Usuarios, perfiles, áreas y tipos de servicio de áreas técnicas pasan a la empresa
+  «Organización inicial». `visualizador` pasa a `solicitante`.
+- Tecnología y Mantenimiento quedan como áreas técnicas; las demás, como solicitantes.
+  Los tipos de servicio de áreas solicitantes se eliminan.
 
 ## 11. Decisiones pendientes
 
