@@ -1,6 +1,12 @@
 # Seguimiento del MVP
 
-Última actualización: 10 de septiembre de 2026.
+Última actualización: 22 de septiembre de 2026.
+
+Este archivo registra **lo que ya existe en el código**. El producto objetivo
+aprobado se describe en [BUSINESS_RULES.md](BUSINESS_RULES.md) y su ejecución
+por fases en [MVP_PLAN.md](MVP_PLAN.md). Las etapas históricas de abajo se
+cerraron para el alcance inicial; no significan que el nuevo MVP B2B esté
+terminado.
 
 ## Etapa 1 — Preparación y configuración base
 
@@ -123,7 +129,8 @@ Evidencia técnica:
 - [x] Migraciones aplicadas al proyecto remoto de Supabase.
 - [x] Prueba transaccional remota aprobada sin modificar datos permanentes.
 - [x] Bundle Android generado correctamente.
-- [x] TypeScript, ESLint, Prettier y 43 pruebas automatizadas aprobadas.
+- [x] TypeScript, ESLint y Prettier aprobados en su validación inicial. El estado
+      de pruebas actual es de 67 pruebas aprobadas, según la revisión del 22/09/2026.
 
 Validación manual recomendada:
 
@@ -152,7 +159,9 @@ Estado: pendiente.
 - [ ] Datos legibles de creador y responsable en el detalle.
 - [ ] Notas de seguimiento.
 - [ ] Adjuntos privados.
-- [ ] Administración básica de usuarios y catálogos.
+- [x] Administración básica de usuarios y catálogos, con roles, áreas y
+      categorías actuales. El modelo multiempresa y los nuevos roles siguen
+      pendientes.
 - [ ] Reporte básico.
 
 ## Etapa 5 — Estabilización y entrega
@@ -180,10 +189,24 @@ Estado: completada para Android y Expo Go.
 - [x] Respeto de la preferencia de reducción de movimiento del dispositivo.
 - [x] Implementación con `Animated` de React Native, sin dependencias adicionales.
 
-## Próxima acción
+## Nuevo plan del MVP B2B
 
-Realizar la validación manual final de la etapa 3 en Android y comenzar la etapa
-4 con adjuntos y políticas de Supabase Storage.
+Las funcionalidades anteriores son la base técnica. Quedan pendientes las fases
+del [plan actualizado](MVP_PLAN.md):
+
+- [ ] Fase 0: normalizar finales de línea, aclarar el historial de migraciones
+      y actualizar documentación.
+- [ ] Fase 1: empresas, invitaciones, nuevos roles y tipos de área.
+- [ ] Fase 2: flujo de solicitudes, transiciones autorizadas y visibilidad por
+      área y rol.
+- [ ] Fase 3: catálogo y registro de recursos usados.
+- [ ] Fase 4: reporte versionado, firmas y PDF privado.
+- [ ] Fase 5: notificaciones, tiempos por prioridad e indicadores.
+- [ ] Fase 6: seguridad, pruebas Android/iOS, distribución y documentación.
+
+Próxima acción: cerrar la fase 0 y revisar los contratos de backend antes de
+modificar el cliente. El [tablero de relevo](AGENT_HANDOFF.md) conserva el estado
+de cada tarea.
 
 Comprobación remota de la etapa 3:
 
