@@ -22,6 +22,14 @@ Codex según el protocolo de `AGENTS.md`. El estado de cada tarea vive en
   permisos. El frontend trabaja contra ese contrato.
 - Ninguna migración se aplica al proyecto remoto sin autorización del responsable. Antes
   de aplicarla, el revisor debe haberla aprobado.
+- Asignar una tarea autoriza a crear sus migraciones **locales**. Aplicarlas en remoto es
+  una autorización aparte (ver `AGENTS.md`, sección 6).
+- **Backend de pruebas**: mientras no haya empresas cliente, el proyecto
+  `bpwvtuofewwcgbewmwje` es el entorno de desarrollo y pruebas. El frontend desarrolla
+  contra contratos «Aprobados», pero una tarea de frontend solo se aprueba después de la
+  prueba integrada contra el contrato «Aplicado en remoto».
+- El tablero de `docs/AGENT_HANDOFF.md` tiene una sola copia oficial, en la carpeta
+  principal (ver `AGENTS.md`, sección 3.2).
 - Cada tarea termina con pruebas y las validaciones de `AGENTS.md`, sección 8.
 
 ## Fase 0 — Base de trabajo
@@ -102,3 +110,7 @@ Codex según el protocolo de `AGENTS.md`. El estado de cada tarea vive en
 - **T-603**: perfiles `development` y `production` en `eas.json`, firma de producción de
   Android y distribución de iOS.
 - **T-604**: limpieza de dependencias sin uso y documentación de instalación y uso.
+- **T-605**: crear el proyecto de Supabase de producción, aplicar allí las migraciones
+  aprobadas, configurar Auth (Google, correo, protección contra contraseñas filtradas) y
+  separar las variables de entorno por perfil de EAS. Debe completarse antes de la
+  primera empresa cliente.

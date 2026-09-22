@@ -55,6 +55,21 @@ https://docs.expo.dev/versions/v57.0.0/
 - Dos agentes no deben tener abiertas a la vez tareas que modifiquen los mismos archivos,
   la misma migración o el mismo contrato (tabla, RPC, tipo o permiso). Una tarea que
   cambia un contrato bloquea a las que dependen de él hasta que se integre.
+- **Tablero único.** `docs/AGENT_HANDOFF.md` tiene una sola copia oficial: la del
+  **worktree principal** del repositorio en el equipo donde trabajas, con la rama
+  `feature/stage-2-improvements`. Aunque trabajes en otro worktree, edita el tablero, los
+  contratos y el registro **siempre en esa copia**.
+  - Para localizarla en cualquier equipo (Windows o Mac), ejecuta `git worktree list`: la
+    primera línea es el worktree principal. Por ejemplo, en el equipo Windows del
+    responsable es `C:\proyectos\gestion-casos`.
+  - Si trabajas en otro equipo, el tablero se sincroniza mediante commit y push de la rama
+    de desarrollo, que hace el responsable. Antes de editarlo, confirma que tu copia está
+    actualizada con `origin`.
+  - No modifiques `docs/AGENT_HANDOFF.md` dentro de tu rama de trabajo.
+  - Vuelve a leer el archivo justo antes de editarlo y cambia solo tu tarea o tu entrada,
+    para no sobrescribir lo que haya escrito el otro agente.
+  - El responsable hace commit del tablero al integrar cada tarea
+    (`docs: update agent handoff`).
 
 ### 3.3 Reparto de trabajo
 
@@ -63,10 +78,19 @@ https://docs.expo.dev/versions/v57.0.0/
 - Reparto por defecto (ver `docs/MVP_PLAN.md`): **Claude Code** implementa backend
   (migraciones, RLS, RPC, Storage, Edge Functions) y revisa frontend; **Codex** implementa
   frontend (servicios del cliente, hooks, pantallas, pruebas) y revisa backend.
+- Las tareas marcadas «Claude Code» las implementa **Claude Code**. La sesión de Claude en
+  Cowork coordina con el responsable, revisa y documenta decisiones; no implementa tareas
+  del plan salvo que el responsable lo indique.
 - Cuando una tarea de backend se aprueba, su implementador publica el **contrato** en la
   sección «Contratos» del handoff: tablas y columnas, RPC con parámetros y retorno, errores
   esperados y qué rol puede hacer qué. El frontend trabaja solo contra contratos
   publicados; si necesita otro, lo pide en el handoff.
+- Estados de un contrato:
+  - **Propuesto**: en revisión; el frontend todavía no lo usa.
+  - **Aprobado**: el frontend puede desarrollar contra él, con pruebas unitarias que
+    simulan el servicio.
+  - **Aplicado en remoto**: la migración está desplegada en el backend de pruebas. Solo
+    entonces se hace la prueba integrada, y la tarea de frontend puede pasar a «Aprobado».
 - Las tareas grandes se dividen en capas y se integran en este orden:
   1. Regla de negocio acordada en `docs/BUSINESS_RULES.md`.
   2. Backend: migración, RLS, RPC y verificación SQL.
@@ -78,7 +102,7 @@ https://docs.expo.dev/versions/v57.0.0/
 ### 3.4 Al terminar
 
 1. Ejecuta las validaciones de la sección 8 que correspondan.
-2. Agrega una entrada al registro de `docs/AGENT_HANDOFF.md` con: qué hiciste, archivos
+2. Agrega una entrada al registro de la copia oficial de `docs/AGENT_HANDOFF.md` con: qué hiciste, archivos
    modificados, validaciones y resultado, riesgos y pendientes, y qué debe revisar el otro
    agente.
 3. Actualiza el tablero (estado «En revisión»).
@@ -167,9 +191,17 @@ en paralelo.
   `list_migrations` del proyecto remoto. Existen diferencias de versión conocidas entre
   lo local y lo remoto (ver `docs/AGENT_HANDOFF.md`): no ejecutes `supabase db push`,
   `db reset` ni `migration repair` sin autorización.
+- **Autorización.** Que el responsable asigne una tarea del plan en el tablero autoriza a
+  crear los archivos de migración **locales** en la rama del agente, siempre que
+  implementen reglas aprobadas en `docs/BUSINESS_RULES.md`. Si la tarea exige algo que las
+  reglas no prevén, detente y consulta.
 - **Ningún agente aplica migraciones al proyecto remoto `bpwvtuofewwcgbewmwje` sin
-  autorización explícita del responsable.** Las pruebas SQL remotas se hacen dentro de
+  autorización explícita del responsable**, dada para esa aplicación en concreto y después
+  de que el revisor haya aprobado la migración. Las pruebas SQL remotas se hacen dentro de
   una transacción con `rollback`.
+- Mientras no haya empresas cliente, el proyecto `bpwvtuofewwcgbewmwje` funciona como
+  backend de desarrollo y pruebas. Antes de la primera empresa cliente habrá un proyecto
+  de producción separado (ver `docs/MVP_PLAN.md`, T-605).
 - Las migraciones de datos deben ser aditivas y compatibles: primero se agrega la columna
   nueva, luego se rellena, luego el cliente la usa y solo al final (en otra migración
   aprobada) se retira lo antiguo.
@@ -231,7 +263,7 @@ npm run format:check
 npm run typecheck
 npm run lint -- --max-warnings=0
 npm run test:coverage
-npm run verify                      # typecheck + lint + format + tests + expo-doctor
+npm run verify                      # typecheck + lint + format + tests (sin cobertura) + expo-doctor
 ```
 
 - Ejecuta al menos `typecheck`, `lint`, `format:check` y las pruebas afectadas antes de
@@ -253,8 +285,9 @@ npm run verify                      # typecheck + lint + format + tests + expo-d
 Detente y consulta antes de:
 
 - Cambiar roles, permisos, estados, transiciones u otra regla de negocio.
-- Crear o modificar tablas, RPC, políticas o tipos en Supabase, o aplicar migraciones al
-  proyecto remoto.
+- Crear o modificar tablas, RPC, políticas o tipos en Supabase **fuera** de una tarea
+  asignada en el tablero o de las reglas aprobadas (ver sección 6).
+- Aplicar migraciones al proyecto remoto: cada aplicación requiere autorización explícita.
 - Agregar o actualizar dependencias, o cambiar `app.json`, `eas.json`, OAuth o los
   identificadores.
 - Cambiar la navegación principal o la arquitectura de carpetas.

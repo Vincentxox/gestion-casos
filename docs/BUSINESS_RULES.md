@@ -218,3 +218,6 @@ Mapeo de datos existentes en la migración:
 2. Definir los tiempos por prioridad por defecto de una empresa nueva.
 3. Definir si el solicitante puede adjuntar fotos al crear la solicitud en el MVP o
    después.
+4. Entornos: el proyecto de Supabase actual sirve como desarrollo y pruebas. Antes de la
+   primera empresa cliente se creará un proyecto de producción separado (T-605). Queda
+   por definir si el proyecto actual se conserva como entorno de desarrollo permanente.

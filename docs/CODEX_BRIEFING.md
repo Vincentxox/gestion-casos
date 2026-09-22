@@ -60,9 +60,15 @@ La definición completa y obligatoria está en `docs/BUSINESS_RULES.md`. Lee en 
 
 - **Antes de empezar**, revisa el tablero en `docs/AGENT_HANDOFF.md`. Toma solo tareas
   asignadas a Codex que no estén bloqueadas, y cambia su estado a «En curso».
+- **Tablero único.** Edita siempre la copia oficial del tablero, en el worktree principal
+  (la primera línea de `git worktree list`), nunca la de tu rama. Léela
+  de nuevo justo antes de editarla y cambia solo tu tarea o tu entrada.
 - **Solo contratos publicados.** Una pantalla solo usa tablas, columnas y RPC que estén
   en la sección «Contratos» del handoff con estado «Aprobado» o «Aplicado en remoto». Si
   necesitas algo que no existe, pídelo en el handoff. No crees migraciones por tu cuenta.
+  Con un contrato «Aprobado» desarrollas y pruebas con el servicio simulado; la tarea
+  solo pasa a «Aprobado» después de la prueba integrada con el contrato «Aplicado en
+  remoto».
 - **Al terminar**, agrega una entrada al registro del handoff con este contenido:
   - resumen;
   - archivos modificados;
