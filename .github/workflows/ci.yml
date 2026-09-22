@@ -5,9 +5,12 @@ on:
     branches:
       - main
       - 'feature/**'
+      - 'agent/**'
   pull_request:
     branches:
       - main
+      - 'feature/**'
+  workflow_dispatch:
 
 permissions:
   contents: read
