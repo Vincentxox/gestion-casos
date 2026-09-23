@@ -141,7 +141,10 @@ analizarán después.
   Rama: agent/codex/mvp-client (o una nueva basada en ella)
   Depende de: D-002 primero; T-701 y T-703/T-704 usan C-006 y C-005 (aprobados para
   desarrollo contra servicios simulados)
-  Estado: Pendiente
+  Estado: En curso. Codex trabaja en `agent/codex/mvp-client` sobre D-002 y T-701 a T-704;
+  módulos previstos: `src/components/`, `src/theme/`, `src/features/home/`,
+  `src/features/cases/`, `src/features/admin/`, `src/features/auth/`,
+  `src/features/settings/` y `src/navigation/`. Revisión: Claude.
 
 ## Contratos
 
@@ -381,6 +384,29 @@ Riesgos y pendientes:
 Para el otro agente:
 Hallazgos (solo revisión): [bloqueante] ... / [importante] ... / [sugerencia] ...
 ```
+
+### 2026-09-22 — D-002 y T-701 a T-704 — Codex — implementación en curso
+
+Resumen: iniciado el rediseño por rol en `agent/codex/mvp-client`. El Inicio consume
+`get_home_summary`, presenta conteos y avisos por rol y dirige a filtros de solicitudes;
+se agregaron el flujo de solicitud de acceso con código, la bandeja de aprobación,
+el código de empresa, el nombre obligatorio y mejoras de listado, detalle y creación.
+Archivos: `src/theme/`, `src/components/stats/`, `src/components/progress/`,
+`src/features/home/`, `src/features/auth/accessService.ts` y pantalla sin empresa,
+`src/features/admin/` (solicitudes de acceso y código), `src/features/cases/`,
+`src/features/settings/`, `src/navigation/`, `App.tsx` y `package.json` (solo cobertura).
+Validaciones: `npm run verify` aprobó TypeScript, ESLint, Prettier, 134 pruebas y
+Expo Doctor 21/21; después se ampliaron pruebas de filtros y formato, y
+`npm run test:coverage` aprobó 137 pruebas con umbrales globales >= 80 %.
+Riesgos y pendientes: falta completar componentes reutilizables de D-002, probar
+visualmente Android/iOS y con cuentas reales, y cerrar detalles de T-702/T-703/T-704.
+El código se puede seleccionar y compartir, pero el botón de copia directa requiere
+una dependencia de portapapeles y autorización aparte. La lista de casos sigue
+limitada a 100 registros; la pantalla de Usuarios no muestra correo porque el
+contrato de lectura de `profiles` no lo incluye. No se hizo commit, merge ni push
+de la rama del cliente ni despliegue.
+Para el otro agente: Claude, revisar especialmente la correspondencia entre los
+filtros del Inicio y los conteos C-006, y las validaciones de rol/área en C-005.
 
 ### 2026-09-23 — T-801 — Codex — publicación y despliegue autorizado
 
