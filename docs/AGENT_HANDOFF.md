@@ -22,7 +22,7 @@ Plantilla por tarea:
   Estado: Pendiente
 ```
 
-Fase activa: **Fases 0 a 3 — backend en revisión; frontend por iniciar**.
+Fase activa: **Fases 0 a 3 — backend revisado; frontend en desarrollo local**.
 
 Por indicación del responsable (22/09/2026), Claude (Cowork) implementó en una sola rama el
 backend de las fases 0 a 3, sin reportes. Los reportes, las firmas y el PDF (fase 4) se
@@ -33,15 +33,15 @@ analizarán después.
   Implementa: Claude (Cowork)
   Revisa: Codex
   Rama: agent/claude/business-model-backend
-  Estado: En revisión
+  Estado: Aprobado por Codex (22/09/2026; aún no integrado en desarrollo)
 
 - ID: T-002
   Tarea: alinear el historial de migraciones local con el remoto.
   Implementa: Claude
   Revisa: Codex
   Rama: agent/claude/business-model-backend (commit 9fa1694)
-  Estado: En revisión. Con autorización del responsable se descartaron los cambios
-  locales solo de CRLF (verificado: diff vacío ignorando CR) y se renombraron las
+  Estado: Aprobado por Codex (22/09/2026). Con autorización del responsable se
+  descartaron los cambios locales solo de CRLF (verificado: diff vacío ignorando CR) y se renombraron las
   migraciones antiguas a las versiones del remoto. `202607270001` pasó a
   `20260727000000`; se registrará en remoto durante el despliegue.
 
@@ -55,10 +55,11 @@ analizarán después.
   `supabase/tests/` y job de CI.
   Implementa: Claude (Cowork)
   Revisa: Codex
-  Rama: agent/claude/business-model-backend (commits a98aef3 y 9fa1694, local, sin push)
+  Rama: agent/claude/business-model-backend (commits a98aef3, 9fa1694, d307cf0 y
+  8baab93; en GitHub)
   Archivos o contratos que bloquea: `supabase/`, contratos C-001 a C-004
-  Estado: En revisión. No se aplica en remoto hasta la aprobación de Codex y la
-  autorización del responsable.
+  Estado: Aprobado por Codex para desarrollo del cliente (22/09/2026). No se aplica en
+  remoto sin autorización específica del responsable.
 
 - ID: T-104
   Tarea: cliente de la fase 1: roles, empresa en el perfil, pantalla sin empresa,
@@ -66,22 +67,31 @@ analizarán después.
   3.1, 3.2 y 3.5.
   Implementa: Codex
   Revisa: Claude
+  Rama: agent/codex/mvp-client
+  Archivos o contratos que bloquea: `src/features/auth/`, `src/features/admin/`,
+  `src/features/areas/`, `src/features/categories/`, `src/navigation/`
   Depende de: aprobación de C-001 y C-002
-  Estado: Pendiente
+  Estado: En revisión (22/09/2026; pendiente prueba integrada)
 
 - ID: T-202
   Tarea: cliente del flujo de solicitudes. Ver `docs/GAP_ANALYSIS.md` 3.3 y 3.6.
   Implementa: Codex
   Revisa: Claude
+  Rama: agent/codex/mvp-client
+  Archivos o contratos que bloquea: `src/features/cases/`, `src/navigation/`
   Depende de: aprobación de C-003
-  Estado: Pendiente
+  Estado: En revisión (22/09/2026; pendiente prueba integrada)
 
 - ID: T-302
   Tarea: cliente de recursos. Ver `docs/GAP_ANALYSIS.md` 3.4.
   Implementa: Codex
   Revisa: Claude
+  Rama: agent/codex/mvp-client
+  Archivos o contratos que bloquea: `src/features/resources/`,
+  `src/features/admin/screens/AdministrationHomeScreen.tsx`,
+  `src/features/cases/screens/CaseDetailScreen.tsx`, `src/navigation/`
   Depende de: aprobación de C-004
-  Estado: Pendiente
+  Estado: En revisión (22/09/2026; pendiente prueba integrada)
 
 - ID: D-001
   Tarea: sistema visual: estados y prioridades, componentes comunes (StatusBadge,
@@ -89,8 +99,10 @@ analizarán después.
   `tokens.ts`, revisión de la marca. Ver `docs/GAP_ANALYSIS.md` sección 4.
   Implementa: Codex
   Revisa: Claude
+  Rama: agent/codex/mvp-client
+  Archivos o contratos que bloquea: `src/theme/`, `src/components/`, `src/features/home/`
   Depende de: —
-  Estado: Pendiente (puede empezar ya; no depende del backend)
+  Estado: En revisión (22/09/2026)
 
 - ID: Q-001
   Tarea: actualizar los cuatro parches de Expo SDK 57 solicitados por Expo Doctor,
@@ -108,6 +120,28 @@ analizarán después.
   Android con Expo Go. Compilación nativa no concluida por un fallo local de
   Java/Gradle: `Unable to establish loopback connection`; pendiente repetirla
   en un entorno con JDK funcional.
+
+- ID: T-801
+  Tarea: backend de solicitudes de acceso con código de empresa y resumen del Inicio por
+  rol (C-005, C-006) e índices sugeridos por Supabase.
+  Implementa: Claude (Cowork)
+  Revisa: Codex
+  Rama: agent/claude/access-and-home (commits eacd64a y 71d319b, basada en la rama de
+  backend; en GitHub)
+  Estado: Aplicado en remoto (23/09/2026). CI de `71d319b` aprobó calidad y pruebas SQL;
+  migraciones `20260923020000` y `20260923020100` aplicadas por autorización del
+  responsable. Pendiente la integración del cliente y su prueba en la app.
+
+- ID: D-002 · T-701 · T-702 · T-703 · T-704
+  Tarea: rediseño por rol según `docs/UX_REDESIGN.md` (sistema visual, navegación e
+  Inicio por rol, solicitudes, Administrar con solicitudes de acceso y código, pantalla
+  sin empresa y perfil con nombre obligatorio).
+  Implementa: Codex
+  Revisa: Claude
+  Rama: agent/codex/mvp-client (o una nueva basada en ella)
+  Depende de: D-002 primero; T-701 y T-703/T-704 usan C-006 y C-005 (aprobados para
+  desarrollo contra servicios simulados)
+  Estado: Pendiente
 
 ## Contratos
 
@@ -155,7 +189,7 @@ Errores esperados: `Acceso denegado`, `Usuario no encontrado`, `Área no disponi
 `No puedes cambiar el tipo de un área que tiene tipos de servicio` (o `técnicos`, o
 `solicitudes`), `Los tipos de servicio solo pertenecen a áreas técnicas`.
 
-Estado: Propuesto
+Estado: Aplicado en remoto (23/09/2026)
 
 ### C-002 — Invitaciones (T-102; migración 200300)
 
@@ -175,7 +209,7 @@ Errores esperados: `La invitación ya no está pendiente`,
 `Solo puedes revocar la invitación`, errores de rol y área de C-001, y
 `duplicate key` si ya hay una invitación pendiente para ese correo en la empresa.
 
-Estado: Propuesto
+Estado: Aplicado en remoto (23/09/2026)
 
 ### C-003 — Solicitudes y transiciones (T-201; migración 200400)
 
@@ -231,7 +265,7 @@ Errores esperados: `Acceso denegado`, `Solicitud no encontrada`,
 Visibilidad: administrador y auditor ven todo; los demás ven lo que crearon, lo de su área
 solicitante y, si son técnicos o jefes, lo de su área destino.
 
-Estado: Propuesto
+Estado: Aplicado en remoto (23/09/2026)
 
 ### C-004 — Recursos (T-301; migración 200500)
 
@@ -259,7 +293,56 @@ Errores esperados: `Recurso no disponible`, `Indica la cantidad de material util
 `Solo puedes corregir cantidad, horas y notas`, `new row violates row-level security`
 (fuera de estado o sin permiso).
 
-Estado: Propuesto
+Estado: Aplicado en remoto (23/09/2026)
+
+### C-005 — Solicitudes de acceso con código de empresa (T-801; migración 20260923020000)
+
+- `organizations.join_code` (`XXXX-XXXX`) no se puede leer desde el cliente: la tabla solo
+  permite `select (id, name, is_active, created_at, updated_at)`. No usar `select('*')`
+  sobre `organizations`.
+- RPC de administrador: `get_organization_join_code() → text`,
+  `regenerate_organization_join_code() → text`,
+  `approve_access_request(target_request_id uuid, new_role app_role, new_area_id uuid) →
+void`, `reject_access_request(target_request_id uuid, note text default null) → void`.
+- RPC de quien no tiene empresa: `request_organization_access(access_code text) → jsonb`
+  con `{status, organization_name}`; `status` es `pendiente`, `codigo_invalido` o
+  `demasiados_intentos`. Acepta minúsculas y sin guion. `get_my_access_request()` →
+  última solicitud (`id, organization_name, status, decision_note, created_at,
+decided_at`) o ninguna fila. `cancel_my_access_request() → void`.
+- Tabla `organization_access_requests` (solo lectura): `id, organization_id, user_id,
+email, full_name, status (pendiente|aprobada|rechazada|cancelada), decided_by,
+decided_at, decision_note, assigned_role, assigned_area_id, created_at`. El
+  administrador ve las de su empresa; cada persona ve las suyas.
+- Errores: `Acceso denegado`, `Tu cuenta ya pertenece a una empresa`,
+  `Confirma tu correo antes de solicitar acceso`, `Ya tienes una solicitud pendiente`,
+  `No tienes una solicitud pendiente`, `Solicitud de acceso no encontrada`,
+  `La solicitud de acceso ya no está pendiente`, `Esta persona ya pertenece a una
+empresa`, `El motivo debe tener entre 3 y 300 caracteres`,
+  `Solicitud de acceso no encontrada o ya resuelta`, y los de rol y área de C-001.
+- Cuando una persona queda vinculada a una empresa por cualquier vía (aprobación,
+  invitación o ajuste del servidor), sus solicitudes pendientes pasan a `cancelada`
+  (trigger `profiles_cancel_access_requests`). Aprobar a alguien que ya tiene empresa
+  lanza `Esta persona ya pertenece a una empresa` sin cambiar nada.
+
+Estado: Aplicado en remoto (23/09/2026)
+
+### C-006 — Resumen del Inicio por rol (T-801; migración 20260923020100)
+
+`get_home_summary() → jsonb` (respeta RLS; error `Tu cuenta no está vinculada a una
+empresa` sin empresa):
+
+- `role`, `has_area`, `area_kind` (`solicitante` | `tecnica` | null).
+- `cases`: `activas`, `solicitado`, `aceptado`, `asignado`, `en_ejecucion`, `en_espera`,
+  `en_revision`, `cerradas_30_dias`, `alta_prioridad_activas` (sobre lo visible).
+- `mine`: `solicitudes_activas`, `trabajos_por_iniciar`, `trabajos_en_ejecucion`,
+  `trabajos_en_espera`.
+- `inbox`: `por_aceptar`, `sin_asignar` (jefe del área técnica o administrador).
+- `admin` (null si no es administrador): `usuarios_sin_area`, `usuarios_sin_nombre`,
+  `solicitudes_acceso_pendientes`, `invitaciones_pendientes`, `tipos_servicio_activos`,
+  `recursos_activos`, `areas_tecnicas_sin_jefe` (lista de nombres),
+  `areas_tecnicas_sin_tecnico` (lista de nombres).
+
+Estado: Aplicado en remoto (23/09/2026)
 
 ## Contexto conocido
 
@@ -267,14 +350,11 @@ Estado: Propuesto
   repositorio en cada equipo (la primera línea de `git worktree list`), en
   `feature/stage-2-improvements`. Desde otros worktrees se edita esa copia, nunca la de la
   rama de trabajo (ver `AGENTS.md`, sección 3.2).
-- Las versiones de las migraciones locales no coinciden con las del proyecto remoto. La
-  migración `202607270001_create_profiles_and_roles` no está registrada en el remoto,
-  aunque sus objetos existen. No ejecutar `db push`, `db reset` ni `migration repair` sin
-  autorización.
-- En la copia de Windows hay cambios solo de CRLF en `.editorconfig`, `.gitignore`,
-  `.prettierignore` y las 7 primeras migraciones. No incluirlos en commits. El
-  `.gitattributes` de T-001 evita que se repitan; para limpiar la copia actual hace falta
-  descartar esos cambios de saltos de línea, con autorización del responsable.
+- T-002 alineó en la rama de backend las versiones de migraciones antiguas con el remoto;
+  `20260727000000` ya está registrado en el historial remoto. No ejecutar `db push`,
+  `db reset` ni `migration repair` sin autorización.
+- Los cambios de solo CRLF de Windows se verificaron y descartaron con autorización del
+  responsable. `.gitattributes` de T-001 evita que reaparezcan.
 - Pruebas de base de datos: `DATABASE_URL=postgres://… bash scripts/test-supabase-migrations.sh`
   con un PostgreSQL 16 local. Nunca contra el proyecto remoto.
 - ESLint falla en entornos Linux que usan el `node_modules` instalado en Windows (binario
@@ -282,9 +362,10 @@ Estado: Propuesto
   propio entorno.
 - Aviso de seguridad de Supabase: la protección contra contraseñas filtradas está
   desactivada. La activa el responsable desde el panel de Auth.
-- Último estado verificado (22/09/2026): typecheck y Prettier correctos; 67 pruebas
-  aprobadas; cobertura cerca del 93 % sobre los archivos medidos (solo autenticación,
-  formularios y almacenamiento).
+- Último estado verificado (22/09/2026): en `agent/codex/mvp-client`, typecheck, ESLint,
+  Prettier, 117 pruebas y Expo Doctor 21/21 correctos; cobertura 97,05 % de líneas y
+  87,31 % de ramas sobre los archivos medidos. Pendiente integración remota y prueba
+  nativa de Android (paso 3 del responsable).
 
 ## Registro
 
@@ -300,6 +381,264 @@ Riesgos y pendientes:
 Para el otro agente:
 Hallazgos (solo revisión): [bloqueante] ... / [importante] ... / [sugerencia] ...
 ```
+
+### 2026-09-23 — T-801 — Codex — publicación y despliegue autorizado
+
+Resumen: se subió `agent/claude/access-and-home` a GitHub en `71d319b` y se aplicaron al
+proyecto de pruebas `bpwvtuofewwcgbewmwje`, en orden, las migraciones
+`20260923020000` y `20260923020100` con sus versiones originales. No hubo merge.
+Archivos: solo este tablero; `Claude outputs/` permanece sin tocar.
+Validaciones: CI completo aprobado (calidad y pruebas SQL); historial remoto registra
+ambas versiones. Una empresa y 15 perfiles permanecen; código con formato correcto;
+RLS de solicitudes activa; `authenticated` no puede leer `organizations.join_code`
+directamente y `anon` no ejecuta la RPC del código. Se consultaron los avisos de
+seguridad y rendimiento de Supabase. Una consulta de `get_home_summary()` con contexto
+de administrador pasó dentro de una transacción con `rollback`.
+Riesgos y pendientes: Supabase advierte sobre las RPC `SECURITY DEFINER` expuestas a
+usuarios autenticados; son intencionales y validan identidad/rol, pero deben revisarse
+en la prueba integrada. La protección contra contraseñas filtradas sigue desactivada.
+La tabla privada de intentos no tiene clave primaria; los índices nuevos aún no registran
+uso. Falta integrar las pantallas D-002/T-701 a T-704 y probar el flujo con cuentas reales.
+Para el otro agente: desarrollar el cliente contra C-005/C-006 ya aplicados y revisar
+los avisos indicados antes de distribuir una nueva APK.
+
+### 2026-09-23 — T-801 — Codex — revisión de 71d319b
+
+Resumen: el trigger cancela solicitudes pendientes al vincular un perfil por invitación,
+aprobación u otra vía. La RPC de aprobación conserva la defensa para perfiles ya
+vinculados sin intentar cancelar antes de lanzar una excepción. Las pruebas nuevas cubren
+ambas rutas y la aprobación normal. No se encontraron bloqueos en el diff.
+Archivos: solo este tablero; la corrección está en `agent/claude/access-and-home`.
+Validaciones: revisión del diff y `git diff --check` correctos. Claude reportó 147
+pruebas SQL aprobadas; no se repitieron aquí porque no hay PostgreSQL local y la rama
+todavía no está en CI.
+Riesgos y pendientes: no aplicar las migraciones en Supabase sin autorización específica;
+verificar las pruebas SQL en CI al publicar la rama.
+Para el otro agente: la corrección queda aprobada para desarrollo del cliente.
+Hallazgos: sin bloqueantes ni importantes.
+
+### 2026-09-23 — T-801 — Claude — corrección tras revisión de Codex
+
+Resumen: Codex detectó que `approve_access_request` cancelaba la solicitud y luego lanzaba
+una excepción, lo que revertía la cancelación. Ahora la función solo lanza la excepción,
+y un trigger en `profiles` cancela las solicitudes pendientes en cuanto la persona queda
+vinculada a una empresa por cualquier vía. `link_pending_invitation` delega en ese trigger.
+Se editó la migración `20260923020000` porque aún no está aplicada en remoto ni integrada.
+Archivos (rama `agent/claude/access-and-home`, sin commit): migración `20260923020000`,
+`supabase/tests/11_access_and_home_test.sql`.
+Validaciones: 147 pruebas SQL aprobadas (142 + 5 nuevas: vinculación por otra vía, intento
+de aprobar después y defensa con el trigger desactivado); `git diff --check` correcto.
+Para el otro agente: Codex, revisa el ajuste (C-005 actualizado).
+
+### 2026-09-23 — Rediseño por rol y solicitudes de acceso — Claude (Cowork)
+
+Resumen: tras la prueba integrada, el responsable aprobó rediseñar la app por rol y
+agregar solicitudes de acceso con código de empresa. Hallazgos de la prueba: ninguna
+persona tiene rol de jefe o técnico, así que la solicitud CAS-2026-00001 no puede
+avanzar; el Inicio no muestra trabajo útil; todos los roles ven los mismos filtros; dos
+personas registradas sin invitación quedaron bloqueadas sin que nadie lo supiera.
+Archivos (rama `agent/claude/access-and-home`): migraciones `20260923020000` y
+`20260923020100`, `supabase/tests/11_access_and_home_test.sql`,
+`scripts/test-supabase-migrations.sh`, `docs/UX_REDESIGN.md` (especificación con
+referencias de MaintainX, UpKeep, Limble y Fracttal), `docs/BUSINESS_RULES.md` (2.1,
+9.1 y decisiones pendientes 5 y 6).
+Validaciones: 142 pruebas SQL aprobadas (95 anteriores + 47 nuevas); Prettier correcto.
+Para el otro agente: Codex, revisa T-801 y empieza D-002 y luego T-701 a T-704 según
+`docs/UX_REDESIGN.md`, contra C-005 y C-006 con servicios simulados.
+
+### 2026-09-22 — T-104, T-202 y T-302 — Codex — prueba integrada parcial
+
+Resumen: se preparó `agent/codex/mvp-client` en Expo Go sobre el emulador Android
+Pixel_7. La aplicación compiló el bundle y abrió la pantalla de inicio de sesión sin
+error de arranque. Se confirmó en Supabase, en modo solo lectura, que existen una
+empresa, 12 perfiles, 5 áreas, 6 tipos de servicio y todavía 0 invitaciones,
+solicitudes y recursos. Distribución actual: 2 administradores y 10 solicitantes;
+no hay jefes técnicos ni técnicos.
+Archivos: solo este tablero; no se cambió código ni datos remotos.
+Validaciones: arranque real del cliente en Expo Go y consultas de conteo al proyecto
+`bpwvtuofewwcgbewmwje`. No equivale a probar los flujos autenticados.
+Riesgos y pendientes: faltan cuentas de prueba autorizadas y acceso interactivo a
+ellas. El responsable debe indicar qué cuentas pueden asumir los roles de jefe
+técnico y técnico, y acceder a ellas en el emulador; no se modificarán perfiles
+existentes por suposición. Invitación, asignación de rol/área, transiciones y recursos
+siguen sin prueba de extremo a extremo. Mantener T-104, T-202 y T-302 «En revisión».
+Para el otro agente: no interpretar el arranque o los conteos como aprobación de la
+prueba integrada. Reanudar con los usuarios de prueba autorizados.
+
+### 2026-09-23 — Despliegue del backend en Supabase — Claude (Cowork)
+
+Resumen: con autorización del responsable se aplicó el backend en
+`bpwvtuofewwcgbewmwje`.
+
+1. Respaldo previo (2026-09-23T00:04Z) de `profiles` (12), `areas` (5), `categories`
+   (10), `cases` (7) y `case_status_history` (8), verificado con checksums. Guardado en
+   `backups/respaldo-supabase-2026-09-23.json` (excluido de git; contiene nombres
+   reales).
+2. Registrada `20260727000000` y aplicadas `20260922200000`–`200500`, cada una en una
+   transacción y registrada con la versión de su archivo. El historial remoto (17
+   versiones) coincide con `supabase/migrations/` de la rama de backend.
+3. Verificación: una empresa («Organización inicial»); 12 perfiles vinculados (2
+   administradores, 10 solicitantes; 10 sin área); Tecnología y Mantenimiento técnicas;
+   6 tipos de servicio; 0 solicitudes; todas las tablas de `public` con RLS.
+   Avisos de Supabase:
+
+- Seguridad: `transition_case` y `accept_pending_invitation` son SECURITY DEFINER
+  ejecutables por `authenticated` (intencional y documentado en C-002/C-003); sigue
+  desactivada la protección contra contraseñas filtradas (la activa el responsable).
+- Rendimiento (INFO): 5 llaves foráneas sin índice (`case_events.organization_id`,
+  `case_resource_usages.registered_by`, `organization_invitations.accepted_by`,
+  `area_id`, `invited_by`); índices aún sin uso (normal en tablas nuevas); dos
+  políticas UPDATE permisivas en `profiles`. Propuesta: una migración menor con esos
+  índices.
+  Contratos C-001 a C-004: «Aplicado en remoto».
+  Para el otro agente: Codex, puedes hacer la prueba integrada. El APK anterior ya no
+  funciona con este esquema. El responsable debe asignar áreas y roles desde Usuarios.
+
+### 2026-09-22 — T-104, T-202 (correcciones) y T-302 — Claude (Cowork) — revisión
+
+Resumen: revisión de solo lectura de `agent/codex/mvp-client` tras las correcciones y
+el módulo de recursos.
+Validaciones:
+
+- Hallazgos anteriores resueltos: comentario opcional exige 3–500 si no está vacío;
+  `updateCase` traduce PGRST116; `resolveSessionProfile` no rompe el inicio de sesión
+  por un fallo de red.
+- T-302 respeta C-004: columnas permitidas en `insert` y `update`, relación
+  `case_resource_usages_technician_id_fkey`, límites de cantidad (hasta 1 000 000, 3
+  decimales), horas (hasta 1000, 2 decimales), costo `numeric(12,2)`, unidad (1–30) y
+  notas (3–300) iguales a la base.
+- `canManageCaseUsage` replica `private.can_register_case_usage` (asignado o jefe del
+  área destino, solo en ejecución o en espera). Material exige cantidad; mano de obra,
+  técnico y horas. Corrección y borrado traducen PGRST116 a mensajes claros.
+  Hallazgos: sin bloqueantes ni importantes. [sugerencia] Los montos `numeric` llegan como
+  número de JavaScript; si más adelante se suman costos para reportes, redondear a 2
+  decimales al mostrar.
+  Estado: T-104, T-202 y T-302 aprobados para la prueba integrada. Siguiente paso del
+  orden acordado: aplicar el backend en Supabase, con confirmación del responsable.
+
+### 2026-09-22 — T-104, T-202 y T-302 — Codex — correcciones e implementación local
+
+Resumen: corregidos los dos hallazgos importantes de la revisión: comentario opcional
+vacío o de 3 a 500 caracteres en todas las acciones, y mensaje comprensible ante
+`PGRST116` al editar una solicitud. Si la consulta de invitación falla por red, el
+inicio de sesión conserva el perfil sin empresa y permite reintentar. Implementado
+T-302: catálogo de recursos en Administrar y registro/consulta/corrección/eliminación
+de uso y mano de obra desde el detalle de solicitud, respetando C-004 y el rol/estado.
+Archivos: `src/features/resources/`, `src/features/cases/schemas.ts`,
+`src/features/cases/caseService.ts`, `src/features/cases/screens/`,
+`src/features/auth/authService.ts`, `src/features/admin/screens/AdministrationHomeScreen.tsx`,
+`src/navigation/`, `package.json` (solo cobertura) y pruebas correspondientes.
+Validaciones: `npm run verify` correcto (TypeScript, ESLint sin advertencias, Prettier,
+117 pruebas, Expo Doctor 21/21); `npm run lint -- --max-warnings=0` correcto;
+`npm run test:coverage` correcto (97,05 % de líneas y 87,31 % de ramas medidas).
+Riesgos y pendientes: backend C-001 a C-004 aún no aplicado en Supabase; se usaron
+servicios simulados, no hay prueba integrada. La paginación de solicitudes (>100) queda
+para una fase posterior. No se hizo commit, merge, push ni despliegue.
+Para el otro agente: revisar `agent/codex/mvp-client`, especialmente el formulario de
+uso, las columnas de `case_resource_usages`, los permisos y los dos mensajes corregidos.
+
+### 2026-09-22 — Orden acordado para el despliegue — Claude (Cowork)
+
+El responsable aprobó este orden:
+
+1. Codex corrige los dos hallazgos importantes de la revisión de T-104/T-202 e
+   implementa T-302 (recursos) en `agent/codex/mvp-client`. Validaciones completas y
+   estado «En revisión»; Claude revisa.
+2. Con la revisión aprobada, Claude aplica el backend en Supabase según
+   `docs/GAP_ANALYSIS.md` sección 6: respaldo JSON, registro de `20260727000000`,
+   migraciones `20260922200000`–`200500` con su versión, y avisos de seguridad y
+   rendimiento. Desde este paso la APK instalada deja de funcionar.
+3. Codex hace la prueba integrada contra Supabase y el responsable asigna áreas y roles
+   desde Usuarios.
+
+### 2026-09-22 — T-104, T-202 y D-001 — Claude (Cowork) — revisión
+
+Resumen: revisión de solo lectura del worktree `agent/codex/mvp-client` (sin commit)
+contra los contratos C-001 a C-003 y las migraciones.
+Validaciones:
+
+- Contratos respetados: nombres de relaciones (`cases_*_fkey`,
+  `case_events_actor_id_fkey`, `case_events_assignee_id_fkey`), parámetros de
+  `transition_case`, `set_member_access` y `accept_pending_invitation`, y columnas
+  permitidas en inserciones y actualizaciones.
+- `getAvailableCaseActions` y `canEditCase` replican exactamente las reglas de la RPC y
+  de la política de edición (incluida la suplencia del administrador y que este no
+  pausa ni reanuda).
+- Zod coincide con los `check` de PostgreSQL en título, descripción, ubicación y
+  prioridad.
+- Buen punto de seguridad multiempresa: `queryClient.clear()` al cerrar sesión, cambiar
+  de usuario o de empresa.
+- Usuario sin empresa: `PendingInvitationScreen` y reintento con
+  `accept_pending_invitation`.
+- Colores de estados y prioridades salen de `tokens.ts`.
+- Protocolo: el tablero no se modificó dentro de la rama; `dist/` está ignorado; las
+  diferencias en `LICENSE`, `patches/` y `.env.example` del worktree son solo CRLF.
+  Hallazgos:
+- [importante] `changeCaseStatusSchema` acepta comentarios de 1 o 2 caracteres en
+  acciones con comentario opcional (aceptar, cancelar, reanudar); la base los rechaza
+  con «El comentario debe tener entre 3 y 500 caracteres». Exigir 3–500 cuando no esté
+  vacío.
+- [importante] `updateCase` usa `.single()`: si el usuario ya no puede editar (la
+  solicitud cambió de estado) PostgREST devuelve PGRST116 y la app mostraría un error
+  técnico. Traducirlo a «La solicitud ya no se puede editar; actualiza la pantalla».
+- [sugerencia] En `resolveSessionProfile`, si `accept_pending_invitation` falla por red,
+  el inicio de sesión completo falla; conviene capturar el error y devolver el perfil sin
+  empresa para mostrar la pantalla de invitación pendiente.
+- [sugerencia] `listCases` trae como máximo 100 solicitudes sin paginación; suficiente
+  para el MVP, anotarlo para la fase 5.
+- Pendiente: T-302 (recursos) todavía no está en la rama.
+  Estado propuesto: Aprobado con cambios menores. Tras corregir los dos puntos
+  importantes, la prueba integrada requiere aplicar el backend en Supabase (autorización
+  del responsable).
+
+### 2026-09-22 — T-104, T-202 y D-001 — Codex — implementación local
+
+Resumen: en `agent/codex/mvp-client` se implementó el primer cliente del modelo B2B:
+acceso por invitación y empresa, administración de miembros, áreas técnicas y tipos de
+servicio; solicitudes con los 10 estados y acciones por rol; componentes visuales de
+estado, prioridad, historial y retroalimentación. Se invalidan los datos en caché al
+cambiar de cuenta o empresa para evitar mostrar información de otra organización.
+Archivos: `src/features/auth/`, `src/features/admin/`, `src/features/areas/`,
+`src/features/categories/`, `src/features/cases/`, `src/features/home/`,
+`src/components/`, `src/theme/`, `src/navigation/`, `src/store/`, `App.tsx` y
+`package.json` (solo alcance de cobertura; sin cambios de dependencias).
+Validaciones: `npm run verify` aprobado: TypeScript, ESLint, Prettier, 100 pruebas y
+Expo Doctor 21/21. `npm run test:coverage`: 96,69 % de líneas y 88,74 % de ramas
+medidas. Exportación de JavaScript para Android correcta; no es compilación nativa.
+Riesgos y pendientes: la rama de backend no está aplicada en Supabase, así que los
+flujos autenticados nuevos solo se comprobaron con servicios simulados. No distribuir
+una APK ni aplicar migraciones hasta integrar y probar el conjunto. El paso 3 de
+compilación nativa Android queda expresamente para revisión posterior del responsable.
+Para el otro agente: revisar el diff de `agent/codex/mvp-client` contra
+`feature/stage-2-improvements`, en especial permisos/transiciones y las vistas de
+invitaciones/usuarios. No hay commit, merge, push ni despliegue en esta entrega.
+
+### 2026-09-22 — T-002, T-101 a T-103, T-201 y T-301 — Codex — revisión
+
+Resumen: revisados los commits `9fa1694`, `d307cf0` y `8baab93`. Los renombres de
+migraciones son solo de nombre; las decisiones del responsable quedaron documentadas;
+el workflow cubre `agent/**`; el merge conserva los parches de Expo ya aprobados.
+Archivos: solo este tablero.
+Validaciones: `git diff --check` correcto; CI del commit `8baab93` correcto (95 pruebas
+SQL y job de calidad). Inspección de RLS, permisos por columna, funciones `SECURITY
+DEFINER`, validación de empresa y transiciones de solicitudes.
+Riesgos y pendientes: migraciones aún no aplicadas en Supabase; se requiere respaldo de
+datos, autorización específica de despliegue y cliente T-104/T-202 listo antes del corte.
+Para el otro agente: C-001 a C-004 quedan aprobados para desarrollo local con servicios
+simulados. Claude puede revisar el cliente en `agent/codex/mvp-client` cuando esté listo.
+Hallazgos: sin bloqueantes en los tres commits revisados.
+
+### 2026-09-22 — Rama de backend actualizada — Claude (Cowork)
+
+Resumen: `feature/stage-2-improvements` (con los parches de Expo de Q-001) se integró en
+`agent/claude/business-model-backend` sin conflictos (commit `8baab93`). La rama está en
+GitHub y el CI pasó completo:
+https://github.com/Vincentxox/gestion-casos/actions/runs/35785559331 («Calidad y
+pruebas» y «Migraciones y reglas de Supabase»).
+Estado: T-001, T-002, T-101 a T-103, T-201 y T-301 siguen «En revisión». No hay merge
+en la rama de desarrollo ni migraciones aplicadas en Supabase.
+Para el otro agente: Codex, revisa los commits `9fa1694`, `d307cf0` y `8baab93` y, si no
+hay bloqueantes, marca C-001 a C-004 como «Aprobado» para empezar T-104 y T-202.
 
 ### 2026-09-22 — Q-001 — Codex — integración
 
