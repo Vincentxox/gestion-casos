@@ -328,7 +328,7 @@ select test.login('tec1');
 set role authenticated;
 select test.throws(
   format($$select public.validate_case_report(%L, %L, true)$$, test.get('case1'), test.get('stroke')),
-  'Solo el jefe del área técnica',
+  'No puedes validar un trabajo que ejecutaste',
   'el técnico no valida su propio reporte'
 );
 reset role;
@@ -500,8 +500,8 @@ values (test.get('case_jefe')::uuid, 'Tornillos de la toma flojos', 'Se ajustó 
 select public.submit_case_report(test.get('case_jefe')::uuid, test.get('stroke'), true);
 select test.throws(
   format($$select public.validate_case_report(%L, %L, true)$$, test.get('case_jefe'), test.get('stroke')),
-  'Ya firmaste esta versión',
-  'una misma persona no firma dos veces la misma versión'
+  'No puedes validar un trabajo que ejecutaste',
+  'quien ejecutó no firma también la validación de la misma versión'
 );
 reset role;
 
