@@ -270,9 +270,10 @@ Reglas:
 
 ## 9. PDF, notificaciones e indicadores
 
-- **PDF**: se genera una sola vez en el servidor (Edge Function) al aprobar el caso y se
-  guarda en Storage privado. Incrusta las fotos a 800 px para quedar liviano (unos
-  300–600 KB). Incluye el reporte, los recursos, las tres firmas con su trazo y una
+- **PDF**: se genera una sola vez en el servidor (Edge Function), la primera vez que
+  alguien lo pide después de aprobado el caso, y se guarda en Storage privado. Incrusta
+  las miniaturas de las fotos (400 px) para quedar liviano (unos 300–600 KB); las
+  originales siguen disponibles en la app. Incluye el reporte, los recursos, las tres firmas con su trazo y una
   **hoja de evidencia**: por firma, nombre, rol, fecha y hora, IP y dispositivo; el hash
   de la versión; la secuencia de eventos del caso y un código de verificación. Lo pueden
   descargar quienes pueden leer el caso, mediante un enlace firmado de pocos minutos.
