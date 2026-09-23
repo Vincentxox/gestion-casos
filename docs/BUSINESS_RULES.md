@@ -124,7 +124,9 @@ que no esté en esta lista se rechaza.
 - `en_ejecucion → en_espera` y `en_espera → en_ejecucion`: técnico asignado o jefe
   técnico. Motivo obligatorio al pausar.
 - `en_ejecucion → reporte_enviado`: técnico asignado, al firmar el reporte.
-- `reporte_enviado → validado`: jefe técnico, al firmar la validación.
+- `reporte_enviado → validado`: jefe técnico, al firmar la validación. Si ningún jefe del
+  área técnica distinto de quien ejecutó el trabajo puede validar (por ejemplo, el único
+  jefe ejecutó), valida un administrador y queda registrado.
 - `reporte_enviado → en_ejecucion` (devuelto): jefe técnico. Observaciones obligatorias.
 - `validado → aprobado`: jefe del área solicitante, al firmar la conformidad.
 - `validado → en_ejecucion` (devuelto): jefe del área solicitante. Observaciones
@@ -134,7 +136,10 @@ Reglas comunes:
 
 - Toda transición registra en el historial: estado anterior y nuevo, usuario, rol,
   comentario y fecha del servidor.
-- El administrador **no** puede forzar transiciones que requieren firma.
+- El administrador **no** puede forzar transiciones que requieren firma. Solo firma como
+  suplente en dos casos, que quedan registrados: la validación técnica cuando el único
+  jefe técnico ejecutó el trabajo y la conformidad cuando el área solicitante no tiene
+  jefe.
 - Si el área solicitante no tiene jefe asignado, la conformidad la da el administrador.
   Esta excepción queda registrada.
 
@@ -255,8 +260,9 @@ Cada firma guarda:
 Reglas:
 
 - Cada versión requiere, en orden, las firmas de ejecución (técnico asignado),
-  validación técnica (jefe del área técnica) y conformidad (jefe del área solicitante;
-  si esa área no tiene jefe, el administrador, y queda registrado).
+  validación técnica (jefe del área técnica; si el único jefe ejecutó el trabajo, el
+  administrador) y conformidad (jefe del área solicitante; si esa área no tiene jefe, el
+  administrador). Las suplencias quedan registradas.
 - Una firma no se edita ni se borra.
 - Una misma persona no puede firmar dos veces la misma versión.
 - La confirmación con huella o rostro del teléfono queda para después del MVP.
@@ -274,8 +280,9 @@ Reglas:
 - **Notificaciones** (adelantadas al MVP el 23/09/2026): cada acción del flujo crea un
   aviso para los responsables del siguiente paso, nunca para quien hizo la acción. Los
   avisos se ven en la app (campana del Inicio) y se envían como notificación push a los
-  teléfonos registrados. Destinatarios: nueva solicitud y reporte enviado → jefes del
-  área técnica; aceptada, rechazada y aprobada → creador; asignada, reasignada y
+  teléfonos registrados. Destinatarios: nueva solicitud → jefes del área técnica;
+  reporte enviado → jefes del área técnica que no lo ejecutaron (si no hay, los
+  administradores); aceptada, rechazada y aprobada → creador; asignada, reasignada y
   devuelta → técnico asignado; reporte validado → jefes del área solicitante (o
   administradores si no hay jefe); pausa → jefes del área técnica; cancelada → jefes del
   área técnica.
@@ -331,10 +338,5 @@ Tratamiento de los datos existentes (confirmado por el responsable el 22/09/2026
    `docs/UX_REDESIGN.md`, sección 10.2).
 6. Comentarios en la solicitud (las notificaciones push se adelantaron al MVP el
    23/09/2026).
-7. **Jefe técnico que ejecuta el trabajo.** Se puede asignar un trabajo a un jefe del área
-   técnica (5.5.2), pero una persona no puede firmar dos veces la misma versión (8). Si
-   el área tiene un solo jefe y él ejecutó el trabajo, nadie puede dar la validación
-   técnica y el caso queda detenido. Opciones: (a) que en ese caso valide el
-   administrador, dejando constancia; (b) impedir asignar al jefe cuando es el único del
-   área; (c) permitir que la misma persona firme ejecución y validación, dejando
-   constancia.
+7. ~~Jefe técnico que ejecuta el trabajo.~~ Resuelta el 23/09/2026: valida el
+   administrador, dejando constancia (5.3 y 8).
