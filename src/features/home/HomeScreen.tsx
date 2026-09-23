@@ -1,22 +1,34 @@
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs'
 import { useFocusEffect } from '@react-navigation/native'
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { StatTile } from '@/components/stats/StatTile'
+import { Avatar } from '@/components/ui/Avatar'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { Icon } from '@/components/ui/Icon'
+import { IconTile } from '@/components/ui/IconTile'
+import { EmptyState } from '@/components/feedback/EmptyState'
 import { hasPermission } from '@/features/auth/permissions'
 import { ROLE_LABELS } from '@/features/auth/types'
 import { useCases } from '@/features/cases/useCases'
-import { StatusBadge } from '@/components/badges/StatusBadge'
+import { CaseCard } from '@/features/cases/components/CaseCard'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { SkeletonList } from '@/components/ui/SkeletonList'
 import type { MainTabParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
-import { colors, radius, spacing, typography } from '@/theme/tokens'
-import { formatRelativeDate } from '@/theme/formatters'
+import { colors, fonts, phaseColors, radius, spacing, typography } from '@/theme/tokens'
 
-import { getAdminAlerts, getHomeTileTarget, getHomeTiles } from './homePresentation'
+import {
+  getAdminAlerts,
+  getGreeting,
+  getHomeHero,
+  getHomeRecentCases,
+  getHomeTileTarget,
+  getHomeTiles,
+} from './homePresentation'
 import { useHomeSummary } from './useHomeSummary'
 
 type Props = BottomTabScreenProps<MainTabParamList, 'Home'>
@@ -24,11 +36,9 @@ type Props = BottomTabScreenProps<MainTabParamList, 'Home'>
 export function HomeScreen({ navigation }: Props) {
   const profile = useAuthStore((state) => state.profile)
   const summary = useHomeSummary(Boolean(profile?.organizationId))
-  const showRecent =
-    profile?.role === 'solicitante' ||
-    profile?.role === 'tecnico' ||
-    (profile?.role === 'jefe_area' && summary.data?.area_kind === 'solicitante')
+  const showRecent = Boolean(profile?.organizationId)
   const cases = useCases(showRecent)
+  const [hour] = useState(() => new Date().getHours())
   const refetchSummary = summary.refetch
   const refetchCases = cases.refetch
   useFocusEffect(
@@ -41,14 +51,11 @@ export function HomeScreen({ navigation }: Props) {
 
   const canCreate = hasPermission(profile.role, 'cases.create') && Boolean(profile.areaId)
   const alerts = summary.data?.admin ? getAdminAlerts(summary.data.admin) : []
-  const tiles = summary.data ? getHomeTiles(profile, summary.data) : []
+  const tiles = summary.data ? getHomeTiles(profile, summary.data).slice(0, 4) : []
+  const hero = summary.data ? getHomeHero(profile, summary.data) : null
+  const hasPending = Boolean(hero?.count || summary.data?.admin?.solicitudes_acceso_pendientes)
   const firstName = profile.fullName.trim().split(/\s+/)[0] || 'usuario'
-  const recentCases = (cases.data ?? [])
-    .filter((item) =>
-      profile.role === 'tecnico' ? item.assignedTo === profile.id : item.createdBy === profile.id,
-    )
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, 3)
+  const recentCases = getHomeRecentCases(profile, summary.data?.area_kind ?? null, cases.data ?? [])
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
@@ -65,16 +72,36 @@ export function HomeScreen({ navigation }: Props) {
         }
       >
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>{profile.organizationName || 'NEXO CASOS'}</Text>
+          <View style={styles.headerTop}>
+            <Avatar name={profile.fullName} id={profile.id} size={44} />
+            <View style={styles.identity}>
+              <Text style={styles.eyebrow}>{profile.organizationName || 'NEXO CASOS'}</Text>
+              <Text style={styles.subtitle}>
+                {ROLE_LABELS[profile.role]} · {profile.areaName || 'Sin área asignada'}
+              </Text>
+            </View>
+            <Pressable
+              accessibilityLabel="Ver pendientes"
+              accessibilityRole="button"
+              onPress={() => {
+                if (hero?.count)
+                  navigation.navigate('CasesTab', { screen: 'Cases', params: hero.target })
+                else if (summary.data?.admin?.solicitudes_acceso_pendientes)
+                  navigation.navigate('Administration', { screen: 'AccessRequests' })
+                else navigation.navigate('CasesTab', { screen: 'Cases' })
+              }}
+              style={styles.bell}
+            >
+              <Icon name="notifications-outline" color={colors.text} />
+              {hasPending ? <View style={styles.notificationDot} /> : null}
+            </Pressable>
+          </View>
           <Text accessibilityRole="header" style={styles.title}>
-            Hola, {firstName}
-          </Text>
-          <Text style={styles.subtitle}>
-            {ROLE_LABELS[profile.role]} · {profile.areaName || 'Sin área asignada'}
+            {getGreeting(hour)}, {firstName}
           </Text>
         </View>
 
-        {summary.isLoading ? <Text style={styles.message}>Cargando tu resumen…</Text> : null}
+        {summary.isLoading ? <SkeletonList count={2} /> : null}
         {summary.isError ? (
           <View style={styles.notice}>
             <Text style={styles.noticeTitle}>No pudimos cargar el Inicio</Text>
@@ -88,9 +115,38 @@ export function HomeScreen({ navigation }: Props) {
           </View>
         ) : null}
 
+        {!summary.isLoading && hero ? (
+          hero.count > 0 ? (
+            <View style={styles.hero}>
+              <Text style={styles.heroTitle}>{hero.title}</Text>
+              <Text style={styles.heroDetail}>{hero.detail}</Text>
+              <Button
+                label={hero.actionLabel}
+                icon="arrow-forward"
+                variant="secondary"
+                onPress={() =>
+                  navigation.navigate('CasesTab', { screen: 'Cases', params: hero.target })
+                }
+              />
+            </View>
+          ) : (
+            <Card>
+              <EmptyState
+                title="Todo al día"
+                message="No tienes solicitudes pendientes en este momento."
+                variant="allDone"
+                compact
+              />
+            </Card>
+          )
+        ) : null}
+
         {alerts.length > 0 ? (
           <View style={styles.notice}>
-            <Text style={styles.noticeTitle}>Completa la configuración</Text>
+            <View style={styles.alertHeading}>
+              <IconTile icon="warning-outline" phase="detenida" size={36} />
+              <Text style={styles.noticeTitle}>Completa la configuración</Text>
+            </View>
             {alerts.map((alert) => (
               <Pressable
                 accessibilityRole="button"
@@ -98,16 +154,17 @@ export function HomeScreen({ navigation }: Props) {
                 onPress={() => navigation.navigate('Administration', { screen: alert.screen })}
                 style={styles.alertRow}
               >
+                <Icon name="alert-circle-outline" size="inline" color={colors.warning} />
                 <Text style={styles.alertText}>{alert.label}</Text>
-                <Text style={styles.linkText}>›</Text>
+                <Icon name="chevron-forward" size="inline" color={colors.textMuted} />
               </Pressable>
             ))}
           </View>
         ) : null}
 
-        {tiles.length > 0 ? (
+        {!summary.isLoading && tiles.length > 0 ? (
           <View style={styles.section}>
-            <SectionHeader title="Lo que requiere tu atención" />
+            <SectionHeader title="Tus números" />
             <View style={styles.tileGrid}>
               {tiles.map((tile) => (
                 <StatTile
@@ -134,27 +191,25 @@ export function HomeScreen({ navigation }: Props) {
           </View>
         ) : null}
         {canCreate ? (
-          <Pressable
-            accessibilityRole="button"
+          <Button
+            label="Nueva solicitud"
+            icon="add"
             onPress={() => navigation.navigate('CasesTab', { screen: 'CreateCase' })}
-            style={styles.primaryAction}
-          >
-            <Text style={styles.primaryActionText}>＋ Nueva solicitud</Text>
-          </Pressable>
-        ) : null}
-        {profile.role === 'tecnico' &&
-        tiles.length > 0 &&
-        tiles.every((tile) => tile.value === 0) ? (
-          <Text style={styles.message}>
-            No tienes trabajos asignados. Cuando el jefe de tu área te asigne una solicitud,
-            aparecerá aquí.
-          </Text>
+          />
         ) : null}
         {showRecent ? (
           <View style={styles.section}>
-            <SectionHeader
-              title={profile.role === 'tecnico' ? 'Mis trabajos' : 'Mis solicitudes recientes'}
-            />
+            <View style={styles.recentHeading}>
+              <SectionHeader title="Lo que te toca hoy" />
+              <Pressable
+                accessibilityLabel="Ver todas las solicitudes"
+                accessibilityRole="button"
+                onPress={() => navigation.navigate('CasesTab', { screen: 'Cases' })}
+                style={styles.link}
+              >
+                <Text style={styles.linkText}>Ver todo</Text>
+              </Pressable>
+            </View>
             {cases.isError ? (
               <Pressable accessibilityRole="button" onPress={() => void cases.refetch()}>
                 <Text style={styles.linkText}>No fue posible cargar la lista. Reintentar</Text>
@@ -162,45 +217,28 @@ export function HomeScreen({ navigation }: Props) {
             ) : cases.isLoading ? (
               <SkeletonList count={3} />
             ) : recentCases.length === 0 ? (
-              <Text style={styles.message}>
-                {profile.role === 'tecnico'
-                  ? 'No tienes trabajos asignados todavía.'
-                  : 'Tus solicitudes aparecerán aquí cuando crees la primera.'}
-              </Text>
+              <EmptyState
+                title="Sin solicitudes recientes"
+                message="Aquí aparecerán las solicitudes que puedas consultar."
+                variant="allDone"
+                compact
+              />
             ) : (
               recentCases.map((item) => (
-                <Pressable
-                  accessibilityRole="button"
+                <CaseCard
                   key={item.id}
+                  item={item}
                   onPress={() =>
                     navigation.navigate('CasesTab', {
                       screen: 'CaseDetail',
                       params: { caseId: item.id },
                     })
                   }
-                  style={styles.recentCard}
-                >
-                  <Text style={styles.recentNumber}>
-                    {item.caseNumber} · {formatRelativeDate(item.createdAt)}
-                  </Text>
-                  <Text numberOfLines={1} style={styles.recentTitle}>
-                    {item.title}
-                  </Text>
-                  <StatusBadge status={item.status} />
-                </Pressable>
+                />
               ))
             )}
           </View>
         ) : null}
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => navigation.navigate('CasesTab', { screen: 'Cases' })}
-          style={styles.link}
-        >
-          <Text style={styles.linkText}>
-            {profile.role === 'tecnico' ? 'Ver mis trabajos' : 'Ver solicitudes'} →
-          </Text>
-        </Pressable>
       </ScrollView>
     </SafeAreaView>
   )
@@ -210,12 +248,32 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: { gap: spacing.lg, padding: spacing.lg, paddingBottom: spacing.xl },
   header: { gap: spacing.sm },
+  headerTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.base },
+  identity: { flex: 1, gap: spacing.xs },
+  bell: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  notificationDot: {
+    position: 'absolute',
+    top: 7,
+    right: 7,
+    width: 8,
+    height: 8,
+    borderRadius: radius.pill,
+    backgroundColor: phaseColors.nueva.fg,
+  },
   eyebrow: { color: colors.primary, ...typography.overline },
-  title: { color: colors.text, ...typography.display },
-  subtitle: { color: colors.textMuted, ...typography.body },
+  title: { color: colors.text, ...typography.title },
+  subtitle: { color: colors.textMuted, ...typography.caption },
+  hero: {
+    gap: spacing.base,
+    padding: spacing.lg,
+    borderRadius: radius.xl,
+    backgroundColor: colors.primary,
+  },
+  heroTitle: { ...typography.title, color: colors.white },
+  heroDetail: { ...typography.body, color: colors.white },
   section: { gap: spacing.md },
-  sectionTitle: { color: colors.text, ...typography.title },
   tileGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  recentHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   notice: {
     gap: spacing.sm,
     padding: spacing.md,
@@ -223,27 +281,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.warningSoft,
   },
   noticeTitle: { color: colors.text, ...typography.heading },
+  alertHeading: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   message: { color: colors.textMuted, ...typography.body },
   alertRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   alertText: { flex: 1, color: colors.text, ...typography.body },
-  primaryAction: {
-    minHeight: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.md,
-    backgroundColor: colors.primary,
-  },
-  primaryActionText: { color: colors.white, fontWeight: '800', fontSize: 16 },
   link: { minHeight: 44, justifyContent: 'center' },
-  linkText: { color: colors.primary, fontWeight: '800', fontSize: 15 },
-  recentCard: {
-    gap: spacing.sm,
-    padding: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  recentNumber: { color: colors.primary, ...typography.caption, fontWeight: '800' },
-  recentTitle: { color: colors.text, ...typography.heading },
+  linkText: { ...typography.body, fontFamily: fonts.bold, color: colors.primary },
 })

@@ -9,15 +9,19 @@ import {
   Text,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { Chip } from '@/components/ui/Chip'
+import { IconTile } from '@/components/ui/IconTile'
+import { EmptyState } from '@/components/feedback/EmptyState'
+import { ScreenContainer } from '@/components/ui/ScreenContainer'
 import { FormField } from '@/components/forms/FormField'
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
 import { useAreas } from '@/features/areas/useAreas'
-import { APP_ROLES, ROLE_LABELS, type AppRole } from '@/features/auth/types'
+import { APP_ROLES, ROLE_ICONS, ROLE_LABELS, type AppRole } from '@/features/auth/types'
 import { useAuthStore } from '@/store/authStore'
-import { colors, radius, spacing } from '@/theme/tokens'
+import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 import { formatInvitationNotice } from '../invitationNotice'
 import { invitationSchema } from '../invitationSchemas'
@@ -98,7 +102,7 @@ export function InvitationsScreen() {
   }
 
   return (
-    <SafeAreaView edges={['bottom']} style={styles.safeArea}>
+    <ScreenContainer edges={['bottom']} padded={false}>
       <KeyboardFormScrollView contentContainerStyle={styles.content}>
         <Text accessibilityRole="header" style={styles.title}>
           Invitaciones
@@ -107,7 +111,8 @@ export function InvitationsScreen() {
           La persona entra automáticamente al registrarse y confirmar el correo invitado. Comparte
           el aviso para informarle; la app no envía correos por sí sola.
         </Text>
-        <View style={styles.card}>
+        <Card contentStyle={styles.card}>
+          <IconTile icon="mail-outline" />
           <FormField
             label="Correo electrónico"
             autoCapitalize="none"
@@ -153,24 +158,29 @@ export function InvitationsScreen() {
             loading={create.isPending}
             onPress={() => void submit()}
           />
-        </View>
+        </Card>
         <Text style={styles.sectionTitle}>Invitaciones registradas</Text>
         {invitations.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
         {invitations.error ? (
           <Button label="Reintentar" onPress={() => void invitations.refetch()} />
         ) : null}
         {invitations.data?.length === 0 ? (
-          <Text style={styles.muted}>Todavía no hay invitaciones.</Text>
+          <EmptyState
+            variant="firstUse"
+            title="Sin invitaciones"
+            message="Invita a una persona para darle acceso a tu empresa."
+          />
         ) : null}
         {invitations.data?.map((invitation) => {
           const pending = !invitation.acceptedAt && !invitation.revokedAt
           return (
-            <View key={invitation.id} style={styles.card}>
+            <Card key={invitation.id} contentStyle={styles.card}>
               <Text style={styles.email}>{invitation.email}</Text>
-              <Text style={styles.muted}>
-                {ROLE_LABELS[invitation.role]} ·{' '}
-                {pending ? 'Pendiente' : invitation.acceptedAt ? 'Aceptada' : 'Revocada'}
-              </Text>
+              <Chip label={ROLE_LABELS[invitation.role]} icon={ROLE_ICONS[invitation.role]} />
+              <Chip
+                label={pending ? 'Pendiente' : invitation.acceptedAt ? 'Aceptada' : 'Revocada'}
+                tone={pending ? 'warning' : invitation.acceptedAt ? 'success' : 'neutral'}
+              />
               {pending ? (
                 <View style={styles.actions}>
                   <Pressable
@@ -191,11 +201,11 @@ export function InvitationsScreen() {
                   </Pressable>
                 </View>
               ) : null}
-            </View>
+            </Card>
           )
         })}
       </KeyboardFormScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 
@@ -221,19 +231,14 @@ function Choice({
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
   content: { flexGrow: 1, gap: spacing.md, padding: spacing.lg },
-  title: { color: colors.text, fontSize: 28, fontWeight: '800' },
+  title: { ...typography.display, color: colors.text },
   muted: { color: colors.textMuted, lineHeight: 21 },
-  label: { color: colors.text, fontWeight: '700' },
-  sectionTitle: { color: colors.text, fontSize: 20, fontWeight: '800' },
+  label: { ...typography.body, color: colors.text },
+  sectionTitle: { ...typography.title, color: colors.text },
   card: {
     gap: spacing.md,
     padding: spacing.md,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
   },
   options: { gap: spacing.sm, paddingVertical: spacing.sm },
   choice: {
@@ -245,11 +250,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   selected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-  choiceText: { color: colors.text, fontWeight: '700' },
-  email: { color: colors.text, fontWeight: '800' },
+  choiceText: { ...typography.body, color: colors.text },
+  email: { ...typography.heading, color: colors.text },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
   share: { minHeight: 44, justifyContent: 'center' },
-  shareText: { color: colors.primary, fontWeight: '700' },
+  shareText: { ...typography.body, color: colors.primary },
   revoke: { minHeight: 44, justifyContent: 'center' },
-  revokeText: { color: colors.error, fontWeight: '700' },
+  revokeText: { ...typography.body, color: colors.error },
 })

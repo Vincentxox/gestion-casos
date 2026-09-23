@@ -22,7 +22,7 @@ import { ProfileScreen } from '@/features/settings/ProfileScreen'
 import { ResourcesScreen } from '@/features/resources/screens/ResourcesScreen'
 import { CaseResourcesScreen } from '@/features/resources/screens/CaseResourcesScreen'
 import { useAuthStore } from '@/store/authStore'
-import { colors } from '@/theme/tokens'
+import { colors, typography } from '@/theme/tokens'
 
 import type { AdministrationStackParamList, MainStackParamList, MainTabParamList } from './types'
 
@@ -157,7 +157,7 @@ export function MainNavigator() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarHideOnKeyboard: true,
-        tabBarLabelStyle: { fontSize: 12, fontWeight: '700' },
+        tabBarLabelStyle: typography.caption,
         tabBarStyle: { borderTopColor: colors.border, backgroundColor: colors.surface },
         tabBarIcon: ({ color, focused, size }) => (
           <Ionicons color={color} name={TAB_ICONS[route.name][focused ? 1 : 0]} size={size} />

@@ -9,9 +9,10 @@ const email = z
 const password = z
   .string()
   .min(8, 'La contraseña debe tener al menos 8 caracteres')
+  .regex(/[a-z]/, 'La contraseña debe incluir una letra minúscula')
   .regex(/[A-Z]/, 'La contraseña debe incluir una letra mayúscula')
   .regex(/[0-9]/, 'La contraseña debe incluir un número')
-  .regex(/[^A-Za-z0-9]/, 'La contraseña debe incluir un carácter especial')
+  .regex(/[!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]/, 'La contraseña debe incluir un carácter especial')
 
 export const loginSchema = z.object({
   email,

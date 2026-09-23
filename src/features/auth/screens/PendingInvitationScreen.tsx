@@ -1,17 +1,10 @@
 import { useEffect, useState } from 'react'
-import {
-  Alert,
-  AppState,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { Alert, AppState, Pressable, ScrollView, StyleSheet, Text, TextInput } from 'react-native'
 
 import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { ScreenContainer } from '@/components/ui/ScreenContainer'
+import { EmptyState } from '@/components/feedback/EmptyState'
 import { useAuthStore } from '@/store/authStore'
 import { colors, radius, spacing, typography } from '@/theme/tokens'
 
@@ -106,7 +99,7 @@ export function PendingInvitationScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <ScreenContainer edges={['top', 'bottom', 'left', 'right']} padded={false}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.eyebrow}>NEXO CASOS</Text>
         <Text accessibilityRole="header" style={styles.title}>
@@ -125,31 +118,33 @@ export function PendingInvitationScreen() {
           </Pressable>
         ) : null}
         {pending.data?.status === 'pendiente' ? (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Solicitud pendiente</Text>
-            <Text style={styles.description}>
-              {pending.data.organizationName} revisará tu acceso. Aún no puedes ver los datos de la
-              empresa.
-            </Text>
+          <Card contentStyle={styles.card}>
+            <EmptyState
+              variant="pending"
+              title={`Solicitud enviada a ${pending.data.organizationName}`}
+              message="El administrador revisará tu acceso. Mientras tanto, no puedes ver los datos de la empresa."
+              compact
+            />
             <Button label="Comprobar estado" loading={busy} onPress={() => void retry()} />
             <Button
               label="Cancelar solicitud"
               loading={cancel.isPending}
               onPress={() => void cancelRequest()}
+              variant="secondary"
             />
-          </View>
+          </Card>
         ) : null}
         {pending.data?.status === 'rechazada' ? (
-          <View style={styles.card}>
+          <Card contentStyle={styles.card}>
             <Text style={styles.cardTitle}>Solicitud rechazada</Text>
             <Text style={styles.description}>
               {pending.data.decisionNote ||
                 'Contacta al administrador si necesitas más información.'}
             </Text>
-          </View>
+          </Card>
         ) : null}
         {pending.data?.status !== 'pendiente' ? (
-          <View style={styles.card}>
+          <Card contentStyle={styles.card}>
             <Text style={styles.cardTitle}>Tengo un código de empresa</Text>
             {showCode ? (
               <>
@@ -172,37 +167,27 @@ export function PendingInvitationScreen() {
             ) : (
               <Button label="Escribir código" onPress={() => setShowCode(true)} />
             )}
-          </View>
+          </Card>
         ) : null}
-        <View style={styles.card}>
+        <Card contentStyle={styles.card}>
           <Text style={styles.cardTitle}>Me enviaron una invitación</Text>
           <Text style={styles.description}>
             Comprueba que la invitación sea para este mismo correo.
           </Text>
           <Button label="Comprobar invitación" loading={busy} onPress={() => void retry()} />
-        </View>
-        <Pressable accessibilityRole="button" onPress={() => void logout()} style={styles.logout}>
-          <Text style={styles.logoutText}>Cerrar sesión</Text>
-        </Pressable>
+        </Card>
+        <Button label="Cerrar sesión" variant="text" onPress={() => void logout()} />
       </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
   content: { flexGrow: 1, gap: spacing.lg, padding: spacing.lg },
   eyebrow: { color: colors.primary, ...typography.overline },
   title: { color: colors.text, ...typography.display },
   description: { color: colors.textMuted, ...typography.body },
-  card: {
-    gap: spacing.md,
-    padding: spacing.lg,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
+  card: { gap: spacing.md, padding: spacing.lg },
   cardTitle: { color: colors.text, ...typography.heading },
   input: {
     minHeight: 52,
@@ -210,10 +195,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
-    fontSize: 18,
+    ...typography.heading,
     color: colors.text,
   },
   error: { color: colors.error, ...typography.body },
-  logout: { minHeight: 48, alignItems: 'center', justifyContent: 'center' },
-  logoutText: { color: colors.primary, fontWeight: '700' },
 })

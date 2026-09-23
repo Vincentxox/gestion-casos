@@ -1,10 +1,11 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import Animated, { FadeInDown, useReducedMotion } from 'react-native-reanimated'
 import {
-  ActivityIndicator,
-  FlatList,
+  SectionList,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -12,16 +13,21 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-import { PriorityBadge } from '@/components/badges/PriorityBadge'
-import { StatusBadge } from '@/components/badges/StatusBadge'
+import { EmptyState } from '@/components/feedback/EmptyState'
+import { Button } from '@/components/ui/Button'
+import { Chip } from '@/components/ui/Chip'
+import { SegmentedControl } from '@/components/ui/SegmentedControl'
+import { SkeletonList } from '@/components/ui/SkeletonList'
 import { hasPermission } from '@/features/auth/permissions'
 import { useHomeSummary } from '@/features/home/useHomeSummary'
 import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
-import { colors, radius, spacing } from '@/theme/tokens'
-import { formatRelativeDate } from '@/theme/formatters'
+import { statusMeta } from '@/theme/statusMeta'
+import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 import type { CaseRecord } from '../types'
+import { groupCasesByDay } from '../caseDateGroups'
+import { CaseCard } from '../components/CaseCard'
 import { useCases } from '../useCases'
 import {
   getScopeOptions,
@@ -55,39 +61,18 @@ const SCOPE_LABELS: Record<ScopeFilter, string> = {
   sin_asignar: 'Sin asignar',
   en_curso: 'En curso',
 }
-const SESSION_NOW = Date.now()
-
-function CaseCard({ item, onPress }: { item: CaseRecord; onPress: () => void }) {
-  return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.caseNumber}>
-          {item.caseNumber} · {formatRelativeDate(item.createdAt, SESSION_NOW)}
-        </Text>
-        <PriorityBadge priority={item.priority} />
-      </View>
-      <Text numberOfLines={1} style={styles.cardTitle}>
-        {item.title}
-      </Text>
-      <View style={styles.metaRow}>
-        <StatusBadge status={item.status} />
-        <Text style={styles.meta}>
-          {item.requestingAreaName} → {item.targetAreaName}
-        </Text>
-      </View>
-      <Text numberOfLines={1} style={styles.location}>
-        {item.location}
-      </Text>
-      {item.assigneeName ? <Text style={styles.meta}>Asignado a {item.assigneeName}</Text> : null}
-    </Pressable>
-  )
-}
-
 export function CasesListScreen({ navigation, route }: Props) {
   const profile = useAuthStore((state) => state.profile)
   const { data = [], error, isLoading, isRefetching, refetch } = useCases()
   const home = useHomeSummary(Boolean(profile?.organizationId))
   const [search, setSearch] = useState('')
+  const [animateInitialList, setAnimateInitialList] = useState(true)
+  const reduceMotion = useReducedMotion()
+  const [filterNow, setFilterNow] = useState(() => Date.now())
+  useEffect(() => {
+    const interval = setInterval(() => setFilterNow(Date.now()), 60_000)
+    return () => clearInterval(interval)
+  }, [])
   const routeKey = JSON.stringify(route.params ?? {})
   const [selection, setSelection] = useState<{
     key: string
@@ -125,7 +110,7 @@ export function CasesListScreen({ navigation, route }: Props) {
         const matchesActive =
           !activeOnly || !['rechazado', 'cancelado', 'aprobado'].includes(item.status)
         const matchesDate =
-          !sinceDays || new Date(item.updatedAt).getTime() >= SESSION_NOW - sinceDays * 86_400_000
+          !sinceDays || new Date(item.updatedAt).getTime() >= filterNow - sinceDays * 86_400_000
         const haystack = [item.caseNumber, item.title, item.category, item.location]
           .join(' ')
           .toLocaleLowerCase('es')
@@ -145,10 +130,39 @@ export function CasesListScreen({ navigation, route }: Props) {
           : b.createdAt.localeCompare(a.createdAt),
       )
   })()
+  const firstEntryOrder = new Map(filteredCases.slice(0, 8).map((item, index) => [item.id, index]))
+  useEffect(() => {
+    if (!animateInitialList || isLoading || error) return
+    const timeout = setTimeout(() => setAnimateInitialList(false), filteredCases.length ? 600 : 0)
+    return () => clearTimeout(timeout)
+  }, [animateInitialList, isLoading, error, filteredCases.length])
+  const scopedCases = profile
+    ? data.filter((item) => matchesCaseScope(item, effectiveScope, profile))
+    : []
+  const segments = (Object.keys(STATUS_LABELS) as StatusFilter[]).map((value) => ({
+    value,
+    label: STATUS_LABELS[value],
+    count:
+      value === 'todos'
+        ? scopedCases.length
+        : scopedCases.filter((item) => STATUS_GROUPS[value].includes(item.status)).length,
+  }))
+  const hasFilters = Boolean(
+    search ||
+    status !== 'todos' ||
+    exactStatus ||
+    priority ||
+    sinceDays ||
+    activeOnly ||
+    effectiveScope !== 'todas',
+  )
 
   return (
     <SafeAreaView edges={['bottom']} style={styles.safeArea}>
       <View style={styles.container}>
+        <Text accessibilityRole="header" style={styles.heading}>
+          Solicitudes
+        </Text>
         <View style={styles.toolbar}>
           <TextInput
             accessibilityLabel="Buscar casos"
@@ -158,125 +172,115 @@ export function CasesListScreen({ navigation, route }: Props) {
             style={styles.search}
             value={search}
           />
-          {canCreate ? (
-            <Pressable
-              accessibilityLabel="Crear caso"
-              accessibilityRole="button"
-              onPress={() => navigation.navigate('CreateCase')}
-              style={styles.createButton}
-            >
-              <Text style={styles.createButtonText}>+ Crear</Text>
-            </Pressable>
-          ) : null}
         </View>
 
-        <View style={styles.filters}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filters}
+        >
           {scopes.map((value) => (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ selected: effectiveScope === value }}
+            <Chip
               key={value}
+              label={SCOPE_LABELS[value]}
+              selected={effectiveScope === value}
               onPress={() => changeFilters({ scope: value })}
-              style={[styles.filter, effectiveScope === value && styles.filterActive]}
-            >
-              <Text
-                style={[styles.filterText, effectiveScope === value && styles.filterTextActive]}
-              >
-                {SCOPE_LABELS[value]}
-              </Text>
-            </Pressable>
+            />
           ))}
-        </View>
+        </ScrollView>
 
-        <View style={styles.filters}>
-          {(Object.keys(STATUS_LABELS) as StatusFilter[]).map((value) => (
-            <Pressable
-              accessibilityRole="button"
-              key={value}
-              onPress={() => {
-                changeFilters({ status: value, exactStatus: null })
-              }}
-              style={[styles.filter, status === value ? styles.filterActive : null]}
-            >
-              <Text style={[styles.filterText, status === value ? styles.filterTextActive : null]}>
-                {STATUS_LABELS[value]}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+        <SegmentedControl
+          segments={segments}
+          selected={status}
+          onChange={(value) => changeFilters({ status: value, exactStatus: null })}
+        />
         {exactStatus ? (
-          <Pressable
-            accessibilityRole="button"
+          <Chip
+            label={`Estado: ${statusMeta[exactStatus].label} ×`}
+            accessibilityLabel={`Quitar filtro de estado ${statusMeta[exactStatus].label}`}
             onPress={() => changeFilters({ exactStatus: null })}
-            style={styles.filter}
-          >
-            <Text style={styles.filterText}>Estado: {exactStatus.replace(/_/g, ' ')} ×</Text>
-          </Pressable>
+          />
         ) : null}
         {priority ? (
-          <Pressable
-            accessibilityRole="button"
+          <Chip
+            label="Prioridad alta ×"
+            accessibilityLabel="Quitar filtro de prioridad alta"
             onPress={() => changeFilters({ priority: null })}
-            style={styles.filter}
-          >
-            <Text style={styles.filterText}>Prioridad alta ×</Text>
-          </Pressable>
+          />
         ) : null}
         {sinceDays ? (
-          <Pressable
-            accessibilityRole="button"
+          <Chip
+            label={`Últimos ${sinceDays} días ×`}
+            accessibilityLabel={`Quitar filtro de los últimos ${sinceDays} días`}
             onPress={() => changeFilters({ sinceDays: null })}
-            style={styles.filter}
-          >
-            <Text style={styles.filterText}>Últimos {sinceDays} días ×</Text>
-          </Pressable>
+          />
         ) : null}
         {activeOnly ? (
-          <Pressable
-            accessibilityRole="button"
+          <Chip
+            label="Solo activas ×"
+            accessibilityLabel="Quitar filtro de solicitudes activas"
             onPress={() => changeFilters({ activeOnly: false })}
-            style={styles.filter}
-          >
-            <Text style={styles.filterText}>Solo activas ×</Text>
-          </Pressable>
+          />
         ) : null}
         {scope === 'mias' && scopes.length === 0 ? (
           <Pressable
             accessibilityRole="button"
             onPress={() => changeFilters({ scope: undefined })}
-            style={styles.filter}
+            style={styles.legacyScopeFilter}
           >
-            <Text style={styles.filterText}>Solo mías ×</Text>
+            <Text style={styles.legacyScopeText}>Solo mías ×</Text>
           </Pressable>
         ) : null}
 
         {isLoading ? (
-          <View style={styles.center}>
-            <ActivityIndicator color={colors.primary} size="large" />
-            <Text style={styles.muted}>Cargando casos...</Text>
-          </View>
+          <SkeletonList />
         ) : error ? (
-          <View style={styles.center}>
-            <Text style={styles.errorTitle}>No fue posible cargar los casos</Text>
-            <Text style={styles.muted}>Comprueba tu conexión e inténtalo de nuevo.</Text>
-            <Pressable onPress={() => void refetch()} style={styles.retry}>
-              <Text style={styles.retryText}>Reintentar</Text>
-            </Pressable>
-          </View>
+          <EmptyState
+            title="No fue posible cargar las solicitudes"
+            message="Comprueba tu conexión e inténtalo de nuevo."
+            variant="noResults"
+            action="Reintentar"
+            onAction={() => void refetch()}
+          />
         ) : (
-          <FlatList
-            contentContainerStyle={filteredCases.length ? styles.list : styles.emptyList}
-            data={filteredCases}
+          <SectionList
+            contentContainerStyle={
+              filteredCases.length
+                ? [styles.list, canCreate && styles.listWithAction]
+                : styles.emptyList
+            }
+            sections={groupCasesByDay(filteredCases)}
             keyExtractor={(item) => item.id}
+            renderSectionHeader={({ section }) => (
+              <Text style={styles.sectionTitle}>{section.title}</Text>
+            )}
             ListEmptyComponent={
-              <View style={styles.center}>
-                <Text style={styles.emptyTitle}>No hay casos para mostrar</Text>
-                <Text style={styles.muted}>
-                  {search || status !== 'todos' || effectiveScope !== 'todas'
-                    ? 'Cambia la búsqueda o los filtros.'
-                    : 'Las solicitudes visibles para tu rol aparecerán aquí.'}
-                </Text>
-              </View>
+              <EmptyState
+                title={hasFilters ? 'Sin resultados' : 'Todo al día'}
+                message={
+                  hasFilters
+                    ? 'Prueba con otra búsqueda o quita los filtros.'
+                    : 'Las solicitudes visibles para tu rol aparecerán aquí.'
+                }
+                variant={hasFilters ? 'noResults' : canCreate ? 'firstUse' : 'allDone'}
+                action={hasFilters ? 'Quitar filtros' : canCreate ? 'Nueva solicitud' : undefined}
+                onAction={
+                  hasFilters
+                    ? () => {
+                        setSearch('')
+                        changeFilters({
+                          status: 'todos',
+                          exactStatus: null,
+                          priority: null,
+                          sinceDays: null,
+                          activeOnly: false,
+                        })
+                      }
+                    : canCreate
+                      ? () => navigation.navigate('CreateCase')
+                      : undefined
+                }
+              />
             }
             refreshControl={
               <RefreshControl
@@ -285,14 +289,34 @@ export function CasesListScreen({ navigation, route }: Props) {
                 tintColor={colors.primary}
               />
             }
-            renderItem={({ item }) => (
-              <CaseCard
-                item={item}
-                onPress={() => navigation.navigate('CaseDetail', { caseId: item.id })}
-              />
-            )}
+            renderItem={({ item }) => {
+              const order = firstEntryOrder.get(item.id)
+              return (
+                <Animated.View
+                  entering={
+                    animateInitialList && !reduceMotion && order !== undefined
+                      ? FadeInDown.duration(220).delay(order * 40)
+                      : undefined
+                  }
+                >
+                  <CaseCard
+                    item={item}
+                    onPress={() => navigation.navigate('CaseDetail', { caseId: item.id })}
+                  />
+                </Animated.View>
+              )
+            }}
           />
         )}
+        {canCreate ? (
+          <View style={styles.floatingAction}>
+            <Button
+              label="Nueva solicitud"
+              icon="add"
+              onPress={() => navigation.navigate('CreateCase')}
+            />
+          </View>
+        ) : null}
       </View>
     </SafeAreaView>
   )
@@ -301,6 +325,14 @@ export function CasesListScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   container: { flex: 1, padding: spacing.md, gap: spacing.md },
+  heading: { ...typography.display, color: colors.text },
+  sectionTitle: {
+    ...typography.overline,
+    color: colors.textMuted,
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  floatingAction: { position: 'absolute', right: spacing.md, bottom: spacing.md },
   toolbar: { flexDirection: 'row', gap: spacing.sm },
   search: {
     flex: 1,
@@ -312,58 +344,18 @@ const styles = StyleSheet.create({
     color: colors.text,
     paddingHorizontal: spacing.md,
   },
-  createButton: {
-    minHeight: 48,
+  filters: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
+  legacyScopeFilter: {
+    minHeight: 44,
     justifyContent: 'center',
-    borderRadius: radius.md,
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.md,
-  },
-  createButtonText: { color: colors.white, fontWeight: '800' },
-  filters: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  filter: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 999,
+    borderRadius: radius.pill,
     backgroundColor: colors.surface,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: spacing.base,
   },
-  filterActive: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-  filterText: { color: colors.textMuted, fontSize: 12, fontWeight: '700' },
-  filterTextActive: { color: colors.primary },
+  legacyScopeText: { ...typography.caption, color: colors.textMuted },
   list: { gap: spacing.md, paddingBottom: spacing.lg },
+  listWithAction: { paddingBottom: 96 },
   emptyList: { flexGrow: 1 },
-  card: {
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    padding: spacing.md,
-  },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between' },
-  caseNumber: { color: colors.primary, fontSize: 12, fontWeight: '800' },
-  priority: { fontSize: 11, fontWeight: '800' },
-  cardTitle: { color: colors.text, fontSize: 17, fontWeight: '800' },
-  cardDescription: { color: colors.textMuted, lineHeight: 20 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  status: {
-    overflow: 'hidden',
-    borderRadius: 999,
-    backgroundColor: colors.primarySoft,
-    color: colors.primary,
-    fontSize: 12,
-    fontWeight: '700',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  meta: { color: colors.textMuted, fontSize: 12 },
-  location: { color: colors.textMuted, fontSize: 12 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
-  emptyTitle: { color: colors.text, fontSize: 18, fontWeight: '800' },
-  errorTitle: { color: colors.error, fontSize: 17, fontWeight: '800', textAlign: 'center' },
-  muted: { color: colors.textMuted, textAlign: 'center' },
-  retry: { borderRadius: radius.md, backgroundColor: colors.primary, padding: spacing.md },
-  retryText: { color: colors.white, fontWeight: '700' },
 })

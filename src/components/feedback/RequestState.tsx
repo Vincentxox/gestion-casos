@@ -1,7 +1,8 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
 
 import { EmptyState } from '@/components/feedback/EmptyState'
-import { colors, radius, spacing } from '@/theme/tokens'
+import { Button } from '@/components/ui/Button'
+import { colors, spacing, typography } from '@/theme/tokens'
 
 type Kind = 'empty' | 'error' | 'loading'
 
@@ -27,16 +28,7 @@ export function RequestState({
         {title}
       </Text>
       {message ? <Text style={styles.message}>{message}</Text> : null}
-      {kind === 'error' && onRetry ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Reintentar"
-          onPress={onRetry}
-          style={styles.button}
-        >
-          <Text style={styles.buttonText}>Reintentar</Text>
-        </Pressable>
-      ) : null}
+      {kind === 'error' && onRetry ? <Button label="Reintentar" onPress={onRetry} /> : null}
     </View>
   )
 }
@@ -49,14 +41,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     padding: spacing.lg,
   },
-  title: { color: colors.text, fontSize: 18, fontWeight: '800', textAlign: 'center' },
-  message: { color: colors.textMuted, textAlign: 'center', lineHeight: 21 },
-  button: {
-    minHeight: 44,
-    justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-  },
-  buttonText: { color: colors.white, fontWeight: '800' },
+  title: { ...typography.heading, color: colors.text, textAlign: 'center' },
+  message: { ...typography.body, color: colors.textMuted, textAlign: 'center' },
 })

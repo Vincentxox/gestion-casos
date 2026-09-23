@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { Button } from '@/components/ui/Button'
 import { FormField } from '@/components/forms/FormField'
-import { colors, radius, spacing } from '@/theme/tokens'
+import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 import { areaSchema } from '../schemas'
 import type { AreaInput, AreaRecord } from '../types'
@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
   form: { gap: spacing.md },
   description: { minHeight: 90, paddingTop: spacing.md },
   kindGroup: { gap: spacing.sm },
-  kindLabel: { color: colors.text, fontWeight: '700' },
+  kindLabel: { ...typography.body, color: colors.text },
   kindOption: {
     minHeight: 44,
     justifyContent: 'center',

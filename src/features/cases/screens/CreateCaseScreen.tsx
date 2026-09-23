@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
-import { colors, spacing } from '@/theme/tokens'
+import { colors, spacing, typography } from '@/theme/tokens'
 
 import { CaseForm } from '../components/CaseForm'
 import type { CreateCaseInput } from '../types'
@@ -64,8 +64,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   title: {
     color: colors.text,
-    fontSize: 25,
-    fontWeight: '800',
+    ...typography.display,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
   },

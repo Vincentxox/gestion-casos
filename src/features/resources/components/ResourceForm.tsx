@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { Button } from '@/components/ui/Button'
 import { FormField } from '@/components/forms/FormField'
-import { colors, radius, spacing } from '@/theme/tokens'
+import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 import { resourceSchema } from '../schemas'
 import {
@@ -135,7 +135,7 @@ export function ResourceForm({ resource, loading, onSubmit }: Props) {
 const styles = StyleSheet.create({
   form: { gap: spacing.md },
   field: { gap: spacing.sm },
-  label: { color: colors.text, fontWeight: '700' },
+  label: { ...typography.body, color: colors.text },
   options: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   option: {
     minHeight: 44,
@@ -147,6 +147,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   selected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-  optionText: { color: colors.text, fontWeight: '700' },
+  optionText: { ...typography.body, color: colors.text },
   description: { minHeight: 80, paddingTop: spacing.md },
 })

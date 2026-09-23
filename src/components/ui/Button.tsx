@@ -27,7 +27,13 @@ export function Button({
   const reduceMotion = useReducedMotion()
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: pressedScale.value }] }))
   const foreground =
-    variant === 'primary' ? colors.white : variant === 'danger' ? colors.dangerText : colors.primary
+    variant === 'primary'
+      ? colors.white
+      : variant === 'danger'
+        ? colors.dangerText
+        : variant === 'secondary'
+          ? colors.text
+          : colors.primary
 
   return (
     <Animated.View style={animatedStyle}>
@@ -77,7 +83,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   primary: { backgroundColor: colors.primary },
-  secondary: { backgroundColor: colors.surface, borderColor: colors.primary, borderWidth: 1 },
+  secondary: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 },
   danger: { backgroundColor: colors.dangerBadge },
   text: { backgroundColor: 'transparent' },
   disabled: { opacity: 0.55 },

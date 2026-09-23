@@ -1,11 +1,13 @@
-import { Ionicons } from '@expo/vector-icons'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { ScrollView, StyleSheet, Text, View } from 'react-native'
 
+import { Card } from '@/components/ui/Card'
+import { Icon } from '@/components/ui/Icon'
+import { IconTile } from '@/components/ui/IconTile'
+import { ScreenContainer } from '@/components/ui/ScreenContainer'
 import type { AdministrationStackParamList } from '@/navigation/types'
 import { useHomeSummary } from '@/features/home/useHomeSummary'
-import { colors, radius, spacing } from '@/theme/tokens'
+import { colors, spacing, typography } from '@/theme/tokens'
 
 type Props = NativeStackScreenProps<AdministrationStackParamList, 'AdministrationHome'>
 
@@ -30,13 +32,13 @@ const OPTIONS = [
   },
   {
     route: 'Categories' as const,
-    icon: 'pricetags-outline' as const,
+    icon: 'pricetag-outline' as const,
     title: 'Tipos de servicio',
     description: 'Define lo que atiende cada área técnica.',
   },
   {
     route: 'Resources' as const,
-    icon: 'construct-outline' as const,
+    icon: 'cube-outline' as const,
     title: 'Recursos',
     description: 'Administra materiales, herramientas y equipos.',
   },
@@ -48,7 +50,7 @@ const OPTIONS = [
   },
   {
     route: 'Organization' as const,
-    icon: 'briefcase-outline' as const,
+    icon: 'key-outline' as const,
     title: 'Mi empresa',
     description: 'Consulta y actualiza el nombre de tu empresa.',
   },
@@ -62,7 +64,7 @@ export function AdministrationHomeScreen({ navigation }: Props) {
     Invitations: summary.data?.admin?.invitaciones_pendientes,
   }
   return (
-    <SafeAreaView edges={['top']} style={styles.safeArea}>
+    <ScreenContainer padded={false}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <Text style={styles.eyebrow}>CONFIGURACIÓN</Text>
@@ -75,15 +77,13 @@ export function AdministrationHomeScreen({ navigation }: Props) {
         </View>
 
         {OPTIONS.map((option) => (
-          <Pressable
-            accessibilityRole="button"
+          <Card
+            accessibilityLabel={option.title}
             key={option.route}
             onPress={() => navigation.navigate(option.route)}
-            style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+            contentStyle={styles.card}
           >
-            <View style={styles.iconContainer}>
-              <Ionicons color={colors.primary} name={option.icon} size={26} />
-            </View>
+            <IconTile icon={option.icon} size={44} />
             <View style={styles.cardContent}>
               <Text style={styles.cardTitle}>
                 {option.title}
@@ -91,42 +91,27 @@ export function AdministrationHomeScreen({ navigation }: Props) {
               </Text>
               <Text style={styles.cardDescription}>{option.description}</Text>
             </View>
-            <Ionicons color={colors.primary} name="chevron-forward" size={24} />
-          </Pressable>
+            <Icon name="chevron-forward" size="base" color={colors.textMuted} />
+          </Card>
         ))}
       </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
   content: { flexGrow: 1, gap: spacing.md, padding: spacing.lg },
   header: { gap: spacing.sm, marginBottom: spacing.sm },
-  eyebrow: { color: colors.primary, fontSize: 12, fontWeight: '800', letterSpacing: 1.2 },
-  title: { color: colors.text, fontSize: 28, fontWeight: '800' },
-  subtitle: { color: colors.textMuted, fontSize: 15, lineHeight: 22 },
+  eyebrow: { ...typography.overline, color: colors.primary },
+  title: { ...typography.display, color: colors.text },
+  subtitle: { ...typography.body, color: colors.textMuted },
   card: {
     minHeight: 112,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
-    padding: spacing.md,
-  },
-  cardPressed: { opacity: 0.75 },
-  iconContainer: {
-    width: 52,
-    height: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.md,
-    backgroundColor: colors.primarySoft,
   },
   cardContent: { flex: 1, gap: spacing.xs },
-  cardTitle: { color: colors.text, fontSize: 18, fontWeight: '800' },
-  cardDescription: { color: colors.textMuted, fontSize: 13, lineHeight: 19 },
+  cardTitle: { ...typography.heading, color: colors.text },
+  cardDescription: { ...typography.caption, color: colors.textMuted },
 })

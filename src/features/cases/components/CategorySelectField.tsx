@@ -3,7 +3,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import type { CategoryRecord } from '@/features/categories/types'
-import { colors, radius, spacing } from '@/theme/tokens'
+import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 interface Props {
   categories: CategoryRecord[]
@@ -70,7 +70,12 @@ export function CategorySelectField({
                   Elige el servicio que atenderá un área técnica.
                 </Text>
               </View>
-              <Pressable accessibilityLabel="Cerrar" hitSlop={8} onPress={onClose}>
+              <Pressable
+                accessibilityLabel="Cerrar"
+                accessibilityRole="button"
+                onPress={onClose}
+                style={styles.closeButton}
+              >
                 <Ionicons color={colors.text} name="close" size={28} />
               </Pressable>
             </View>
@@ -108,7 +113,7 @@ export function CategorySelectField({
 
 const styles = StyleSheet.create({
   container: { gap: spacing.xs },
-  label: { color: colors.text, fontSize: 14, fontWeight: '600' },
+  label: { ...typography.body, color: colors.text },
   selector: {
     minHeight: 50,
     flexDirection: 'row',
@@ -121,9 +126,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   selectorError: { borderColor: colors.error },
-  value: { flex: 1, color: colors.text, fontSize: 16 },
+  value: { ...typography.body, flex: 1, color: colors.text },
   placeholder: { color: colors.textMuted },
-  error: { color: colors.error, fontSize: 12 },
+  error: { ...typography.caption, color: colors.error },
   overlay: { flex: 1, justifyContent: 'flex-end' },
   backdrop: {
     position: 'absolute',
@@ -150,8 +155,9 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
   },
   sheetTitleGroup: { flex: 1, gap: spacing.xs },
-  sheetTitle: { color: colors.text, fontSize: 22, fontWeight: '800' },
-  sheetSubtitle: { color: colors.textMuted, fontSize: 13, lineHeight: 18 },
+  sheetTitle: { ...typography.title, color: colors.text },
+  closeButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  sheetSubtitle: { ...typography.caption, color: colors.textMuted },
   options: { gap: spacing.sm, padding: spacing.lg, paddingBottom: spacing.xl },
   option: {
     minHeight: 68,
@@ -165,6 +171,6 @@ const styles = StyleSheet.create({
   },
   optionSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
   optionContent: { flex: 1, gap: spacing.xs },
-  optionName: { color: colors.text, fontSize: 15, fontWeight: '700' },
-  areaName: { color: colors.primary, fontSize: 12, fontWeight: '700' },
+  optionName: { ...typography.body, color: colors.text },
+  areaName: { ...typography.caption, color: colors.primary },
 })

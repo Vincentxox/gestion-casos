@@ -6,13 +6,14 @@ import { Controller, useForm } from 'react-hook-form'
 import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
 import { FormField } from '@/components/forms/FormField'
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
 import { getAuthErrorMessage } from '@/features/auth/authErrors'
 import { loginSchema, type LoginInput } from '@/features/auth/schemas'
 import type { AuthStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
-import { colors, radius, spacing } from '@/theme/tokens'
+import { colors, elevation, radius, spacing, typography } from '@/theme/tokens'
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>
 
@@ -82,7 +83,7 @@ export function LoginScreen({ navigation }: Props) {
         <Text style={styles.subtitle}>Accede de forma segura a tus casos y documentos.</Text>
       </View>
 
-      <View style={styles.card}>
+      <Card contentStyle={styles.card}>
         <Text accessibilityRole="header" style={styles.cardTitle}>
           Iniciar sesión
         </Text>
@@ -176,7 +177,7 @@ export function LoginScreen({ navigation }: Props) {
         >
           <Text style={styles.linkText}>¿No tienes una cuenta? Crear cuenta</Text>
         </Pressable>
-      </View>
+      </Card>
     </KeyboardFormScrollView>
   )
 }
@@ -202,31 +203,22 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontSize: 28,
-    fontWeight: '800',
+    ...typography.display,
   },
   subtitle: {
     maxWidth: 320,
     color: colors.textMuted,
-    fontSize: 15,
-    lineHeight: 22,
+    ...typography.body,
     textAlign: 'center',
   },
   card: {
     gap: spacing.md,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
     padding: spacing.lg,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
+    ...elevation.md,
   },
   cardTitle: {
     color: colors.text,
-    fontSize: 22,
-    fontWeight: '700',
+    ...typography.title,
   },
   sessionNotice: {
     gap: spacing.sm,
@@ -236,8 +228,7 @@ const styles = StyleSheet.create({
   },
   sessionNoticeText: {
     color: colors.text,
-    fontSize: 13,
-    lineHeight: 19,
+    ...typography.caption,
   },
   retryButton: {
     alignSelf: 'flex-start',
@@ -246,7 +237,7 @@ const styles = StyleSheet.create({
   },
   retryButtonText: {
     color: colors.primary,
-    fontWeight: '800',
+    ...typography.caption,
   },
   linkButton: {
     minHeight: 44,
@@ -265,7 +256,7 @@ const styles = StyleSheet.create({
   },
   dividerText: {
     color: colors.textMuted,
-    fontSize: 13,
+    ...typography.caption,
   },
   googleButton: {
     minHeight: 50,
@@ -286,13 +277,11 @@ const styles = StyleSheet.create({
   },
   googleButtonText: {
     color: colors.text,
-    fontSize: 16,
-    fontWeight: '700',
+    ...typography.heading,
   },
   linkText: {
     color: colors.primary,
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.caption,
     textAlign: 'center',
   },
 })

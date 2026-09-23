@@ -14,7 +14,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
-import { colors, radius, spacing } from '@/theme/tokens'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { Chip } from '@/components/ui/Chip'
+import { IconTile } from '@/components/ui/IconTile'
+import { ScreenContainer } from '@/components/ui/ScreenContainer'
+import { EmptyState } from '@/components/feedback/EmptyState'
+import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 import { ResourceForm } from '../components/ResourceForm'
 import { RESOURCE_KIND_LABELS, type ResourceInput, type ResourceRecord } from '../types'
@@ -75,7 +81,7 @@ export function ResourcesScreen() {
   }
 
   return (
-    <SafeAreaView edges={['bottom']} style={styles.safeArea}>
+    <ScreenContainer edges={['bottom']} padded={false}>
       <View style={styles.container}>
         <View style={styles.header}>
           <View style={styles.headerText}>
@@ -101,13 +107,7 @@ export function ResourcesScreen() {
         ) : resources.error ? (
           <View style={styles.center}>
             <Text style={styles.error}>No fue posible cargar los recursos.</Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => void resources.refetch()}
-              style={styles.retry}
-            >
-              <Text style={styles.retryText}>Reintentar</Text>
-            </Pressable>
+            <Button label="Reintentar" onPress={() => void resources.refetch()} />
           </View>
         ) : (
           <FlatList
@@ -115,7 +115,13 @@ export function ResourcesScreen() {
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.list}
             ListEmptyComponent={
-              <Text style={styles.empty}>Todavía no hay recursos. Agrega el primero.</Text>
+              <EmptyState
+                variant="firstUse"
+                title="Todavía no hay recursos"
+                message="Agrega el primero para empezar a registrar su uso."
+                action="Crear recurso"
+                onAction={() => openForm()}
+              />
             }
             refreshControl={
               <RefreshControl
@@ -125,11 +131,16 @@ export function ResourcesScreen() {
               />
             }
             renderItem={({ item }) => (
-              <View style={styles.card}>
+              <Card contentStyle={styles.card}>
+                <IconTile icon="cube-outline" />
                 <View style={styles.cardContent}>
                   <Text style={styles.name}>{item.name}</Text>
+                  <Chip
+                    label={item.isActive ? 'Activo' : 'Inactivo'}
+                    tone={item.isActive ? 'success' : 'neutral'}
+                  />
                   <Text style={styles.meta}>
-                    {RESOURCE_KIND_LABELS[item.kind]} · {item.isActive ? 'Activo' : 'Inactivo'}
+                    {RESOURCE_KIND_LABELS[item.kind]}
                     {item.unit ? ` · ${item.unit}` : ''}
                   </Text>
                   {item.unitCost !== null ? (
@@ -161,7 +172,7 @@ export function ResourcesScreen() {
                     />
                   </Pressable>
                 </View>
-              </View>
+              </Card>
             )}
           />
         )}
@@ -196,48 +207,40 @@ export function ResourcesScreen() {
           </SafeAreaView>
         </View>
       </Modal>
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
   container: { flex: 1, gap: spacing.lg, padding: spacing.lg },
   header: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
   headerText: { flex: 1, gap: spacing.xs },
-  eyebrow: { color: colors.primary, fontSize: 12, fontWeight: '800', letterSpacing: 1.2 },
-  title: { color: colors.text, fontSize: 28, fontWeight: '800' },
-  subtitle: { color: colors.textMuted, lineHeight: 21 },
+  eyebrow: { ...typography.overline, color: colors.primary },
+  title: { ...typography.display, color: colors.text },
+  subtitle: { ...typography.body, color: colors.textMuted },
   addButton: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: radius.xl,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.primary,
   },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
-  error: { color: colors.error, textAlign: 'center' },
-  retry: { padding: spacing.md, backgroundColor: colors.primary, borderRadius: radius.md },
-  retryText: { color: colors.white, fontWeight: '700' },
+  error: { ...typography.body, color: colors.error, textAlign: 'center' },
   list: { gap: spacing.md, paddingBottom: spacing.xl },
-  empty: { color: colors.textMuted, textAlign: 'center', paddingTop: spacing.xl },
   card: {
     flexDirection: 'row',
     gap: spacing.sm,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
+    minHeight: 88,
   },
   cardContent: { flex: 1, gap: spacing.xs },
-  name: { color: colors.text, fontSize: 17, fontWeight: '800' },
-  meta: { color: colors.primary, fontSize: 13 },
-  description: { color: colors.textMuted, fontSize: 13 },
+  name: { ...typography.heading, color: colors.text },
+  meta: { ...typography.caption, color: colors.primary },
+  description: { ...typography.caption, color: colors.textMuted },
   actions: { justifyContent: 'center', gap: spacing.sm },
   iconButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(23, 43, 77, 0.42)' },
+  backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.backdrop },
   modal: {
     height: '80%',
     borderTopLeftRadius: radius.lg,
@@ -252,6 +255,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  modalTitle: { color: colors.text, fontSize: 21, fontWeight: '800' },
+  modalTitle: { ...typography.title, color: colors.text },
   modalContent: { flexGrow: 1, padding: spacing.lg },
 })

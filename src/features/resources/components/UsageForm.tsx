@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { Button } from '@/components/ui/Button'
 import { FormField } from '@/components/forms/FormField'
 import type { AssignableProfile } from '@/features/cases/types'
-import { colors, radius, spacing } from '@/theme/tokens'
+import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 import { usageSchema } from '../schemas'
 import {
@@ -204,7 +204,7 @@ export function UsageForm({ resources, technicians, usage, loading, onSubmit }: 
 const styles = StyleSheet.create({
   form: { gap: spacing.md },
   field: { gap: spacing.sm },
-  label: { color: colors.text, fontWeight: '700' },
+  label: { ...typography.body, color: colors.text },
   options: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   option: {
     minHeight: 44,
@@ -216,8 +216,8 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   selected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-  optionText: { color: colors.text, fontWeight: '700' },
-  error: { color: colors.error, fontSize: 12 },
+  optionText: { ...typography.body, color: colors.text },
+  error: { ...typography.caption, color: colors.error },
   info: { color: colors.textMuted, lineHeight: 21 },
   notes: { minHeight: 80, paddingTop: spacing.md },
 })

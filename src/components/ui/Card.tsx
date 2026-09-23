@@ -12,11 +12,13 @@ import { colors, elevation, radius } from '@/theme/tokens'
 export function Card({
   children,
   style,
+  contentStyle,
   onPress,
   accessibilityLabel,
 }: {
   children: ReactNode
   style?: StyleProp<ViewStyle>
+  contentStyle?: StyleProp<ViewStyle>
   onPress?: () => void
   accessibilityLabel?: string
 }) {
@@ -24,10 +26,10 @@ export function Card({
   const reduceMotion = useReducedMotion()
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }))
 
-  if (!onPress) return <View style={[styles.card, style]}>{children}</View>
+  if (!onPress) return <View style={[styles.card, style, contentStyle]}>{children}</View>
 
   return (
-    <Animated.View style={animatedStyle}>
+    <Animated.View style={[style, animatedStyle]}>
       <Pressable
         accessibilityLabel={accessibilityLabel}
         accessibilityRole="button"
@@ -38,7 +40,7 @@ export function Card({
         onPressOut={() => {
           scale.set(withTiming(1, { duration: 120 }))
         }}
-        style={[styles.card, style]}
+        style={[styles.card, contentStyle]}
       >
         {children}
       </Pressable>

@@ -1,3 +1,5 @@
+import type { IconName } from '@/components/ui/Icon'
+
 export const APP_ROLES = [
   'administrador',
   'jefe_area',
@@ -25,4 +27,12 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   tecnico: 'Técnico',
   solicitante: 'Solicitante',
   auditor: 'Auditor',
+}
+
+export const ROLE_ICONS: Record<AppRole, IconName> = {
+  administrador: 'shield-half-outline',
+  jefe_area: 'ribbon-outline',
+  tecnico: 'construct-outline',
+  solicitante: 'person-outline',
+  auditor: 'eye-outline',
 }

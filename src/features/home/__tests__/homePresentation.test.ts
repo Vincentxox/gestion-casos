@@ -1,5 +1,13 @@
 import type { Profile } from '@/features/auth/types'
-import { getAdminAlerts, getHomeTileTarget, getHomeTiles } from '../homePresentation'
+import type { CaseRecord } from '@/features/cases/types'
+import {
+  getAdminAlerts,
+  getGreeting,
+  getHomeHero,
+  getHomeRecentCases,
+  getHomeTileTarget,
+  getHomeTiles,
+} from '../homePresentation'
 import type { HomeSummary } from '../homeService'
 
 const profile: Profile = {
@@ -39,7 +47,68 @@ const summary: HomeSummary = {
 }
 
 test('el solicitante ve únicamente sus solicitudes activas', () => {
-  expect(getHomeTiles(profile, summary)).toEqual([{ label: 'En curso', value: 2 }])
+  expect(getHomeTiles(profile, summary)).toEqual([
+    { label: 'En curso', value: 2, icon: 'list-outline', phase: 'curso' },
+  ])
+})
+
+test('el saludo depende de la hora local', () => {
+  expect([getGreeting(8), getGreeting(15), getGreeting(21)]).toEqual([
+    'Buenos días',
+    'Buenas tardes',
+    'Buenas noches',
+  ])
+})
+
+test('el destacado usa los conteos y rutas del rol', () => {
+  expect(getHomeHero(profile, summary)?.count).toBe(2)
+  expect(getHomeHero({ ...profile, role: 'tecnico' }, summary)?.count).toBe(6)
+  expect(getHomeHero({ ...profile, role: 'administrador' }, summary)?.target).toEqual({
+    scope: 'por_aceptar',
+  })
+  expect(
+    getHomeHero(
+      { ...profile, role: 'administrador' },
+      { ...summary, inbox: { por_aceptar: 0, sin_asignar: 1 } },
+    )?.target,
+  ).toEqual({ scope: 'sin_asignar' })
+  expect(
+    getHomeHero({ ...profile, role: 'jefe_area' }, { ...summary, area_kind: 'tecnica' })?.detail,
+  ).toBe('4 por aceptar y 1 por asignar')
+  expect(getHomeHero({ ...profile, role: 'auditor' }, summary)).toBeNull()
+})
+
+test('Inicio muestra como máximo tres solicitudes activas relevantes al rol', () => {
+  const cases = [
+    {
+      id: 'a',
+      status: 'solicitado',
+      assignedTo: null,
+      createdBy: 'user',
+      createdAt: '2026-09-23T12:00:00Z',
+    },
+    {
+      id: 'b',
+      status: 'en_ejecucion',
+      assignedTo: 'user',
+      createdBy: 'other',
+      createdAt: '2026-09-22T12:00:00Z',
+    },
+    {
+      id: 'c',
+      status: 'aprobado',
+      assignedTo: 'user',
+      createdBy: 'other',
+      createdAt: '2026-09-24T12:00:00Z',
+    },
+  ] as CaseRecord[]
+  expect(getHomeRecentCases(profile, 'solicitante', cases).map((item) => item.id)).toEqual(['a'])
+  expect(
+    getHomeRecentCases({ ...profile, role: 'tecnico' }, 'tecnica', cases).map((item) => item.id),
+  ).toEqual(['b'])
+  expect(
+    getHomeRecentCases({ ...profile, role: 'administrador' }, null, cases).map((item) => item.id),
+  ).toEqual(['a', 'b'])
 })
 
 test('el técnico ve sus tres contadores de trabajo', () => {
@@ -48,12 +117,27 @@ test('el técnico ve sus tres contadores de trabajo', () => {
   ])
 })
 
+test('cada contador define ícono y fase sin depender del texto visible', () => {
+  for (const role of ['administrador', 'auditor', 'jefe_area', 'tecnico', 'solicitante'] as const) {
+    for (const tile of getHomeTiles({ ...profile, role }, summary)) {
+      expect(tile.icon).toBeTruthy()
+      expect(tile.phase).toBeTruthy()
+    }
+  }
+})
+
 test('el jefe técnico ve su bandeja y alertas operativas', () => {
   const tiles = getHomeTiles(
     { ...profile, role: 'jefe_area' },
     { ...summary, area_kind: 'tecnica' },
   )
-  expect(tiles[0]).toEqual({ label: 'Por aceptar', value: 4, emphasis: true })
+  expect(tiles[0]).toEqual({
+    label: 'Por aceptar',
+    value: 4,
+    icon: 'file-tray-outline',
+    phase: 'nueva',
+    emphasis: true,
+  })
   expect(tiles[1]?.label).toBe('Sin asignar')
 })
 

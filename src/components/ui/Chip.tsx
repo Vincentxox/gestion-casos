@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
+import { Icon, type IconName } from '@/components/ui/Icon'
 import { colors, fonts, radius, spacing } from '@/theme/tokens'
 
 type Tone = 'neutral' | 'info' | 'success' | 'warning' | 'danger'
@@ -8,11 +9,15 @@ export function Chip({
   label,
   tone = 'neutral',
   selected = false,
+  icon,
+  accessibilityLabel,
   onPress,
 }: {
   label: string
   tone?: Tone
   selected?: boolean
+  icon?: IconName
+  accessibilityLabel?: string
   onPress?: () => void
 }) {
   const toneStyles = {
@@ -23,8 +28,12 @@ export function Chip({
     danger: [colors.dangerSoft, colors.error],
   } as const
   const [backgroundColor, color] = toneStyles[tone]
+  const foreground = selected ? colors.white : color
   const content = (
-    <Text style={[styles.label, { color: selected ? colors.white : color }]}>{label}</Text>
+    <>
+      {icon ? <Icon name={icon} size="inline" color={foreground} /> : null}
+      <Text style={[styles.label, { color: foreground }]}>{label}</Text>
+    </>
   )
   if (!onPress) {
     return <View style={[styles.chip, { backgroundColor }]}>{content}</View>
@@ -32,7 +41,7 @@ export function Chip({
 
   return (
     <Pressable
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel ?? label}
       accessibilityRole="button"
       accessibilityState={{ selected }}
       hitSlop={4}
@@ -51,6 +60,9 @@ export function Chip({
 const styles = StyleSheet.create({
   chip: {
     minHeight: 36,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
     alignSelf: 'flex-start',
     justifyContent: 'center',
     borderRadius: radius.pill,

@@ -1,12 +1,13 @@
 import { useState } from 'react'
-import { ActivityIndicator, Alert, Share, StyleSheet, Text, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { ActivityIndicator, Alert, Share, StyleSheet, Text } from 'react-native'
 
 import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { ScreenContainer } from '@/components/ui/ScreenContainer'
 import { FormField } from '@/components/forms/FormField'
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
 import { useAuthStore } from '@/store/authStore'
-import { colors, radius, spacing } from '@/theme/tokens'
+import { colors, spacing, typography } from '@/theme/tokens'
 
 import {
   useOrganization,
@@ -61,7 +62,7 @@ export function OrganizationScreen() {
   }
 
   return (
-    <SafeAreaView edges={['bottom']} style={styles.safeArea}>
+    <ScreenContainer edges={['bottom']} padded={false}>
       <KeyboardFormScrollView contentContainerStyle={styles.content}>
         <Text accessibilityRole="header" style={styles.title}>
           Mi empresa
@@ -71,7 +72,7 @@ export function OrganizationScreen() {
           <Button label="Reintentar" onPress={() => void organization.refetch()} />
         ) : null}
         {organization.data ? (
-          <View style={styles.card}>
+          <Card contentStyle={styles.card}>
             <FormField
               label="Nombre de la empresa"
               value={name}
@@ -79,9 +80,9 @@ export function OrganizationScreen() {
               maxLength={120}
             />
             <Button label="Guardar nombre" loading={rename.isPending} onPress={() => void save()} />
-          </View>
+          </Card>
         ) : null}
-        <View style={styles.card}>
+        <Card contentStyle={styles.card}>
           <Text style={styles.codeTitle}>Código de acceso</Text>
           {joinCode.isLoading ? (
             <ActivityIndicator color={colors.primary} />
@@ -110,25 +111,17 @@ export function OrganizationScreen() {
               />
             </>
           )}
-        </View>
+        </Card>
       </KeyboardFormScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
   content: { flexGrow: 1, gap: spacing.lg, padding: spacing.lg },
-  title: { color: colors.text, fontSize: 28, fontWeight: '800' },
-  card: {
-    gap: spacing.lg,
-    padding: spacing.lg,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-  },
-  codeTitle: { color: colors.text, fontSize: 18, fontWeight: '800' },
-  code: { color: colors.primary, fontSize: 28, fontWeight: '800', letterSpacing: 2 },
-  hint: { color: colors.textMuted, fontSize: 14, lineHeight: 21 },
+  title: { ...typography.display, color: colors.text },
+  card: { gap: spacing.lg, padding: spacing.lg },
+  codeTitle: { ...typography.heading, color: colors.text },
+  code: { ...typography.display, color: colors.primary, letterSpacing: 2 },
+  hint: { ...typography.body, color: colors.textMuted },
 })

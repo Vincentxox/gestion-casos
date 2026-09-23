@@ -18,7 +18,7 @@ import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollVi
 import { useAssignableProfiles, useCaseDetail } from '@/features/cases/useCases'
 import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
-import { colors, radius, spacing } from '@/theme/tokens'
+import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 import { UsageForm } from '../components/UsageForm'
 import { canManageCaseUsage } from '../resourcePermissions'
@@ -248,21 +248,21 @@ const styles = StyleSheet.create({
   container: { flex: 1, gap: spacing.md, padding: spacing.lg },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   headerText: { flex: 1, gap: spacing.xs },
-  eyebrow: { color: colors.primary, fontSize: 12, fontWeight: '800', letterSpacing: 1.2 },
-  title: { color: colors.text, fontSize: 25, fontWeight: '800' },
-  subtitle: { color: colors.textMuted, lineHeight: 20 },
+  eyebrow: { ...typography.overline, color: colors.primary },
+  title: { ...typography.display, color: colors.text },
+  subtitle: { ...typography.body, color: colors.textMuted },
   addButton: {
     width: 48,
     height: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 24,
+    borderRadius: radius.xl,
     backgroundColor: colors.primary,
   },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md },
   error: { color: colors.error, textAlign: 'center' },
   retry: { padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.primary },
-  retryText: { color: colors.white, fontWeight: '700' },
+  retryText: { ...typography.body, color: colors.white },
   list: { gap: spacing.md, paddingBottom: spacing.xl },
   hint: { color: colors.textMuted, lineHeight: 20 },
   empty: { color: colors.textMuted, textAlign: 'center', paddingTop: spacing.xl },
@@ -276,12 +276,12 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   cardContent: { flex: 1, gap: spacing.xs },
-  name: { color: colors.text, fontWeight: '800', fontSize: 16 },
-  meta: { color: colors.primary, fontSize: 13 },
+  name: { ...typography.heading, color: colors.text },
+  meta: { ...typography.caption, color: colors.primary },
   notes: { color: colors.textMuted },
   actions: { justifyContent: 'center', gap: spacing.sm },
   iconButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(23, 43, 77, 0.42)' },
+  backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.backdrop },
   modal: {
     height: '82%',
     borderTopLeftRadius: radius.lg,
@@ -296,6 +296,6 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     padding: spacing.lg,
   },
-  modalTitle: { color: colors.text, fontSize: 21, fontWeight: '800' },
+  modalTitle: { ...typography.title, color: colors.text },
   modalContent: { flexGrow: 1, padding: spacing.lg },
 })

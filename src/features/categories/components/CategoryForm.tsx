@@ -5,7 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { Button } from '@/components/ui/Button'
 import { FormField } from '@/components/forms/FormField'
 import type { AreaRecord } from '@/features/areas/types'
-import { colors, spacing } from '@/theme/tokens'
+import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 import { categorySchema } from '../schemas'
 import type { CategoryInput, CategoryRecord } from '../types'
@@ -113,19 +113,19 @@ export function CategoryForm({ areas, category, loading, onSubmit }: Props) {
 const styles = StyleSheet.create({
   form: { gap: spacing.md },
   field: { gap: spacing.xs },
-  label: { color: colors.text, fontSize: 14, fontWeight: '600' },
+  label: { ...typography.body, color: colors.text },
   areaOptions: { gap: spacing.sm, paddingVertical: spacing.xs },
   areaOption: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 999,
+    borderRadius: radius.pill,
     backgroundColor: colors.surface,
     paddingHorizontal: 13,
     paddingVertical: 9,
   },
   areaOptionActive: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-  areaOptionText: { color: colors.textMuted, fontSize: 13, fontWeight: '700' },
+  areaOptionText: { ...typography.caption, color: colors.textMuted },
   areaOptionTextActive: { color: colors.primary },
-  error: { color: colors.error, fontSize: 12 },
+  error: { ...typography.caption, color: colors.error },
   description: { minHeight: 80, paddingTop: spacing.md },
 })

@@ -1,7 +1,7 @@
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-import { colors, radius, spacing } from '@/theme/tokens'
+import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 export interface SheetAction<T extends string> {
   id: T
@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     left: 0,
-    backgroundColor: 'rgba(23,43,77,0.42)',
+    backgroundColor: colors.backdrop,
   },
   sheet: {
     gap: spacing.sm,
@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: radius.lg,
     backgroundColor: colors.surface,
   },
-  title: { color: colors.text, fontSize: 20, fontWeight: '800', marginBottom: spacing.sm },
+  title: { ...typography.title, color: colors.text, marginBottom: spacing.sm },
   option: {
     minHeight: 48,
     justifyContent: 'center',
@@ -77,6 +77,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.md,
   },
-  optionText: { color: colors.primary, fontWeight: '800' },
+  optionText: { ...typography.heading, color: colors.primary },
   destructive: { color: colors.error },
 })

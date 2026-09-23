@@ -14,8 +14,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { Chip } from '@/components/ui/Chip'
+import { Icon } from '@/components/ui/Icon'
+import { ScreenContainer } from '@/components/ui/ScreenContainer'
 import { useAreas } from '@/features/areas/useAreas'
-import { APP_ROLES, ROLE_LABELS, type AppRole } from '@/features/auth/types'
+import { APP_ROLES, ROLE_ICONS, ROLE_LABELS, type AppRole } from '@/features/auth/types'
 import { colors, radius, spacing, typography } from '@/theme/tokens'
 import { formatRelativeDate } from '@/theme/formatters'
 
@@ -81,7 +85,7 @@ export function AccessRequestsScreen() {
   }
 
   return (
-    <SafeAreaView edges={['bottom']} style={styles.safeArea}>
+    <ScreenContainer edges={['bottom']} padded={false}>
       <View style={styles.content}>
         <Text accessibilityRole="header" style={styles.title}>
           Solicitudes de acceso
@@ -129,16 +133,20 @@ export function AccessRequestsScreen() {
             </Text>
           }
           renderItem={({ item }) => (
-            <Pressable
-              accessibilityRole="button"
-              disabled={resolved}
-              onPress={() => {
-                setSelected(item)
-                setRole('solicitante')
-                setAreaId(null)
-                setNote('')
-              }}
+            <Card
+              accessibilityLabel={`Revisar solicitud de ${item.fullName || item.email}`}
+              onPress={
+                resolved
+                  ? undefined
+                  : () => {
+                      setSelected(item)
+                      setRole('solicitante')
+                      setAreaId(null)
+                      setNote('')
+                    }
+              }
               style={styles.card}
+              contentStyle={styles.cardContent}
             >
               <Text style={styles.name}>{item.fullName || item.email}</Text>
               <Text style={styles.subtext}>{item.email}</Text>
@@ -146,7 +154,7 @@ export function AccessRequestsScreen() {
                 {formatRelativeDate(item.createdAt)} · {item.status}
               </Text>
               {item.decisionNote ? <Text style={styles.subtext}>{item.decisionNote}</Text> : null}
-            </Pressable>
+            </Card>
           )}
         />
       </View>
@@ -165,26 +173,25 @@ export function AccessRequestsScreen() {
                   accessibilityLabel="Cerrar"
                   accessibilityRole="button"
                   onPress={() => setSelected(null)}
+                  style={styles.closeButton}
                 >
-                  <Text style={styles.close}>×</Text>
+                  <Icon name="close" size="base" color={colors.text} />
                 </Pressable>
               </View>
               <Text style={styles.subtext}>{selected?.email}</Text>
               <Text style={styles.name}>Asignar rol</Text>
               <View style={styles.choices}>
                 {APP_ROLES.map((option) => (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: role === option }}
+                  <Chip
                     key={option}
+                    icon={ROLE_ICONS[option]}
+                    label={ROLE_LABELS[option]}
+                    selected={role === option}
                     onPress={() => {
                       setRole(option)
                       setAreaId(null)
                     }}
-                    style={[styles.choice, role === option && styles.choiceSelected]}
-                  >
-                    <Text style={styles.choiceText}>{ROLE_LABELS[option]}</Text>
-                  </Pressable>
+                  />
                 ))}
               </View>
               <Text style={styles.name}>Asignar área</Text>
@@ -239,12 +246,11 @@ export function AccessRequestsScreen() {
           </SafeAreaView>
         </View>
       </Modal>
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
   content: { flex: 1, padding: spacing.lg, gap: spacing.md },
   title: { color: colors.text, ...typography.display },
   tabs: { flexDirection: 'row', gap: spacing.sm },
@@ -258,16 +264,9 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   tabSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-  tabText: { color: colors.text, fontWeight: '700' },
-  card: {
-    gap: spacing.xs,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
+  tabText: { ...typography.caption, color: colors.text },
+  card: { marginBottom: spacing.sm },
+  cardContent: { gap: spacing.xs, padding: spacing.md },
   name: { color: colors.text, ...typography.heading },
   subtext: { color: colors.textMuted, ...typography.body },
   empty: { color: colors.textMuted, ...typography.body },
@@ -281,7 +280,7 @@ const styles = StyleSheet.create({
   },
   sheetContent: { gap: spacing.md, padding: spacing.lg },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  close: { color: colors.text, fontSize: 30 },
+  closeButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   choices: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   choice: {
     minHeight: 44,
@@ -293,7 +292,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   choiceSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-  choiceText: { color: colors.text },
+  choiceText: { ...typography.body, color: colors.text },
   input: {
     minHeight: 64,
     borderWidth: 1,
@@ -304,5 +303,5 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   reject: { minHeight: 48, alignItems: 'center', justifyContent: 'center' },
-  rejectText: { color: colors.error, fontWeight: '700' },
+  rejectText: { ...typography.body, color: colors.error },
 })

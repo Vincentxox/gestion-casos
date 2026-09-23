@@ -8,7 +8,7 @@ import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollVi
 import { Button } from '@/components/ui/Button'
 import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
-import { colors, radius, spacing } from '@/theme/tokens'
+import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 import { changeCaseStatusSchema } from '../schemas'
 import { getAvailableCaseActions } from '../casePermissions'
@@ -139,9 +139,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   message: { color: colors.textMuted, textAlign: 'center' },
-  currentLabel: { color: colors.textMuted, fontSize: 13, fontWeight: '700' },
-  currentValue: { color: colors.text, fontSize: 22, fontWeight: '800' },
-  label: { color: colors.text, fontSize: 14, fontWeight: '700' },
+  currentLabel: { ...typography.caption, color: colors.textMuted },
+  currentValue: { ...typography.title, color: colors.text },
+  label: { ...typography.body, color: colors.text },
   options: { gap: spacing.sm },
   option: {
     borderWidth: 1,
@@ -152,8 +152,8 @@ const styles = StyleSheet.create({
   },
   optionSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
   optionDisabled: { opacity: 0.55 },
-  optionText: { color: colors.text, fontWeight: '700' },
+  optionText: { ...typography.body, color: colors.text },
   optionTextSelected: { color: colors.primary },
-  error: { color: colors.error, fontSize: 12 },
+  error: { ...typography.caption, color: colors.error },
   comment: { minHeight: 120, paddingTop: spacing.md },
 })

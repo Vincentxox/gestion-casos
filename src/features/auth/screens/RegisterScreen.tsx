@@ -4,13 +4,14 @@ import { Controller, useForm } from 'react-hook-form'
 import { Alert, StyleSheet, Text, View } from 'react-native'
 
 import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
 import { FormField } from '@/components/forms/FormField'
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
 import { getAuthErrorMessage } from '@/features/auth/authErrors'
 import { registrationSchema, type RegistrationInput } from '@/features/auth/schemas'
 import type { AuthStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
-import { colors, radius, spacing } from '@/theme/tokens'
+import { colors, spacing, typography } from '@/theme/tokens'
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Register'>
 
@@ -63,7 +64,7 @@ export function RegisterScreen({ navigation }: Props) {
         </Text>
       </View>
 
-      <View style={styles.card}>
+      <Card contentStyle={styles.card}>
         <Controller
           control={control}
           name="fullName"
@@ -138,7 +139,7 @@ export function RegisterScreen({ navigation }: Props) {
         />
 
         <Button label="Crear cuenta" loading={isSubmitting} onPress={() => void submit()} />
-      </View>
+      </Card>
     </KeyboardFormScrollView>
   )
 }
@@ -159,18 +160,14 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontSize: 28,
-    fontWeight: '800',
+    ...typography.display,
   },
   subtitle: {
     color: colors.textMuted,
-    fontSize: 15,
-    lineHeight: 22,
+    ...typography.body,
   },
   card: {
     gap: spacing.md,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
     padding: spacing.lg,
   },
 })

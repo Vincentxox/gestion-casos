@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/Button'
 import { FormField } from '@/components/forms/FormField'
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
 import { useCategories } from '@/features/categories/useCategories'
-import { colors, radius, spacing } from '@/theme/tokens'
+import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 import { updateCaseSchema } from '../schemas'
 import type { CasePriority, UpdateCaseInput } from '../types'
@@ -147,12 +147,12 @@ export function CaseForm({
 
 const styles = StyleSheet.create({
   content: { gap: spacing.md, padding: spacing.lg, paddingBottom: spacing.xl },
-  sectionTitle: { color: colors.text, fontSize: 18, fontWeight: '800', marginTop: spacing.sm },
+  sectionTitle: { ...typography.heading, color: colors.text, marginTop: spacing.sm },
   multiline: { minHeight: 110, paddingTop: spacing.md },
-  catalogError: { color: colors.error, fontSize: 12, fontWeight: '600' },
+  catalogError: { ...typography.caption, color: colors.error },
   priorityGroup: { gap: spacing.sm },
-  label: { color: colors.text, fontSize: 14, fontWeight: '600' },
-  priorityHint: { color: colors.textMuted, fontSize: 13, lineHeight: 19 },
+  label: { ...typography.body, color: colors.text },
+  priorityHint: { ...typography.caption, color: colors.textMuted },
   priorityRow: { flexDirection: 'row', gap: spacing.sm },
   priority: {
     flex: 1,
@@ -164,6 +164,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   priorityActive: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-  priorityText: { color: colors.textMuted, fontWeight: '700' },
+  priorityText: { ...typography.body, color: colors.textMuted },
   priorityTextActive: { color: colors.primary },
 })

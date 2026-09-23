@@ -15,10 +15,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { Chip } from '@/components/ui/Chip'
+import { ScreenContainer } from '@/components/ui/ScreenContainer'
 import { useAreas } from '@/features/areas/useAreas'
-import { APP_ROLES, ROLE_LABELS, type AppRole } from '@/features/auth/types'
+import { APP_ROLES, ROLE_ICONS, ROLE_LABELS, type AppRole } from '@/features/auth/types'
 import { useAuthStore } from '@/store/authStore'
-import { colors, radius, spacing } from '@/theme/tokens'
+import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 import type { ManagedProfile } from '../types'
 import { useManagedProfiles, useSetMemberAccess } from '../useManagedProfiles'
@@ -84,7 +87,7 @@ export function UsersScreen() {
   })
 
   return (
-    <SafeAreaView edges={['bottom']} style={styles.safeArea}>
+    <ScreenContainer edges={['bottom']} padded={false}>
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.eyebrow}>ADMINISTRACIÓN</Text>
@@ -129,9 +132,7 @@ export function UsersScreen() {
         ) : error ? (
           <View style={styles.center}>
             <Text style={styles.errorText}>No fue posible cargar los usuarios y las áreas.</Text>
-            <Pressable onPress={refresh} style={styles.retryButton}>
-              <Text style={styles.retryText}>Reintentar</Text>
-            </Pressable>
+            <Button label="Reintentar" onPress={refresh} />
           </View>
         ) : (
           <FlatList
@@ -147,24 +148,24 @@ export function UsersScreen() {
               />
             }
             renderItem={({ item }) => (
-              <Pressable
+              <Card
                 accessibilityLabel={`Editar acceso de ${item.fullName}`}
                 onPress={() => openProfile(item)}
-                style={styles.card}
+                contentStyle={styles.card}
               >
                 <View style={styles.avatar}>
                   <Text style={styles.avatarText}>{item.fullName.charAt(0).toUpperCase()}</Text>
                 </View>
                 <View style={styles.cardContent}>
                   <Text style={styles.name}>{item.fullName}</Text>
-                  <Text style={styles.role}>{ROLE_LABELS[item.role]}</Text>
+                  <Chip icon={ROLE_ICONS[item.role]} label={ROLE_LABELS[item.role]} />
                   <View style={styles.areaRow}>
                     <Ionicons color={colors.primary} name="business-outline" size={15} />
                     <Text style={styles.areaName}>{item.areaName || 'Sin área asignada'}</Text>
                   </View>
                 </View>
                 <Ionicons color={colors.primary} name="chevron-forward" size={23} />
-              </Pressable>
+              </Card>
             )}
           />
         )}
@@ -183,7 +184,12 @@ export function UsersScreen() {
                 <Text style={styles.modalTitle}>Acceso del usuario</Text>
                 <Text style={styles.modalSubtitle}>{selectedProfile?.fullName}</Text>
               </View>
-              <Pressable accessibilityLabel="Cerrar" onPress={() => setSelectedProfile(null)}>
+              <Pressable
+                accessibilityLabel="Cerrar"
+                accessibilityRole="button"
+                onPress={() => setSelectedProfile(null)}
+                style={styles.closeButton}
+              >
                 <Ionicons color={colors.text} name="close" size={28} />
               </Pressable>
             </View>
@@ -235,7 +241,7 @@ export function UsersScreen() {
           </SafeAreaView>
         </View>
       </Modal>
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 
@@ -265,12 +271,11 @@ function AreaOption({
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
   container: { flex: 1, gap: spacing.lg, padding: spacing.lg },
   header: { gap: spacing.xs },
-  eyebrow: { color: colors.primary, fontSize: 12, fontWeight: '800', letterSpacing: 1.2 },
-  title: { color: colors.text, fontSize: 28, fontWeight: '800' },
-  subtitle: { color: colors.textMuted, fontSize: 14, lineHeight: 20 },
+  eyebrow: { ...typography.overline, color: colors.primary },
+  title: { ...typography.display, color: colors.text },
+  subtitle: { ...typography.body, color: colors.textMuted },
   search: {
     minHeight: 48,
     paddingHorizontal: spacing.md,
@@ -291,38 +296,37 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   filterChipSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-  filterText: { color: colors.text, fontWeight: '700' },
+  filterText: { ...typography.caption, color: colors.text },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md },
-  errorText: { color: colors.error, fontWeight: '700', textAlign: 'center' },
-  retryButton: { borderRadius: radius.md, backgroundColor: colors.primary, padding: spacing.md },
-  retryText: { color: colors.white, fontWeight: '700' },
+  errorText: { ...typography.body, color: colors.error, textAlign: 'center' },
+  closeButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   list: { gap: spacing.md, paddingBottom: spacing.xl },
-  empty: { color: colors.textMuted, paddingTop: spacing.xl, textAlign: 'center' },
+  empty: {
+    ...typography.body,
+    color: colors.textMuted,
+    paddingTop: spacing.xl,
+    textAlign: 'center',
+  },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    padding: spacing.md,
+    minHeight: 88,
   },
   avatar: {
     width: 48,
     height: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 24,
+    borderRadius: radius.xl,
     backgroundColor: colors.primarySoft,
   },
-  avatarText: { color: colors.primary, fontSize: 19, fontWeight: '800' },
+  avatarText: { ...typography.heading, color: colors.primary },
   cardContent: { flex: 1, gap: spacing.xs },
-  name: { color: colors.text, fontSize: 16, fontWeight: '800' },
-  role: { color: colors.textMuted, fontSize: 12 },
+  name: { ...typography.heading, color: colors.text },
   areaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  areaName: { color: colors.primary, fontSize: 13, fontWeight: '700' },
-  modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(23, 43, 77, 0.42)' },
+  areaName: { ...typography.caption, color: colors.primary },
+  modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.backdrop },
   modalCard: {
     maxHeight: '75%',
     borderTopLeftRadius: radius.lg,
@@ -338,10 +342,10 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   modalTitleGroup: { flex: 1, gap: spacing.xs },
-  modalTitle: { color: colors.text, fontSize: 21, fontWeight: '800' },
-  modalSubtitle: { color: colors.textMuted, fontSize: 13 },
+  modalTitle: { ...typography.title, color: colors.text },
+  modalSubtitle: { ...typography.caption, color: colors.textMuted },
   areaOptions: { gap: spacing.sm, padding: spacing.lg, paddingBottom: spacing.xl },
-  sectionLabel: { color: colors.text, fontSize: 15, fontWeight: '800' },
+  sectionLabel: { ...typography.heading, color: colors.text },
   areaOption: {
     minHeight: 54,
     flexDirection: 'row',
@@ -353,5 +357,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   areaOptionSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-  areaOptionText: { flex: 1, color: colors.text, fontSize: 15, fontWeight: '700' },
+  areaOptionText: { ...typography.body, flex: 1, color: colors.text },
 })

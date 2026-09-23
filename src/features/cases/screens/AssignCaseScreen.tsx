@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/Button'
 import { ROLE_LABELS } from '@/features/auth/types'
 import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
-import { colors, radius, spacing } from '@/theme/tokens'
+import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 import { useAssignableProfiles, useAssignCase, useCaseDetail } from '../useCases'
 import { getAvailableCaseActions } from '../casePermissions'
@@ -145,8 +145,14 @@ const styles = StyleSheet.create({
   },
   optionSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
   optionContent: { flex: 1, gap: spacing.xs },
-  optionTitle: { color: colors.text, fontWeight: '800' },
-  optionSubtitle: { color: colors.textMuted, fontSize: 12 },
-  radio: { width: 20, height: 20, borderWidth: 2, borderColor: colors.border, borderRadius: 10 },
+  optionTitle: { ...typography.heading, color: colors.text },
+  optionSubtitle: { ...typography.caption, color: colors.textMuted },
+  radio: {
+    width: 20,
+    height: 20,
+    borderWidth: 2,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+  },
   radioSelected: { borderWidth: 6, borderColor: colors.primary },
 })

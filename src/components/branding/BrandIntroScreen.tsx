@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AccessibilityInfo, Animated, Easing, Image, StyleSheet, Text, View } from 'react-native'
 
-import { colors, spacing } from '@/theme/tokens'
+import { colors, fonts, spacing, typography } from '@/theme/tokens'
 
 type Props = {
   onFinish: () => void
@@ -110,15 +110,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   name: {
+    ...typography.display,
+    fontFamily: fonts.extrabold,
     color: colors.text,
-    fontSize: 34,
-    fontWeight: '800',
     letterSpacing: -0.8,
   },
   tagline: {
+    ...typography.body,
     color: colors.textMuted,
-    fontSize: 15,
-    lineHeight: 22,
     textAlign: 'center',
   },
 })

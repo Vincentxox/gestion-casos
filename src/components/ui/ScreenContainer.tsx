@@ -1,18 +1,20 @@
 import type { ReactNode } from 'react'
 import { StyleSheet, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, type Edge } from 'react-native-safe-area-context'
 
 import { colors, spacing } from '@/theme/tokens'
 
 export function ScreenContainer({
   children,
   padded = true,
+  edges = ['top'],
 }: {
   children: ReactNode
   padded?: boolean
+  edges?: Edge[]
 }) {
   return (
-    <SafeAreaView edges={['top']} style={styles.safeArea}>
+    <SafeAreaView edges={edges} style={styles.safeArea}>
       <View style={[styles.content, padded && styles.padded]}>{children}</View>
     </SafeAreaView>
   )
