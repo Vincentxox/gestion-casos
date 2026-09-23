@@ -33,6 +33,23 @@ una regla sin aprobación (ver `AGENTS.md`, sección 7).
   queda **sin empresa** y no ve ningún dato hasta ser vinculado.
 - Los datos existentes se migran a una empresa inicial.
 
+### 2.1 Solicitudes de acceso con código de empresa
+
+Aprobado por el responsable el 23/09/2026.
+
+- Cada empresa tiene un código de acceso (`XXXX-XXXX`) que solo ven y regeneran sus
+  administradores. Al regenerarlo, el anterior deja de funcionar.
+- Una persona registrada sin empresa ingresa el código y crea una solicitud de acceso.
+  Solo la ven los administradores de esa empresa; nunca se muestra a otras empresas.
+- Una persona tiene como máximo una solicitud pendiente. Puede cancelarla y, si la
+  rechazan, volver a solicitar.
+- El administrador la aprueba eligiendo rol y área (mismas validaciones que Usuarios) o la
+  rechaza con motivo opcional. Al aprobar, la persona entra de inmediato.
+- Se exige correo confirmado. Tras 10 códigos inválidos en una hora se bloquean los
+  intentos.
+- Si la persona acepta una invitación, su solicitud pendiente se cancela.
+- Toda persona debe tener nombre; la app lo pide si está vacío.
+
 ## 3. Áreas
 
 - Cada área pertenece a una empresa y tiene un tipo:
@@ -220,6 +237,13 @@ Reglas:
 - **Panel**: casos por estado, por área y por prioridad; tiempo promedio de aceptación y
   de resolución; casos vencidos y costo de recursos por área.
 
+### 9.1 Inicio por rol
+
+Aprobado por el responsable el 23/09/2026. Cada rol ve en su Inicio su trabajo pendiente
+(ver `docs/UX_REDESIGN.md`, sección 3). El administrador recibe alertas de configuración:
+áreas técnicas sin jefe o sin técnicos, usuarios sin área o sin nombre, solicitudes de
+acceso pendientes y catálogos vacíos. Los conteos respetan la visibilidad de cada rol.
+
 ## 10. Estado del código antes del nuevo modelo
 
 > Esta sección describe el punto de partida. El nuevo modelo de base de datos está en la
@@ -255,3 +279,6 @@ Tratamiento de los datos existentes (confirmado por el responsable el 22/09/2026
 4. Entornos: el proyecto de Supabase actual sirve como desarrollo y pruebas. Antes de la
    primera empresa cliente se creará un proyecto de producción separado (T-605). Queda
    por definir si el proyecto actual se conserva como entorno de desarrollo permanente.
+5. Prioridad decidida por el área técnica en lugar del solicitante (ver
+   `docs/UX_REDESIGN.md`, sección 10.2).
+6. Adelantar notificaciones push y comentarios en la solicitud.

@@ -32,6 +32,9 @@ for migration in "$ROOT"/supabase/migrations/*.sql; do
   run "$migration"
 done
 
-psql "$TEST_URL" -v ON_ERROR_STOP=1 -f "$ROOT/supabase/tests/10_business_model_test.sql" 2>&1 \
-  | grep -E '(NOTICE:  ok|ERROR|FALLÓ|Todas)' \
-  | sed -E 's/^psql:[^ ]+ NOTICE:  //'
+for test_file in "$ROOT"/supabase/tests/1*_test.sql; do
+  echo "Ejecutando $(basename "$test_file")"
+  psql "$TEST_URL" -v ON_ERROR_STOP=1 -f "$test_file" 2>&1 \
+    | grep -E '(NOTICE:  ok|ERROR|FALLÓ|Todas)' \
+    | sed -E 's/^psql:[^ ]+ NOTICE:  //'
+done
