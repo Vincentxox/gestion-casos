@@ -223,6 +223,7 @@ Deno.serve(async (request) => {
             .eq('id', version.id)
             .single()
           if (error) throw error
+          if (!data.pdf_path) return null
           return {
             path: data.pdf_path,
             sha256: data.pdf_sha256,

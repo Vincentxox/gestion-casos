@@ -91,7 +91,9 @@ $$);
 - **PDF:** cada generación sube a una ruta propia sin sobrescribir y se registra con un
   compare-and-set sobre la versión. Si dos peticiones generan a la vez, solo una queda
   registrada; la otra borra su archivo y devuelve la registrada. El archivo descargado
-  siempre coincide con `pdf_sha256`.
+  siempre coincide con `pdf_sha256`. Si el registro devuelve un error, se consulta qué
+  quedó registrado antes de borrar: solo se borra el archivo propio cuando hay otro PDF
+  registrado; ante cualquier duda se conserva (un huérfano no afecta a nadie).
 - **Push:** `claim_pending_push` reclama por 5 minutos y cuenta el intento, sin marcar el
   aviso como enviado. `complete_push` cierra los enviados y los errores permanentes
   (`DeviceNotRegistered`, `MessageTooBig`, `InvalidCredentials`, `MismatchSenderId`, sin

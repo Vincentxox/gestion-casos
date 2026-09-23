@@ -28,7 +28,7 @@ function memoryStore() {
     },
     async current() {
       await tick()
-      if (!registered) throw new Error('sin PDF')
+      if (!registered) return null
       return {
         path: registered.path,
         sha256: registered.sha256,
@@ -63,21 +63,56 @@ test('dos generaciones simultáneas publican un solo PDF y el hash coincide con 
   assert.deepEqual(files.get(winner.path), new Uint8Array([byte, byte, byte]))
 })
 
-test('si el registro falla, se borra el archivo subido', async () => {
+const input = (id: string) => ({
+  path: pdfPath('org', 'case', 1, id),
+  bytes: new Uint8Array([1]),
+  sha256: `hash-${id}`,
+  generatedAt: 't',
+})
+
+test('si la base registró el PDF pero se perdió la respuesta, se conserva y se devuelve', async () => {
+  const { store, files, registered } = memoryStore()
+  const claim = store.claim
+  store.claim = async (pdf) => {
+    await claim(pdf)
+    throw new Error('conexión interrumpida')
+  }
+  const result = await publishPdf(store, input('x'))
+  assert.equal(result.path, pdfPath('org', 'case', 1, 'x'))
+  assert.equal(registered()?.path, result.path)
+  assert.ok(files.has(result.path), 'el archivo registrado no se borra')
+})
+
+test('si el registro falla y hay otro PDF registrado, se borra solo el propio', async () => {
+  const { store, files } = memoryStore()
+  await publishPdf(store, input('primero'))
+  store.claim = async () => {
+    throw new Error('conexión interrumpida')
+  }
+  const result = await publishPdf(store, input('segundo'))
+  assert.equal(result.path, pdfPath('org', 'case', 1, 'primero'))
+  assert.deepEqual([...files.keys()], [pdfPath('org', 'case', 1, 'primero')])
+})
+
+test('si el registro falla sin nada registrado, se conserva el archivo y se informa el error', async () => {
   const { store, files } = memoryStore()
   store.claim = async () => {
     throw new Error('sin conexión')
   }
-  await assert.rejects(
-    publishPdf(store, {
-      path: pdfPath('org', 'case', 1, 'x'),
-      bytes: new Uint8Array([1]),
-      sha256: 'h',
-      generatedAt: 't',
-    }),
-    /sin conexión/,
-  )
-  assert.equal(files.size, 0)
+  await assert.rejects(publishPdf(store, input('x')), /sin conexión/)
+  assert.ok(files.has(pdfPath('org', 'case', 1, 'x')))
+})
+
+test('si tampoco se puede consultar lo registrado, no se borra nada', async () => {
+  const { store, files } = memoryStore()
+  store.claim = async () => {
+    throw new Error('sin conexión')
+  }
+  store.current = async () => {
+    throw new Error('base no disponible')
+  }
+  await assert.rejects(publishPdf(store, input('x')), /base no disponible/)
+  assert.ok(files.has(pdfPath('org', 'case', 1, 'x')))
 })
 
 test('pdfPath usa una ruta por generación bajo la empresa y la solicitud', () => {
