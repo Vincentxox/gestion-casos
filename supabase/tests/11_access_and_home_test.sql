@@ -226,6 +226,65 @@ select test.ok(
   'y su solicitud pendiente queda cancelada'
 );
 
+-- Persona con solicitud pendiente que queda vinculada a una empresa por otra vía.
+select test.register('doble', 'doble@x.test', 'Doble Vía');
+select test.login('doble');
+set role authenticated;
+select public.request_organization_access(test.get('code_a'));
+reset role;
+select test.set('request_doble', (
+  select id::text from public.organization_access_requests
+  where user_id = test.uid('doble') and status = 'pendiente'
+));
+update public.profiles
+set organization_id = test.get('org_b')::uuid, role = 'solicitante'
+where id = test.uid('doble');
+select test.ok(
+  (select status = 'cancelada' and decided_at is not null
+   from public.organization_access_requests where id = test.get('request_doble')::uuid),
+  'al quedar vinculada a otra empresa, su solicitud pendiente se cancela y se guarda'
+);
+select test.login('admin');
+set role authenticated;
+select test.throws(
+  format($$select public.approve_access_request(%L, 'solicitante', null)$$, test.get('request_doble')),
+  'ya no está pendiente',
+  'el administrador ya no puede aprobar esa solicitud'
+);
+reset role;
+select test.ok(
+  (select organization_id = test.get('org_b')::uuid from public.profiles where id = test.uid('doble')),
+  'la persona sigue en su empresa'
+);
+
+-- Defensa: si el trigger se omitiera, aprobar falla sin mover a la persona de empresa.
+select test.register('defensa', 'defensa@x.test', 'Defensa');
+select test.login('defensa');
+set role authenticated;
+select public.request_organization_access(test.get('code_a'));
+reset role;
+alter table public.profiles disable trigger profiles_cancel_access_requests;
+update public.profiles
+set organization_id = test.get('org_b')::uuid, role = 'solicitante'
+where id = test.uid('defensa');
+alter table public.profiles enable trigger profiles_cancel_access_requests;
+select test.login('admin');
+set role authenticated;
+select test.throws(
+  format($$select public.approve_access_request(%L, 'solicitante', null)$$,
+         (select id from public.organization_access_requests where user_id = test.uid('defensa'))),
+  'ya pertenece a una empresa',
+  'aprobar a alguien que ya tiene empresa se rechaza'
+);
+reset role;
+select test.ok(
+  (select organization_id = test.get('org_b')::uuid from public.profiles where id = test.uid('defensa')),
+  'y no cambia su empresa'
+);
+update public.organization_access_requests
+set status = 'cancelada', decided_at = now()
+where user_id = test.uid('defensa') and status = 'pendiente';
+
 -- ---------------------------------------------------------------------------
 -- 4. Límite de intentos y regeneración del código
 -- ---------------------------------------------------------------------------

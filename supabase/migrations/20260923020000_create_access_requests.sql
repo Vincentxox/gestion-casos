@@ -329,9 +329,9 @@ begin
     where id = request.user_id
       and organization_id is not null
   ) then
-    update public.organization_access_requests
-    set status = 'cancelada', decided_at = now()
-    where id = request.id;
+    -- No se cancela aquí: la excepción revertiría la cancelación. El trigger
+    -- profiles_cancel_access_requests ya cancela las solicitudes pendientes en cuanto
+    -- un perfil queda vinculado a una empresa, así que este caso no debería ocurrir.
     raise exception 'Esta persona ya pertenece a una empresa';
   end if;
 
@@ -456,12 +456,39 @@ begin
       accepted_by = target_user_id
   where id = invitation.id;
 
-  update public.organization_access_requests
-  set status = 'cancelada',
-      decided_at = now()
-  where user_id = target_user_id
-    and status = 'pendiente';
-
+  -- Las solicitudes de acceso pendientes las cancela el trigger
+  -- profiles_cancel_access_requests al vincular el perfil.
   return true;
 end;
 $$;
+
+-- ---------------------------------------------------------------------------
+-- Al quedar vinculado a una empresa, por cualquier vía (invitación, aprobación o
+-- ajuste del servidor), se cancelan las solicitudes de acceso pendientes del perfil.
+-- La aprobación marca después su propia solicitud como 'aprobada'.
+-- ---------------------------------------------------------------------------
+
+create or replace function private.cancel_access_requests_on_link()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  update public.organization_access_requests
+  set status = 'cancelada',
+      decided_at = now()
+  where user_id = new.id
+    and status = 'pendiente';
+  return null;
+end;
+$$;
+
+revoke all on function private.cancel_access_requests_on_link() from public, anon, authenticated;
+
+drop trigger if exists profiles_cancel_access_requests on public.profiles;
+create trigger profiles_cancel_access_requests
+after insert or update of organization_id on public.profiles
+for each row
+when (new.organization_id is not null)
+execute function private.cancel_access_requests_on_link();
