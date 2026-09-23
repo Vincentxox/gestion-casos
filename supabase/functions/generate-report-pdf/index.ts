@@ -6,9 +6,9 @@
 // 2. Si la versión vigente ya tiene PDF, devuelve un enlace firmado de 5 minutos.
 // 3. Si no, genera el PDF una sola vez a partir del contenido congelado y firmado:
 //    datos, reporte, recursos, miniaturas de las fotos, las tres firmas con su trazo y
-//    una hoja de evidencia (firmantes, IP, dispositivo, hashes y eventos). Lo guarda en
-//    el bucket privado `case-reports`, registra ruta, tamaño y SHA-256, y devuelve el
-//    enlace.
+//    una hoja de evidencia (firmantes, IP, dispositivo, hashes y eventos). Lo sube a una
+//    ruta propia sin sobrescribir y lo registra con un compare-and-set: si otra petición
+//    publicó primero, borra su archivo y devuelve el registrado (`_shared/publishPdf.ts`).
 //
 // Respuestas: 200 { url, sha256, generatedAt }, 400 datos inválidos, 401 sin sesión,
 // 404 solicitud no visible, 409 solicitud no aprobada, 500 error interno.
@@ -22,6 +22,7 @@ import {
 } from 'npm:pdf-lib@1.17.1'
 
 import { json, serviceClient, userClient } from '../_shared/clients.ts'
+import { pdfPath, publishPdf, toArrayBufferBytes } from '../_shared/publishPdf.ts'
 import {
   ACTION_LABELS,
   PRIORITY_LABELS,
@@ -177,39 +178,62 @@ Deno.serve(async (request) => {
     })
 
     const sha256 = await sha256Hex(bytes)
-    const path = `${visibleCase.organization_id}/${caseId}/v${version.version_number}/reporte-${visibleCase.case_number}-v${version.version_number}.pdf`
-    const { error: uploadError } = await service.storage
-      .from('case-reports')
-      .upload(path, bytes, { contentType: 'application/pdf', upsert: true })
-    if (uploadError) throw uploadError
-
-    // Si otra petición lo generó al mismo tiempo, se conserva el primero registrado.
-    const { data: saved, error: saveError } = await service
-      .from('case_report_versions')
-      .update({
-        pdf_path: path,
-        pdf_size_bytes: bytes.byteLength,
-        pdf_sha256: sha256,
-        pdf_generated_at: generatedAt,
-      })
-      .eq('id', version.id)
-      .is('pdf_path', null)
-      .select('pdf_path, pdf_sha256, pdf_generated_at')
-      .maybeSingle()
-    if (saveError) throw saveError
-    if (saved)
-      return json(
-        await signedResponse(service, saved.pdf_path, saved.pdf_sha256, saved.pdf_generated_at),
-      )
-
-    const { data: current, error: currentError } = await service
-      .from('case_report_versions')
-      .select('pdf_path, pdf_sha256, pdf_generated_at')
-      .eq('id', version.id)
-      .single()
-    if (currentError) throw currentError
+    const path = pdfPath(
+      visibleCase.organization_id,
+      caseId,
+      version.version_number,
+      crypto.randomUUID(),
+    )
+    const published = await publishPdf(
+      {
+        async upload(target, data) {
+          const { error } = await service.storage
+            .from('case-reports')
+            .upload(target, toArrayBufferBytes(data), {
+              contentType: 'application/pdf',
+              upsert: false,
+            })
+          if (error) throw error
+        },
+        async remove(target) {
+          await service.storage.from('case-reports').remove([target])
+        },
+        async claim(pdf) {
+          const { data, error } = await service
+            .from('case_report_versions')
+            .update({
+              pdf_path: pdf.path,
+              pdf_size_bytes: pdf.sizeBytes,
+              pdf_sha256: pdf.sha256,
+              pdf_generated_at: pdf.generatedAt,
+            })
+            .eq('id', version.id)
+            .is('pdf_path', null)
+            .select('pdf_path, pdf_sha256, pdf_generated_at')
+            .maybeSingle()
+          if (error) throw error
+          return data
+            ? { path: data.pdf_path, sha256: data.pdf_sha256, generatedAt: data.pdf_generated_at }
+            : null
+        },
+        async current() {
+          const { data, error } = await service
+            .from('case_report_versions')
+            .select('pdf_path, pdf_sha256, pdf_generated_at')
+            .eq('id', version.id)
+            .single()
+          if (error) throw error
+          return {
+            path: data.pdf_path,
+            sha256: data.pdf_sha256,
+            generatedAt: data.pdf_generated_at,
+          }
+        },
+      },
+      { path, bytes, sha256, generatedAt },
+    )
     return json(
-      await signedResponse(service, current.pdf_path, current.pdf_sha256, current.pdf_generated_at),
+      await signedResponse(service, published.path, published.sha256, published.generatedAt),
     )
   } catch (error) {
     console.error('generate-report-pdf', caseId, error instanceof Error ? error.message : error)
@@ -243,7 +267,7 @@ async function loadThumbnails(
 }
 
 async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', bytes)
+  const digest = await crypto.subtle.digest('SHA-256', toArrayBufferBytes(bytes))
   return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, '0')).join('')
 }
 

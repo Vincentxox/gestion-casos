@@ -104,7 +104,7 @@ jobs:
 
       - name: Verificar tipos de las funciones
         run: >-
-          deno check
+          deno check --node-modules-dir=auto
           supabase/functions/generate-report-pdf/index.ts
           supabase/functions/send-push/index.ts
           supabase/functions/cleanup-photos/index.ts

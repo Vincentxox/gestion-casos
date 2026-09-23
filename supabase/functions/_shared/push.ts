@@ -6,6 +6,7 @@ export interface PendingNotification {
   case_id: string
   title: string
   body: string
+  push_attempts?: number
 }
 
 export interface PushToken {
@@ -71,16 +72,31 @@ export function chunk<T>(items: T[], size = EXPO_BATCH_SIZE): T[][] {
   return chunks
 }
 
-// Interpreta los tickets de Expo (en el mismo orden que los mensajes enviados): tokens
-// que ya no existen y el primer error de cada aviso. Un aviso cuenta como entregado si
-// al menos uno de sus teléfonos respondió `ok`.
-export function interpretTickets(
-  messages: ExpoMessage[],
-  tickets: ExpoTicket[],
-): { invalidTokens: string[]; failures: Map<number, string> } {
+// Errores de Expo que no se arreglan reintentando: el aviso se cierra con su motivo.
+// Cualquier otro (red, límite de envío, error del servicio o sin respuesta) se reintenta
+// hasta agotar los intentos (`release_push`).
+export const PERMANENT_PUSH_ERRORS = new Set([
+  'DeviceNotRegistered',
+  'MessageTooBig',
+  'InvalidCredentials',
+  'MismatchSenderId',
+])
+
+export interface PushOutcome {
+  sent: number[]
+  permanent: Map<number, string>
+  transient: Map<number, string>
+  invalidTokens: string[]
+}
+
+// Clasifica cada aviso según los tickets de Expo (en el mismo orden que los mensajes):
+// enviado si al menos uno de sus teléfonos respondió `ok`; si no, error permanente
+// cuando todos sus errores son permanentes, o transitorio en otro caso.
+export function classifyTickets(messages: ExpoMessage[], tickets: ExpoTicket[]): PushOutcome {
   const invalidTokens: string[] = []
-  const errors = new Map<number, string>()
   const delivered = new Set<number>()
+  const firstError = new Map<number, string>()
+  const onlyPermanent = new Map<number, boolean>()
   messages.forEach((message, index) => {
     const notificationId = message.data.notificationId
     const ticket = tickets[index]
@@ -90,18 +106,32 @@ export function interpretTickets(
     }
     const code = ticket?.details?.error ?? (ticket ? 'error' : 'sin_respuesta')
     if (code === 'DeviceNotRegistered') invalidTokens.push(message.to)
-    if (!errors.has(notificationId)) {
-      errors.set(
+    if (!firstError.has(notificationId)) {
+      firstError.set(
         notificationId,
         `${code}${ticket?.message ? `: ${ticket.message}` : ''}`.slice(0, 300),
       )
     }
+    onlyPermanent.set(
+      notificationId,
+      (onlyPermanent.get(notificationId) ?? true) && PERMANENT_PUSH_ERRORS.has(code),
+    )
   })
-  const failures = new Map<number, string>()
-  for (const [notificationId, error] of errors) {
-    if (!delivered.has(notificationId)) failures.set(notificationId, error)
+  const permanent = new Map<number, string>()
+  const transient = new Map<number, string>()
+  for (const [notificationId, error] of firstError) {
+    if (delivered.has(notificationId)) continue
+    if (onlyPermanent.get(notificationId)) permanent.set(notificationId, error)
+    else transient.set(notificationId, error)
   }
-  return { invalidTokens, failures }
+  return { sent: [...delivered], permanent, transient, invalidTokens }
+}
+
+// Agrupa avisos por mensaje de error para actualizar en pocas llamadas.
+export function groupByError(failures: Map<number, string>): Map<string, number[]> {
+  const groups = new Map<string, number[]>()
+  for (const [id, error] of failures) groups.set(error, [...(groups.get(error) ?? []), id])
+  return groups
 }
 
 // Comparación de secretos en tiempo constante.

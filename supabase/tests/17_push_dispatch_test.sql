@@ -36,7 +36,9 @@ update public.notifications
 set created_at = now() - interval '2 days'
 where id = (select min(id) from public.notifications where push_sent_at is null);
 
-create temporary table claimed_push (id bigint, recipient_id uuid, case_id uuid, title text, body text);
+create temporary table claimed_push (
+  id bigint, recipient_id uuid, case_id uuid, title text, body text, push_attempts smallint
+);
 grant all on claimed_push to service_role;
 set role service_role;
 insert into claimed_push select * from public.claim_pending_push(500);
@@ -50,8 +52,9 @@ select test.ok(
 );
 select test.ok(
   (select count(*) from public.notifications
-   where push_sent_at is null and created_at > now() - interval '24 hours') = 0,
-  'los avisos tomados quedan marcados'
+   where created_at > now() - interval '24 hours'
+     and (push_claimed_at is null or push_attempts <> 1 or push_sent_at is not null)) = 0,
+  'los avisos tomados quedan reclamados (sin marcarse como enviados) con un intento'
 );
 truncate claimed_push;
 set role service_role;

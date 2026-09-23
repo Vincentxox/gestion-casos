@@ -82,9 +82,21 @@ $$);
 
 - Lógica compartida (texto del PDF, trazos, lotes y tickets de push):
   `node --experimental-strip-types --test supabase/functions/tests/*_test.ts`.
-- Tipos de las funciones: `deno check supabase/functions/<función>/index.ts` (paso
+- Tipos de las funciones: `deno check --node-modules-dir=auto supabase/functions/<función>/index.ts` (paso
   «Edge Functions» del CI).
 - Las funciones de apoyo en SQL se prueban en `supabase/tests/17_push_dispatch_test.sql`.
+
+## Garantías de publicación y reintento
+
+- **PDF:** cada generación sube a una ruta propia sin sobrescribir y se registra con un
+  compare-and-set sobre la versión. Si dos peticiones generan a la vez, solo una queda
+  registrada; la otra borra su archivo y devuelve la registrada. El archivo descargado
+  siempre coincide con `pdf_sha256`.
+- **Push:** `claim_pending_push` reclama por 5 minutos y cuenta el intento, sin marcar el
+  aviso como enviado. `complete_push` cierra los enviados y los errores permanentes
+  (`DeviceNotRegistered`, `MessageTooBig`, `InvalidCredentials`, `MismatchSenderId`, sin
+  dispositivo). `release_push` libera los fallos transitorios (red, límite, error de Expo
+  o sin respuesta) para reintentar, hasta 5 intentos dentro de 24 horas.
 
 ## Limitaciones conocidas del MVP
 

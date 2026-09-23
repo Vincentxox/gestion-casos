@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { buildMessages, chunk, interpretTickets, safeEqual } from '../_shared/push.ts'
+import { buildMessages, chunk, classifyTickets, groupByError, safeEqual } from '../_shared/push.ts'
 
 const notifications = [
   { id: 1, recipient_id: 'u1', case_id: 'c1', title: 'Nueva solicitud', body: 'CAS-1' },
@@ -28,22 +28,54 @@ test('chunk divide en lotes del tamaño indicado', () => {
   assert.equal(chunk(Array.from({ length: 250 }, (_, i) => i)).length, 3)
 })
 
-test('interpretTickets detecta tokens inválidos y avisos sin ningún envío correcto', () => {
+test('classifyTickets separa enviados, errores permanentes y transitorios', () => {
   const { messages } = buildMessages(notifications, tokens)
-  const { invalidTokens, failures } = interpretTickets(messages, [
+  const outcome = classifyTickets(messages, [
     { status: 'error', message: 'no existe', details: { error: 'DeviceNotRegistered' } },
     { status: 'ok', id: 't2' },
     { status: 'error', details: { error: 'MessageRateExceeded' } },
   ])
-  assert.deepEqual(invalidTokens, ['ExponentPushToken[a]'])
-  // El aviso 1 llegó a su segundo teléfono: no cuenta como fallido.
-  assert.deepEqual([...failures.entries()], [[2, 'MessageRateExceeded']])
+  assert.deepEqual(outcome.invalidTokens, ['ExponentPushToken[a]'])
+  // El aviso 1 llegó a su segundo teléfono: cuenta como enviado.
+  assert.deepEqual(outcome.sent, [1])
+  assert.deepEqual([...outcome.permanent.entries()], [])
+  assert.deepEqual([...outcome.transient.entries()], [[2, 'MessageRateExceeded']])
 })
 
-test('interpretTickets marca como fallidos los mensajes sin respuesta', () => {
+test('un aviso cuyos teléfonos no existen se cierra como error permanente', () => {
   const { messages } = buildMessages(notifications.slice(1, 2), tokens)
-  const { failures } = interpretTickets(messages, [])
-  assert.deepEqual([...failures.entries()], [[2, 'sin_respuesta']])
+  const outcome = classifyTickets(messages, [
+    { status: 'error', message: 'no existe', details: { error: 'DeviceNotRegistered' } },
+  ])
+  assert.deepEqual([...outcome.permanent.entries()], [[2, 'DeviceNotRegistered: no existe']])
+  assert.equal(outcome.transient.size, 0)
+})
+
+test('sin respuesta o con error de red, el aviso se reintenta', () => {
+  const { messages } = buildMessages(notifications, tokens)
+  const outcome = classifyTickets(messages, [
+    { status: 'error', message: 'timeout', details: { error: 'ErrorDeRed' } },
+  ])
+  assert.deepEqual(outcome.sent, [])
+  assert.deepEqual([...outcome.transient.keys()].sort(), [1, 2])
+  assert.equal(outcome.transient.get(2), 'sin_respuesta')
+})
+
+test('groupByError agrupa los avisos por motivo', () => {
+  const groups = groupByError(
+    new Map([
+      [1, 'ErrorDeRed'],
+      [2, 'MessageRateExceeded'],
+      [3, 'ErrorDeRed'],
+    ]),
+  )
+  assert.deepEqual(
+    [...groups.entries()],
+    [
+      ['ErrorDeRed', [1, 3]],
+      ['MessageRateExceeded', [2]],
+    ],
+  )
 })
 
 test('safeEqual compara secretos sin cortar antes de tiempo', () => {
