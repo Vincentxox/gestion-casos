@@ -2,12 +2,12 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-import { hasPermission } from '@/features/auth/permissions'
 import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
 import { colors, spacing } from '@/theme/tokens'
 
 import { CaseForm } from '../components/CaseForm'
+import { canEditCase } from '../casePermissions'
 import type { UpdateCaseInput } from '../types'
 import { useCaseDetail, useUpdateCase } from '../useCases'
 
@@ -17,9 +17,6 @@ export function EditCaseScreen({ navigation, route }: Props) {
   const profile = useAuthStore((state) => state.profile)
   const detail = useCaseDetail(route.params.caseId)
   const mutation = useUpdateCase(route.params.caseId)
-  const canUpdate = hasPermission(profile?.role, 'cases.update')
-
-  if (!canUpdate) return <Message text="No tienes permiso para editar casos." />
 
   if (detail.isLoading) {
     return (
@@ -31,10 +28,13 @@ export function EditCaseScreen({ navigation, route }: Props) {
 
   if (!detail.data || detail.error) return <Message text="No fue posible cargar el caso." />
 
+  if (!canEditCase(detail.data, profile))
+    return <Message text="No tienes permiso para editar esta solicitud." />
+
   const initialValues: UpdateCaseInput = {
     title: detail.data.title,
     description: detail.data.description,
-    category: detail.data.category,
+    categoryId: detail.data.categoryId,
     location: detail.data.location,
     priority: detail.data.priority,
   }
@@ -45,8 +45,11 @@ export function EditCaseScreen({ navigation, route }: Props) {
       Alert.alert('Caso actualizado', 'Los cambios se guardaron correctamente.', [
         { text: 'Entendido', onPress: () => navigation.goBack() },
       ])
-    } catch {
-      Alert.alert('No fue posible actualizar', 'Comprueba tus permisos y la conexión.')
+    } catch (error) {
+      Alert.alert(
+        'No fue posible actualizar',
+        error instanceof Error ? error.message : 'Comprueba tus permisos y la conexión.',
+      )
     }
   }
 

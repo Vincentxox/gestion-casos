@@ -11,31 +11,26 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-import { PrimaryButton } from '@/components/buttons/PrimaryButton'
-import { hasPermission } from '@/features/auth/permissions'
+import { Button } from '@/components/ui/Button'
+import { ROLE_LABELS } from '@/features/auth/types'
 import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
 import { colors, radius, spacing } from '@/theme/tokens'
 
 import { useAssignableProfiles, useAssignCase, useCaseDetail } from '../useCases'
+import { getAvailableCaseActions } from '../casePermissions'
 
 type Props = NativeStackScreenProps<MainStackParamList, 'AssignCase'>
 
-const ROLE_LABELS = {
-  administrador: 'Administrador',
-  auditor: 'Auditor',
-  visualizador: 'Visualizador',
-} as const
-
 export function AssignCaseScreen({ navigation, route }: Props) {
   const profile = useAuthStore((state) => state.profile)
-  const canAssign = hasPermission(profile?.role, 'cases.assign')
   const detail = useCaseDetail(route.params.caseId)
-  const profiles = useAssignableProfiles(canAssign)
+  const canAssign = detail.data
+    ? getAvailableCaseActions(detail.data, profile).includes('asignar')
+    : false
+  const profiles = useAssignableProfiles(detail.data?.targetAreaId, canAssign)
   const mutation = useAssignCase(route.params.caseId)
   const [selectedId, setSelectedId] = useState<string | null | undefined>(undefined)
-
-  if (!canAssign) return <Message text="No tienes permiso para asignar personal." />
 
   if (detail.isLoading || profiles.isLoading) {
     return (
@@ -49,9 +44,15 @@ export function AssignCaseScreen({ navigation, route }: Props) {
     return <Message text="No fue posible cargar el personal disponible." />
   }
 
+  if (!canAssign) return <Message text="No tienes permiso para asignar esta solicitud." />
+
   const effectiveSelectedId = selectedId === undefined ? detail.data.assignedTo : selectedId
 
   async function handleSubmit() {
+    if (!effectiveSelectedId || effectiveSelectedId === detail.data?.assignedTo) {
+      Alert.alert('Selecciona otra persona', 'Elige un técnico o jefe del área responsable.')
+      return
+    }
     try {
       await mutation.mutateAsync(effectiveSelectedId)
       Alert.alert('Asignación actualizada', 'El responsable del caso se guardó correctamente.', [
@@ -66,12 +67,6 @@ export function AssignCaseScreen({ navigation, route }: Props) {
     <SafeAreaView edges={['bottom']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.instructions}>Selecciona una persona responsable del seguimiento.</Text>
-        <ProfileOption
-          label="Sin asignar"
-          onPress={() => setSelectedId(null)}
-          selected={effectiveSelectedId === null}
-          subtitle="El caso quedará disponible sin responsable"
-        />
         {profiles.data?.map((item) => (
           <ProfileOption
             key={item.id}
@@ -81,7 +76,7 @@ export function AssignCaseScreen({ navigation, route }: Props) {
             subtitle={`${ROLE_LABELS[item.role]} · ${item.areaName || 'Sin área'}`}
           />
         ))}
-        <PrimaryButton
+        <Button
           label="Guardar asignación"
           loading={mutation.isPending}
           onPress={() => void handleSubmit()}

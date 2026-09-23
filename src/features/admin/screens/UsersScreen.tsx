@@ -9,42 +9,61 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
+import { Button } from '@/components/ui/Button'
 import { useAreas } from '@/features/areas/useAreas'
+import { APP_ROLES, ROLE_LABELS, type AppRole } from '@/features/auth/types'
 import { useAuthStore } from '@/store/authStore'
 import { colors, radius, spacing } from '@/theme/tokens'
 
 import type { ManagedProfile } from '../types'
-import { useManagedProfiles, useSetManagedProfileArea } from '../useManagedProfiles'
-
-const ROLE_LABELS = {
-  administrador: 'Administrador',
-  auditor: 'Auditor',
-  visualizador: 'Visualizador',
-} as const
+import { useManagedProfiles, useSetMemberAccess } from '../useManagedProfiles'
 
 export function UsersScreen() {
   const profiles = useManagedProfiles()
   const areas = useAreas()
-  const mutation = useSetManagedProfileArea()
-  const applyOwnAreaAssignment = useAuthStore((state) => state.applyOwnAreaAssignment)
+  const mutation = useSetMemberAccess()
+  const applyOwnAccess = useAuthStore((state) => state.applyOwnAccess)
   const [selectedProfile, setSelectedProfile] = useState<ManagedProfile | null>(null)
+  const [role, setRole] = useState<AppRole>('solicitante')
+  const [areaId, setAreaId] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState<'todos' | 'sin_area' | AppRole>('todos')
 
   const refreshing = profiles.isRefetching || areas.isRefetching
 
-  async function assignArea(areaId: string | null) {
+  function openProfile(profile: ManagedProfile) {
+    setSelectedProfile(profile)
+    setRole(profile.role)
+    setAreaId(profile.areaId)
+  }
+
+  async function saveAccess() {
     if (!selectedProfile) return
 
+    if ((role === 'tecnico' || role === 'jefe_area') && !areaId) {
+      Alert.alert('Selecciona un área', 'Este rol necesita un área asignada.')
+      return
+    }
+    if (role === 'tecnico' && areas.data?.find((area) => area.id === areaId)?.kind !== 'tecnica') {
+      Alert.alert('Área inválida', 'Un técnico debe pertenecer a un área técnica.')
+      return
+    }
+
     try {
-      await mutation.mutateAsync({ userId: selectedProfile.id, areaId })
+      await mutation.mutateAsync({ userId: selectedProfile.id, role, areaId })
       const areaName = areas.data?.find((area) => area.id === areaId)?.name ?? null
-      applyOwnAreaAssignment(selectedProfile.id, areaId, areaName)
+      applyOwnAccess(selectedProfile.id, role, areaId, areaName)
       setSelectedProfile(null)
-    } catch {
-      Alert.alert('No fue posible asignar el área', 'Comprueba tus permisos y la conexión.')
+    } catch (error) {
+      Alert.alert(
+        'No fue posible guardar el acceso',
+        error instanceof Error ? error.message : 'Comprueba tus permisos y la conexión.',
+      )
     }
   }
 
@@ -55,6 +74,14 @@ export function UsersScreen() {
 
   const loading = profiles.isLoading || areas.isLoading
   const error = profiles.error || areas.error
+  const filteredProfiles = (profiles.data ?? []).filter((item) => {
+    const matchesFilter =
+      filter === 'todos' || (filter === 'sin_area' ? !item.areaId : item.role === filter)
+    return (
+      matchesFilter &&
+      item.fullName.toLocaleLowerCase('es').includes(search.trim().toLocaleLowerCase('es'))
+    )
+  })
 
   return (
     <SafeAreaView edges={['bottom']} style={styles.safeArea}>
@@ -64,7 +91,35 @@ export function UsersScreen() {
           <Text accessibilityRole="header" style={styles.title}>
             Usuarios
           </Text>
-          <Text style={styles.subtitle}>Asigna el área principal de cada usuario registrado.</Text>
+          <Text style={styles.subtitle}>
+            Administra el rol y el área de los miembros de tu empresa.
+          </Text>
+        </View>
+        <TextInput
+          accessibilityLabel="Buscar usuarios"
+          onChangeText={setSearch}
+          placeholder="Buscar por nombre"
+          style={styles.search}
+          value={search}
+        />
+        <View style={styles.filterRow}>
+          {(['todos', 'sin_area', ...APP_ROLES] as const).map((value) => (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: filter === value }}
+              key={value}
+              onPress={() => setFilter(value)}
+              style={[styles.filterChip, filter === value && styles.filterChipSelected]}
+            >
+              <Text style={styles.filterText}>
+                {value === 'todos'
+                  ? 'Todos'
+                  : value === 'sin_area'
+                    ? 'Sin área'
+                    : ROLE_LABELS[value]}
+              </Text>
+            </Pressable>
+          ))}
         </View>
 
         {loading ? (
@@ -81,7 +136,7 @@ export function UsersScreen() {
         ) : (
           <FlatList
             contentContainerStyle={styles.list}
-            data={profiles.data ?? []}
+            data={filteredProfiles}
             keyExtractor={(item) => item.id}
             ListEmptyComponent={<Text style={styles.empty}>No hay usuarios registrados.</Text>}
             refreshControl={
@@ -93,8 +148,8 @@ export function UsersScreen() {
             }
             renderItem={({ item }) => (
               <Pressable
-                accessibilityLabel={`Asignar área a ${item.fullName}`}
-                onPress={() => setSelectedProfile(item)}
+                accessibilityLabel={`Editar acceso de ${item.fullName}`}
+                onPress={() => openProfile(item)}
                 style={styles.card}
               >
                 <View style={styles.avatar}>
@@ -125,7 +180,7 @@ export function UsersScreen() {
           <SafeAreaView edges={['bottom']} style={styles.modalCard}>
             <View style={styles.modalHeader}>
               <View style={styles.modalTitleGroup}>
-                <Text style={styles.modalTitle}>Asignar área</Text>
+                <Text style={styles.modalTitle}>Acceso del usuario</Text>
                 <Text style={styles.modalSubtitle}>{selectedProfile?.fullName}</Text>
               </View>
               <Pressable accessibilityLabel="Cerrar" onPress={() => setSelectedProfile(null)}>
@@ -134,24 +189,48 @@ export function UsersScreen() {
             </View>
             <FlatList
               contentContainerStyle={styles.areaOptions}
-              data={(areas.data ?? []).filter((area) => area.isActive)}
+              data={(areas.data ?? []).filter(
+                (area) =>
+                  (area.isActive || area.id === areaId) &&
+                  (role !== 'tecnico' || area.kind === 'tecnica'),
+              )}
               keyExtractor={(item) => item.id}
               ListHeaderComponent={
-                <AreaOption
-                  label="Sin área asignada"
-                  loading={mutation.isPending}
-                  onPress={() => void assignArea(null)}
-                  selected={selectedProfile?.areaId === null}
-                />
+                <View style={styles.areaOptions}>
+                  <Text style={styles.sectionLabel}>Rol</Text>
+                  {APP_ROLES.map((option) => (
+                    <AreaOption
+                      key={option}
+                      label={ROLE_LABELS[option]}
+                      loading={mutation.isPending}
+                      onPress={() => setRole(option)}
+                      selected={role === option}
+                    />
+                  ))}
+                  <Text style={styles.sectionLabel}>Área</Text>
+                  <AreaOption
+                    label="Sin área asignada"
+                    loading={mutation.isPending}
+                    onPress={() => setAreaId(null)}
+                    selected={areaId === null}
+                  />
+                </View>
               }
               renderItem={({ item }) => (
                 <AreaOption
-                  label={item.name}
+                  label={`${item.name} · ${item.kind === 'tecnica' ? 'Técnica' : 'Solicitante'}`}
                   loading={mutation.isPending}
-                  onPress={() => void assignArea(item.id)}
-                  selected={selectedProfile?.areaId === item.id}
+                  onPress={() => setAreaId(item.id)}
+                  selected={areaId === item.id}
                 />
               )}
+              ListFooterComponent={
+                <Button
+                  label="Guardar acceso"
+                  loading={mutation.isPending}
+                  onPress={() => void saveAccess()}
+                />
+              }
             />
           </SafeAreaView>
         </View>
@@ -192,6 +271,27 @@ const styles = StyleSheet.create({
   eyebrow: { color: colors.primary, fontSize: 12, fontWeight: '800', letterSpacing: 1.2 },
   title: { color: colors.text, fontSize: 28, fontWeight: '800' },
   subtitle: { color: colors.textMuted, fontSize: 14, lineHeight: 20 },
+  search: {
+    minHeight: 48,
+    paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    color: colors.text,
+  },
+  filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  filterChip: {
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+  },
+  filterChipSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
+  filterText: { color: colors.text, fontWeight: '700' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md },
   errorText: { color: colors.error, fontWeight: '700', textAlign: 'center' },
   retryButton: { borderRadius: radius.md, backgroundColor: colors.primary, padding: spacing.md },
@@ -241,6 +341,7 @@ const styles = StyleSheet.create({
   modalTitle: { color: colors.text, fontSize: 21, fontWeight: '800' },
   modalSubtitle: { color: colors.textMuted, fontSize: 13 },
   areaOptions: { gap: spacing.sm, padding: spacing.lg, paddingBottom: spacing.xl },
+  sectionLabel: { color: colors.text, fontSize: 15, fontWeight: '800' },
   areaOption: {
     minHeight: 54,
     flexDirection: 'row',

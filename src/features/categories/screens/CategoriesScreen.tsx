@@ -91,12 +91,12 @@ export function CategoriesScreen() {
           <View style={styles.headerText}>
             <Text style={styles.eyebrow}>ADMINISTRACIÓN</Text>
             <Text accessibilityRole="header" style={styles.title}>
-              Categorías
+              Tipos de servicio
             </Text>
-            <Text style={styles.subtitle}>Clasifica las solicitudes dentro de cada área.</Text>
+            <Text style={styles.subtitle}>Define los servicios que atiende cada área técnica.</Text>
           </View>
           <Pressable
-            accessibilityLabel="Crear categoría"
+            accessibilityLabel="Crear tipo de servicio"
             onPress={() => openForm()}
             style={styles.addButton}
           >
@@ -108,7 +108,9 @@ export function CategoriesScreen() {
           horizontal
           data={[
             { id: null, name: 'Todas' },
-            ...(areas.data ?? []).map(({ id, name }) => ({ id, name })),
+            ...(areas.data ?? [])
+              .filter((area) => area.kind === 'tecnica')
+              .map(({ id, name }) => ({ id, name })),
           ]}
           keyExtractor={(item) => item.id ?? 'all'}
           showsHorizontalScrollIndicator={false}
@@ -150,7 +152,9 @@ export function CategoriesScreen() {
             contentContainerStyle={styles.list}
             data={filteredCategories}
             keyExtractor={(item) => item.id}
-            ListEmptyComponent={<Text style={styles.empty}>No hay categorías para esta área.</Text>}
+            ListEmptyComponent={
+              <Text style={styles.empty}>No hay tipos de servicio para esta área.</Text>
+            }
             refreshControl={
               <RefreshControl
                 refreshing={categories.isRefetching}
@@ -211,7 +215,7 @@ export function CategoriesScreen() {
           <SafeAreaView edges={['bottom']} style={styles.modalCard}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                {editing ? 'Editar categoría' : 'Nueva categoría'}
+                {editing ? 'Editar tipo de servicio' : 'Nuevo tipo de servicio'}
               </Text>
               <Pressable
                 accessibilityLabel="Cerrar formulario"

@@ -76,7 +76,9 @@ export function AreasScreen() {
             <Text accessibilityRole="header" style={styles.title}>
               Áreas
             </Text>
-            <Text style={styles.subtitle}>Organiza los departamentos que atenderán los casos.</Text>
+            <Text style={styles.subtitle}>
+              Organiza las áreas solicitantes y técnicas de tu empresa.
+            </Text>
           </View>
           <Pressable
             accessibilityLabel="Crear área"
@@ -126,6 +128,9 @@ export function AreasScreen() {
                     </Text>
                   </View>
                   <Text style={styles.description}>{item.description || 'Sin descripción'}</Text>
+                  <Text style={styles.kind}>
+                    {item.kind === 'tecnica' ? 'Área técnica' : 'Área solicitante'}
+                  </Text>
                 </View>
                 <View style={styles.actions}>
                   <Pressable
@@ -228,6 +233,7 @@ const styles = StyleSheet.create({
   activeBadge: { color: colors.success, backgroundColor: colors.successSoft },
   inactiveBadge: { color: colors.textMuted, backgroundColor: colors.background },
   description: { color: colors.textMuted, fontSize: 13, lineHeight: 19 },
+  kind: { color: colors.primary, fontSize: 12, fontWeight: '700' },
   actions: { flexDirection: 'row' },
   iconButton: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md },

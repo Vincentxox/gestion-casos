@@ -5,14 +5,14 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { FormField } from '@/components/forms/FormField'
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
-import { PrimaryButton } from '@/components/buttons/PrimaryButton'
-import { hasPermission } from '@/features/auth/permissions'
+import { Button } from '@/components/ui/Button'
 import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
 import { colors, radius, spacing } from '@/theme/tokens'
 
 import { changeCaseStatusSchema } from '../schemas'
-import { CASE_STATUSES, type CaseStatus } from '../types'
+import { getAvailableCaseActions } from '../casePermissions'
+import type { CaseAction } from '../types'
 import { getStatusLabel } from '../caseService'
 import { useCaseDetail, useChangeCaseStatus } from '../useCases'
 
@@ -22,12 +22,9 @@ export function ChangeCaseStatusScreen({ navigation, route }: Props) {
   const profile = useAuthStore((state) => state.profile)
   const detail = useCaseDetail(route.params.caseId)
   const mutation = useChangeCaseStatus(route.params.caseId)
-  const [status, setStatus] = useState<CaseStatus | null>(null)
+  const [action, setAction] = useState<CaseAction | null>(route.params.action ?? null)
   const [comment, setComment] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const canUpdate = hasPermission(profile?.role, 'cases.update')
-
-  if (!canUpdate) return <Message text="No tienes permiso para cambiar el estado." />
 
   if (detail.isLoading) {
     return (
@@ -39,11 +36,17 @@ export function ChangeCaseStatusScreen({ navigation, route }: Props) {
 
   if (!detail.data || detail.error) return <Message text="No fue posible cargar el caso." />
 
-  const selectedStatus =
-    status ?? CASE_STATUSES.find((value) => value !== detail.data?.status) ?? null
+  const availableActions = getAvailableCaseActions(detail.data, profile).filter(
+    (item) => item !== 'asignar',
+  )
+  if (availableActions.length === 0)
+    return <Message text="No hay acciones disponibles para tu rol y el estado actual." />
+
+  const selectedAction =
+    action && availableActions.some((item) => item === action) ? action : availableActions[0]
 
   async function handleSubmit() {
-    const result = changeCaseStatusSchema.safeParse({ status: selectedStatus, comment })
+    const result = changeCaseStatusSchema.safeParse({ action: selectedAction, comment })
     if (!result.success) {
       const nextErrors: Record<string, string> = {}
       for (const issue of result.error.issues) nextErrors[String(issue.path[0])] ??= issue.message
@@ -51,19 +54,17 @@ export function ChangeCaseStatusScreen({ navigation, route }: Props) {
       return
     }
 
-    if (result.data.status === detail.data?.status) {
-      setErrors({ status: 'Selecciona un estado diferente al actual' })
-      return
-    }
-
     setErrors({})
     try {
       await mutation.mutateAsync(result.data)
-      Alert.alert('Estado actualizado', 'El cambio y su comentario quedaron registrados.', [
+      Alert.alert('Acción realizada', 'El cambio quedó registrado en el historial.', [
         { text: 'Entendido', onPress: () => navigation.goBack() },
       ])
-    } catch {
-      Alert.alert('No fue posible cambiar el estado', 'Comprueba tus permisos y la conexión.')
+    } catch (error) {
+      Alert.alert(
+        'No fue posible completar la acción',
+        error instanceof Error ? error.message : 'Comprueba tus permisos y la conexión.',
+      )
     }
   }
 
@@ -73,37 +74,34 @@ export function ChangeCaseStatusScreen({ navigation, route }: Props) {
         <Text style={styles.currentLabel}>Estado actual</Text>
         <Text style={styles.currentValue}>{getStatusLabel(detail.data.status)}</Text>
 
-        <Text style={styles.label}>Nuevo estado</Text>
+        <Text style={styles.label}>Acción</Text>
         <View style={styles.options}>
-          {CASE_STATUSES.map((value) => {
-            const isCurrent = value === detail.data?.status
-            const isSelected = value === selectedStatus
+          {availableActions.map((value) => {
+            const isSelected = value === selectedAction
             return (
               <Pressable
                 accessibilityRole="radio"
-                accessibilityState={{ checked: isSelected, disabled: isCurrent }}
-                disabled={isCurrent}
+                accessibilityState={{ checked: isSelected }}
                 key={value}
-                onPress={() => setStatus(value)}
-                style={[
-                  styles.option,
-                  isSelected ? styles.optionSelected : null,
-                  isCurrent ? styles.optionDisabled : null,
-                ]}
+                onPress={() => setAction(value)}
+                style={[styles.option, isSelected ? styles.optionSelected : null]}
               >
                 <Text style={[styles.optionText, isSelected ? styles.optionTextSelected : null]}>
-                  {getStatusLabel(value)}
-                  {isCurrent ? ' (actual)' : ''}
+                  {value.charAt(0).toUpperCase() + value.slice(1)}
                 </Text>
               </Pressable>
             )
           })}
         </View>
-        {errors.status ? <Text style={styles.error}>{errors.status}</Text> : null}
+        {errors.action ? <Text style={styles.error}>{errors.action}</Text> : null}
 
         <FormField
           error={errors.comment}
-          label="Comentario del cambio"
+          label={
+            selectedAction === 'rechazar' || selectedAction === 'pausar'
+              ? 'Motivo obligatorio'
+              : 'Comentario (opcional)'
+          }
           maxLength={500}
           multiline
           onChangeText={setComment}
@@ -112,7 +110,7 @@ export function ChangeCaseStatusScreen({ navigation, route }: Props) {
           textAlignVertical="top"
           value={comment}
         />
-        <PrimaryButton
+        <Button
           label="Confirmar cambio"
           loading={mutation.isPending}
           onPress={() => void handleSubmit()}

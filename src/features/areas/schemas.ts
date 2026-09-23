@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 export const areaSchema = z.object({
+  kind: z.enum(['solicitante', 'tecnica']),
   name: z
     .string()
     .trim()

@@ -13,34 +13,49 @@ import { useCreateCase } from '../useCases'
 type Props = NativeStackScreenProps<MainStackParamList, 'CreateCase'>
 
 export function CreateCaseScreen({ navigation }: Props) {
-  const session = useAuthStore((state) => state.session)
+  const profile = useAuthStore((state) => state.profile)
   const mutation = useCreateCase()
 
   async function handleSubmit(input: CreateCaseInput) {
-    if (!session?.user.id) {
-      Alert.alert('Sesión no disponible', 'Vuelve a iniciar sesión para crear el caso.')
+    if (!profile?.areaId) {
+      Alert.alert(
+        'Necesitas un área',
+        'Pide al administrador que asigne tu área antes de crear solicitudes.',
+      )
       return
     }
 
     try {
-      await mutation.mutateAsync({ input, userId: session.user.id })
-      Alert.alert('Caso creado', 'El caso quedó registrado y ya aparece en el listado.', [
-        { text: 'Entendido', onPress: () => navigation.goBack() },
-      ])
+      const created = await mutation.mutateAsync(input)
+      navigation.replace('CaseDetail', { caseId: created.id })
+      Alert.alert('Solicitud enviada', `${created.caseNumber} quedó registrada.`)
     } catch {
-      Alert.alert('No fue posible crear el caso', 'Comprueba tus permisos y la conexión.')
+      Alert.alert(
+        'No fue posible crear la solicitud',
+        'Comprueba tus permisos, el área y la conexión.',
+      )
     }
   }
 
   return (
     <SafeAreaView edges={['bottom']} style={styles.safeArea}>
       <Text accessibilityRole="header" style={styles.title}>
-        Información del caso
+        Nueva solicitud
       </Text>
       <Text style={styles.subtitle}>
         Completa los datos obligatorios para iniciar el seguimiento.
       </Text>
-      <CaseForm loading={mutation.isPending} onSubmit={handleSubmit} submitLabel="Guardar caso" />
+      {!profile?.areaId ? (
+        <Text style={styles.subtitle}>
+          No tienes un área asignada. El administrador debe asignarla antes de crear solicitudes.
+        </Text>
+      ) : (
+        <CaseForm
+          loading={mutation.isPending}
+          onSubmit={handleSubmit}
+          submitLabel="Enviar solicitud"
+        />
+      )}
     </SafeAreaView>
   )
 }

@@ -1,20 +1,38 @@
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { useState } from 'react'
+import appConfig from '../../../app.json'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-import { PrimaryButton } from '@/components/buttons/PrimaryButton'
+import { Button } from '@/components/ui/Button'
+import { ROLE_LABELS } from '@/features/auth/types'
 import { useAuthStore } from '@/store/authStore'
 import { colors, radius, spacing } from '@/theme/tokens'
-
-const ROLE_LABELS = {
-  administrador: 'Administrador',
-  auditor: 'Auditor',
-  visualizador: 'Visualizador',
-} as const
+import { updateOwnName } from './profileService'
 
 export function ProfileScreen() {
   const profile = useAuthStore((state) => state.profile)
   const session = useAuthStore((state) => state.session)
   const logout = useAuthStore((state) => state.logout)
+  const applyOwnName = useAuthStore((state) => state.applyOwnName)
+  const [name, setName] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  async function saveName() {
+    if (!profile) return
+    setSaving(true)
+    try {
+      applyOwnName(await updateOwnName(profile.id, name ?? profile.fullName))
+      setName(null)
+      Alert.alert('Nombre actualizado')
+    } catch (error) {
+      Alert.alert(
+        'No fue posible guardar',
+        error instanceof Error ? error.message : 'Inténtalo de nuevo.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
 
   async function handleLogout() {
     try {
@@ -44,7 +62,21 @@ export function ProfileScreen() {
         <View style={styles.card}>
           <View style={styles.field}>
             <Text style={styles.label}>Nombre</Text>
-            <Text style={styles.value}>{profile?.fullName || 'Usuario'}</Text>
+            <TextInput
+              accessibilityLabel="Nombre completo"
+              maxLength={120}
+              onChangeText={setName}
+              style={styles.value}
+              value={name ?? profile?.fullName ?? ''}
+            />
+            {name !== null && name.trim() !== profile?.fullName ? (
+              <Button label="Guardar nombre" loading={saving} onPress={() => void saveName()} />
+            ) : null}
+          </View>
+          <View style={styles.separator} />
+          <View style={styles.field}>
+            <Text style={styles.label}>Empresa</Text>
+            <Text style={styles.value}>{profile?.organizationName || 'Sin empresa'}</Text>
           </View>
           <View style={styles.separator} />
           <View style={styles.field}>
@@ -68,8 +100,9 @@ export function ProfileScreen() {
         <Text style={styles.securityNote}>
           Los permisos de la aplicación se aplican automáticamente de acuerdo con tu rol.
         </Text>
+        <Text style={styles.securityNote}>Versión {appConfig.expo.version}</Text>
 
-        <PrimaryButton label="Cerrar sesión" onPress={() => void handleLogout()} />
+        <Button label="Cerrar sesión" onPress={() => void handleLogout()} />
       </ScrollView>
     </SafeAreaView>
   )

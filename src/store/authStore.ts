@@ -1,16 +1,18 @@
 import type { Session } from '@supabase/supabase-js'
 import { create } from 'zustand'
 
+import { queryClient } from '@/config/queryClient'
 import {
   getCurrentSession,
   resolveSessionProfile,
+  retryPendingInvitation,
   signIn,
   signInWithGoogle,
   signOut,
   signUp,
 } from '@/features/auth/authService'
 import type { RegistrationInput } from '@/features/auth/schemas'
-import type { Profile } from '@/features/auth/types'
+import type { AppRole, Profile } from '@/features/auth/types'
 
 type AuthStatus = 'initializing' | 'authenticated' | 'unauthenticated'
 
@@ -25,11 +27,30 @@ interface AuthStore {
   register: (input: RegistrationInput) => Promise<boolean>
   logout: () => Promise<void>
   applySession: (session: Session | null) => Promise<void>
-  applyOwnAreaAssignment: (userId: string, areaId: string | null, areaName: string | null) => void
+  applyOwnAccess: (
+    userId: string,
+    role: AppRole,
+    areaId: string | null,
+    areaName: string | null,
+  ) => void
+  applyOrganizationName: (name: string) => void
+  applyOwnName: (name: string) => void
+  retryInvitation: () => Promise<boolean>
 }
 
-async function getAuthValues(session: Session | null) {
+async function getAuthValues(
+  session: Session | null,
+  previousSession: Session | null,
+  previousProfile: Profile | null,
+) {
   const profile = await resolveSessionProfile(session)
+
+  if (
+    session?.user.id !== previousSession?.user.id ||
+    profile?.organizationId !== previousProfile?.organizationId
+  ) {
+    queryClient.clear()
+  }
 
   return {
     session,
@@ -50,10 +71,11 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     try {
       const session = await getCurrentSession()
       set({
-        ...(await getAuthValues(session)),
+        ...(await getAuthValues(session, get().session, get().profile)),
         initializationError: null,
       })
     } catch {
+      queryClient.clear()
       set({
         session: null,
         profile: null,
@@ -65,7 +87,10 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   async login(email, password) {
     const session = await signIn(email, password)
-    set({ ...(await getAuthValues(session)), initializationError: null })
+    set({
+      ...(await getAuthValues(session, get().session, get().profile)),
+      initializationError: null,
+    })
   },
 
   async loginWithGoogle() {
@@ -76,7 +101,10 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     }
 
     try {
-      set({ ...(await getAuthValues(session)), initializationError: null })
+      set({
+        ...(await getAuthValues(session, get().session, get().profile)),
+        initializationError: null,
+      })
     } catch (error) {
       // setSession también emite onAuthStateChange. Si ese flujo ya cargó el
       // mismo usuario, no debemos convertir una segunda carga fallida en un
@@ -99,7 +127,10 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     const { session } = await signUp(email, password, fullName)
 
     if (session) {
-      set({ ...(await getAuthValues(session)), initializationError: null })
+      set({
+        ...(await getAuthValues(session, get().session, get().profile)),
+        initializationError: null,
+      })
     }
 
     return session !== null
@@ -107,6 +138,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   async logout() {
     await signOut()
+    queryClient.clear()
     set({
       session: null,
       profile: null,
@@ -116,12 +148,17 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   },
 
   async applySession(session) {
+    if (session?.user.id !== get().session?.user.id) {
+      queryClient.clear()
+      set({ session: null, profile: null, status: 'initializing' })
+    }
     try {
       set({
-        ...(await getAuthValues(session)),
+        ...(await getAuthValues(session, get().session, get().profile)),
         initializationError: null,
       })
     } catch {
+      queryClient.clear()
       set({
         session: null,
         profile: null,
@@ -131,9 +168,28 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     }
   },
 
-  applyOwnAreaAssignment(userId, areaId, areaName) {
+  applyOwnAccess(userId, role, areaId, areaName) {
     const profile = get().profile
     if (profile?.id !== userId) return
-    set({ profile: { ...profile, areaId, areaName } })
+    set({ profile: { ...profile, role, areaId, areaName } })
+  },
+
+  applyOrganizationName(name) {
+    const profile = get().profile
+    if (profile) set({ profile: { ...profile, organizationName: name } })
+  },
+
+  applyOwnName(name) {
+    const profile = get().profile
+    if (profile) set({ profile: { ...profile, fullName: name } })
+  },
+
+  async retryInvitation() {
+    const userId = get().session?.user.id
+    if (!userId) return false
+    const profile = await retryPendingInvitation(userId)
+    if (profile.organizationId !== get().profile?.organizationId) queryClient.clear()
+    set({ profile })
+    return profile.organizationId !== null
   },
 }))

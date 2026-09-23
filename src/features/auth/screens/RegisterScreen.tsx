@@ -3,7 +3,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { Controller, useForm } from 'react-hook-form'
 import { Alert, StyleSheet, Text, View } from 'react-native'
 
-import { PrimaryButton } from '@/components/buttons/PrimaryButton'
+import { Button } from '@/components/ui/Button'
 import { FormField } from '@/components/forms/FormField'
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
 import { getAuthErrorMessage } from '@/features/auth/authErrors'
@@ -59,7 +59,7 @@ export function RegisterScreen({ navigation }: Props) {
           Crear cuenta
         </Text>
         <Text style={styles.subtitle}>
-          Completa tus datos. Tu rol será asignado de forma segura por un administrador.
+          Usa el correo al que recibiste la invitación. El administrador definirá tu rol y tu área.
         </Text>
       </View>
 
@@ -137,7 +137,7 @@ export function RegisterScreen({ navigation }: Props) {
           )}
         />
 
-        <PrimaryButton label="Crear cuenta" loading={isSubmitting} onPress={() => void submit()} />
+        <Button label="Crear cuenta" loading={isSubmitting} onPress={() => void submit()} />
       </View>
     </KeyboardFormScrollView>
   )

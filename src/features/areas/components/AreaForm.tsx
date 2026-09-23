@@ -1,10 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm } from 'react-hook-form'
-import { StyleSheet, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 
-import { PrimaryButton } from '@/components/buttons/PrimaryButton'
+import { Button } from '@/components/ui/Button'
 import { FormField } from '@/components/forms/FormField'
-import { spacing } from '@/theme/tokens'
+import { colors, radius, spacing } from '@/theme/tokens'
 
 import { areaSchema } from '../schemas'
 import type { AreaInput, AreaRecord } from '../types'
@@ -22,11 +22,37 @@ export function AreaForm({ area, loading, onSubmit }: AreaFormProps) {
     formState: { errors },
   } = useForm<AreaInput>({
     resolver: zodResolver(areaSchema),
-    defaultValues: { name: area?.name ?? '', description: area?.description ?? '' },
+    defaultValues: {
+      name: area?.name ?? '',
+      description: area?.description ?? '',
+      kind: area?.kind ?? 'solicitante',
+    },
   })
 
   return (
     <View style={styles.form}>
+      <Controller
+        control={control}
+        name="kind"
+        render={({ field: { onChange, value } }) => (
+          <View style={styles.kindGroup}>
+            <Text style={styles.kindLabel}>Tipo de área</Text>
+            {(['solicitante', 'tecnica'] as const).map((kind) => (
+              <Pressable
+                key={kind}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: value === kind }}
+                onPress={() => onChange(kind)}
+                style={[styles.kindOption, value === kind && styles.kindSelected]}
+              >
+                <Text style={styles.kindLabel}>
+                  {kind === 'tecnica' ? 'Técnica' : 'Solicitante'}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
+      />
       <Controller
         control={control}
         name="name"
@@ -60,7 +86,7 @@ export function AreaForm({ area, loading, onSubmit }: AreaFormProps) {
           />
         )}
       />
-      <PrimaryButton
+      <Button
         label={area ? 'Guardar cambios' : 'Crear área'}
         loading={loading}
         onPress={handleSubmit(onSubmit)}
@@ -72,4 +98,16 @@ export function AreaForm({ area, loading, onSubmit }: AreaFormProps) {
 const styles = StyleSheet.create({
   form: { gap: spacing.md },
   description: { minHeight: 90, paddingTop: spacing.md },
+  kindGroup: { gap: spacing.sm },
+  kindLabel: { color: colors.text, fontWeight: '700' },
+  kindOption: {
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+  },
+  kindSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
 })

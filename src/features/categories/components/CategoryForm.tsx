@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm } from 'react-hook-form'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
-import { PrimaryButton } from '@/components/buttons/PrimaryButton'
+import { Button } from '@/components/ui/Button'
 import { FormField } from '@/components/forms/FormField'
 import type { AreaRecord } from '@/features/areas/types'
 import { colors, spacing } from '@/theme/tokens'
@@ -45,7 +45,7 @@ export function CategoryForm({ areas, category, loading, onSubmit }: Props) {
               contentContainerStyle={styles.areaOptions}
             >
               {areas
-                .filter((area) => area.isActive || area.id === value)
+                .filter((area) => area.kind === 'tecnica' && (area.isActive || area.id === value))
                 .map((area) => (
                   <Pressable
                     key={area.id}
@@ -76,7 +76,7 @@ export function CategoryForm({ areas, category, loading, onSubmit }: Props) {
           <FormField
             autoCapitalize="sentences"
             error={errors.name?.message}
-            label="Nombre de la categoría"
+            label="Nombre del tipo de servicio"
             onBlur={onBlur}
             onChangeText={onChange}
             placeholder="Ej. Falla de equipo"
@@ -101,8 +101,8 @@ export function CategoryForm({ areas, category, loading, onSubmit }: Props) {
           />
         )}
       />
-      <PrimaryButton
-        label={category ? 'Guardar cambios' : 'Crear categoría'}
+      <Button
+        label={category ? 'Guardar cambios' : 'Crear tipo de servicio'}
         loading={loading}
         onPress={handleSubmit(onSubmit)}
       />

@@ -23,6 +23,7 @@ jest.mock('@/services/supabase/client', () => ({
       signOut: jest.fn(),
     },
     from: jest.fn(),
+    rpc: jest.fn(),
   },
 }))
 
@@ -48,6 +49,7 @@ const auth = supabase.auth as unknown as {
   signOut: jest.Mock
 }
 const from = supabase.from as unknown as jest.Mock
+const rpc = supabase.rpc as unknown as jest.Mock
 
 const session = {
   user: { id: 'user-1' },
@@ -176,6 +178,8 @@ describe('servicio de autenticación', () => {
         role: 'auditor',
         area_id: 'area-1',
         area: { name: 'Tecnología' },
+        organization_id: 'org-1',
+        organization: { name: 'Empresa' },
       },
       error: null,
     })
@@ -190,6 +194,8 @@ describe('servicio de autenticación', () => {
       role: 'auditor',
       areaId: 'area-1',
       areaName: 'Tecnología',
+      organizationId: 'org-1',
+      organizationName: 'Empresa',
     })
   })
 
@@ -224,5 +230,49 @@ describe('servicio de autenticación', () => {
 
   test('resuelve el perfil únicamente cuando existe una sesión', async () => {
     await expect(resolveSessionProfile(null)).resolves.toBeNull()
+  })
+
+  test('intenta vincular una invitación cuando el usuario aún no tiene empresa', async () => {
+    const single = jest.fn().mockResolvedValue({
+      data: {
+        id: 'user-1',
+        full_name: 'Usuario',
+        avatar_url: null,
+        role: 'solicitante',
+        area_id: null,
+        area: null,
+        organization_id: null,
+        organization: null,
+      },
+      error: null,
+    })
+    from.mockReturnValue({
+      select: jest.fn().mockReturnValue({ eq: jest.fn().mockReturnValue({ single }) }),
+    })
+    rpc.mockResolvedValue({ data: false, error: null })
+
+    await expect(resolveSessionProfile(session)).resolves.toMatchObject({ organizationId: null })
+    expect(rpc).toHaveBeenCalledWith('accept_pending_invitation')
+  })
+
+  test('conserva la sesión sin empresa si la comprobación de invitación falla por red', async () => {
+    const single = jest.fn().mockResolvedValue({
+      data: {
+        id: 'user-1',
+        full_name: 'Usuario',
+        avatar_url: null,
+        role: 'solicitante',
+        area_id: null,
+        area: null,
+        organization_id: null,
+        organization: null,
+      },
+      error: null,
+    })
+    from.mockReturnValue({
+      select: jest.fn().mockReturnValue({ eq: jest.fn().mockReturnValue({ single }) }),
+    })
+    rpc.mockRejectedValue(new TypeError('Failed to fetch'))
+    await expect(resolveSessionProfile(session)).resolves.toMatchObject({ organizationId: null })
   })
 })

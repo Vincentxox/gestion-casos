@@ -9,10 +9,11 @@ type Props = {
 
 const logoSource = require('../../../assets/logo-mark.png')
 
-export function BrandIntroScreen({ onFinish }: Props) {
+export function BrandIntroScreen({ onFinish, ready = true }: Props & { ready?: boolean }) {
   const [opacity] = useState(() => new Animated.Value(0))
   const [scale] = useState(() => new Animated.Value(0.82))
   const [translateY] = useState(() => new Animated.Value(12))
+  const [introComplete, setIntroComplete] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -26,7 +27,7 @@ export function BrandIntroScreen({ onFinish }: Props) {
         opacity.setValue(1)
         scale.setValue(1)
         translateY.setValue(0)
-        reduceMotionTimeout = setTimeout(() => active && onFinish(), 650)
+        reduceMotionTimeout = setTimeout(() => active && setIntroComplete(true), 650)
         return
       }
 
@@ -53,15 +54,9 @@ export function BrandIntroScreen({ onFinish }: Props) {
           }),
         ]),
         Animated.delay(850),
-        Animated.timing(opacity, {
-          toValue: 0,
-          duration: 260,
-          easing: Easing.in(Easing.cubic),
-          useNativeDriver: true,
-        }),
       ])
       animation.start(({ finished }) => {
-        if (active && finished) onFinish()
+        if (active && finished) setIntroComplete(true)
       })
     })
 
@@ -70,7 +65,21 @@ export function BrandIntroScreen({ onFinish }: Props) {
       animation?.stop()
       if (reduceMotionTimeout) clearTimeout(reduceMotionTimeout)
     }
-  }, [onFinish, opacity, scale, translateY])
+  }, [opacity, scale, translateY])
+
+  useEffect(() => {
+    if (!introComplete || !ready) return
+    const animation = Animated.timing(opacity, {
+      toValue: 0,
+      duration: 260,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    })
+    animation.start(({ finished }) => {
+      if (finished) onFinish()
+    })
+    return () => animation.stop()
+  }, [introComplete, onFinish, opacity, ready])
 
   return (
     <View accessibilityLabel="Nexo Casos" accessibilityRole="summary" style={styles.container}>

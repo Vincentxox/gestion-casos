@@ -4,32 +4,63 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import type { AdministrationStackParamList } from '@/navigation/types'
+import { useHomeSummary } from '@/features/home/useHomeSummary'
 import { colors, radius, spacing } from '@/theme/tokens'
 
 type Props = NativeStackScreenProps<AdministrationStackParamList, 'AdministrationHome'>
 
 const OPTIONS = [
   {
+    route: 'AccessRequests' as const,
+    icon: 'person-add-outline' as const,
+    title: 'Solicitudes de acceso',
+    description: 'Aprueba o rechaza a quienes pidieron unirse.',
+  },
+  {
     route: 'Users' as const,
     icon: 'people-outline' as const,
     title: 'Usuarios',
-    description: 'Consulta el personal y asigna su área responsable.',
+    description: 'Asigna el rol y el área de cada miembro.',
   },
   {
     route: 'Areas' as const,
     icon: 'business-outline' as const,
     title: 'Áreas',
-    description: 'Organiza los departamentos que atenderán los casos.',
+    description: 'Organiza áreas solicitantes y técnicas.',
   },
   {
     route: 'Categories' as const,
     icon: 'pricetags-outline' as const,
-    title: 'Categorías',
-    description: 'Clasifica las solicitudes dentro de cada área.',
+    title: 'Tipos de servicio',
+    description: 'Define lo que atiende cada área técnica.',
+  },
+  {
+    route: 'Resources' as const,
+    icon: 'construct-outline' as const,
+    title: 'Recursos',
+    description: 'Administra materiales, herramientas y equipos.',
+  },
+  {
+    route: 'Invitations' as const,
+    icon: 'mail-outline' as const,
+    title: 'Invitaciones',
+    description: 'Invita personas y revisa sus accesos.',
+  },
+  {
+    route: 'Organization' as const,
+    icon: 'briefcase-outline' as const,
+    title: 'Mi empresa',
+    description: 'Consulta y actualiza el nombre de tu empresa.',
   },
 ]
 
 export function AdministrationHomeScreen({ navigation }: Props) {
+  const summary = useHomeSummary()
+  const counts: Record<string, number | undefined> = {
+    AccessRequests: summary.data?.admin?.solicitudes_acceso_pendientes,
+    Users: summary.data?.admin?.usuarios_sin_area,
+    Invitations: summary.data?.admin?.invitaciones_pendientes,
+  }
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -39,7 +70,7 @@ export function AdministrationHomeScreen({ navigation }: Props) {
             Administrar
           </Text>
           <Text style={styles.subtitle}>
-            Gestiona la estructura utilizada para clasificar casos.
+            Gestiona los miembros, áreas y servicios de tu empresa.
           </Text>
         </View>
 
@@ -54,7 +85,10 @@ export function AdministrationHomeScreen({ navigation }: Props) {
               <Ionicons color={colors.primary} name={option.icon} size={26} />
             </View>
             <View style={styles.cardContent}>
-              <Text style={styles.cardTitle}>{option.title}</Text>
+              <Text style={styles.cardTitle}>
+                {option.title}
+                {counts[option.route] ? ` · ${counts[option.route]}` : ''}
+              </Text>
               <Text style={styles.cardDescription}>{option.description}</Text>
             </View>
             <Ionicons color={colors.primary} name="chevron-forward" size={24} />

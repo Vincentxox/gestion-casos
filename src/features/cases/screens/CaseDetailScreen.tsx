@@ -1,21 +1,23 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
+import { useState, type ReactNode } from 'react'
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-import { hasPermission } from '@/features/auth/permissions'
+import { PriorityBadge } from '@/components/badges/PriorityBadge'
+import { StatusBadge } from '@/components/badges/StatusBadge'
+import { ActionSheet } from '@/components/actions/ActionSheet'
+import { Timeline } from '@/components/timeline/Timeline'
+import { RequestState } from '@/components/feedback/RequestState'
+import { StepIndicator } from '@/components/progress/StepIndicator'
 import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
 import { colors, radius, spacing } from '@/theme/tokens'
 
 import { useCaseDetail, useCaseHistory } from '../useCases'
+import { canEditCase, getAvailableCaseActions } from '../casePermissions'
+import type { CaseAction } from '../types'
 
 type Props = NativeStackScreenProps<MainStackParamList, 'CaseDetail'>
-
-const STATUS_LABELS = {
-  abierto: 'Abierto',
-  en_progreso: 'En progreso',
-  cerrado: 'Cerrado',
-} as const
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
@@ -26,59 +28,94 @@ function Field({ label, value }: { label: string; value: string }) {
   )
 }
 
+function DetailSection({ title, children }: { title: string; children: ReactNode }) {
+  const [open, setOpen] = useState(true)
+  return (
+    <View style={styles.panel}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        onPress={() => setOpen(!open)}
+        style={styles.sectionHeader}
+      >
+        <Text style={styles.panelTitle}>{title}</Text>
+        <Text style={styles.actionChevron}>{open ? '⌄' : '›'}</Text>
+      </Pressable>
+      {open ? children : null}
+    </View>
+  )
+}
+
 export function CaseDetailScreen({ navigation, route }: Props) {
   const { caseId } = route.params
   const profile = useAuthStore((state) => state.profile)
   const detail = useCaseDetail(caseId)
   const history = useCaseHistory(caseId)
-  const canUpdate = hasPermission(profile?.role, 'cases.update')
-  const canAssign = hasPermission(profile?.role, 'cases.assign')
+  const [actionsVisible, setActionsVisible] = useState(false)
 
   if (detail.isLoading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={colors.primary} size="large" />
-        <Text style={styles.muted}>Cargando detalle...</Text>
-      </View>
-    )
+    return <RequestState kind="loading" title="Cargando solicitud…" />
   }
 
   if (detail.error || !detail.data) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.error}>No fue posible cargar el caso.</Text>
-      </View>
+      <RequestState
+        kind="error"
+        title="No fue posible cargar la solicitud"
+        onRetry={() => void detail.refetch()}
+      />
     )
   }
 
   const item = detail.data
+  const canUpdate = canEditCase(item, profile)
+  const actions = getAvailableCaseActions(item, profile)
+  const primaryAction = actions.find((action) => !['rechazar', 'cancelar'].includes(action))
+  const otherActions = actions.filter((action) => action !== primaryAction)
+  function navigateAction(action: CaseAction) {
+    if (action === 'asignar') navigation.navigate('AssignCase', { caseId })
+    else navigation.navigate('ChangeCaseStatus', { caseId, action })
+  }
   return (
     <SafeAreaView edges={['bottom']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.heading}>
           <View style={styles.headingRow}>
             <Text style={styles.caseNumber}>{item.caseNumber}</Text>
-            <Text style={styles.status}>{STATUS_LABELS[item.status]}</Text>
+            <StatusBadge status={item.status} />
           </View>
           <Text accessibilityRole="header" style={styles.title}>
             {item.title}
           </Text>
+          <PriorityBadge priority={item.priority} />
+          <StepIndicator status={item.status} />
+        </View>
+
+        <DetailSection title="Resumen">
           <Text style={styles.description}>{item.description}</Text>
-        </View>
-
-        <View style={styles.panel}>
-          <Text style={styles.panelTitle}>Información general</Text>
-          <Field label="Categoría" value={item.category} />
+          <Field label="Tipo de servicio" value={item.category} />
           <Field label="Ubicación" value={item.location} />
-          <Field
-            label="Prioridad"
-            value={item.priority.charAt(0).toUpperCase() + item.priority.slice(1)}
-          />
-          <Field label="Asignación" value={item.assignedTo ? 'Personal asignado' : 'Sin asignar'} />
           <Field label="Creado" value={new Date(item.createdAt).toLocaleString('es-GT')} />
-        </View>
+        </DetailSection>
 
-        {canUpdate || canAssign ? (
+        <DetailSection title="Personas">
+          <Field label="Solicitante" value={item.creatorName} />
+          <Field label="Área solicitante" value={item.requestingAreaName} />
+          <Field label="Área técnica" value={item.targetAreaName} />
+          <Field label="Responsable" value={item.assigneeName || 'Sin asignar'} />
+        </DetailSection>
+
+        <DetailSection title="Recursos utilizados">
+          <Text style={styles.description}>
+            Consulta materiales, equipos y horas de trabajo de esta solicitud.
+          </Text>
+          <ActionButton
+            label="Ver recursos y mano de obra"
+            onPress={() => navigation.navigate('CaseResources', { caseId })}
+          />
+        </DetailSection>
+
+        {canUpdate || otherActions.length > 0 ? (
           <View style={styles.actions}>
             <Text style={styles.panelTitle}>Acciones</Text>
             {canUpdate ? (
@@ -87,44 +124,51 @@ export function CaseDetailScreen({ navigation, route }: Props) {
                   label="Editar información"
                   onPress={() => navigation.navigate('EditCase', { caseId })}
                 />
-                <ActionButton
-                  label="Cambiar estado"
-                  onPress={() => navigation.navigate('ChangeCaseStatus', { caseId })}
-                />
               </>
             ) : null}
-            {canAssign ? (
+            {otherActions.length > 0 ? (
               <ActionButton
-                label="Asignar personal"
-                onPress={() => navigation.navigate('AssignCase', { caseId })}
+                label="Acciones de la solicitud"
+                onPress={() => setActionsVisible(true)}
               />
             ) : null}
           </View>
         ) : null}
 
-        <View style={styles.panel}>
-          <Text style={styles.panelTitle}>Historial de estados</Text>
+        <DetailSection title="Línea de tiempo">
           {history.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
           {history.error ? (
             <Text style={styles.error}>No fue posible cargar el historial.</Text>
           ) : null}
-          {history.data?.map((entry) => (
-            <View key={entry.id} style={styles.historyItem}>
-              <View style={styles.timelineDot} />
-              <View style={styles.historyContent}>
-                <Text style={styles.historyTitle}>{STATUS_LABELS[entry.newStatus]}</Text>
-                <Text style={styles.muted}>
-                  {new Date(entry.createdAt).toLocaleString('es-GT')}
-                </Text>
-                {entry.comment ? <Text style={styles.historyComment}>{entry.comment}</Text> : null}
-              </View>
-            </View>
-          ))}
-          {!history.isLoading && history.data?.length === 0 ? (
-            <Text style={styles.muted}>Todavía no hay cambios registrados.</Text>
-          ) : null}
-        </View>
+          {history.data ? <Timeline events={history.data} /> : null}
+        </DetailSection>
       </ScrollView>
+      {primaryAction ? (
+        <View style={styles.stickyAction}>
+          <ActionButton
+            label={
+              primaryAction === 'asignar'
+                ? 'Asignar personal'
+                : primaryAction.charAt(0).toUpperCase() + primaryAction.slice(1)
+            }
+            onPress={() => navigateAction(primaryAction)}
+          />
+        </View>
+      ) : null}
+      <ActionSheet<CaseAction>
+        title="Acciones disponibles"
+        actions={otherActions.map((action) => ({
+          id: action,
+          label: action.charAt(0).toUpperCase() + action.slice(1),
+          destructive: ['rechazar', 'cancelar'].includes(action),
+        }))}
+        visible={actionsVisible}
+        onClose={() => setActionsVisible(false)}
+        onSelect={(action) => {
+          setActionsVisible(false)
+          navigateAction(action)
+        }}
+      />
     </SafeAreaView>
   )
 }
@@ -172,6 +216,18 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   panelTitle: { color: colors.text, fontSize: 17, fontWeight: '800' },
+  sectionHeader: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  stickyAction: {
+    padding: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.surface,
+  },
   actions: {
     gap: spacing.sm,
     borderWidth: 1,

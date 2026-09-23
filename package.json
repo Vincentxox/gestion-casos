@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "index.ts",
   "dependencies": {
+    "@expo-google-fonts/plus-jakarta-sans": "^0.4.2",
     "@expo/vector-icons": "^15.0.2",
     "@hookform/resolvers": "^5.5.7",
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -21,6 +22,7 @@
     "expo-document-picker": "~57.0.2",
     "expo-file-system": "~57.0.7",
     "expo-font": "~57.0.4",
+    "expo-haptics": "~57.0.3",
     "expo-image-picker": "~57.0.19",
     "expo-local-authentication": "~57.0.3",
     "expo-notifications": "~57.0.20",
@@ -73,6 +75,9 @@
   "private": true,
   "jest": {
     "preset": "jest-expo",
+    "setupFilesAfterEnv": [
+      "<rootDir>/jest.setup.ts"
+    ],
     "moduleNameMapper": {
       "^@/(.*)$": "<rootDir>/src/$1"
     },
@@ -81,6 +86,27 @@
       "src/features/auth/authErrors.ts",
       "src/features/auth/permissions.ts",
       "src/features/auth/schemas.ts",
+      "src/features/auth/accessService.ts",
+      "src/features/admin/invitationSchemas.ts",
+      "src/features/admin/invitationService.ts",
+      "src/features/admin/invitationNotice.ts",
+      "src/features/admin/organizationService.ts",
+      "src/features/admin/accessRequestService.ts",
+      "src/features/admin/userService.ts",
+      "src/features/areas/areaService.ts",
+      "src/features/cases/casePermissions.ts",
+      "src/features/cases/caseService.ts",
+      "src/features/cases/caseListPresentation.ts",
+      "src/features/cases/schemas.ts",
+      "src/features/resources/resourceService.ts",
+      "src/features/resources/resourcePermissions.ts",
+      "src/features/resources/schemas.ts",
+      "src/features/home/homeService.ts",
+      "src/features/home/homePresentation.ts",
+      "src/features/settings/profileService.ts",
+      "src/theme/formatters.ts",
+      "src/theme/statusMeta.ts",
+      "src/services/feedback.ts",
       "src/components/forms/FormField.tsx",
       "src/services/supabase/secureStorage.ts",
       "src/store/authStore.ts"
