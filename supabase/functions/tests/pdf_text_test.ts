@@ -19,6 +19,12 @@ test('toWinAnsi conserva el español y reemplaza lo que la fuente no dibuja', ()
   assert.equal(toWinAnsi(null), '')
 })
 
+test('toWinAnsi cambia flechas y guiones especiales por equivalentes legibles', () => {
+  assert.equal(toWinAnsi('Mantenimiento \u2192 Técnica'), 'Mantenimiento -> Técnica')
+  assert.equal(toWinAnsi('a \u2190 b \u2194 c'), 'a <- b <-> c')
+  assert.equal(toWinAnsi('\u22125 °C\u00a0y\u2011n'), '-5 °C y-n')
+})
+
 test('wrapText corta por palabras y parte las palabras demasiado largas', () => {
   const measure = (value: string) => value.length
   assert.deepEqual(wrapText('uno dos tres cuatro', 8, measure), ['uno dos', 'tres', 'cuatro'])

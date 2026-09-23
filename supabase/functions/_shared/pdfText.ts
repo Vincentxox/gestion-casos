@@ -9,12 +9,24 @@ const WIN_ANSI_EXTRA = new Set([
   0x0153, 0x017e, 0x0178,
 ])
 
+// Símbolos frecuentes fuera de WinAnsi que tienen un equivalente legible.
+const WIN_ANSI_SUBSTITUTES: Record<string, string> = {
+  '\u2192': '->',
+  '\u2190': '<-',
+  '\u2194': '<->',
+  '\u2212': '-',
+  '\u2011': '-',
+  '\u00a0': ' ',
+}
+
 export function toWinAnsi(value: string | null | undefined): string {
   if (!value) return ''
   let result = ''
   for (const char of value.normalize('NFC')) {
     const code = char.codePointAt(0) ?? 0
-    if (char === '\t') result += ' '
+    const substitute = WIN_ANSI_SUBSTITUTES[char]
+    if (substitute !== undefined) result += substitute
+    else if (char === '\t') result += ' '
     else if (char === '\n' || char === '\r') result += char
     else if ((code >= 0x20 && code <= 0x7e) || (code >= 0xa0 && code <= 0xff)) result += char
     else if (WIN_ANSI_EXTRA.has(code)) result += char

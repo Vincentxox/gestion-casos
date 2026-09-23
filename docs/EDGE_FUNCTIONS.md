@@ -46,12 +46,27 @@ const { data, error } = await supabase.functions.invoke('generate-report-pdf', {
 
 ## Tareas programadas
 
-Requieren las extensiones `pg_cron` y `pg_net`. La URL del proyecto y el secreto se
-guardan en Vault desde el SQL editor, sin escribirlos en migraciones ni documentos:
+Requieren las extensiones `pg_cron` y `pg_net`. Son configuración de cada entorno (la URL
+y el secreto cambian entre desarrollo y producción), por eso no van en migraciones:
+
+```sql
+create extension if not exists pg_cron;
+create extension if not exists pg_net with schema extensions;
+```
+
+La URL del proyecto y el secreto se guardan en Vault. El secreto lo carga el responsable
+desde el SQL editor; ningún agente lo ve ni lo escribe en documentos:
 
 ```sql
 select vault.create_secret('https://<proyecto>.supabase.co', 'project_url');
 select vault.create_secret('<el mismo valor de CRON_SECRET>', 'cron_secret');
+```
+
+Tareas (volver a ejecutar `cron.schedule` con el mismo nombre actualiza la tarea). El
+tiempo de espera de `pg_net` es de 5 s por defecto; se sube a 30 s para que un lote grande
+de avisos no quede cortado:
+
+```sql
 
 select cron.schedule('nexo-send-push', '* * * * *', $$
   select net.http_post(
@@ -61,7 +76,8 @@ select cron.schedule('nexo-send-push', '* * * * *', $$
       'Content-Type', 'application/json',
       'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret')
     ),
-    body := '{}'::jsonb
+    body := '{}'::jsonb,
+    timeout_milliseconds := 30000
   );
 $$);
 
@@ -73,10 +89,16 @@ select cron.schedule('nexo-cleanup-photos', '17 * * * *', $$
       'Content-Type', 'application/json',
       'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret')
     ),
-    body := '{}'::jsonb
+    body := '{}'::jsonb,
+    timeout_milliseconds := 30000
   );
 $$);
 ```
+
+Comprobación: `select jobname, schedule, active from cron.job;` y, para ver las últimas
+ejecuciones, `select status, return_message, start_time from cron.job_run_details order by
+start_time desc limit 10;` (respuestas HTTP en `net._http_response`). Para detener una
+tarea: `select cron.unschedule('nexo-send-push');`.
 
 ## Pruebas
 
