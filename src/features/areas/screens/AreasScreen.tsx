@@ -113,7 +113,7 @@ export function AreasScreen() {
                 <IconTile icon="business-outline" />
                 <View style={styles.cardContent}>
                   <View style={styles.nameRow}>
-                    <Text numberOfLines={1} style={styles.areaName}>
+                    <Text numberOfLines={2} style={styles.areaName}>
                       {item.name}
                     </Text>
                     <Chip
@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
   inactiveCard: { opacity: 0.7 },
   cardContent: { flex: 1, gap: spacing.sm },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  areaName: { ...typography.heading, color: colors.text, flex: 1 },
+  areaName: { ...typography.heading, color: colors.text, flex: 1, minWidth: 0 },
   description: { ...typography.caption, color: colors.textMuted },
   kind: { ...typography.caption, color: colors.textMuted },
   iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Alert, ScrollView, Share, StyleSheet, Text, View } from 'react-native'
+import { Alert, Share, StyleSheet, Text, View } from 'react-native'
 
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -123,12 +123,7 @@ export function InvitationsScreen() {
             onChangeText={setEmail}
           />
           <Text style={styles.label}>Rol</Text>
-          <ScrollView
-            horizontal
-            style={styles.optionScroll}
-            contentContainerStyle={styles.options}
-            showsHorizontalScrollIndicator={false}
-          >
+          <View style={styles.options}>
             {APP_ROLES.map((option) => (
               <Chip
                 key={option}
@@ -137,14 +132,9 @@ export function InvitationsScreen() {
                 onPress={() => changeRole(option)}
               />
             ))}
-          </ScrollView>
+          </View>
           <Text style={styles.label}>Área</Text>
-          <ScrollView
-            horizontal
-            style={styles.optionScroll}
-            contentContainerStyle={styles.options}
-            showsHorizontalScrollIndicator={false}
-          >
+          <View style={styles.options}>
             <Chip
               label="Sin área"
               selected={selectedAreaId === null}
@@ -158,7 +148,7 @@ export function InvitationsScreen() {
                 onPress={() => setAreaId(area.id)}
               />
             ))}
-          </ScrollView>
+          </View>
           <Button
             label="Crear invitación"
             loading={create.isPending}
@@ -233,8 +223,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.md,
   },
-  optionScroll: { flexGrow: 0, flexShrink: 0, minHeight: 52 },
-  options: { gap: spacing.sm, paddingVertical: spacing.xs },
+  options: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, paddingVertical: spacing.xs },
   invitationChips: { flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' },
   email: { ...typography.heading, color: colors.text },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },

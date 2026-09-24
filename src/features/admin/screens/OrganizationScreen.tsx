@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Alert, Share, StyleSheet, Text } from 'react-native'
+import { Alert, Modal, Share, StyleSheet, Text, View } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Button } from '@/components/ui/Button'
 import { RequestState } from '@/components/feedback/RequestState'
@@ -9,7 +10,7 @@ import { ScreenContainer } from '@/components/ui/ScreenContainer'
 import { FormField } from '@/components/forms/FormField'
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
 import { useAuthStore } from '@/store/authStore'
-import { colors, spacing, typography } from '@/theme/tokens'
+import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 import {
   useOrganization,
@@ -26,7 +27,9 @@ export function OrganizationScreen() {
   const regenerate = useRegenerateOrganizationJoinCode()
   const applyOrganizationName = useAuthStore((state) => state.applyOrganizationName)
   const [draftName, setDraftName] = useState<string | null>(null)
+  const [confirmVisible, setConfirmVisible] = useState(false)
   const name = draftName ?? organization.data?.name ?? ''
+  const nameChanged = Boolean(organization.data && name.trim() !== organization.data.name.trim())
 
   async function save() {
     if (name.trim().length < 2 || name.trim().length > 120) {
@@ -43,24 +46,16 @@ export function OrganizationScreen() {
     }
   }
 
-  function confirmRegeneration() {
-    Alert.alert('Regenerar código', 'El código anterior dejará de funcionar.', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Regenerar',
-        style: 'destructive',
-        onPress: () => {
-          void regenerate
-            .mutateAsync()
-            .catch((error) =>
-              Alert.alert(
-                'No fue posible regenerar',
-                error instanceof Error ? error.message : 'Inténtalo de nuevo.',
-              ),
-            )
-        },
-      },
-    ])
+  async function confirmRegeneration() {
+    try {
+      await regenerate.mutateAsync()
+      setConfirmVisible(false)
+    } catch (error) {
+      Alert.alert(
+        'No fue posible regenerar',
+        error instanceof Error ? error.message : 'Inténtalo de nuevo.',
+      )
+    }
   }
 
   return (
@@ -82,7 +77,12 @@ export function OrganizationScreen() {
               onChangeText={setDraftName}
               maxLength={120}
             />
-            <Button label="Guardar nombre" loading={rename.isPending} onPress={() => void save()} />
+            <Button
+              label="Guardar nombre"
+              disabled={!nameChanged}
+              loading={rename.isPending}
+              onPress={() => void save()}
+            />
           </Card>
         ) : null}
         <Card contentStyle={styles.card}>
@@ -105,6 +105,8 @@ export function OrganizationScreen() {
               </Text>
               <Button
                 label="Compartir o copiar"
+                icon="share-outline"
+                variant="secondary"
                 onPress={() => {
                   void Share.share({
                     message: `Únete a ${organization.data?.name ?? 'mi empresa'} en Nexo Casos con el código ${joinCode.data}`,
@@ -113,13 +115,44 @@ export function OrganizationScreen() {
               />
               <Button
                 label="Regenerar código"
+                variant="text"
+                destructive
                 loading={regenerate.isPending}
-                onPress={confirmRegeneration}
+                onPress={() => setConfirmVisible(true)}
               />
             </>
           )}
         </Card>
       </KeyboardFormScrollView>
+      <Modal
+        animationType="fade"
+        onRequestClose={() => setConfirmVisible(false)}
+        transparent
+        visible={confirmVisible}
+      >
+        <View style={styles.backdrop}>
+          <SafeAreaView edges={['bottom']} style={styles.confirmCard}>
+            <Text accessibilityRole="header" style={styles.codeTitle}>
+              Regenerar código
+            </Text>
+            <Text style={styles.hint}>
+              Las personas con el código anterior ya no podrán usarlo. ¿Deseas continuar?
+            </Text>
+            <Button
+              label="Regenerar código"
+              variant="danger"
+              loading={regenerate.isPending}
+              onPress={() => void confirmRegeneration()}
+            />
+            <Button
+              label="Conservar código"
+              variant="secondary"
+              disabled={regenerate.isPending}
+              onPress={() => setConfirmVisible(false)}
+            />
+          </SafeAreaView>
+        </View>
+      </Modal>
     </ScreenContainer>
   )
 }
@@ -130,4 +163,16 @@ const styles = StyleSheet.create({
   codeTitle: { ...typography.heading, color: colors.text },
   code: { ...typography.display, color: colors.primary, letterSpacing: 2 },
   hint: { ...typography.body, color: colors.textMuted },
+  backdrop: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: spacing.lg,
+    backgroundColor: colors.backdrop,
+  },
+  confirmCard: {
+    gap: spacing.md,
+    padding: spacing.lg,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+  },
 })

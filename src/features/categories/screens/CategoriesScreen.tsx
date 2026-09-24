@@ -154,7 +154,7 @@ export function CategoriesScreen() {
                 <IconTile icon="pricetag-outline" />
                 <View style={styles.cardContent}>
                   <View style={styles.nameRow}>
-                    <Text numberOfLines={1} style={styles.categoryName}>
+                    <Text numberOfLines={2} style={styles.categoryName}>
                       {item.name}
                     </Text>
                     <Chip
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
   inactiveCard: { opacity: 0.7 },
   cardContent: { flex: 1, gap: spacing.xs },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  categoryName: { ...typography.heading, color: colors.text, flex: 1 },
+  categoryName: { ...typography.heading, color: colors.text, flex: 1, minWidth: 0 },
   areaName: { ...typography.caption, color: colors.textMuted },
   description: { ...typography.caption, color: colors.textMuted },
   iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },

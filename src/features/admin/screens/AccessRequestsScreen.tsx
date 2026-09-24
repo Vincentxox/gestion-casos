@@ -20,6 +20,8 @@ import { Card } from '@/components/ui/Card'
 import { Chip } from '@/components/ui/Chip'
 import { Icon } from '@/components/ui/Icon'
 import { ScreenContainer } from '@/components/ui/ScreenContainer'
+import { SegmentedControl } from '@/components/ui/SegmentedControl'
+import { EmptyState } from '@/components/feedback/EmptyState'
 import { useAreas } from '@/features/areas/useAreas'
 import { APP_ROLES, ROLE_ICONS, ROLE_LABELS, type AppRole } from '@/features/auth/types'
 import { colors, radius, spacing, typography } from '@/theme/tokens'
@@ -89,19 +91,14 @@ export function AccessRequestsScreen() {
   return (
     <ScreenContainer edges={['bottom']} padded={false}>
       <View style={styles.content}>
-        <View style={styles.tabs}>
-          {[false, true].map((value) => (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ selected: resolved === value }}
-              key={String(value)}
-              onPress={() => setResolved(value)}
-              style={[styles.tab, resolved === value && styles.tabSelected]}
-            >
-              <Text style={styles.tabText}>{value ? 'Resueltas' : 'Pendientes'}</Text>
-            </Pressable>
-          ))}
-        </View>
+        <SegmentedControl
+          segments={[
+            { value: 'pending', label: 'Pendientes' },
+            { value: 'resolved', label: 'Resueltas' },
+          ]}
+          selected={resolved ? 'resolved' : 'pending'}
+          onChange={(value) => setResolved(value === 'resolved')}
+        />
         {requests.isError || areas.isError ? (
           <RequestState
             kind="error"
@@ -124,11 +121,15 @@ export function AccessRequestsScreen() {
               />
             }
             ListEmptyComponent={
-              <Text style={styles.empty}>
-                {resolved
-                  ? 'Todavía no hay solicitudes resueltas.'
-                  : 'No hay solicitudes pendientes. ¡Todo al día!'}
-              </Text>
+              <EmptyState
+                variant="allDone"
+                title={resolved ? 'Sin solicitudes resueltas' : 'Todo al día'}
+                message={
+                  resolved
+                    ? 'Todavía no hay solicitudes resueltas.'
+                    : 'No hay solicitudes pendientes.'
+                }
+              />
             }
             renderItem={({ item }) => (
               <Card
@@ -251,23 +252,10 @@ export function AccessRequestsScreen() {
 
 const styles = StyleSheet.create({
   content: { flex: 1, padding: spacing.lg, gap: spacing.md },
-  tabs: { flexDirection: 'row', gap: spacing.sm },
-  tab: {
-    minHeight: 44,
-    justifyContent: 'center',
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  tabSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-  tabText: { ...typography.caption, color: colors.text },
   card: { marginBottom: spacing.sm },
   cardContent: { gap: spacing.xs, padding: spacing.md },
   name: { color: colors.text, ...typography.heading },
   subtext: { color: colors.textMuted, ...typography.body },
-  empty: { color: colors.textMuted, ...typography.body },
   error: { color: colors.error, ...typography.body },
   backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.backdrop },
   sheet: {
