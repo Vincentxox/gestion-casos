@@ -19,7 +19,7 @@ export function avatarColor(id: string): string {
   return palette[hash % palette.length] ?? colors.primary
 }
 
-export function Avatar({ name, id, size = 44 }: { name: string; id: string; size?: 28 | 44 }) {
+export function Avatar({ name, id, size = 44 }: { name: string; id: string; size?: 28 | 44 | 72 }) {
   return (
     <View
       accessibilityLabel={name}
@@ -28,7 +28,9 @@ export function Avatar({ name, id, size = 44 }: { name: string; id: string; size
         { width: size, height: size, borderRadius: radius.pill, backgroundColor: avatarColor(id) },
       ]}
     >
-      <Text style={[styles.initials, size === 28 && styles.small]}>{avatarInitials(name)}</Text>
+      <Text style={[styles.initials, size === 28 && styles.small, size === 72 && styles.large]}>
+        {avatarInitials(name)}
+      </Text>
     </View>
   )
 }
@@ -37,4 +39,5 @@ const styles = StyleSheet.create({
   avatar: { alignItems: 'center', justifyContent: 'center' },
   initials: { ...typography.body, color: colors.white, fontFamily: fonts.extrabold },
   small: { ...typography.overline },
+  large: { ...typography.display, color: colors.white },
 })

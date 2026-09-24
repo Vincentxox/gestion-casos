@@ -2,10 +2,12 @@ import { useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { Button } from '@/components/ui/Button'
+import { Icon } from '@/components/ui/Icon'
 import { FormField } from '@/components/forms/FormField'
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
 import { useCategories } from '@/features/categories/useCategories'
 import { colors, radius, spacing, typography } from '@/theme/tokens'
+import { priorityMeta } from '@/theme/statusMeta'
 
 import { updateCaseSchema } from '../schemas'
 import type { CasePriority, UpdateCaseInput } from '../types'
@@ -126,15 +128,18 @@ export function CaseForm({
               accessibilityState={{ checked: values.priority === priority }}
               key={priority}
               onPress={() => updateValue('priority', priority)}
-              style={[styles.priority, values.priority === priority ? styles.priorityActive : null]}
+              style={[
+                styles.priority,
+                values.priority === priority ? { borderColor: priorityMeta[priority].color } : null,
+              ]}
             >
-              <Text
-                style={[
-                  styles.priorityText,
-                  values.priority === priority ? styles.priorityTextActive : null,
-                ]}
-              >
-                {priority.charAt(0).toUpperCase() + priority.slice(1)}
+              <Icon
+                name={priorityMeta[priority].icon}
+                size="inline"
+                color={priorityMeta[priority].color}
+              />
+              <Text style={[styles.priorityText, { color: priorityMeta[priority].color }]}>
+                {priorityMeta[priority].label}
               </Text>
             </Pressable>
           ))}
@@ -156,6 +161,9 @@ const styles = StyleSheet.create({
   priorityRow: { flexDirection: 'row', gap: spacing.sm },
   priority: {
     flex: 1,
+    flexDirection: 'row',
+    gap: spacing.xs,
+    justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.border,
@@ -163,7 +171,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     paddingVertical: 12,
   },
-  priorityActive: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
   priorityText: { ...typography.body, color: colors.textMuted },
-  priorityTextActive: { color: colors.primary },
 })

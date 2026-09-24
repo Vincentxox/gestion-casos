@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'
 import { useState } from 'react'
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   Modal,
@@ -14,12 +13,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
-import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Chip } from '@/components/ui/Chip'
 import { IconTile } from '@/components/ui/IconTile'
 import { ScreenContainer } from '@/components/ui/ScreenContainer'
 import { EmptyState } from '@/components/feedback/EmptyState'
+import { RequestState } from '@/components/feedback/RequestState'
+import { SkeletonList } from '@/components/ui/SkeletonList'
+import { formatCurrency } from '@/theme/formatters'
 import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 import { ResourceForm } from '../components/ResourceForm'
@@ -85,10 +86,6 @@ export function ResourcesScreen() {
       <View style={styles.container}>
         <View style={styles.header}>
           <View style={styles.headerText}>
-            <Text style={styles.eyebrow}>ADMINISTRACIÓN</Text>
-            <Text accessibilityRole="header" style={styles.title}>
-              Recursos
-            </Text>
             <Text style={styles.subtitle}>Materiales, herramientas y equipos de tu empresa.</Text>
           </View>
           <Pressable
@@ -101,14 +98,13 @@ export function ResourcesScreen() {
           </Pressable>
         </View>
         {resources.isLoading ? (
-          <View style={styles.center}>
-            <ActivityIndicator color={colors.primary} />
-          </View>
+          <SkeletonList />
         ) : resources.error ? (
-          <View style={styles.center}>
-            <Text style={styles.error}>No fue posible cargar los recursos.</Text>
-            <Button label="Reintentar" onPress={() => void resources.refetch()} />
-          </View>
+          <RequestState
+            kind="error"
+            title="No fue posible cargar los recursos"
+            onRetry={() => void resources.refetch()}
+          />
         ) : (
           <FlatList
             data={resources.data ?? []}
@@ -144,7 +140,7 @@ export function ResourcesScreen() {
                     {item.unit ? ` · ${item.unit}` : ''}
                   </Text>
                   {item.unitCost !== null ? (
-                    <Text style={styles.meta}>Costo unitario: {item.unitCost.toFixed(2)}</Text>
+                    <Text style={styles.meta}>Costo unitario: {formatCurrency(item.unitCost)}</Text>
                   ) : null}
                   {item.description ? (
                     <Text style={styles.description}>{item.description}</Text>
@@ -215,8 +211,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, gap: spacing.lg, padding: spacing.lg },
   header: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
   headerText: { flex: 1, gap: spacing.xs },
-  eyebrow: { ...typography.overline, color: colors.primary },
-  title: { ...typography.display, color: colors.text },
   subtitle: { ...typography.body, color: colors.textMuted },
   addButton: {
     width: 48,
@@ -226,8 +220,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.primary,
   },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
-  error: { ...typography.body, color: colors.error, textAlign: 'center' },
   list: { gap: spacing.md, paddingBottom: spacing.xl },
   card: {
     flexDirection: 'row',

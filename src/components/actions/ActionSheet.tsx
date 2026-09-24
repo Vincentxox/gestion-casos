@@ -1,11 +1,14 @@
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
+import { Button } from '@/components/ui/Button'
+import { Icon, type IconName } from '@/components/ui/Icon'
 import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 export interface SheetAction<T extends string> {
   id: T
   label: string
+  icon?: IconName
   destructive?: boolean
 }
 
@@ -37,14 +40,19 @@ export function ActionSheet<T extends string>({
               onPress={() => onSelect(action.id)}
               style={styles.option}
             >
+              {action.icon ? (
+                <Icon
+                  name={action.icon}
+                  size="base"
+                  color={action.destructive ? colors.error : colors.primary}
+                />
+              ) : null}
               <Text style={[styles.optionText, action.destructive && styles.destructive]}>
                 {action.label}
               </Text>
             </Pressable>
           ))}
-          <Pressable accessibilityRole="button" onPress={onClose} style={styles.option}>
-            <Text style={styles.optionText}>Volver</Text>
-          </Pressable>
+          <Button label="Volver" variant="text" onPress={onClose} />
         </View>
       </SafeAreaView>
     </Modal>
@@ -71,7 +79,9 @@ const styles = StyleSheet.create({
   title: { ...typography.title, color: colors.text, marginBottom: spacing.sm },
   option: {
     minHeight: 48,
-    justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     paddingHorizontal: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,

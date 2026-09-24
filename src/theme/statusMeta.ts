@@ -20,20 +20,78 @@ export const statusMeta: Record<CaseStatus, { label: string; phase: Phase; icon:
   cancelado: { label: 'Cancelada', phase: 'cancelada', icon: 'remove-circle-outline' },
 }
 
-export const priorityMeta: Record<CasePriority, { label: string; color: string }> = {
-  alta: { label: 'Alta', color: '#B91C1C' },
-  media: { label: 'Media', color: '#B45309' },
-  baja: { label: 'Baja', color: '#64748B' },
-}
+export const priorityMeta: Record<CasePriority, { label: string; color: string; icon: IconName }> =
+  {
+    alta: { label: 'Alta', color: '#B91C1C', icon: 'flag' },
+    media: { label: 'Media', color: '#B45309', icon: 'flag-outline' },
+    baja: { label: 'Baja', color: '#64748B', icon: 'flag-outline' },
+  }
 
 export const actionMeta = {
-  crear: { verb: 'creó la solicitud', phase: 'nueva', icon: 'file-tray-outline' },
-  aceptar: { verb: 'aceptó la solicitud', phase: 'curso', icon: 'checkmark-circle-outline' },
-  rechazar: { verb: 'rechazó la solicitud', phase: 'rechazada', icon: 'close-circle-outline' },
-  cancelar: { verb: 'canceló la solicitud', phase: 'cancelada', icon: 'remove-circle-outline' },
-  asignar: { verb: 'asignó la solicitud', phase: 'curso', icon: 'person-add-outline' },
-  reasignar: { verb: 'reasignó la solicitud', phase: 'curso', icon: 'swap-horizontal-outline' },
-  iniciar: { verb: 'inició el trabajo', phase: 'curso', icon: 'construct-outline' },
-  pausar: { verb: 'pausó el trabajo', phase: 'detenida', icon: 'pause-circle-outline' },
-  reanudar: { verb: 'reanudó el trabajo', phase: 'curso', icon: 'play-circle-outline' },
-} satisfies Record<string, { verb: string; phase: Phase; icon: IconName }>
+  crear: {
+    label: 'Crear solicitud',
+    description: 'Registra la solicitud',
+    verb: 'creó la solicitud',
+    phase: 'nueva',
+    icon: 'file-tray-outline',
+  },
+  aceptar: {
+    label: 'Aceptar solicitud',
+    description: 'La solicitud queda lista para asignar',
+    verb: 'aceptó la solicitud',
+    phase: 'curso',
+    icon: 'checkmark-circle-outline',
+  },
+  rechazar: {
+    label: 'Rechazar solicitud',
+    description: 'La solicitud se cierra con un motivo',
+    verb: 'rechazó la solicitud',
+    phase: 'rechazada',
+    icon: 'close-circle-outline',
+  },
+  cancelar: {
+    label: 'Cancelar solicitud',
+    description: 'La solicitud se retira de la bandeja',
+    verb: 'canceló la solicitud',
+    phase: 'cancelada',
+    icon: 'remove-circle-outline',
+  },
+  asignar: {
+    label: 'Asignar personal',
+    description: 'Elige a la persona responsable',
+    verb: 'asignó la solicitud',
+    phase: 'curso',
+    icon: 'person-add-outline',
+  },
+  reasignar: {
+    label: 'Reasignar personal',
+    description: 'Cambia la persona responsable',
+    verb: 'reasignó la solicitud',
+    phase: 'curso',
+    icon: 'swap-horizontal-outline',
+  },
+  iniciar: {
+    label: 'Iniciar trabajo',
+    description: 'El trabajo pasa a ejecución',
+    verb: 'inició el trabajo',
+    phase: 'curso',
+    icon: 'construct-outline',
+  },
+  pausar: {
+    label: 'Pausar trabajo',
+    description: 'El trabajo queda en espera',
+    verb: 'pausó el trabajo',
+    phase: 'detenida',
+    icon: 'pause-circle-outline',
+  },
+  reanudar: {
+    label: 'Reanudar trabajo',
+    description: 'El trabajo vuelve a ejecución',
+    verb: 'reanudó el trabajo',
+    phase: 'curso',
+    icon: 'play-circle-outline',
+  },
+} satisfies Record<
+  string,
+  { label: string; description: string; verb: string; phase: Phase; icon: IconName }
+>

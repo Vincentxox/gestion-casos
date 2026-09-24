@@ -48,7 +48,7 @@ const summary: HomeSummary = {
 
 test('el solicitante ve únicamente sus solicitudes activas', () => {
   expect(getHomeTiles(profile, summary)).toEqual([
-    { label: 'En curso', value: 2, icon: 'list-outline', phase: 'curso' },
+    { id: 'en_curso', label: 'En curso', value: 2, icon: 'list-outline', phase: 'curso' },
   ])
 })
 
@@ -74,8 +74,25 @@ test('el destacado usa los conteos y rutas del rol', () => {
   ).toEqual({ scope: 'sin_asignar' })
   expect(
     getHomeHero({ ...profile, role: 'jefe_area' }, { ...summary, area_kind: 'tecnica' })?.detail,
-  ).toBe('4 por aceptar y 1 por asignar')
+  ).toEqual(['4 por aceptar', '1 por asignar'])
   expect(getHomeHero({ ...profile, role: 'auditor' }, summary)).toBeNull()
+})
+
+test('el destacado diferencia la bandeja de los trabajos y solicitudes', () => {
+  const inbox = getHomeHero({ ...profile, role: 'administrador' }, summary)
+  expect(inbox?.eyebrow).toBe('TU BANDEJA')
+  expect(inbox?.detail).toEqual(['4 por aceptar', '1 por asignar'])
+  expect(inbox?.supportingText).toBeNull()
+
+  const work = getHomeHero({ ...profile, role: 'tecnico' }, summary)
+  expect(work?.eyebrow).toBe('TUS TRABAJOS')
+  expect(work?.detail).toEqual([])
+  expect(work?.supportingText).toBe('Consulta tus tareas y continúa el trabajo')
+
+  const requests = getHomeHero(profile, summary)
+  expect(requests?.eyebrow).toBe('TUS SOLICITUDES')
+  expect(requests?.detail).toEqual([])
+  expect(requests?.supportingText).toBe('Sigue el progreso de tus solicitudes')
 })
 
 test('Inicio muestra como máximo tres solicitudes activas relevantes al rol', () => {
@@ -132,6 +149,7 @@ test('el jefe técnico ve su bandeja y alertas operativas', () => {
     { ...summary, area_kind: 'tecnica' },
   )
   expect(tiles[0]).toEqual({
+    id: 'por_aceptar',
     label: 'Por aceptar',
     value: 4,
     icon: 'file-tray-outline',
@@ -161,15 +179,15 @@ test('el administrador ve problemas configurables', () => {
 })
 
 test('cada contador lleva a su filtro de solicitudes', () => {
-  expect(getHomeTileTarget({ ...profile, role: 'jefe_area' }, 'Por aceptar')).toEqual({
+  expect(getHomeTileTarget({ ...profile, role: 'jefe_area' }, 'por_aceptar')).toEqual({
     scope: 'bandeja',
     exactStatus: 'solicitado',
   })
-  expect(getHomeTileTarget({ ...profile, role: 'tecnico' }, 'En espera')).toEqual({
+  expect(getHomeTileTarget({ ...profile, role: 'tecnico' }, 'en_espera')).toEqual({
     scope: 'mis_trabajos',
     exactStatus: 'en_espera',
   })
-  expect(getHomeTileTarget({ ...profile, role: 'administrador' }, 'Cerradas en 30 días')).toEqual({
+  expect(getHomeTileTarget({ ...profile, role: 'administrador' }, 'cerradas_30_dias')).toEqual({
     status: 'cerradas',
     sinceDays: 30,
   })
@@ -182,11 +200,37 @@ test('jefe solicitante y auditor reciben resúmenes diferentes', () => {
   expect(
     getHomeTiles({ ...profile, role: 'auditor' }, summary).map((tile) => tile.label),
   ).toContain('Cerradas en 30 días')
-  expect(getHomeTileTarget({ ...profile, role: 'tecnico' }, 'Por iniciar')).toEqual({
+  expect(getHomeTileTarget({ ...profile, role: 'tecnico' }, 'por_iniciar')).toEqual({
     scope: 'mis_trabajos',
     exactStatus: 'asignado',
   })
+  expect(getHomeTileTarget({ ...profile, role: 'administrador' }, 'alta_prioridad')).toEqual({
+    scope: 'mi_area',
+    priority: 'alta',
+    activeOnly: true,
+  })
+})
+
+test('el Inicio usa singulares y omite los componentes en cero', () => {
+  const admin = { ...profile, role: 'administrador' as const }
+  const one = getHomeHero(admin, { ...summary, inbox: { por_aceptar: 1, sin_asignar: 0 } })
+  expect(one?.title).toBe('1 solicitud espera tu decisión')
+  expect(one?.detail).toEqual(['1 por aceptar'])
+  const zero = getHomeHero(admin, { ...summary, inbox: { por_aceptar: 0, sin_asignar: 0 } })
+  expect(zero?.detail).toEqual([])
   expect(
-    getHomeTileTarget({ ...profile, role: 'administrador' }, 'Alta prioridad activas'),
-  ).toEqual({ scope: 'mi_area', priority: 'alta', activeOnly: true })
+    getHomeHero(profile, { ...summary, mine: { ...summary.mine, solicitudes_activas: 1 } })?.title,
+  ).toBe('1 solicitud activa')
+  expect(
+    getAdminAlerts({
+      usuarios_sin_area: 1,
+      usuarios_sin_nombre: 0,
+      solicitudes_acceso_pendientes: 0,
+      invitaciones_pendientes: 0,
+      tipos_servicio_activos: 1,
+      recursos_activos: 1,
+      areas_tecnicas_sin_jefe: [],
+      areas_tecnicas_sin_tecnico: [],
+    })[0]?.label,
+  ).toBe('1 usuario sin área')
 })

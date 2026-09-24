@@ -3,10 +3,21 @@ import type { ScopeFilter, StatusFilter } from '@/features/cases/caseListPresent
 import type { CaseRecord, CaseStatus } from '@/features/cases/types'
 import type { IconName } from '@/components/ui/Icon'
 import type { phaseColors } from '@/theme/tokens'
+import { plural } from '@/theme/formatters'
 
 import type { HomeSummary } from './homeService'
 
 export interface HomeTile {
+  id:
+    | 'por_aceptar'
+    | 'sin_asignar'
+    | 'por_iniciar'
+    | 'en_ejecucion'
+    | 'en_espera'
+    | 'cerradas_30_dias'
+    | 'alta_prioridad'
+    | 'activas_mi_area'
+    | 'en_curso'
   label: string
   value: number
   icon: IconName
@@ -29,8 +40,13 @@ export function getHomeHero(profile: Profile, summary: HomeSummary) {
     const count = summary.inbox.por_aceptar + summary.inbox.sin_asignar
     return {
       count,
-      title: `${count} solicitudes esperan tu decisión`,
-      detail: `${summary.inbox.por_aceptar} por aceptar y ${summary.inbox.sin_asignar} por asignar`,
+      eyebrow: 'TU BANDEJA',
+      title: `${count} ${plural(count, 'solicitud espera', 'solicitudes esperan')} tu decisión`,
+      detail: [
+        summary.inbox.por_aceptar > 0 ? `${summary.inbox.por_aceptar} por aceptar` : null,
+        summary.inbox.sin_asignar > 0 ? `${summary.inbox.sin_asignar} por asignar` : null,
+      ].filter((part): part is string => Boolean(part)),
+      supportingText: null,
       actionLabel: 'Revisar bandeja',
       target:
         profile.role === 'jefe_area'
@@ -48,8 +64,10 @@ export function getHomeHero(profile: Profile, summary: HomeSummary) {
       summary.mine.trabajos_en_espera
     return {
       count,
-      title: `Tienes ${count} trabajos asignados`,
-      detail: 'Consulta tus tareas y continúa el trabajo',
+      eyebrow: 'TUS TRABAJOS',
+      title: `Tienes ${count} ${plural(count, 'trabajo asignado', 'trabajos asignados')}`,
+      detail: [],
+      supportingText: 'Consulta tus tareas y continúa el trabajo',
       actionLabel: 'Ver mis trabajos',
       target: { scope: 'mis_trabajos' as const },
     }
@@ -57,8 +75,10 @@ export function getHomeHero(profile: Profile, summary: HomeSummary) {
   const count = summary.mine.solicitudes_activas
   return {
     count,
-    title: `${count} solicitudes activas`,
-    detail: 'Sigue el progreso de tus solicitudes',
+    eyebrow: 'TUS SOLICITUDES',
+    title: `${count} ${plural(count, 'solicitud activa', 'solicitudes activas')}`,
+    detail: [],
+    supportingText: 'Sigue el progreso de tus solicitudes',
     actionLabel: 'Ver solicitudes',
     target: { scope: 'mias' as const, activeOnly: true },
   }
@@ -87,7 +107,7 @@ export function getHomeRecentCases(
 
 export function getHomeTileTarget(
   profile: Profile,
-  label: string,
+  id: HomeTile['id'],
 ): {
   scope?: ScopeFilter
   status?: StatusFilter
@@ -97,29 +117,38 @@ export function getHomeTileTarget(
   activeOnly?: boolean
 } {
   const chief = profile.role === 'jefe_area'
-  if (label === 'Por aceptar')
+  if (id === 'por_aceptar')
     return chief
       ? { scope: 'bandeja', exactStatus: 'solicitado' }
       : { scope: 'por_aceptar', exactStatus: 'solicitado' }
-  if (label === 'Sin asignar')
+  if (id === 'sin_asignar')
     return chief
       ? { scope: 'bandeja', exactStatus: 'aceptado' }
       : { scope: 'sin_asignar', exactStatus: 'aceptado' }
-  if (label === 'Por iniciar') return { scope: 'mis_trabajos', exactStatus: 'asignado' }
-  if (label === 'En espera')
+  if (id === 'por_iniciar') return { scope: 'mis_trabajos', exactStatus: 'asignado' }
+  if (id === 'en_espera')
     return {
-      scope: profile.role === 'tecnico' ? 'mis_trabajos' : 'en_curso',
+      scope:
+        profile.role === 'tecnico'
+          ? 'mis_trabajos'
+          : profile.role === 'jefe_area'
+            ? 'mi_area'
+            : 'todas',
       exactStatus: 'en_espera',
     }
-  if (label === 'En ejecución')
+  if (id === 'en_ejecucion')
     return {
-      scope: profile.role === 'tecnico' ? 'mis_trabajos' : 'en_curso',
+      scope:
+        profile.role === 'tecnico'
+          ? 'mis_trabajos'
+          : profile.role === 'jefe_area'
+            ? 'mi_area'
+            : 'todas',
       exactStatus: 'en_ejecucion',
     }
-  if (label === 'Cerradas en 30 días') return { status: 'cerradas', sinceDays: 30 }
-  if (label === 'Alta prioridad activas')
-    return { scope: 'mi_area', priority: 'alta', activeOnly: true }
-  if (label === 'Activas en mi área') return { scope: 'mi_area', activeOnly: true }
+  if (id === 'cerradas_30_dias') return { status: 'cerradas', sinceDays: 30 }
+  if (id === 'alta_prioridad') return { scope: 'mi_area', priority: 'alta', activeOnly: true }
+  if (id === 'activas_mi_area') return { scope: 'mi_area', activeOnly: true }
   return { scope: 'mias', activeOnly: true }
 }
 
@@ -127,18 +156,21 @@ export function getHomeTiles(profile: Profile, summary: HomeSummary): HomeTile[]
   if (profile.role === 'tecnico') {
     return [
       {
+        id: 'por_iniciar',
         label: 'Por iniciar',
         value: summary.mine.trabajos_por_iniciar,
         icon: 'play-circle-outline',
         phase: 'curso',
       },
       {
+        id: 'en_ejecucion',
         label: 'En ejecución',
         value: summary.mine.trabajos_en_ejecucion,
         icon: 'construct-outline',
         phase: 'curso',
       },
       {
+        id: 'en_espera',
         label: 'En espera',
         value: summary.mine.trabajos_en_espera,
         icon: 'pause-circle-outline',
@@ -149,6 +181,7 @@ export function getHomeTiles(profile: Profile, summary: HomeSummary): HomeTile[]
   if (profile.role === 'jefe_area' && summary.area_kind === 'tecnica') {
     return [
       {
+        id: 'por_aceptar',
         label: 'Por aceptar',
         value: summary.inbox.por_aceptar,
         icon: 'file-tray-outline',
@@ -156,6 +189,7 @@ export function getHomeTiles(profile: Profile, summary: HomeSummary): HomeTile[]
         emphasis: summary.inbox.por_aceptar > 0,
       },
       {
+        id: 'sin_asignar',
         label: 'Sin asignar',
         value: summary.inbox.sin_asignar,
         icon: 'person-add-outline',
@@ -163,12 +197,14 @@ export function getHomeTiles(profile: Profile, summary: HomeSummary): HomeTile[]
         emphasis: summary.inbox.sin_asignar > 0,
       },
       {
+        id: 'en_espera',
         label: 'En espera',
         value: summary.cases.en_espera,
         icon: 'pause-circle-outline',
         phase: 'detenida',
       },
       {
+        id: 'alta_prioridad',
         label: 'Alta prioridad activas',
         value: summary.cases.alta_prioridad_activas,
         icon: 'flag-outline',
@@ -179,30 +215,35 @@ export function getHomeTiles(profile: Profile, summary: HomeSummary): HomeTile[]
   if (profile.role === 'administrador' || profile.role === 'auditor') {
     return [
       {
+        id: 'por_aceptar',
         label: 'Por aceptar',
         value: summary.inbox.por_aceptar,
         icon: 'file-tray-outline',
         phase: 'nueva',
       },
       {
+        id: 'sin_asignar',
         label: 'Sin asignar',
         value: summary.inbox.sin_asignar,
         icon: 'person-add-outline',
         phase: 'curso',
       },
       {
+        id: 'en_ejecucion',
         label: 'En ejecución',
         value: summary.cases.en_ejecucion,
         icon: 'construct-outline',
         phase: 'curso',
       },
       {
+        id: 'en_espera',
         label: 'En espera',
         value: summary.cases.en_espera,
         icon: 'pause-circle-outline',
         phase: 'detenida',
       },
       {
+        id: 'cerradas_30_dias',
         label: 'Cerradas en 30 días',
         value: summary.cases.cerradas_30_dias,
         icon: 'checkmark-done-outline',
@@ -213,12 +254,14 @@ export function getHomeTiles(profile: Profile, summary: HomeSummary): HomeTile[]
   return profile.role === 'jefe_area'
     ? [
         {
+          id: 'en_curso',
           label: 'En curso',
           value: summary.mine.solicitudes_activas,
           icon: 'list-outline',
           phase: 'curso',
         },
         {
+          id: 'activas_mi_area',
           label: 'Activas en mi área',
           value: summary.cases.activas,
           icon: 'list-outline',
@@ -227,6 +270,7 @@ export function getHomeTiles(profile: Profile, summary: HomeSummary): HomeTile[]
       ]
     : [
         {
+          id: 'en_curso',
           label: 'En curso',
           value: summary.mine.solicitudes_activas,
           icon: 'list-outline',
@@ -246,15 +290,25 @@ export function getAdminAlerts(admin: NonNullable<HomeSummary['admin']>) {
       screen: 'Users' as const,
     })),
     ...(admin.usuarios_sin_area > 0
-      ? [{ label: `${admin.usuarios_sin_area} usuarios sin área`, screen: 'Users' as const }]
+      ? [
+          {
+            label: `${admin.usuarios_sin_area} ${plural(admin.usuarios_sin_area, 'usuario', 'usuarios')} sin área`,
+            screen: 'Users' as const,
+          },
+        ]
       : []),
     ...(admin.usuarios_sin_nombre > 0
-      ? [{ label: `${admin.usuarios_sin_nombre} usuarios sin nombre`, screen: 'Users' as const }]
+      ? [
+          {
+            label: `${admin.usuarios_sin_nombre} ${plural(admin.usuarios_sin_nombre, 'usuario', 'usuarios')} sin nombre`,
+            screen: 'Users' as const,
+          },
+        ]
       : []),
     ...(admin.solicitudes_acceso_pendientes > 0
       ? [
           {
-            label: `${admin.solicitudes_acceso_pendientes} personas pidieron acceso`,
+            label: `${admin.solicitudes_acceso_pendientes} ${plural(admin.solicitudes_acceso_pendientes, 'persona pidió', 'personas pidieron')} acceso`,
             screen: 'AccessRequests' as const,
           },
         ]
@@ -262,7 +316,7 @@ export function getAdminAlerts(admin: NonNullable<HomeSummary['admin']>) {
     ...(admin.invitaciones_pendientes > 0
       ? [
           {
-            label: `${admin.invitaciones_pendientes} invitaciones pendientes`,
+            label: `${admin.invitaciones_pendientes} ${plural(admin.invitaciones_pendientes, 'invitación pendiente', 'invitaciones pendientes')}`,
             screen: 'Invitations' as const,
           },
         ]

@@ -38,7 +38,7 @@ export function HomeScreen({ navigation }: Props) {
   const summary = useHomeSummary(Boolean(profile?.organizationId))
   const showRecent = Boolean(profile?.organizationId)
   const cases = useCases(showRecent)
-  const [hour] = useState(() => new Date().getHours())
+  const [today] = useState(() => new Date())
   const refetchSummary = summary.refetch
   const refetchCases = cases.refetch
   useFocusEffect(
@@ -54,7 +54,14 @@ export function HomeScreen({ navigation }: Props) {
   const tiles = summary.data ? getHomeTiles(profile, summary.data).slice(0, 4) : []
   const hero = summary.data ? getHomeHero(profile, summary.data) : null
   const hasPending = Boolean(hero?.count || summary.data?.admin?.solicitudes_acceso_pendientes)
-  const firstName = profile.fullName.trim().split(/\s+/)[0] || 'usuario'
+  const rawFirstName = profile.fullName.trim().split(/\s+/)[0] || 'usuario'
+  const firstName = rawFirstName.charAt(0).toLocaleUpperCase('es-GT') + rawFirstName.slice(1)
+  const rawDateLabel = new Intl.DateTimeFormat('es-GT', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).format(today)
+  const dateLabel = rawDateLabel.charAt(0).toLocaleUpperCase('es-GT') + rawDateLabel.slice(1)
   const recentCases = getHomeRecentCases(profile, summary.data?.area_kind ?? null, cases.data ?? [])
 
   return (
@@ -73,9 +80,11 @@ export function HomeScreen({ navigation }: Props) {
       >
         <View style={styles.header}>
           <View style={styles.headerTop}>
-            <Avatar name={profile.fullName} id={profile.id} size={44} />
             <View style={styles.identity}>
-              <Text style={styles.eyebrow}>{profile.organizationName || 'NEXO CASOS'}</Text>
+              <Text style={styles.eyebrow}>{dateLabel}</Text>
+              <Text accessibilityRole="header" style={styles.title}>
+                {getGreeting(today.getHours())}, {firstName}
+              </Text>
               <Text style={styles.subtitle}>
                 {ROLE_LABELS[profile.role]} · {profile.areaName || 'Sin área asignada'}
               </Text>
@@ -95,10 +104,8 @@ export function HomeScreen({ navigation }: Props) {
               <Icon name="notifications-outline" color={colors.text} />
               {hasPending ? <View style={styles.notificationDot} /> : null}
             </Pressable>
+            <Avatar name={profile.fullName} id={profile.id} size={44} />
           </View>
-          <Text accessibilityRole="header" style={styles.title}>
-            {getGreeting(hour)}, {firstName}
-          </Text>
         </View>
 
         {summary.isLoading ? <SkeletonList count={2} /> : null}
@@ -118,16 +125,30 @@ export function HomeScreen({ navigation }: Props) {
         {!summary.isLoading && hero ? (
           hero.count > 0 ? (
             <View style={styles.hero}>
+              <Text style={styles.heroEyebrow}>{hero.eyebrow}</Text>
               <Text style={styles.heroTitle}>{hero.title}</Text>
-              <Text style={styles.heroDetail}>{hero.detail}</Text>
-              <Button
-                label={hero.actionLabel}
-                icon="arrow-forward"
-                variant="secondary"
-                onPress={() =>
-                  navigation.navigate('CasesTab', { screen: 'Cases', params: hero.target })
-                }
-              />
+              {hero.detail.length > 0 ? (
+                <View style={styles.heroDetails}>
+                  {hero.detail.map((part) => (
+                    <View key={part} style={styles.heroTag}>
+                      <Text style={styles.heroDetail}>{part}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+              {hero.supportingText ? (
+                <Text style={styles.heroSupport}>{hero.supportingText}</Text>
+              ) : null}
+              <View style={styles.heroButton}>
+                <Button
+                  label={hero.actionLabel}
+                  icon="arrow-forward"
+                  variant="secondary"
+                  onPress={() =>
+                    navigation.navigate('CasesTab', { screen: 'Cases', params: hero.target })
+                  }
+                />
+              </View>
             </View>
           ) : (
             <Card>
@@ -168,12 +189,12 @@ export function HomeScreen({ navigation }: Props) {
             <View style={styles.tileGrid}>
               {tiles.map((tile) => (
                 <StatTile
-                  key={tile.label}
+                  key={tile.id}
                   {...tile}
                   onPress={() =>
                     navigation.navigate('CasesTab', {
                       screen: 'Cases',
-                      params: getHomeTileTarget(profile, tile.label),
+                      params: getHomeTileTarget(profile, tile.id),
                     })
                   }
                 />
@@ -201,14 +222,11 @@ export function HomeScreen({ navigation }: Props) {
           <View style={styles.section}>
             <View style={styles.recentHeading}>
               <SectionHeader title="Lo que te toca hoy" />
-              <Pressable
-                accessibilityLabel="Ver todas las solicitudes"
-                accessibilityRole="button"
+              <Button
+                label="Ver todo"
+                variant="text"
                 onPress={() => navigation.navigate('CasesTab', { screen: 'Cases' })}
-                style={styles.link}
-              >
-                <Text style={styles.linkText}>Ver todo</Text>
-              </Pressable>
+              />
             </View>
             {cases.isError ? (
               <Pressable accessibilityRole="button" onPress={() => void cases.refetch()}>
@@ -261,7 +279,7 @@ const styles = StyleSheet.create({
     backgroundColor: phaseColors.nueva.fg,
   },
   eyebrow: { color: colors.primary, ...typography.overline },
-  title: { color: colors.text, ...typography.title },
+  title: { color: colors.text, ...typography.display },
   subtitle: { color: colors.textMuted, ...typography.caption },
   hero: {
     gap: spacing.base,
@@ -270,7 +288,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   heroTitle: { ...typography.title, color: colors.white },
-  heroDetail: { ...typography.body, color: colors.white },
+  heroEyebrow: { ...typography.overline, color: colors.white },
+  heroDetails: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+  heroTag: {
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.white,
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.xs,
+  },
+  heroDetail: { ...typography.caption, color: colors.white },
+  heroSupport: { ...typography.body, color: colors.white },
+  heroButton: { width: '100%' },
   section: { gap: spacing.md },
   tileGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   recentHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

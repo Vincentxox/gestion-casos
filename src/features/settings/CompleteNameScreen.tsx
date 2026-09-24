@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { Alert, StyleSheet, Text, TextInput, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { Alert, StyleSheet, Text } from 'react-native'
 
 import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { ScreenContainer } from '@/components/ui/ScreenContainer'
+import { FormField } from '@/components/forms/FormField'
 import { useAuthStore } from '@/store/authStore'
-import { colors, radius, spacing, typography } from '@/theme/tokens'
+import { colors, spacing, typography } from '@/theme/tokens'
 
 import { updateOwnName } from './profileService'
 
@@ -31,53 +33,35 @@ export function CompleteNameScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.card}>
+    <ScreenContainer>
+      <Card style={styles.card}>
         <Text accessibilityRole="header" style={styles.title}>
           Completa tu nombre
         </Text>
         <Text style={styles.description}>
           Necesitamos tu nombre para identificar tus solicitudes y mostrarlo a tu equipo.
         </Text>
-        <TextInput
-          accessibilityLabel="Nombre completo"
+        <FormField
+          label="Nombre completo"
           autoCapitalize="words"
           maxLength={120}
           onChangeText={setName}
           placeholder="Tu nombre completo"
-          style={styles.input}
           value={name}
         />
         <Button label="Continuar" loading={saving} onPress={() => void save()} />
-        <Button label="Cerrar sesión" onPress={() => void logout()} />
-      </View>
-    </SafeAreaView>
+        <Button label="Cerrar sesión" variant="text" onPress={() => void logout()} />
+      </Card>
+    </ScreenContainer>
   )
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    justifyContent: 'center',
-    backgroundColor: colors.background,
-    padding: spacing.lg,
-  },
   card: {
     gap: spacing.lg,
     padding: spacing.lg,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    marginTop: spacing.xl,
   },
   title: { color: colors.text, ...typography.display },
   description: { color: colors.textMuted, ...typography.body },
-  input: {
-    minHeight: 52,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    color: colors.text,
-  },
 })

@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { useState } from 'react'
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   Modal,
@@ -15,6 +14,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
+import { EmptyState } from '@/components/feedback/EmptyState'
+import { RequestState } from '@/components/feedback/RequestState'
+import { SkeletonList } from '@/components/ui/SkeletonList'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { IconTile } from '@/components/ui/IconTile'
+import { formatNumber, plural } from '@/theme/formatters'
 import { useAssignableProfiles, useCaseDetail } from '@/features/cases/useCases'
 import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
@@ -93,65 +99,59 @@ export function CaseResourcesScreen({ route }: Props) {
 
   const loading = detail.isLoading || usages.isLoading || resources.isLoading
   const error = detail.error || usages.error || resources.error || technicians.error
+  const totalHours = (usages.data ?? []).reduce((sum, item) => sum + (item.hours ?? 0), 0)
+  const recordCount = usages.data?.length ?? 0
   return (
     <SafeAreaView edges={['bottom']} style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.header}>
           <View style={styles.headerText}>
-            <Text style={styles.eyebrow}>SOLICITUD</Text>
-            <Text accessibilityRole="header" style={styles.title}>
-              Recursos utilizados
-            </Text>
             <Text style={styles.subtitle}>Materiales, equipos, herramientas y mano de obra.</Text>
           </View>
           {canManage ? (
-            <Pressable
-              accessibilityLabel="Registrar uso"
-              accessibilityRole="button"
-              onPress={() => openForm()}
-              style={styles.addButton}
-            >
-              <Ionicons color={colors.white} name="add" size={25} />
-            </Pressable>
+            <Button label="Registrar uso" icon="add" onPress={() => openForm()} />
           ) : null}
         </View>
         {loading ? (
-          <View style={styles.center}>
-            <ActivityIndicator color={colors.primary} />
-          </View>
+          <SkeletonList />
         ) : error || !detail.data ? (
-          <View style={styles.center}>
-            <Text style={styles.error}>No fue posible cargar los recursos de esta solicitud.</Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => {
-                void detail.refetch()
-                void usages.refetch()
-                void resources.refetch()
-                if (canManage) void technicians.refetch()
-              }}
-              style={styles.retry}
-            >
-              <Text style={styles.retryText}>Reintentar</Text>
-            </Pressable>
-          </View>
+          <RequestState
+            kind="error"
+            title="No fue posible cargar los recursos de esta solicitud"
+            onRetry={() => {
+              void detail.refetch()
+              void usages.refetch()
+              void resources.refetch()
+              if (canManage) void technicians.refetch()
+            }}
+          />
         ) : (
           <FlatList
             data={usages.data ?? []}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.list}
             ListHeaderComponent={
-              !canManage ? (
-                <Text style={styles.hint}>
-                  Puedes consultar estos registros. Solo el responsable asignado o el jefe del área
-                  técnica pueden modificarlos durante la ejecución o espera.
+              <View style={styles.summary}>
+                <Text style={styles.summaryText}>
+                  {formatNumber(recordCount)} {plural(recordCount, 'registro', 'registros')} ·{' '}
+                  {formatNumber(totalHours)} {plural(totalHours, 'hora', 'horas')}
                 </Text>
-              ) : null
+                {!canManage ? (
+                  <Text style={styles.hint}>
+                    Puedes consultar estos registros. Solo el responsable asignado o el jefe del
+                    área técnica pueden modificarlos durante la ejecución o espera.
+                  </Text>
+                ) : null}
+              </View>
             }
             ListEmptyComponent={
-              <Text style={styles.empty}>
-                Aún no se han registrado recursos ni horas de trabajo.
-              </Text>
+              <EmptyState
+                title="Sin recursos utilizados"
+                message="Aún no se han registrado recursos ni horas de trabajo."
+                variant="firstUse"
+                action={canManage ? 'Registrar uso' : undefined}
+                onAction={canManage ? () => openForm() : undefined}
+              />
             }
             refreshControl={
               <RefreshControl
@@ -161,7 +161,10 @@ export function CaseResourcesScreen({ route }: Props) {
               />
             }
             renderItem={({ item }) => (
-              <View style={styles.card}>
+              <Card contentStyle={styles.card}>
+                <IconTile
+                  icon={item.kind === 'mano_de_obra' ? 'construct-outline' : 'cube-outline'}
+                />
                 <View style={styles.cardContent}>
                   <Text style={styles.name}>
                     {item.kind === 'mano_de_obra'
@@ -175,11 +178,13 @@ export function CaseResourcesScreen({ route }: Props) {
                   </Text>
                   {item.quantity != null ? (
                     <Text style={styles.meta}>
-                      Cantidad: {item.quantity}
+                      Cantidad: {formatNumber(item.quantity)}
                       {item.unit ? ` ${item.unit}` : ''}
                     </Text>
                   ) : null}
-                  {item.hours != null ? <Text style={styles.meta}>Horas: {item.hours}</Text> : null}
+                  {item.hours != null ? (
+                    <Text style={styles.meta}>Horas: {formatNumber(item.hours)}</Text>
+                  ) : null}
                   {item.notes ? <Text style={styles.notes}>{item.notes}</Text> : null}
                 </View>
                 {canManage ? (
@@ -202,7 +207,7 @@ export function CaseResourcesScreen({ route }: Props) {
                     </Pressable>
                   </View>
                 ) : null}
-              </View>
+              </Card>
             )}
           />
         )}
@@ -248,32 +253,14 @@ const styles = StyleSheet.create({
   container: { flex: 1, gap: spacing.md, padding: spacing.lg },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   headerText: { flex: 1, gap: spacing.xs },
-  eyebrow: { ...typography.overline, color: colors.primary },
-  title: { ...typography.display, color: colors.text },
   subtitle: { ...typography.body, color: colors.textMuted },
-  addButton: {
-    width: 48,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.xl,
-    backgroundColor: colors.primary,
-  },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md },
-  error: { color: colors.error, textAlign: 'center' },
-  retry: { padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.primary },
-  retryText: { ...typography.body, color: colors.white },
   list: { gap: spacing.md, paddingBottom: spacing.xl },
   hint: { color: colors.textMuted, lineHeight: 20 },
-  empty: { color: colors.textMuted, textAlign: 'center', paddingTop: spacing.xl },
+  summary: { gap: spacing.sm },
+  summaryText: { ...typography.heading, color: colors.text },
   card: {
     flexDirection: 'row',
     gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    padding: spacing.md,
   },
   cardContent: { flex: 1, gap: spacing.xs },
   name: { ...typography.heading, color: colors.text },

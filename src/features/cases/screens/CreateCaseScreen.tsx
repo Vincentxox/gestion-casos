@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
-import { colors, spacing, typography } from '@/theme/tokens'
+import { colors, spacing } from '@/theme/tokens'
 
 import { CaseForm } from '../components/CaseForm'
 import type { CreateCaseInput } from '../types'
@@ -39,9 +39,6 @@ export function CreateCaseScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView edges={['bottom']} style={styles.safeArea}>
-      <Text accessibilityRole="header" style={styles.title}>
-        Nueva solicitud
-      </Text>
       <Text style={styles.subtitle}>
         Completa los datos obligatorios para iniciar el seguimiento.
       </Text>
@@ -62,12 +59,6 @@ export function CreateCaseScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
-  title: {
-    color: colors.text,
-    ...typography.display,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-  },
   subtitle: {
     color: colors.textMuted,
     lineHeight: 21,

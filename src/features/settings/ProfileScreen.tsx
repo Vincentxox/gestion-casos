@@ -1,8 +1,10 @@
-import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useState } from 'react'
 import appConfig from '../../../app.json'
 
 import { Button } from '@/components/ui/Button'
+import { FormField } from '@/components/forms/FormField'
+import { Icon } from '@/components/ui/Icon'
 import { Avatar } from '@/components/ui/Avatar'
 import { Card } from '@/components/ui/Card'
 import { Chip } from '@/components/ui/Chip'
@@ -57,22 +59,38 @@ export function ProfileScreen() {
         </View>
 
         <View style={styles.avatar}>
-          <Avatar name={profile?.fullName || 'Usuario'} id={profile?.id || 'user'} size={44} />
+          <Avatar name={profile?.fullName || 'Usuario'} id={profile?.id || 'user'} size={72} />
         </View>
 
         <Card style={styles.card}>
           <View style={styles.field}>
             <Text style={styles.label}>Nombre</Text>
-            <TextInput
-              accessibilityLabel="Nombre completo"
-              maxLength={120}
-              onChangeText={setName}
-              style={styles.value}
-              value={name ?? profile?.fullName ?? ''}
-            />
-            {name !== null && name.trim() !== profile?.fullName ? (
-              <Button label="Guardar nombre" loading={saving} onPress={() => void saveName()} />
-            ) : null}
+            {name === null ? (
+              <View style={styles.nameRow}>
+                <Text style={styles.value}>{profile?.fullName || 'Sin nombre'}</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Editar nombre"
+                  onPress={() => setName(profile?.fullName ?? '')}
+                  style={styles.editName}
+                >
+                  <Icon name="create-outline" color={colors.primary} />
+                </Pressable>
+              </View>
+            ) : (
+              <>
+                <FormField
+                  label="Nombre completo"
+                  maxLength={120}
+                  onChangeText={setName}
+                  value={name}
+                />
+                <View style={styles.nameActions}>
+                  <Button label="Guardar" loading={saving} onPress={() => void saveName()} />
+                  <Button label="Cancelar" variant="text" onPress={() => setName(null)} />
+                </View>
+              </>
+            )}
           </View>
           <View style={styles.separator} />
           <View style={styles.field}>
@@ -103,9 +121,8 @@ export function ProfileScreen() {
         <Text style={styles.securityNote}>
           Los permisos de la aplicación se aplican automáticamente de acuerdo con tu rol.
         </Text>
+        <Button label="Cerrar sesión" variant="secondary" onPress={() => void handleLogout()} />
         <Text style={styles.securityNote}>Versión {appConfig.expo.version}</Text>
-
-        <Button label="Cerrar sesión" onPress={() => void handleLogout()} />
       </ScrollView>
     </ScreenContainer>
   )
@@ -120,6 +137,9 @@ const styles = StyleSheet.create({
   avatar: { alignItems: 'center' },
   card: { padding: spacing.lg },
   field: { gap: spacing.xs },
+  nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  nameActions: { flexDirection: 'row', gap: spacing.sm },
+  editName: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   label: { ...typography.caption, color: colors.textMuted },
   value: { ...typography.body, color: colors.text },
   separator: { height: 1, marginVertical: spacing.md, backgroundColor: colors.border },

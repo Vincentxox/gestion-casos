@@ -52,17 +52,16 @@ test('ofrece los alcances adecuados a cada rol', () => {
   expect(getScopeOptions({ ...profile, role: 'jefe_area' }, 'tecnica')).toEqual([
     'bandeja',
     'mi_area',
-    'en_curso',
   ])
   expect(getScopeOptions({ ...profile, role: 'jefe_area' }, 'solicitante')).toEqual([
     'mi_area',
     'mias',
   ])
-  expect(getScopeOptions({ ...profile, role: 'administrador' }, null)).toEqual([
-    'todas',
-    'por_aceptar',
-    'sin_asignar',
-  ])
+  expect(getScopeOptions({ ...profile, role: 'administrador' }, null)).toEqual(['todas', 'bandeja'])
+  expect(getScopeOptions({ ...profile, role: 'auditor' }, null)).toEqual(['todas'])
+  expect(
+    matchesCaseScope(item, 'bandeja', { ...profile, role: 'administrador', areaId: null }),
+  ).toBe(true)
 })
 
 test('filtra bandeja, autor, estados y asignaciones sin depender de la UI', () => {

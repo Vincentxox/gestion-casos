@@ -46,13 +46,14 @@ export function CaseCard({ item, onPress }: { item: CaseRecord; onPress: () => v
             )}
           </View>
         </View>
+        <Icon name="chevron-forward" size="inline" color={colors.textMuted} />
       </View>
     </Card>
   )
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: spacing.base },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.base },
   content: { flex: 1, gap: spacing.sm },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.xs },
   number: {

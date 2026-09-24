@@ -22,7 +22,7 @@ export function SegmentedControl<T extends string>({
     <View style={styles.container}>
       {segments.map((segment) => {
         const active = segment.value === selected
-        const label = `${segment.label}${segment.count === undefined ? '' : ` · ${segment.count}`}`
+        const label = `${segment.label}${segment.count === undefined ? '' : `, ${segment.count}`}`
         return (
           <Pressable
             key={segment.value}
@@ -37,7 +37,21 @@ export function SegmentedControl<T extends string>({
             }}
             style={[styles.segment, active && styles.active]}
           >
-            <Text style={[styles.label, active && styles.activeLabel]}>{label}</Text>
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.85}
+              style={[styles.label, active && styles.activeLabel]}
+            >
+              {segment.label}
+            </Text>
+            {segment.count === undefined ? null : (
+              <View style={[styles.count, active && styles.activeCount]}>
+                <Text style={[styles.countText, active && styles.activeLabel]}>
+                  {segment.count}
+                </Text>
+              </View>
+            )}
           </Pressable>
         )
       })}
@@ -56,12 +70,28 @@ const styles = StyleSheet.create({
   segment: {
     minHeight: 44,
     flex: 1,
+    flexDirection: 'row',
+    gap: spacing.xs,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radius.sm,
     paddingHorizontal: spacing.xs,
   },
   active: { backgroundColor: colors.surface, ...elevation.sm },
-  label: { color: colors.textMuted, fontFamily: fonts.medium, fontSize: 13, textAlign: 'center' },
+  label: {
+    color: colors.textMuted,
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    textAlign: 'center',
+    flexShrink: 1,
+    minWidth: 0,
+  },
   activeLabel: { color: colors.text, fontFamily: fonts.bold },
+  count: {
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.xs,
+  },
+  activeCount: { backgroundColor: colors.primarySoft },
+  countText: { color: colors.textMuted, fontFamily: fonts.semibold, fontSize: 11 },
 })

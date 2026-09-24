@@ -1,4 +1,10 @@
-import { formatCurrency, formatNumber, formatRelativeDate } from '../formatters'
+import { formatCurrency, formatNumber, formatRelativeDate, plural } from '../formatters'
+
+test('elige el singular solo para una unidad', () => {
+  expect(plural(1, 'solicitud', 'solicitudes')).toBe('solicitud')
+  expect(plural(0, 'solicitud', 'solicitudes')).toBe('solicitudes')
+  expect(plural(2, 'solicitud', 'solicitudes')).toBe('solicitudes')
+})
 
 test('formatea números y montos de forma consistente', () => {
   expect(formatNumber(1234)).toContain('234')

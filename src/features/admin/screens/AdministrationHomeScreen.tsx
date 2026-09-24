@@ -2,12 +2,14 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { ScrollView, StyleSheet, Text, View } from 'react-native'
 
 import { Card } from '@/components/ui/Card'
+import { Chip } from '@/components/ui/Chip'
 import { Icon } from '@/components/ui/Icon'
 import { IconTile } from '@/components/ui/IconTile'
 import { ScreenContainer } from '@/components/ui/ScreenContainer'
 import type { AdministrationStackParamList } from '@/navigation/types'
 import { useHomeSummary } from '@/features/home/useHomeSummary'
 import { colors, spacing, typography } from '@/theme/tokens'
+import { plural } from '@/theme/formatters'
 
 type Props = NativeStackScreenProps<AdministrationStackParamList, 'AdministrationHome'>
 
@@ -63,6 +65,11 @@ export function AdministrationHomeScreen({ navigation }: Props) {
     Users: summary.data?.admin?.usuarios_sin_area,
     Invitations: summary.data?.admin?.invitaciones_pendientes,
   }
+  const notices: Record<string, string> = {
+    AccessRequests: `${counts.AccessRequests ?? 0} ${plural(counts.AccessRequests ?? 0, 'pendiente', 'pendientes')}`,
+    Users: `${counts.Users ?? 0} sin área`,
+    Invitations: `${counts.Invitations ?? 0} ${plural(counts.Invitations ?? 0, 'pendiente', 'pendientes')}`,
+  }
   return (
     <ScreenContainer padded={false}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -85,10 +92,12 @@ export function AdministrationHomeScreen({ navigation }: Props) {
           >
             <IconTile icon={option.icon} size={44} />
             <View style={styles.cardContent}>
-              <Text style={styles.cardTitle}>
-                {option.title}
-                {counts[option.route] ? ` · ${counts[option.route]}` : ''}
-              </Text>
+              <View style={styles.titleRow}>
+                <Text style={styles.cardTitle}>{option.title}</Text>
+                {counts[option.route] ? (
+                  <Chip label={notices[option.route] ?? ''} tone="warning" />
+                ) : null}
+              </View>
               <Text style={styles.cardDescription}>{option.description}</Text>
             </View>
             <Icon name="chevron-forward" size="base" color={colors.textMuted} />
@@ -112,6 +121,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   cardContent: { flex: 1, gap: spacing.xs },
+  titleRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.xs },
   cardTitle: { ...typography.heading, color: colors.text },
   cardDescription: { ...typography.caption, color: colors.textMuted },
 })

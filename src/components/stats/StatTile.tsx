@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native'
 
 import { Card } from '@/components/ui/Card'
-import { Icon, type IconName } from '@/components/ui/Icon'
+import type { IconName } from '@/components/ui/Icon'
 import { IconTile } from '@/components/ui/IconTile'
 import { colors, fonts, phaseColors, spacing, typography } from '@/theme/tokens'
 import { formatNumber } from '@/theme/formatters'
@@ -24,15 +24,10 @@ export function StatTile({ label, value, icon, phase, onPress, emphasis = false 
     >
       <View style={styles.top}>
         <IconTile icon={icon} phase={phase} size={36} />
-        <Icon
-          name="chevron-forward"
-          size="inline"
-          color={emphasis ? colors.primary : colors.textMuted}
-        />
-      </View>
-      <View style={styles.content}>
-        <Text style={styles.value}>{formatNumber(value)}</Text>
-        <Text style={styles.label}>{label}</Text>
+        <View style={styles.content}>
+          <Text style={[styles.value, emphasis && styles.emphasis]}>{formatNumber(value)}</Text>
+          <Text style={styles.label}>{label}</Text>
+        </View>
       </View>
     </Card>
   )
@@ -40,12 +35,13 @@ export function StatTile({ label, value, icon, phase, onPress, emphasis = false 
 
 const styles = StyleSheet.create({
   tile: {
-    minHeight: 146,
+    minHeight: 72,
     flexGrow: 1,
     flexBasis: '47%',
   },
-  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  content: { gap: spacing.xs, marginTop: spacing.base },
-  value: { ...typography.display, color: colors.text },
+  top: { flexDirection: 'row', alignItems: 'center', gap: spacing.base },
+  content: { flex: 1 },
+  value: { ...typography.title, color: colors.text },
+  emphasis: { color: colors.primary },
   label: { ...typography.caption, fontFamily: fonts.semibold, color: colors.textMuted },
 })

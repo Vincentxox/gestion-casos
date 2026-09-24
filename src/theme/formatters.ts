@@ -2,6 +2,10 @@ export function formatNumber(value: number) {
   return value.toLocaleString('es-GT')
 }
 
+export function plural(count: number, singular: string, pluralForm: string) {
+  return count === 1 ? singular : pluralForm
+}
+
 export function formatCurrency(value: number) {
   return value.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }

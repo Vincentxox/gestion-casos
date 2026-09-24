@@ -16,9 +16,10 @@ export function getScopeOptions(profile: Profile, areaKind: 'solicitante' | 'tec
   if (profile.role === 'solicitante') return [] as ScopeFilter[]
   if (profile.role === 'tecnico') return ['mis_trabajos', 'mi_area'] as ScopeFilter[]
   if (profile.role === 'jefe_area' && areaKind === 'tecnica')
-    return ['bandeja', 'mi_area', 'en_curso'] as ScopeFilter[]
+    return ['bandeja', 'mi_area'] as ScopeFilter[]
   if (profile.role === 'jefe_area') return ['mi_area', 'mias'] as ScopeFilter[]
-  return ['todas', 'por_aceptar', 'sin_asignar'] as ScopeFilter[]
+  if (profile.role === 'auditor') return ['todas'] as ScopeFilter[]
+  return ['todas', 'bandeja'] as ScopeFilter[]
 }
 
 export function matchesCaseScope(item: CaseRecord, scope: ScopeFilter, profile: Profile) {
@@ -31,7 +32,7 @@ export function matchesCaseScope(item: CaseRecord, scope: ScopeFilter, profile: 
       return item.requestingAreaId === profile.areaId || item.targetAreaId === profile.areaId
     case 'bandeja':
       return (
-        item.targetAreaId === profile.areaId &&
+        (profile.role === 'administrador' || item.targetAreaId === profile.areaId) &&
         (item.status === 'solicitado' || (item.status === 'aceptado' && !item.assignedTo))
       )
     case 'por_aceptar':

@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react'
 import Animated, { FadeInDown, useReducedMotion } from 'react-native-reanimated'
 import {
   SectionList,
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -39,7 +38,7 @@ import {
 type Props = NativeStackScreenProps<MainStackParamList, 'Cases'>
 
 const STATUS_LABELS: Record<StatusFilter, string> = {
-  todos: 'Todos',
+  todos: 'Todas',
   pendientes: 'Pendientes',
   en_curso: 'En curso',
   cerradas: 'Cerradas',
@@ -95,8 +94,12 @@ export function CasesListScreen({ navigation, route }: Props) {
   }
   const canCreate = hasPermission(profile?.role, 'cases.create') && Boolean(profile?.areaId)
   const scopes = profile ? getScopeOptions(profile, home.data?.area_kind ?? null) : []
-  const effectiveScope =
-    scope && (scopes.includes(scope) || scope === 'mias') ? scope : (scopes[0] ?? 'todas')
+  const specialScope = scope === 'por_aceptar' || scope === 'sin_asignar' ? scope : null
+  const effectiveScope = specialScope
+    ? 'bandeja'
+    : scope && (scopes.includes(scope) || scope === 'mias')
+      ? scope
+      : (scopes[0] ?? 'todas')
 
   const filteredCases = (() => {
     const term = search.trim().toLocaleLowerCase('es')
@@ -154,11 +157,11 @@ export function CasesListScreen({ navigation, route }: Props) {
     priority ||
     sinceDays ||
     activeOnly ||
-    effectiveScope !== 'todas',
+    Boolean(scope),
   )
 
   return (
-    <SafeAreaView edges={['bottom']} style={styles.safeArea}>
+    <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       <View style={styles.container}>
         <Text accessibilityRole="header" style={styles.heading}>
           Solicitudes
@@ -174,20 +177,23 @@ export function CasesListScreen({ navigation, route }: Props) {
           />
         </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filters}
-        >
-          {scopes.map((value) => (
-            <Chip
-              key={value}
-              label={SCOPE_LABELS[value]}
-              selected={effectiveScope === value}
-              onPress={() => changeFilters({ scope: value })}
-            />
-          ))}
-        </ScrollView>
+        {scopes.length ? (
+          <ScrollView
+            horizontal
+            style={styles.filterScroll}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filters}
+          >
+            {scopes.map((value) => (
+              <Chip
+                key={value}
+                label={SCOPE_LABELS[value]}
+                selected={effectiveScope === value}
+                onPress={() => changeFilters({ scope: value, exactStatus: null })}
+              />
+            ))}
+          </ScrollView>
+        ) : null}
 
         <SegmentedControl
           segments={segments}
@@ -199,6 +205,13 @@ export function CasesListScreen({ navigation, route }: Props) {
             label={`Estado: ${statusMeta[exactStatus].label} ×`}
             accessibilityLabel={`Quitar filtro de estado ${statusMeta[exactStatus].label}`}
             onPress={() => changeFilters({ exactStatus: null })}
+          />
+        ) : null}
+        {specialScope ? (
+          <Chip
+            label={`${SCOPE_LABELS[specialScope]} ×`}
+            accessibilityLabel={`Quitar filtro ${SCOPE_LABELS[specialScope]}`}
+            onPress={() => changeFilters({ scope: undefined, exactStatus: null })}
           />
         ) : null}
         {priority ? (
@@ -223,13 +236,7 @@ export function CasesListScreen({ navigation, route }: Props) {
           />
         ) : null}
         {scope === 'mias' && scopes.length === 0 ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => changeFilters({ scope: undefined })}
-            style={styles.legacyScopeFilter}
-          >
-            <Text style={styles.legacyScopeText}>Solo mías ×</Text>
-          </Pressable>
+          <Chip label="Solo mías ×" onPress={() => changeFilters({ scope: undefined })} />
         ) : null}
 
         {isLoading ? (
@@ -274,6 +281,7 @@ export function CasesListScreen({ navigation, route }: Props) {
                           priority: null,
                           sinceDays: null,
                           activeOnly: false,
+                          scope: undefined,
                         })
                       }
                     : canCreate
@@ -344,17 +352,13 @@ const styles = StyleSheet.create({
     color: colors.text,
     paddingHorizontal: spacing.md,
   },
-  filters: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
-  legacyScopeFilter: {
-    minHeight: 44,
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.base,
+  filterScroll: { flexGrow: 0 },
+  filters: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
   },
-  legacyScopeText: { ...typography.caption, color: colors.textMuted },
   list: { gap: spacing.md, paddingBottom: spacing.lg },
   listWithAction: { paddingBottom: 96 },
   emptyList: { flexGrow: 1 },

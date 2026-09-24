@@ -5,7 +5,6 @@ import {
   Modal,
   Pressable,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -14,6 +13,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Button } from '@/components/ui/Button'
+import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
+import { SkeletonList } from '@/components/ui/SkeletonList'
+import { RequestState } from '@/components/feedback/RequestState'
 import { Card } from '@/components/ui/Card'
 import { Chip } from '@/components/ui/Chip'
 import { Icon } from '@/components/ui/Icon'
@@ -87,9 +89,6 @@ export function AccessRequestsScreen() {
   return (
     <ScreenContainer edges={['bottom']} padded={false}>
       <View style={styles.content}>
-        <Text accessibilityRole="header" style={styles.title}>
-          Solicitudes de acceso
-        </Text>
         <View style={styles.tabs}>
           {[false, true].map((value) => (
             <Pressable
@@ -104,59 +103,59 @@ export function AccessRequestsScreen() {
           ))}
         </View>
         {requests.isError || areas.isError ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => {
+          <RequestState
+            kind="error"
+            title="No fue posible cargar las solicitudes"
+            onRetry={() => {
               void requests.refetch()
               void areas.refetch()
             }}
-          >
-            <Text style={styles.error}>No fue posible cargar las solicitudes. Reintentar</Text>
-          </Pressable>
-        ) : null}
-        <FlatList
-          data={visible}
-          keyExtractor={(item) => item.id}
-          refreshControl={
-            <RefreshControl
-              refreshing={requests.isRefetching}
-              onRefresh={() => void requests.refetch()}
-            />
-          }
-          ListEmptyComponent={
-            <Text style={styles.empty}>
-              {requests.isLoading
-                ? 'Cargando…'
-                : resolved
+          />
+        ) : requests.isLoading ? (
+          <SkeletonList />
+        ) : (
+          <FlatList
+            data={visible}
+            keyExtractor={(item) => item.id}
+            refreshControl={
+              <RefreshControl
+                refreshing={requests.isRefetching}
+                onRefresh={() => void requests.refetch()}
+              />
+            }
+            ListEmptyComponent={
+              <Text style={styles.empty}>
+                {resolved
                   ? 'Todavía no hay solicitudes resueltas.'
                   : 'No hay solicitudes pendientes. ¡Todo al día!'}
-            </Text>
-          }
-          renderItem={({ item }) => (
-            <Card
-              accessibilityLabel={`Revisar solicitud de ${item.fullName || item.email}`}
-              onPress={
-                resolved
-                  ? undefined
-                  : () => {
-                      setSelected(item)
-                      setRole('solicitante')
-                      setAreaId(null)
-                      setNote('')
-                    }
-              }
-              style={styles.card}
-              contentStyle={styles.cardContent}
-            >
-              <Text style={styles.name}>{item.fullName || item.email}</Text>
-              <Text style={styles.subtext}>{item.email}</Text>
-              <Text style={styles.subtext}>
-                {formatRelativeDate(item.createdAt)} · {item.status}
               </Text>
-              {item.decisionNote ? <Text style={styles.subtext}>{item.decisionNote}</Text> : null}
-            </Card>
-          )}
-        />
+            }
+            renderItem={({ item }) => (
+              <Card
+                accessibilityLabel={`Revisar solicitud de ${item.fullName || item.email}`}
+                onPress={
+                  resolved
+                    ? undefined
+                    : () => {
+                        setSelected(item)
+                        setRole('solicitante')
+                        setAreaId(null)
+                        setNote('')
+                      }
+                }
+                style={styles.card}
+                contentStyle={styles.cardContent}
+              >
+                <Text style={styles.name}>{item.fullName || item.email}</Text>
+                <Text style={styles.subtext}>{item.email}</Text>
+                <Text style={styles.subtext}>
+                  {formatRelativeDate(item.createdAt)} · {item.status}
+                </Text>
+                {item.decisionNote ? <Text style={styles.subtext}>{item.decisionNote}</Text> : null}
+              </Card>
+            )}
+          />
+        )}
       </View>
       <Modal
         animationType="slide"
@@ -166,7 +165,7 @@ export function AccessRequestsScreen() {
       >
         <View style={styles.backdrop}>
           <SafeAreaView edges={['bottom']} style={styles.sheet}>
-            <ScrollView contentContainerStyle={styles.sheetContent}>
+            <KeyboardFormScrollView contentContainerStyle={styles.sheetContent}>
               <View style={styles.sheetHeader}>
                 <Text style={styles.name}>{selected?.fullName || selected?.email}</Text>
                 <Pressable
@@ -242,7 +241,7 @@ export function AccessRequestsScreen() {
               >
                 <Text style={styles.rejectText}>Rechazar acceso</Text>
               </Pressable>
-            </ScrollView>
+            </KeyboardFormScrollView>
           </SafeAreaView>
         </View>
       </Modal>
@@ -252,7 +251,6 @@ export function AccessRequestsScreen() {
 
 const styles = StyleSheet.create({
   content: { flex: 1, padding: spacing.lg, gap: spacing.md },
-  title: { color: colors.text, ...typography.display },
   tabs: { flexDirection: 'row', gap: spacing.sm },
   tab: {
     minHeight: 44,

@@ -1,12 +1,12 @@
 import { Ionicons } from '@expo/vector-icons'
 import { useState } from 'react'
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   Modal,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -15,6 +15,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Button } from '@/components/ui/Button'
+import { Avatar } from '@/components/ui/Avatar'
+import { EmptyState } from '@/components/feedback/EmptyState'
+import { RequestState } from '@/components/feedback/RequestState'
+import { SkeletonList } from '@/components/ui/SkeletonList'
 import { Card } from '@/components/ui/Card'
 import { Chip } from '@/components/ui/Chip'
 import { ScreenContainer } from '@/components/ui/ScreenContainer'
@@ -90,10 +94,6 @@ export function UsersScreen() {
     <ScreenContainer edges={['bottom']} padded={false}>
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>ADMINISTRACIÓN</Text>
-          <Text accessibilityRole="header" style={styles.title}>
-            Usuarios
-          </Text>
           <Text style={styles.subtitle}>
             Administra el rol y el área de los miembros de tu empresa.
           </Text>
@@ -105,41 +105,44 @@ export function UsersScreen() {
           style={styles.search}
           value={search}
         />
-        <View style={styles.filterRow}>
+        <ScrollView
+          horizontal
+          style={styles.filterScroll}
+          contentContainerStyle={styles.filterRow}
+          showsHorizontalScrollIndicator={false}
+        >
           {(['todos', 'sin_area', ...APP_ROLES] as const).map((value) => (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ selected: filter === value }}
+            <Chip
               key={value}
+              label={
+                value === 'todos' ? 'Todos' : value === 'sin_area' ? 'Sin área' : ROLE_LABELS[value]
+              }
+              selected={filter === value}
               onPress={() => setFilter(value)}
-              style={[styles.filterChip, filter === value && styles.filterChipSelected]}
-            >
-              <Text style={styles.filterText}>
-                {value === 'todos'
-                  ? 'Todos'
-                  : value === 'sin_area'
-                    ? 'Sin área'
-                    : ROLE_LABELS[value]}
-              </Text>
-            </Pressable>
+            />
           ))}
-        </View>
+        </ScrollView>
 
         {loading ? (
-          <View style={styles.center}>
-            <ActivityIndicator color={colors.primary} size="large" />
-          </View>
+          <SkeletonList />
         ) : error ? (
-          <View style={styles.center}>
-            <Text style={styles.errorText}>No fue posible cargar los usuarios y las áreas.</Text>
-            <Button label="Reintentar" onPress={refresh} />
-          </View>
+          <RequestState
+            kind="error"
+            title="No fue posible cargar los usuarios y las áreas"
+            onRetry={refresh}
+          />
         ) : (
           <FlatList
             contentContainerStyle={styles.list}
             data={filteredProfiles}
             keyExtractor={(item) => item.id}
-            ListEmptyComponent={<Text style={styles.empty}>No hay usuarios registrados.</Text>}
+            ListEmptyComponent={
+              <EmptyState
+                title="No hay usuarios registrados"
+                message="Prueba con otro filtro o búsqueda."
+                variant="noResults"
+              />
+            }
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
@@ -153,9 +156,7 @@ export function UsersScreen() {
                 onPress={() => openProfile(item)}
                 contentStyle={styles.card}
               >
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{item.fullName.charAt(0).toUpperCase()}</Text>
-                </View>
+                <Avatar name={item.fullName} id={item.id} size={44} />
                 <View style={styles.cardContent}>
                   <Text style={styles.name}>{item.fullName}</Text>
                   <Chip icon={ROLE_ICONS[item.role]} label={ROLE_LABELS[item.role]} />
@@ -273,8 +274,6 @@ function AreaOption({
 const styles = StyleSheet.create({
   container: { flex: 1, gap: spacing.lg, padding: spacing.lg },
   header: { gap: spacing.xs },
-  eyebrow: { ...typography.overline, color: colors.primary },
-  title: { ...typography.display, color: colors.text },
   subtitle: { ...typography.body, color: colors.textMuted },
   search: {
     minHeight: 48,
@@ -285,43 +284,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     color: colors.text,
   },
-  filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  filterChip: {
-    minHeight: 44,
-    justifyContent: 'center',
-    paddingHorizontal: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-  },
-  filterChipSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-  filterText: { ...typography.caption, color: colors.text },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md },
-  errorText: { ...typography.body, color: colors.error, textAlign: 'center' },
+  filterScroll: { flexGrow: 0 },
+  filterRow: { flexDirection: 'row', gap: spacing.sm, paddingVertical: spacing.xs },
   closeButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   list: { gap: spacing.md, paddingBottom: spacing.xl },
-  empty: {
-    ...typography.body,
-    color: colors.textMuted,
-    paddingTop: spacing.xl,
-    textAlign: 'center',
-  },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
     minHeight: 88,
   },
-  avatar: {
-    width: 48,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.xl,
-    backgroundColor: colors.primarySoft,
-  },
-  avatarText: { ...typography.heading, color: colors.primary },
   cardContent: { flex: 1, gap: spacing.xs },
   name: { ...typography.heading, color: colors.text },
   areaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },

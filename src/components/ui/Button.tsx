@@ -17,17 +17,25 @@ export function Button({
   loading = false,
   disabled,
   icon,
+  destructive = false,
   style,
   onPressIn,
   onPressOut,
   ...props
-}: PressableProps & { label: string; variant?: Variant; loading?: boolean; icon?: IconName }) {
+}: PressableProps & {
+  label: string
+  variant?: Variant
+  loading?: boolean
+  icon?: IconName
+  destructive?: boolean
+}) {
   const inactive = disabled || loading
   const pressedScale = useSharedValue(1)
   const reduceMotion = useReducedMotion()
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: pressedScale.value }] }))
-  const foreground =
-    variant === 'primary'
+  const foreground = destructive
+    ? colors.error
+    : variant === 'primary'
       ? colors.white
       : variant === 'danger'
         ? colors.dangerText

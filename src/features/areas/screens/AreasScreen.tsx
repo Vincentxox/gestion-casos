@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'
 import { useState } from 'react'
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   Modal,
@@ -14,12 +13,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
-import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Chip } from '@/components/ui/Chip'
 import { IconTile } from '@/components/ui/IconTile'
 import { ScreenContainer } from '@/components/ui/ScreenContainer'
 import { EmptyState } from '@/components/feedback/EmptyState'
+import { RequestState } from '@/components/feedback/RequestState'
+import { SkeletonList } from '@/components/ui/SkeletonList'
 import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 import { AreaForm } from '../components/AreaForm'
@@ -54,23 +54,19 @@ export function AreasScreen() {
   }
 
   function confirmStatus(area: AreaRecord) {
-    const action = area.isActive ? 'desactivar' : 'activar'
-    Alert.alert(
-      `${action.charAt(0).toUpperCase()}${action.slice(1)} área`,
-      `¿Deseas ${action} ${area.name}?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: action.charAt(0).toUpperCase() + action.slice(1),
-          style: area.isActive ? 'destructive' : 'default',
-          onPress: () => {
-            void activeMutation
-              .mutateAsync({ areaId: area.id, isActive: !area.isActive })
-              .catch(() => Alert.alert('No fue posible actualizar el área.'))
-          },
+    const action = area.isActive ? 'Desactivar' : 'Activar'
+    Alert.alert(`${action} área`, `¿Deseas ${action.toLocaleLowerCase('es-GT')} ${area.name}?`, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: action,
+        style: area.isActive ? 'destructive' : 'default',
+        onPress: () => {
+          void activeMutation
+            .mutateAsync({ areaId: area.id, isActive: !area.isActive })
+            .catch(() => Alert.alert('No fue posible actualizar el área.'))
         },
-      ],
-    )
+      },
+    ])
   }
 
   return (
@@ -78,10 +74,6 @@ export function AreasScreen() {
       <View style={styles.container}>
         <View style={styles.header}>
           <View style={styles.headerText}>
-            <Text style={styles.eyebrow}>ADMINISTRACIÓN</Text>
-            <Text accessibilityRole="header" style={styles.title}>
-              Áreas
-            </Text>
             <Text style={styles.subtitle}>
               Organiza las áreas solicitantes y técnicas de tu empresa.
             </Text>
@@ -97,14 +89,13 @@ export function AreasScreen() {
         </View>
 
         {isLoading ? (
-          <View style={styles.center}>
-            <ActivityIndicator color={colors.primary} size="large" />
-          </View>
+          <SkeletonList />
         ) : error ? (
-          <View style={styles.center}>
-            <Text style={styles.errorTitle}>No fue posible cargar las áreas</Text>
-            <Button label="Reintentar" onPress={() => void refetch()} />
-          </View>
+          <RequestState
+            kind="error"
+            title="No fue posible cargar las áreas"
+            onRetry={() => void refetch()}
+          />
         ) : (
           <FlatList
             contentContainerStyle={styles.list}
@@ -208,8 +199,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, gap: spacing.lg, padding: spacing.lg },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   headerText: { flex: 1, gap: spacing.xs },
-  eyebrow: { ...typography.overline, color: colors.primary },
-  title: { ...typography.display, color: colors.text },
   subtitle: { ...typography.body, color: colors.textMuted },
   addButton: {
     width: 48,
@@ -234,8 +223,6 @@ const styles = StyleSheet.create({
   kind: { ...typography.caption, color: colors.primary },
   actions: { flexDirection: 'row' },
   iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md },
-  errorTitle: { ...typography.body, color: colors.error, textAlign: 'center' },
   modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.backdrop },
   modalCard: {
     height: '72%',

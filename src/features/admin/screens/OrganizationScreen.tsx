@@ -1,7 +1,9 @@
 import { useState } from 'react'
-import { ActivityIndicator, Alert, Share, StyleSheet, Text } from 'react-native'
+import { Alert, Share, StyleSheet, Text } from 'react-native'
 
 import { Button } from '@/components/ui/Button'
+import { RequestState } from '@/components/feedback/RequestState'
+import { SkeletonList } from '@/components/ui/SkeletonList'
 import { Card } from '@/components/ui/Card'
 import { ScreenContainer } from '@/components/ui/ScreenContainer'
 import { FormField } from '@/components/forms/FormField'
@@ -64,12 +66,13 @@ export function OrganizationScreen() {
   return (
     <ScreenContainer edges={['bottom']} padded={false}>
       <KeyboardFormScrollView contentContainerStyle={styles.content}>
-        <Text accessibilityRole="header" style={styles.title}>
-          Mi empresa
-        </Text>
-        {organization.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
+        {organization.isLoading ? <SkeletonList count={1} /> : null}
         {organization.error ? (
-          <Button label="Reintentar" onPress={() => void organization.refetch()} />
+          <RequestState
+            kind="error"
+            title="No fue posible cargar la empresa"
+            onRetry={() => void organization.refetch()}
+          />
         ) : null}
         {organization.data ? (
           <Card contentStyle={styles.card}>
@@ -85,9 +88,13 @@ export function OrganizationScreen() {
         <Card contentStyle={styles.card}>
           <Text style={styles.codeTitle}>Código de acceso</Text>
           {joinCode.isLoading ? (
-            <ActivityIndicator color={colors.primary} />
+            <SkeletonList count={1} />
           ) : joinCode.isError ? (
-            <Button label="Reintentar" onPress={() => void joinCode.refetch()} />
+            <RequestState
+              kind="error"
+              title="No fue posible cargar el código"
+              onRetry={() => void joinCode.refetch()}
+            />
           ) : (
             <>
               <Text selectable style={styles.code}>
@@ -119,7 +126,6 @@ export function OrganizationScreen() {
 
 const styles = StyleSheet.create({
   content: { flexGrow: 1, gap: spacing.lg, padding: spacing.lg },
-  title: { ...typography.display, color: colors.text },
   card: { gap: spacing.lg, padding: spacing.lg },
   codeTitle: { ...typography.heading, color: colors.text },
   code: { ...typography.display, color: colors.primary, letterSpacing: 2 },

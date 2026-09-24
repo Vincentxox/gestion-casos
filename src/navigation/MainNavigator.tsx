@@ -39,7 +39,7 @@ function CasesNavigator() {
         headerTintColor: colors.primary,
       }}
     >
-      <Stack.Screen component={CasesListScreen} name="Cases" options={{ title: 'Solicitudes' }} />
+      <Stack.Screen component={CasesListScreen} name="Cases" options={{ headerShown: false }} />
       <Stack.Screen
         component={CreateCaseScreen}
         name="CreateCase"

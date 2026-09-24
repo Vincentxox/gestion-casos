@@ -4,7 +4,7 @@ import Animated, { LinearTransition, useReducedMotion } from 'react-native-reani
 import { Icon, type IconName } from '@/components/ui/Icon'
 import type { CaseStatus } from '@/features/cases/types'
 import { statusMeta } from '@/theme/statusMeta'
-import { colors, fonts, phaseColors, radius, spacing, typography } from '@/theme/tokens'
+import { colors, phaseColors, radius, spacing, typography } from '@/theme/tokens'
 
 const steps: { label: string; icon: IconName }[] = [
   { label: 'Solicitada', icon: 'file-tray-outline' },
@@ -50,9 +50,7 @@ export function ProgressTracker({
   }
   const active = progress[status]
   return (
-    <View
-      accessibilityLabel={`Progreso: paso ${active + 1} de ${steps.length}, ${steps[active]?.label}`}
-    >
+    <View accessibilityLabel={`Progreso: paso ${active + 1} de ${steps.length}, ${meta.label}`}>
       <Text style={styles.heading}>
         Progreso · Paso {active + 1} de {steps.length}
       </Text>
@@ -66,7 +64,14 @@ export function ProgressTracker({
           return (
             <View key={step.label} style={styles.stepWrap}>
               {index > 0 ? (
-                <View style={[styles.line, index <= active && styles.lineComplete]} />
+                <View
+                  style={[styles.lineHalf, styles.leftHalf, index <= active && styles.lineComplete]}
+                />
+              ) : null}
+              {index < steps.length - 1 ? (
+                <View
+                  style={[styles.lineHalf, styles.rightHalf, index < active && styles.lineComplete]}
+                />
               ) : null}
               <Animated.View
                 layout={reduceMotion ? undefined : LinearTransition.duration(250)}
@@ -77,7 +82,7 @@ export function ProgressTracker({
                 ]}
               >
                 {complete ? (
-                  <Icon name="checkmark" size={18} color={colors.white} />
+                  <Icon name="checkmark-sharp" size={16} color={colors.white} />
                 ) : current ? (
                   <Icon
                     name={status === 'en_espera' ? 'pause-outline' : step.icon}
@@ -88,16 +93,14 @@ export function ProgressTracker({
                   <Text style={styles.pending}>{index + 1}</Text>
                 )}
               </Animated.View>
-              <Text
-                numberOfLines={2}
-                style={[styles.label, (complete || current) && styles.activeLabel]}
-              >
-                {step.label}
-              </Text>
             </View>
           )
         })}
       </Animated.View>
+      <Text style={styles.summary}>
+        Actual: {meta.label}
+        {steps[active + 1] ? ` · Siguiente: ${steps[active + 1]?.label}` : ''}
+      </Text>
     </View>
   )
 }
@@ -105,15 +108,16 @@ export function ProgressTracker({
 const styles = StyleSheet.create({
   heading: { ...typography.heading, color: colors.text, marginBottom: spacing.md },
   row: { flexDirection: 'row' },
-  stepWrap: { flex: 1, alignItems: 'center', gap: spacing.xs },
-  line: {
+  stepWrap: { flex: 1, alignItems: 'center' },
+  lineHalf: {
     position: 'absolute',
-    right: '50%',
-    width: '100%',
     height: 3,
     top: 15,
+    zIndex: 0,
     backgroundColor: colors.border,
   },
+  leftHalf: { left: 0, right: '50%' },
+  rightHalf: { left: '50%', right: 0 },
   lineComplete: { backgroundColor: phaseColors.cerrada.fg },
   node: {
     width: 32,
@@ -124,11 +128,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 1,
+    elevation: 2,
   },
   nodeComplete: { backgroundColor: phaseColors.cerrada.fg, borderColor: phaseColors.cerrada.fg },
   pending: { ...typography.caption, color: colors.textMuted },
-  label: { ...typography.overline, color: colors.textMuted, textAlign: 'center' },
-  activeLabel: { color: colors.text, fontFamily: fonts.bold },
+  summary: { ...typography.caption, color: colors.textMuted, marginTop: spacing.sm },
   terminal: {
     flexDirection: 'row',
     alignItems: 'center',

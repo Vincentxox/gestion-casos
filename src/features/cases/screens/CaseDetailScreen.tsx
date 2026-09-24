@@ -1,6 +1,6 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { useState, type ReactNode } from 'react'
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Animated, { LinearTransition, useReducedMotion } from 'react-native-reanimated'
 
@@ -12,11 +12,13 @@ import { RequestState } from '@/components/feedback/RequestState'
 import { ProgressTracker } from '@/components/progress/ProgressTracker'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { SkeletonList } from '@/components/ui/SkeletonList'
 import { Icon, type IconName } from '@/components/ui/Icon'
 import { IconTile } from '@/components/ui/IconTile'
 import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
 import { colors, spacing, typography } from '@/theme/tokens'
+import { actionMeta } from '@/theme/statusMeta'
 
 import { useCaseDetail, useCaseHistory } from '../useCases'
 import { canEditCase, getAvailableCaseActions } from '../casePermissions'
@@ -149,7 +151,7 @@ export function CaseDetailScreen({ navigation, route }: Props) {
         </DetailSection>
 
         <DetailSection title="Línea de tiempo">
-          {history.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
+          {history.isLoading ? <SkeletonList count={3} /> : null}
           {history.error ? (
             <Text style={styles.error}>No fue posible cargar el historial.</Text>
           ) : null}
@@ -160,11 +162,8 @@ export function CaseDetailScreen({ navigation, route }: Props) {
         <View style={styles.stickyAction}>
           {primaryAction ? (
             <Button
-              label={
-                primaryAction === 'asignar'
-                  ? 'Asignar personal'
-                  : primaryAction.charAt(0).toUpperCase() + primaryAction.slice(1)
-              }
+              label={actionMeta[primaryAction].label}
+              icon={actionMeta[primaryAction].icon}
               onPress={() => navigateAction(primaryAction)}
             />
           ) : null}
@@ -177,7 +176,8 @@ export function CaseDetailScreen({ navigation, route }: Props) {
           ) : null}
           {showSecondaryAction && secondaryAction ? (
             <Button
-              label={secondaryAction.charAt(0).toUpperCase() + secondaryAction.slice(1)}
+              label={actionMeta[secondaryAction].label}
+              icon={actionMeta[secondaryAction].icon}
               variant={['rechazar', 'cancelar'].includes(secondaryAction) ? 'danger' : 'secondary'}
               onPress={() => navigateAction(secondaryAction)}
             />
@@ -196,7 +196,8 @@ export function CaseDetailScreen({ navigation, route }: Props) {
         title="Acciones disponibles"
         actions={otherActions.map((action) => ({
           id: action,
-          label: action.charAt(0).toUpperCase() + action.slice(1),
+          label: actionMeta[action].label,
+          icon: actionMeta[action].icon,
           destructive: ['rechazar', 'cancelar'].includes(action),
         }))}
         visible={actionsVisible}
@@ -224,7 +225,7 @@ const styles = StyleSheet.create({
   headingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   subtitle: { ...typography.caption, color: colors.textMuted },
   caseNumber: { ...typography.caption, color: colors.primary },
-  title: { ...typography.title, color: colors.text },
+  title: { ...typography.heading, color: colors.text },
   description: { ...typography.body, color: colors.textMuted },
   panel: { gap: spacing.md },
   panelTitle: { ...typography.heading, color: colors.text },
