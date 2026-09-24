@@ -161,7 +161,7 @@ export function UsersScreen() {
                   <Text style={styles.name}>{item.fullName}</Text>
                   <Chip icon={ROLE_ICONS[item.role]} label={ROLE_LABELS[item.role]} />
                   <View style={styles.areaRow}>
-                    <Ionicons color={colors.primary} name="business-outline" size={15} />
+                    <Ionicons color={colors.textMuted} name="business-outline" size={15} />
                     <Text style={styles.areaName}>{item.areaName || 'Sin área asignada'}</Text>
                   </View>
                 </View>
@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     color: colors.text,
   },
-  filterScroll: { flexGrow: 0 },
+  filterScroll: { flexGrow: 0, flexShrink: 0, minHeight: 52 },
   filterRow: { flexDirection: 'row', gap: spacing.sm, paddingVertical: spacing.xs },
   closeButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   list: { gap: spacing.md, paddingBottom: spacing.xl },
@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
   cardContent: { flex: 1, gap: spacing.xs },
   name: { ...typography.heading, color: colors.text },
   areaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  areaName: { ...typography.caption, color: colors.primary },
+  areaName: { ...typography.caption, color: colors.textMuted },
   modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.backdrop },
   modalCard: {
     maxHeight: '75%',

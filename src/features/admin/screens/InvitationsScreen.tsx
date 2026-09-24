@@ -4,7 +4,6 @@ import { Alert, ScrollView, Share, StyleSheet, Text, View } from 'react-native'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Chip } from '@/components/ui/Chip'
-import { IconTile } from '@/components/ui/IconTile'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { RequestState } from '@/components/feedback/RequestState'
 import { SkeletonList } from '@/components/ui/SkeletonList'
@@ -18,6 +17,7 @@ import { colors, spacing, typography } from '@/theme/tokens'
 import { formatRelativeDate } from '@/theme/formatters'
 
 import { formatInvitationNotice } from '../invitationNotice'
+import { getInvitationAreas, retainInvitationArea } from '../invitationAreaOptions'
 import { invitationSchema } from '../invitationSchemas'
 import { useCreateInvitation, useInvitations, useRevokeInvitation } from '../useInvitations'
 
@@ -30,6 +30,13 @@ export function InvitationsScreen() {
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<AppRole>('solicitante')
   const [areaId, setAreaId] = useState<string | null>(null)
+  const availableAreas = getInvitationAreas(areas.data ?? [], role)
+  const selectedAreaId = retainInvitationArea(areaId, areas.data ?? [], role)
+
+  function changeRole(nextRole: AppRole) {
+    setRole(nextRole)
+    setAreaId((current) => retainInvitationArea(current, areas.data ?? [], nextRole))
+  }
 
   async function shareNotice(invitationEmail: string, invitationRole: AppRole) {
     if (!organizationName?.trim()) {
@@ -50,12 +57,15 @@ export function InvitationsScreen() {
   }
 
   async function submit() {
-    const result = invitationSchema.safeParse({ email, role, areaId })
+    const result = invitationSchema.safeParse({ email, role, areaId: selectedAreaId })
     if (!result.success) {
       Alert.alert('Revisa la invitación', result.error.issues[0]?.message ?? 'Datos inválidos')
       return
     }
-    if (role === 'tecnico' && areas.data?.find((area) => area.id === areaId)?.kind !== 'tecnica') {
+    if (
+      role === 'tecnico' &&
+      areas.data?.find((area) => area.id === selectedAreaId)?.kind !== 'tecnica'
+    ) {
       Alert.alert('Área incorrecta', 'Un técnico debe pertenecer a un área técnica.')
       return
     }
@@ -103,11 +113,12 @@ export function InvitationsScreen() {
           el aviso para informarle; la app no envía correos por sí sola.
         </Text>
         <Card contentStyle={styles.card}>
-          <IconTile icon="mail-outline" />
+          <Text style={styles.sectionTitle}>Nueva invitación</Text>
           <FormField
             label="Correo electrónico"
             autoCapitalize="none"
             keyboardType="email-address"
+            placeholder="nombre@empresa.com"
             value={email}
             onChangeText={setEmail}
           />
@@ -123,7 +134,7 @@ export function InvitationsScreen() {
                 key={option}
                 label={ROLE_LABELS[option]}
                 selected={role === option}
-                onPress={() => setRole(option)}
+                onPress={() => changeRole(option)}
               />
             ))}
           </ScrollView>
@@ -134,17 +145,19 @@ export function InvitationsScreen() {
             contentContainerStyle={styles.options}
             showsHorizontalScrollIndicator={false}
           >
-            <Chip label="Sin área" selected={areaId === null} onPress={() => setAreaId(null)} />
-            {(areas.data ?? [])
-              .filter((area) => area.isActive)
-              .map((area) => (
-                <Chip
-                  key={area.id}
-                  label={`${area.name} · ${area.kind === 'tecnica' ? 'Técnica' : 'Solicitante'}`}
-                  selected={areaId === area.id}
-                  onPress={() => setAreaId(area.id)}
-                />
-              ))}
+            <Chip
+              label="Sin área"
+              selected={selectedAreaId === null}
+              onPress={() => setAreaId(null)}
+            />
+            {availableAreas.map((area) => (
+              <Chip
+                key={area.id}
+                label={area.name}
+                selected={selectedAreaId === area.id}
+                onPress={() => setAreaId(area.id)}
+              />
+            ))}
           </ScrollView>
           <Button
             label="Crear invitación"
@@ -220,7 +233,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.md,
   },
-  optionScroll: { flexGrow: 0 },
+  optionScroll: { flexGrow: 0, flexShrink: 0, minHeight: 52 },
   options: { gap: spacing.sm, paddingVertical: spacing.xs },
   invitationChips: { flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' },
   email: { ...typography.heading, color: colors.text },

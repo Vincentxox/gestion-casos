@@ -22,6 +22,7 @@ import { actionMeta } from '@/theme/statusMeta'
 
 import { useCaseDetail, useCaseHistory } from '../useCases'
 import { canEditCase, getAvailableCaseActions } from '../casePermissions'
+import { getSecondaryActionPresentation } from '../caseActionPresentation'
 import type { CaseAction } from '../types'
 
 type Props = NativeStackScreenProps<MainStackParamList, 'CaseDetail'>
@@ -84,10 +85,7 @@ export function CaseDetailScreen({ navigation, route }: Props) {
   const actions = getAvailableCaseActions(item, profile)
   const primaryAction = actions.find((action) => !['rechazar', 'cancelar'].includes(action))
   const otherActions = actions.filter((action) => action !== primaryAction)
-  const secondaryAction = otherActions[0]
-  const showSecondaryAction =
-    otherActions.length === 1 &&
-    Number(Boolean(primaryAction)) + Number(canUpdate) + otherActions.length <= 2
+  const secondaryPresentation = getSecondaryActionPresentation(otherActions)
   function navigateAction(action: CaseAction) {
     if (action === 'asignar') navigation.navigate('AssignCase', { caseId })
     else navigation.navigate('ChangeCaseStatus', { caseId, action })
@@ -167,28 +165,38 @@ export function CaseDetailScreen({ navigation, route }: Props) {
               onPress={() => navigateAction(primaryAction)}
             />
           ) : null}
-          {canUpdate ? (
-            <Button
-              label="Editar"
-              variant="secondary"
-              onPress={() => navigation.navigate('EditCase', { caseId })}
-            />
-          ) : null}
-          {showSecondaryAction && secondaryAction ? (
-            <Button
-              label={actionMeta[secondaryAction].label}
-              icon={actionMeta[secondaryAction].icon}
-              variant={['rechazar', 'cancelar'].includes(secondaryAction) ? 'danger' : 'secondary'}
-              onPress={() => navigateAction(secondaryAction)}
-            />
-          ) : null}
-          {otherActions.length > 0 && !showSecondaryAction ? (
-            <Button
-              label="Más acciones"
-              icon="ellipsis-horizontal"
-              variant="secondary"
-              onPress={() => setActionsVisible(true)}
-            />
+          {canUpdate || otherActions.length > 0 ? (
+            <View style={styles.secondaryActions}>
+              {canUpdate ? (
+                <View style={styles.secondaryAction}>
+                  <Button
+                    label="Editar"
+                    variant="secondary"
+                    onPress={() => navigation.navigate('EditCase', { caseId })}
+                  />
+                </View>
+              ) : null}
+              {secondaryPresentation.kind === 'direct' ? (
+                <View style={styles.secondaryAction}>
+                  <Button
+                    label={actionMeta[secondaryPresentation.action].label}
+                    icon={actionMeta[secondaryPresentation.action].icon}
+                    variant={secondaryPresentation.variant}
+                    onPress={() => navigateAction(secondaryPresentation.action)}
+                  />
+                </View>
+              ) : null}
+              {secondaryPresentation.kind === 'menu' ? (
+                <View style={styles.secondaryAction}>
+                  <Button
+                    label="Más acciones"
+                    icon="ellipsis-horizontal"
+                    variant="secondary"
+                    onPress={() => setActionsVisible(true)}
+                  />
+                </View>
+              ) : null}
+            </View>
           ) : null}
         </View>
       ) : null}
@@ -197,6 +205,7 @@ export function CaseDetailScreen({ navigation, route }: Props) {
         actions={otherActions.map((action) => ({
           id: action,
           label: actionMeta[action].label,
+          description: actionMeta[action].description,
           icon: actionMeta[action].icon,
           destructive: ['rechazar', 'cancelar'].includes(action),
         }))}
@@ -242,6 +251,8 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     backgroundColor: colors.surface,
   },
+  secondaryActions: { flexDirection: 'row', gap: spacing.sm },
+  secondaryAction: { flex: 1 },
   field: { flexDirection: 'row', alignItems: 'center', gap: spacing.base },
   fieldContent: { flex: 1, gap: spacing.xs },
   fieldLabel: { ...typography.caption, color: colors.textMuted },

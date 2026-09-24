@@ -1,4 +1,10 @@
-import { formatCurrency, formatNumber, formatRelativeDate, plural } from '../formatters'
+import {
+  formatCurrency,
+  formatNumber,
+  formatQuetzales,
+  formatRelativeDate,
+  plural,
+} from '../formatters'
 
 test('elige el singular solo para una unidad', () => {
   expect(plural(1, 'solicitud', 'solicitudes')).toBe('solicitud')
@@ -9,6 +15,7 @@ test('elige el singular solo para una unidad', () => {
 test('formatea números y montos de forma consistente', () => {
   expect(formatNumber(1234)).toContain('234')
   expect(formatCurrency(1.5)).toMatch(/1[,.]50/)
+  expect(formatQuetzales(10)).toMatch(/Q\s*10[,.]00/)
 })
 
 test('muestra tiempo relativo en español', () => {

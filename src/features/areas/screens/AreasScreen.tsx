@@ -13,6 +13,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
+import { CatalogActionSheet } from '@/components/actions/CatalogActionSheet'
+import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Chip } from '@/components/ui/Chip'
 import { IconTile } from '@/components/ui/IconTile'
@@ -32,6 +34,7 @@ export function AreasScreen() {
   const updateMutation = useUpdateArea()
   const activeMutation = useSetAreaActive()
   const [editingArea, setEditingArea] = useState<AreaRecord | null>(null)
+  const [actionArea, setActionArea] = useState<AreaRecord | null>(null)
   const [formVisible, setFormVisible] = useState(false)
 
   function openForm(area?: AreaRecord) {
@@ -72,21 +75,9 @@ export function AreasScreen() {
   return (
     <ScreenContainer edges={['bottom']} padded={false}>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.headerText}>
-            <Text style={styles.subtitle}>
-              Organiza las áreas solicitantes y técnicas de tu empresa.
-            </Text>
-          </View>
-          <Pressable
-            accessibilityLabel="Crear área"
-            accessibilityRole="button"
-            onPress={() => openForm()}
-            style={styles.addButton}
-          >
-            <Ionicons color={colors.white} name="add" size={25} />
-          </Pressable>
-        </View>
+        <Text style={styles.subtitle}>
+          Organiza las áreas solicitantes y técnicas de tu empresa.
+        </Text>
 
         {isLoading ? (
           <SkeletonList />
@@ -122,7 +113,9 @@ export function AreasScreen() {
                 <IconTile icon="business-outline" />
                 <View style={styles.cardContent}>
                   <View style={styles.nameRow}>
-                    <Text style={styles.areaName}>{item.name}</Text>
+                    <Text numberOfLines={1} style={styles.areaName}>
+                      {item.name}
+                    </Text>
                     <Chip
                       label={item.isActive ? 'Activa' : 'Inactiva'}
                       tone={item.isActive ? 'success' : 'neutral'}
@@ -133,33 +126,31 @@ export function AreasScreen() {
                     {item.kind === 'tecnica' ? 'Área técnica' : 'Área solicitante'}
                   </Text>
                 </View>
-                <View style={styles.actions}>
-                  <Pressable
-                    accessibilityLabel={`Editar ${item.name}`}
-                    accessibilityRole="button"
-                    onPress={() => openForm(item)}
-                    style={styles.iconButton}
-                  >
-                    <Ionicons color={colors.primary} name="pencil-outline" size={21} />
-                  </Pressable>
-                  <Pressable
-                    accessibilityLabel={`${item.isActive ? 'Desactivar' : 'Activar'} ${item.name}`}
-                    accessibilityRole="button"
-                    onPress={() => confirmStatus(item)}
-                    style={styles.iconButton}
-                  >
-                    <Ionicons
-                      color={item.isActive ? colors.error : colors.success}
-                      name={item.isActive ? 'pause-circle-outline' : 'checkmark-circle-outline'}
-                      size={23}
-                    />
-                  </Pressable>
-                </View>
+                <Pressable
+                  accessibilityLabel={`Opciones de ${item.name}`}
+                  accessibilityRole="button"
+                  onPress={() => setActionArea(item)}
+                  style={styles.iconButton}
+                >
+                  <Ionicons color={colors.text} name="ellipsis-horizontal" size={23} />
+                </Pressable>
               </Card>
             )}
           />
         )}
+        <View style={styles.floatingAction}>
+          <Button label="Nueva área" icon="add" onPress={() => openForm()} />
+        </View>
       </View>
+
+      <CatalogActionSheet
+        name={actionArea?.name ?? ''}
+        active={actionArea?.isActive ?? false}
+        visible={actionArea !== null}
+        onClose={() => setActionArea(null)}
+        onEdit={() => actionArea && openForm(actionArea)}
+        onToggle={() => actionArea && confirmStatus(actionArea)}
+      />
 
       <Modal
         animationType="fade"
@@ -197,31 +188,21 @@ export function AreasScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, gap: spacing.lg, padding: spacing.lg },
-  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  headerText: { flex: 1, gap: spacing.xs },
   subtitle: { ...typography.body, color: colors.textMuted },
-  addButton: {
-    width: 48,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.xl,
-    backgroundColor: colors.primary,
-  },
-  list: { gap: spacing.md, paddingBottom: spacing.xl },
+  floatingAction: { position: 'absolute', right: spacing.lg, bottom: spacing.lg },
+  list: { gap: spacing.md, paddingBottom: 96 },
   card: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: spacing.sm,
     minHeight: 88,
   },
   inactiveCard: { opacity: 0.7 },
   cardContent: { flex: 1, gap: spacing.sm },
-  nameRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm },
-  areaName: { ...typography.heading, color: colors.text },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  areaName: { ...typography.heading, color: colors.text, flex: 1 },
   description: { ...typography.caption, color: colors.textMuted },
-  kind: { ...typography.caption, color: colors.primary },
-  actions: { flexDirection: 'row' },
+  kind: { ...typography.caption, color: colors.textMuted },
   iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.backdrop },
   modalCard: {

@@ -23,7 +23,7 @@ export function getAvailableCaseActions(item: CaseRecord, profile: Profile | nul
     case 'solicitado': {
       const actions: CaseAction[] = []
       if (managesTarget || isAdmin) actions.push('aceptar', 'rechazar')
-      if (item.createdBy === profile.id || managesRequesting || isAdmin) actions.push('cancelar')
+      if (item.createdBy === profile.id || managesRequesting) actions.push('cancelar')
       return actions
     }
     case 'aceptado':

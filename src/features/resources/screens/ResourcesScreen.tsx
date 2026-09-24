@@ -13,6 +13,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
+import { CatalogActionSheet } from '@/components/actions/CatalogActionSheet'
+import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Chip } from '@/components/ui/Chip'
 import { IconTile } from '@/components/ui/IconTile'
@@ -20,7 +22,7 @@ import { ScreenContainer } from '@/components/ui/ScreenContainer'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { RequestState } from '@/components/feedback/RequestState'
 import { SkeletonList } from '@/components/ui/SkeletonList'
-import { formatCurrency } from '@/theme/formatters'
+import { formatQuetzales } from '@/theme/formatters'
 import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 import { ResourceForm } from '../components/ResourceForm'
@@ -38,6 +40,7 @@ export function ResourcesScreen() {
   const update = useUpdateResource()
   const active = useSetResourceActive()
   const [editing, setEditing] = useState<ResourceRecord | null>(null)
+  const [actionResource, setActionResource] = useState<ResourceRecord | null>(null)
   const [formVisible, setFormVisible] = useState(false)
 
   function openForm(resource?: ResourceRecord) {
@@ -84,19 +87,7 @@ export function ResourcesScreen() {
   return (
     <ScreenContainer edges={['bottom']} padded={false}>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.headerText}>
-            <Text style={styles.subtitle}>Materiales, herramientas y equipos de tu empresa.</Text>
-          </View>
-          <Pressable
-            accessibilityLabel="Crear recurso"
-            accessibilityRole="button"
-            onPress={() => openForm()}
-            style={styles.addButton}
-          >
-            <Ionicons color={colors.white} name="add" size={25} />
-          </Pressable>
-        </View>
+        <Text style={styles.subtitle}>Materiales, herramientas y equipos de tu empresa.</Text>
         {resources.isLoading ? (
           <SkeletonList />
         ) : resources.error ? (
@@ -130,49 +121,48 @@ export function ResourcesScreen() {
               <Card contentStyle={styles.card}>
                 <IconTile icon="cube-outline" />
                 <View style={styles.cardContent}>
-                  <Text style={styles.name}>{item.name}</Text>
-                  <Chip
-                    label={item.isActive ? 'Activo' : 'Inactivo'}
-                    tone={item.isActive ? 'success' : 'neutral'}
-                  />
+                  <View style={styles.nameRow}>
+                    <Text numberOfLines={1} style={styles.name}>
+                      {item.name}
+                    </Text>
+                    <Chip
+                      label={item.isActive ? 'Activo' : 'Inactivo'}
+                      tone={item.isActive ? 'success' : 'neutral'}
+                    />
+                  </View>
                   <Text style={styles.meta}>
                     {RESOURCE_KIND_LABELS[item.kind]}
-                    {item.unit ? ` · ${item.unit}` : ''}
+                    {item.unit ? ` · Unidad: ${item.unit}` : ''}
+                    {item.unitCost !== null ? ` · ${formatQuetzales(item.unitCost)}` : ''}
                   </Text>
-                  {item.unitCost !== null ? (
-                    <Text style={styles.meta}>Costo unitario: {formatCurrency(item.unitCost)}</Text>
-                  ) : null}
                   {item.description ? (
                     <Text style={styles.description}>{item.description}</Text>
                   ) : null}
                 </View>
-                <View style={styles.actions}>
-                  <Pressable
-                    accessibilityLabel={`Editar ${item.name}`}
-                    accessibilityRole="button"
-                    onPress={() => openForm(item)}
-                    style={styles.iconButton}
-                  >
-                    <Ionicons color={colors.primary} name="pencil-outline" size={22} />
-                  </Pressable>
-                  <Pressable
-                    accessibilityLabel={`${item.isActive ? 'Desactivar' : 'Activar'} ${item.name}`}
-                    accessibilityRole="button"
-                    onPress={() => toggle(item)}
-                    style={styles.iconButton}
-                  >
-                    <Ionicons
-                      color={item.isActive ? colors.error : colors.success}
-                      name={item.isActive ? 'pause-circle-outline' : 'checkmark-circle-outline'}
-                      size={24}
-                    />
-                  </Pressable>
-                </View>
+                <Pressable
+                  accessibilityLabel={`Opciones de ${item.name}`}
+                  accessibilityRole="button"
+                  onPress={() => setActionResource(item)}
+                  style={styles.iconButton}
+                >
+                  <Ionicons color={colors.text} name="ellipsis-horizontal" size={23} />
+                </Pressable>
               </Card>
             )}
           />
         )}
+        <View style={styles.floatingAction}>
+          <Button label="Nuevo recurso" icon="add" onPress={() => openForm()} />
+        </View>
       </View>
+      <CatalogActionSheet
+        name={actionResource?.name ?? ''}
+        active={actionResource?.isActive ?? false}
+        visible={actionResource !== null}
+        onClose={() => setActionResource(null)}
+        onEdit={() => actionResource && openForm(actionResource)}
+        onToggle={() => actionResource && toggle(actionResource)}
+      />
       <Modal
         animationType="fade"
         onRequestClose={() => setFormVisible(false)}
@@ -209,28 +199,20 @@ export function ResourcesScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, gap: spacing.lg, padding: spacing.lg },
-  header: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
-  headerText: { flex: 1, gap: spacing.xs },
   subtitle: { ...typography.body, color: colors.textMuted },
-  addButton: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-  },
-  list: { gap: spacing.md, paddingBottom: spacing.xl },
+  floatingAction: { position: 'absolute', right: spacing.lg, bottom: spacing.lg },
+  list: { gap: spacing.md, paddingBottom: 96 },
   card: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
     gap: spacing.sm,
     minHeight: 88,
   },
   cardContent: { flex: 1, gap: spacing.xs },
-  name: { ...typography.heading, color: colors.text },
-  meta: { ...typography.caption, color: colors.primary },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  name: { ...typography.heading, color: colors.text, flex: 1 },
+  meta: { ...typography.caption, color: colors.textMuted },
   description: { ...typography.caption, color: colors.textMuted },
-  actions: { justifyContent: 'center', gap: spacing.sm },
   iconButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.backdrop },
   modal: {

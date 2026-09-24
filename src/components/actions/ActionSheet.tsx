@@ -8,6 +8,7 @@ import { colors, radius, spacing, typography } from '@/theme/tokens'
 export interface SheetAction<T extends string> {
   id: T
   label: string
+  description?: string
   icon?: IconName
   destructive?: boolean
 }
@@ -47,9 +48,14 @@ export function ActionSheet<T extends string>({
                   color={action.destructive ? colors.error : colors.primary}
                 />
               ) : null}
-              <Text style={[styles.optionText, action.destructive && styles.destructive]}>
-                {action.label}
-              </Text>
+              <View style={styles.optionCopy}>
+                <Text style={[styles.optionText, action.destructive && styles.destructive]}>
+                  {action.label}
+                </Text>
+                {action.description ? (
+                  <Text style={styles.optionDescription}>{action.description}</Text>
+                ) : null}
+              </View>
             </Pressable>
           ))}
           <Button label="Volver" variant="text" onPress={onClose} />
@@ -88,5 +94,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
   optionText: { ...typography.heading, color: colors.primary },
+  optionCopy: { flex: 1, paddingVertical: spacing.sm },
+  optionDescription: { ...typography.caption, color: colors.textMuted },
   destructive: { color: colors.error },
 })

@@ -10,6 +10,10 @@ export function formatCurrency(value: number) {
   return value.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+export function formatQuetzales(value: number) {
+  return new Intl.NumberFormat('es-GT', { style: 'currency', currency: 'GTQ' }).format(value)
+}
+
 export function formatRelativeDate(date: string, now = Date.now()) {
   const elapsed = Math.max(0, now - new Date(date).getTime())
   if (!Number.isFinite(elapsed)) return 'Fecha no disponible'

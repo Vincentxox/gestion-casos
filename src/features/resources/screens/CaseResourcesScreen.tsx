@@ -20,7 +20,7 @@ import { SkeletonList } from '@/components/ui/SkeletonList'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { IconTile } from '@/components/ui/IconTile'
-import { formatNumber, plural } from '@/theme/formatters'
+import { formatNumber, formatQuetzales, plural } from '@/theme/formatters'
 import { useAssignableProfiles, useCaseDetail } from '@/features/cases/useCases'
 import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
@@ -185,6 +185,11 @@ export function CaseResourcesScreen({ route }: Props) {
                   {item.hours != null ? (
                     <Text style={styles.meta}>Horas: {formatNumber(item.hours)}</Text>
                   ) : null}
+                  {item.unitCost != null ? (
+                    <Text style={styles.meta}>
+                      Costo unitario: {formatQuetzales(item.unitCost)}
+                    </Text>
+                  ) : null}
                   {item.notes ? <Text style={styles.notes}>{item.notes}</Text> : null}
                 </View>
                 {canManage ? (
@@ -264,7 +269,7 @@ const styles = StyleSheet.create({
   },
   cardContent: { flex: 1, gap: spacing.xs },
   name: { ...typography.heading, color: colors.text },
-  meta: { ...typography.caption, color: colors.primary },
+  meta: { ...typography.caption, color: colors.textMuted },
   notes: { color: colors.textMuted },
   actions: { justifyContent: 'center', gap: spacing.sm },
   iconButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },

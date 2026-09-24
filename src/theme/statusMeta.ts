@@ -44,14 +44,14 @@ export const actionMeta = {
   },
   rechazar: {
     label: 'Rechazar solicitud',
-    description: 'La solicitud se cierra con un motivo',
+    description: 'El área técnica no la atenderá. Pide un motivo.',
     verb: 'rechazó la solicitud',
     phase: 'rechazada',
     icon: 'close-circle-outline',
   },
   cancelar: {
     label: 'Cancelar solicitud',
-    description: 'La solicitud se retira de la bandeja',
+    description: 'Quien la pidió la retira antes de que la acepten.',
     verb: 'canceló la solicitud',
     phase: 'cancelada',
     icon: 'remove-circle-outline',

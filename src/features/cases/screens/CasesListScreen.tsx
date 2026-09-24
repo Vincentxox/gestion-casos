@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     paddingHorizontal: spacing.md,
   },
-  filterScroll: { flexGrow: 0 },
+  filterScroll: { flexGrow: 0, flexShrink: 0, minHeight: 52 },
   filters: {
     flexDirection: 'row',
     gap: spacing.sm,

@@ -13,6 +13,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
+import { CatalogActionSheet } from '@/components/actions/CatalogActionSheet'
+import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Chip } from '@/components/ui/Chip'
 import { IconTile } from '@/components/ui/IconTile'
@@ -40,6 +42,7 @@ export function CategoriesScreen() {
   const activeMutation = useSetCategoryActive()
   const [areaFilter, setAreaFilter] = useState<string | null>(null)
   const [editing, setEditing] = useState<CategoryRecord | null>(null)
+  const [actionCategory, setActionCategory] = useState<CategoryRecord | null>(null)
   const [formVisible, setFormVisible] = useState(false)
 
   const filteredCategories = useMemo(
@@ -93,19 +96,7 @@ export function CategoriesScreen() {
   return (
     <ScreenContainer edges={['bottom']} padded={false}>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.headerText}>
-            <Text style={styles.subtitle}>Define los servicios que atiende cada área técnica.</Text>
-          </View>
-          <Pressable
-            accessibilityLabel="Crear tipo de servicio"
-            accessibilityRole="button"
-            onPress={() => openForm()}
-            style={styles.addButton}
-          >
-            <Ionicons color={colors.white} name="add" size={25} />
-          </Pressable>
-        </View>
+        <Text style={styles.subtitle}>Define los servicios que atiende cada área técnica.</Text>
 
         <FlatList
           horizontal
@@ -163,7 +154,9 @@ export function CategoriesScreen() {
                 <IconTile icon="pricetag-outline" />
                 <View style={styles.cardContent}>
                   <View style={styles.nameRow}>
-                    <Text style={styles.categoryName}>{item.name}</Text>
+                    <Text numberOfLines={1} style={styles.categoryName}>
+                      {item.name}
+                    </Text>
                     <Chip
                       label={item.isActive ? 'Activa' : 'Inactiva'}
                       tone={item.isActive ? 'success' : 'neutral'}
@@ -172,33 +165,31 @@ export function CategoriesScreen() {
                   <Text style={styles.areaName}>{item.areaName}</Text>
                   <Text style={styles.description}>{item.description || 'Sin descripción'}</Text>
                 </View>
-                <View style={styles.actions}>
-                  <Pressable
-                    accessibilityLabel={`Editar ${item.name}`}
-                    accessibilityRole="button"
-                    onPress={() => openForm(item)}
-                    style={styles.iconButton}
-                  >
-                    <Ionicons color={colors.primary} name="pencil-outline" size={21} />
-                  </Pressable>
-                  <Pressable
-                    accessibilityLabel={`${item.isActive ? 'Desactivar' : 'Activar'} ${item.name}`}
-                    accessibilityRole="button"
-                    onPress={() => confirmStatus(item)}
-                    style={styles.iconButton}
-                  >
-                    <Ionicons
-                      color={item.isActive ? colors.error : colors.success}
-                      name={item.isActive ? 'pause-circle-outline' : 'checkmark-circle-outline'}
-                      size={23}
-                    />
-                  </Pressable>
-                </View>
+                <Pressable
+                  accessibilityLabel={`Opciones de ${item.name}`}
+                  accessibilityRole="button"
+                  onPress={() => setActionCategory(item)}
+                  style={styles.iconButton}
+                >
+                  <Ionicons color={colors.text} name="ellipsis-horizontal" size={23} />
+                </Pressable>
               </Card>
             )}
           />
         )}
+        <View style={styles.floatingAction}>
+          <Button label="Nuevo tipo de servicio" icon="add" onPress={() => openForm()} />
+        </View>
       </View>
+
+      <CatalogActionSheet
+        name={actionCategory?.name ?? ''}
+        active={actionCategory?.isActive ?? false}
+        visible={actionCategory !== null}
+        onClose={() => setActionCategory(null)}
+        onEdit={() => actionCategory && openForm(actionCategory)}
+        onToggle={() => actionCategory && confirmStatus(actionCategory)}
+      />
 
       <Modal
         animationType="fade"
@@ -239,33 +230,23 @@ export function CategoriesScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, gap: spacing.md, padding: spacing.lg },
-  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  headerText: { flex: 1, gap: spacing.xs },
   subtitle: { ...typography.body, color: colors.textMuted },
-  addButton: {
-    width: 48,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.xl,
-    backgroundColor: colors.primary,
-  },
-  filterList: { flexGrow: 0, minHeight: 48 },
+  floatingAction: { position: 'absolute', right: spacing.lg, bottom: spacing.lg },
+  filterList: { flexGrow: 0, flexShrink: 0, minHeight: 52 },
   filters: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xs },
-  list: { gap: spacing.md, paddingBottom: spacing.xl },
+  list: { gap: spacing.md, paddingBottom: 96 },
   card: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: spacing.sm,
     minHeight: 88,
   },
   inactiveCard: { opacity: 0.7 },
   cardContent: { flex: 1, gap: spacing.xs },
-  nameRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm },
-  categoryName: { ...typography.heading, color: colors.text },
-  areaName: { ...typography.caption, color: colors.primary },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  categoryName: { ...typography.heading, color: colors.text, flex: 1 },
+  areaName: { ...typography.caption, color: colors.textMuted },
   description: { ...typography.caption, color: colors.textMuted },
-  actions: { flexDirection: 'row' },
   iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.backdrop },
   modalCard: {

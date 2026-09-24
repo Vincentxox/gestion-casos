@@ -81,12 +81,12 @@ export function ResourceForm({ resource, loading, onSubmit }: Props) {
         name="unit"
         render={({ field: { value, onChange, onBlur } }) => (
           <FormField
-            label="Unidad (obligatoria para material)"
+            label="Unidad de medida (obligatoria para material)"
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
             error={errors.unit?.message}
-            placeholder="Ej. metro, pieza"
+            placeholder="pieza, metro, litro, galón"
             maxLength={30}
           />
         )}

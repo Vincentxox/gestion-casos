@@ -57,8 +57,12 @@ function RootContent({ fontsReady }: { fontsReady: boolean }) {
 
   const finishIntro = useCallback(() => setShowIntro(false), [])
 
-  if (showIntro || !fontsReady) {
-    return <BrandIntroScreen onFinish={finishIntro} ready={fontsReady} />
+  if (!fontsReady) {
+    return <View style={styles.container} />
+  }
+
+  if (showIntro) {
+    return <BrandIntroScreen onFinish={finishIntro} ready={status !== 'initializing'} />
   }
 
   if (status === 'initializing') {

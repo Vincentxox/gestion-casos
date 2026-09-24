@@ -47,9 +47,14 @@ test('el jefe técnico puede revisar y asignar después de aceptar', () => {
   expect(getAvailableCaseActions({ ...item, status: 'aceptado' }, chief)).toEqual(['asignar'])
 })
 
-test('el administrador suplanta al jefe, pero no recibe acciones de ejecución', () => {
+test('el administrador solo cancela una solicitud que creó', () => {
   const admin = { ...profile, id: 'admin', role: 'administrador' as const, areaId: null }
-  expect(getAvailableCaseActions(item, admin)).toEqual(['aceptar', 'rechazar', 'cancelar'])
+  expect(getAvailableCaseActions(item, admin)).toEqual(['aceptar', 'rechazar'])
+  expect(getAvailableCaseActions({ ...item, createdBy: 'admin' }, admin)).toEqual([
+    'aceptar',
+    'rechazar',
+    'cancelar',
+  ])
   expect(
     getAvailableCaseActions({ ...item, status: 'en_ejecucion', assignedTo: 'tech' }, admin),
   ).toEqual([])
