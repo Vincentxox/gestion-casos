@@ -1,0 +1,2 @@
+-- Los catálogos iniciales esenciales se crean en las migraciones.
+-- No se cargan usuarios ni datos de ejemplo en esta fase.

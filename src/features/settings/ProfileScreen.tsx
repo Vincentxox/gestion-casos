@@ -1,4 +1,4 @@
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Alert, Image, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { PrimaryButton } from '@/components/buttons/PrimaryButton'
@@ -7,6 +7,8 @@ import { colors, radius, spacing } from '@/theme/tokens'
 
 const ROLE_LABELS = {
   administrador: 'Administrador',
+  coordinador: 'Coordinador',
+  tecnico: 'Técnico',
   auditor: 'Auditor',
   visualizador: 'Visualizador',
 } as const
@@ -36,9 +38,13 @@ export function ProfileScreen() {
         </View>
 
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {profile?.fullName?.trim().charAt(0).toUpperCase() || 'U'}
-          </Text>
+          {profile?.avatarUrl ? (
+            <Image accessibilityLabel="Foto de perfil" source={{ uri: profile.avatarUrl }} style={styles.avatarImage} />
+          ) : (
+            <Text style={styles.avatarText}>
+              {profile?.fullName?.trim().charAt(0).toUpperCase() || 'U'}
+            </Text>
+          )}
         </View>
 
         <View style={styles.card}>
@@ -92,6 +98,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   avatarText: { color: colors.white, fontSize: 28, fontWeight: '800' },
+  avatarImage: { width: 72, height: 72, borderRadius: 36 },
   card: {
     borderWidth: 1,
     borderColor: colors.border,

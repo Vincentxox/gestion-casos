@@ -15,6 +15,8 @@ export type AppPermission = (typeof APP_PERMISSIONS)[number]
 
 const ROLE_PERMISSIONS: Record<AppRole, ReadonlySet<AppPermission>> = {
   administrador: new Set(APP_PERMISSIONS),
+  coordinador: new Set(),
+  tecnico: new Set(),
   auditor: new Set(['cases.read', 'reports.read', 'audit.read']),
   visualizador: new Set(['cases.read', 'cases.create']),
 }

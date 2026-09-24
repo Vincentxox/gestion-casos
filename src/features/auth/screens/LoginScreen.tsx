@@ -8,6 +8,7 @@ import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native'
 import { PrimaryButton } from '@/components/buttons/PrimaryButton'
 import { FormField } from '@/components/forms/FormField'
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
+import { usesMaintenanceDataModel } from '@/config/dataModel'
 import { getAuthErrorMessage } from '@/features/auth/authErrors'
 import { loginSchema, type LoginInput } from '@/features/auth/schemas'
 import type { AuthStackParamList } from '@/navigation/types'
@@ -19,6 +20,7 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>
 const logoSource = require('../../../../assets/logo-mark.png')
 
 export function LoginScreen({ navigation }: Props) {
+  const maintenanceMode = usesMaintenanceDataModel()
   const login = useAuthStore((state) => state.login)
   const loginWithGoogle = useAuthStore((state) => state.loginWithGoogle)
   const initialize = useAuthStore((state) => state.initialize)
@@ -71,15 +73,19 @@ export function LoginScreen({ navigation }: Props) {
     <KeyboardFormScrollView contentContainerStyle={styles.scrollContent} style={styles.flex}>
       <View style={styles.brand}>
         <Image
-          accessibilityLabel="Logo de Nexo Casos"
+          accessibilityLabel={maintenanceMode ? 'Logo de mantenimiento' : 'Logo de Nexo Casos'}
           resizeMode="contain"
           source={logoSource}
           style={styles.logo}
         />
         <Text accessibilityRole="header" style={styles.title}>
-          Nexo Casos
+          {maintenanceMode ? 'Gestión de mantenimiento' : 'Nexo Casos'}
         </Text>
-        <Text style={styles.subtitle}>Accede de forma segura a tus casos y documentos.</Text>
+        <Text style={styles.subtitle}>
+          {maintenanceMode
+            ? 'Accede a las solicitudes y recursos de mantenimiento.'
+            : 'Accede de forma segura a tus casos y documentos.'}
+        </Text>
       </View>
 
       <View style={styles.card}>
@@ -146,28 +152,32 @@ export function LoginScreen({ navigation }: Props) {
           onPress={() => void submit()}
         />
 
-        <View accessibilityElementsHidden style={styles.dividerRow}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>o continúa con</Text>
-          <View style={styles.dividerLine} />
-        </View>
+        {!maintenanceMode ? (
+          <>
+            <View accessibilityElementsHidden style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>o continúa con</Text>
+              <View style={styles.dividerLine} />
+            </View>
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ busy: isGoogleSubmitting, disabled: isGoogleSubmitting }}
-          disabled={isGoogleSubmitting || isSubmitting}
-          onPress={() => void submitGoogle()}
-          style={({ pressed }) => [
-            styles.googleButton,
-            pressed ? styles.googleButtonPressed : null,
-            isGoogleSubmitting || isSubmitting ? styles.googleButtonDisabled : null,
-          ]}
-        >
-          <FontAwesome color="#4285F4" name="google" size={20} />
-          <Text style={styles.googleButtonText}>
-            {isGoogleSubmitting ? 'Conectando…' : 'Continuar con Google'}
-          </Text>
-        </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ busy: isGoogleSubmitting, disabled: isGoogleSubmitting }}
+              disabled={isGoogleSubmitting || isSubmitting}
+              onPress={() => void submitGoogle()}
+              style={({ pressed }) => [
+                styles.googleButton,
+                pressed ? styles.googleButtonPressed : null,
+                isGoogleSubmitting || isSubmitting ? styles.googleButtonDisabled : null,
+              ]}
+            >
+              <FontAwesome color="#4285F4" name="google" size={20} />
+              <Text style={styles.googleButtonText}>
+                {isGoogleSubmitting ? 'Conectando…' : 'Continuar con Google'}
+              </Text>
+            </Pressable>
+          </>
+        ) : null}
 
         <Pressable
           accessibilityRole="button"

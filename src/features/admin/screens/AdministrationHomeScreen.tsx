@@ -10,6 +10,12 @@ type Props = NativeStackScreenProps<AdministrationStackParamList, 'Administratio
 
 const OPTIONS = [
   {
+    route: 'MaintenanceAdmin' as const,
+    icon: 'construct-outline' as const,
+    title: 'Panel de mantenimiento',
+    description: 'Vista inicial para gestionar solicitudes, recursos y bitácora.',
+  },
+  {
     route: 'Users' as const,
     icon: 'people-outline' as const,
     title: 'Usuarios',

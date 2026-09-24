@@ -6,6 +6,7 @@ import { Alert, StyleSheet, Text, View } from 'react-native'
 import { PrimaryButton } from '@/components/buttons/PrimaryButton'
 import { FormField } from '@/components/forms/FormField'
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
+import { usesMaintenanceDataModel } from '@/config/dataModel'
 import { getAuthErrorMessage } from '@/features/auth/authErrors'
 import { registrationSchema, type RegistrationInput } from '@/features/auth/schemas'
 import type { AuthStackParamList } from '@/navigation/types'
@@ -15,6 +16,7 @@ import { colors, radius, spacing } from '@/theme/tokens'
 type Props = NativeStackScreenProps<AuthStackParamList, 'Register'>
 
 export function RegisterScreen({ navigation }: Props) {
+  const maintenanceMode = usesMaintenanceDataModel()
   const register = useAuthStore((state) => state.register)
   const {
     control,
@@ -59,7 +61,9 @@ export function RegisterScreen({ navigation }: Props) {
           Crear cuenta
         </Text>
         <Text style={styles.subtitle}>
-          Completa tus datos. Tu rol será asignado de forma segura por un administrador.
+          {maintenanceMode
+            ? 'Completa tus datos. La cuenta nueva inicia como visualizador; un administrador podrá cambiar su rol.'
+            : 'Completa tus datos. Tu rol será asignado de forma segura por un administrador.'}
         </Text>
       </View>
 

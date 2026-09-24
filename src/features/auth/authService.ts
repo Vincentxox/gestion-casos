@@ -2,6 +2,7 @@ import type { Session } from '@supabase/supabase-js'
 import { makeRedirectUri } from 'expo-auth-session'
 import * as WebBrowser from 'expo-web-browser'
 
+import { usesMaintenanceDataModel } from '@/config/dataModel'
 import { supabase } from '@/services/supabase/client'
 
 import { APP_ROLES, type AppRole, type Profile } from './types'
@@ -20,6 +21,14 @@ interface ProfileRow {
   role: string
   area_id: string | null
   area: { name: string } | null
+}
+
+interface MaintenanceProfileRow {
+  id: string
+  nombre_completo: string
+  rol: string
+  empleado: { id_area: string; area: { nombre: string } } | null
+  foto: { url_externa: string | null; ruta_almacenamiento: string | null } | null
 }
 
 function isAppRole(value: string): value is AppRole {
@@ -41,6 +50,21 @@ function mapProfile(row: ProfileRow): Profile {
   }
 }
 
+function mapMaintenanceProfile(row: MaintenanceProfileRow): Profile {
+  if (!isAppRole(row.rol)) {
+    throw new Error('El usuario tiene un rol no reconocido')
+  }
+
+  return {
+    id: row.id,
+    fullName: row.nombre_completo,
+    avatarUrl: row.foto?.url_externa ?? null,
+    role: row.rol,
+    areaId: row.empleado?.id_area ?? null,
+    areaName: row.empleado?.area.nombre ?? null,
+  }
+}
+
 export async function getCurrentSession() {
   const { data, error } = await supabase.auth.getSession()
 
@@ -52,6 +76,24 @@ export async function getCurrentSession() {
 }
 
 export async function getProfile(userId: string) {
+  if (usesMaintenanceDataModel()) {
+    const { data, error } = await supabase
+      .from('perfiles')
+      .select('id,nombre_completo,rol,empleado:empleados(id_area,area:areas(nombre)),foto:fotos_perfil(url_externa,ruta_almacenamiento)')
+      .eq('id', userId)
+      .single<MaintenanceProfileRow>()
+
+    if (error) throw error
+    const profile = mapMaintenanceProfile(data)
+    if (data.foto?.ruta_almacenamiento) {
+      const { data: signed } = await supabase.storage
+        .from('profile-photos')
+        .createSignedUrl(data.foto.ruta_almacenamiento, 3600)
+      profile.avatarUrl = signed?.signedUrl ?? null
+    }
+    return profile
+  }
+
   const { data, error } = await supabase
     .from('profiles')
     .select('id, full_name, avatar_url, role, area_id, area:areas(name)')

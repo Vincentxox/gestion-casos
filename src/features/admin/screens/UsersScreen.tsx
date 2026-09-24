@@ -22,6 +22,8 @@ import { useManagedProfiles, useSetManagedProfileArea } from '../useManagedProfi
 
 const ROLE_LABELS = {
   administrador: 'Administrador',
+  coordinador: 'Coordinador',
+  tecnico: 'Técnico',
   auditor: 'Auditor',
   visualizador: 'Visualizador',
 } as const

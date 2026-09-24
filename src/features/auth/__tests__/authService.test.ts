@@ -53,9 +53,20 @@ const session = {
   user: { id: 'user-1' },
 } as Session
 
+const originalDataModel = process.env.EXPO_PUBLIC_DATA_MODEL
+
 describe('servicio de autenticación', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    process.env.EXPO_PUBLIC_DATA_MODEL = 'cases'
+  })
+
+  afterAll(() => {
+    if (originalDataModel === undefined) {
+      delete process.env.EXPO_PUBLIC_DATA_MODEL
+    } else {
+      process.env.EXPO_PUBLIC_DATA_MODEL = originalDataModel
+    }
   })
 
   test('recupera la sesión actual', async () => {
@@ -191,6 +202,37 @@ describe('servicio de autenticación', () => {
       areaId: 'area-1',
       areaName: 'Tecnología',
     })
+    expect(from).toHaveBeenCalledWith('profiles')
+  })
+
+  test('lee el perfil administrador del esquema de mantenimiento en español', async () => {
+    process.env.EXPO_PUBLIC_DATA_MODEL = 'maintenance'
+    const single = jest.fn().mockResolvedValue({
+      data: {
+        id: 'user-1',
+        nombre_completo: 'Administradora',
+        rol: 'administrador',
+        empleado: { id_area: 'area-1', area: { nombre: 'Mantenimiento' } },
+        foto: { url_externa: 'https://example.com/foto.jpg', ruta_almacenamiento: null },
+      },
+      error: null,
+    })
+    const eq = jest.fn().mockReturnValue({ single })
+    const select = jest.fn().mockReturnValue({ eq })
+    from.mockReturnValue({ select })
+
+    await expect(getProfile('user-1')).resolves.toEqual({
+      id: 'user-1',
+      fullName: 'Administradora',
+      avatarUrl: 'https://example.com/foto.jpg',
+      role: 'administrador',
+      areaId: 'area-1',
+      areaName: 'Mantenimiento',
+    })
+    expect(from).toHaveBeenCalledWith('perfiles')
+    expect(select).toHaveBeenCalledWith(
+      'id,nombre_completo,rol,empleado:empleados(id_area,area:areas(nombre)),foto:fotos_perfil(url_externa,ruta_almacenamiento)',
+    )
   })
 
   test('rechaza roles desconocidos', async () => {
