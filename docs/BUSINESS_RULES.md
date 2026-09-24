@@ -65,8 +65,9 @@ Aprobado por el responsable el 23/09/2026.
 El rol vive en `public.profiles.role` y solo lo cambia un administrador mediante RPC.
 
 - **administrador**: administrador de la empresa. Configura áreas, tipos de servicio,
-  recursos, usuarios e invitaciones. Puede ver todo en su empresa. No sustituye las firmas
-  de otros roles.
+  recursos, usuarios e invitaciones. Puede ver todo en su empresa. Puede aceptar, rechazar
+  y asignar solicitudes en lugar del jefe del área técnica, pero solo cancela las que él
+  mismo creó. Solo sustituye firmas en los casos de 5.3 y 7.
 - **jefe_area**: responsable de su área.
   - En un área **técnica**: acepta o rechaza solicitudes, asigna técnicos, valida el
     reporte (firma de validación técnica) o lo devuelve.
@@ -115,11 +116,16 @@ Equivalencias con el código actual: `visualizador` pasa a `solicitante`. El rol
 Cada transición se hace mediante una sola RPC en la base de datos. Cualquier transición
 que no esté en esta lista se rechaza.
 
-- `solicitado → aceptado`: jefe del área técnica destino.
-- `solicitado → rechazado`: jefe del área técnica destino. Motivo obligatorio.
-- `solicitado → cancelado`: el creador o el jefe del área solicitante.
-- `aceptado → asignado`: jefe técnico, que elige un técnico de su área.
-- `asignado → asignado` (reasignación): jefe técnico. Queda en el historial.
+- `solicitado → aceptado`: jefe del área técnica destino o administrador.
+- `solicitado → rechazado`: jefe del área técnica destino o administrador. Motivo
+  obligatorio.
+- `solicitado → cancelado`: el creador o el jefe del área solicitante. El administrador
+  no cancela solicitudes ajenas: cancelar es retirar la solicitud y le corresponde a quien
+  la pidió (decisión del responsable, 24/09/2026).
+- `aceptado → asignado`: jefe técnico o administrador, que elige un técnico del área
+  destino.
+- `asignado → asignado` (reasignación): jefe técnico o administrador. Queda en el
+  historial.
 - `asignado → en_ejecucion`: técnico asignado.
 - `en_ejecucion → en_espera` y `en_espera → en_ejecucion`: técnico asignado o jefe
   técnico. Motivo obligatorio al pausar.
