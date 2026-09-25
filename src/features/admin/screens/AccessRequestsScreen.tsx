@@ -259,7 +259,8 @@ const styles = StyleSheet.create({
   error: { color: colors.error, ...typography.body },
   backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.backdrop },
   sheet: {
-    maxHeight: '85%',
+    height: '80%',
+    maxHeight: '90%',
     backgroundColor: colors.background,
     borderTopLeftRadius: radius.lg,
     borderTopRightRadius: radius.lg,

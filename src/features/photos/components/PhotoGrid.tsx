@@ -66,7 +66,9 @@ function ConfirmedTile({
           onPress={onOptions}
           style={styles.options}
         >
-          <Icon name="ellipsis-horizontal" color={colors.text} />
+          <View style={styles.optionsBubble}>
+            <Icon name="ellipsis-horizontal" size="inline" color={colors.white} />
+          </View>
         </Pressable>
       ) : null}
     </View>
@@ -422,7 +424,14 @@ const styles = StyleSheet.create({
     minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface,
+  },
+  optionsBubble: {
+    width: 28,
+    height: 28,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.backdrop,
   },
   pendingOverlay: {
     position: 'absolute',

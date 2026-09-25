@@ -107,6 +107,7 @@
       "src/features/photos/uploadQueue.ts",
       "src/features/reports/reportService.ts",
       "src/features/reports/reportPermissions.ts",
+      "src/features/reports/reportPresentation.ts",
       "src/features/reports/schemas.ts",
       "src/features/reports/signaturePath.ts",
       "src/features/resources/resourceService.ts",

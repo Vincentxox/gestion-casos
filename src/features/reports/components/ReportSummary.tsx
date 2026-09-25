@@ -12,6 +12,7 @@ import { useCasePhotos } from '@/features/photos/usePhotos'
 import { colors, spacing, typography } from '@/theme/tokens'
 
 import { generateReportPdf } from '../reportService'
+import { photoRequirementLabel } from '../reportPresentation'
 import { getReportRequirements } from '../schemas'
 import { useReportDraft, useReportSignatures, useReportVersions } from '../useReports'
 
@@ -117,8 +118,8 @@ export function ReportSummary({
             realizado de 10 caracteres o más
           </Text>
           <Text style={styles.muted}>
-            {afterCount >= item.minAfterPhotos ? '✓' : '○'} Fotos de después {afterCount} de{' '}
-            {item.minAfterPhotos}
+            {afterCount >= item.minAfterPhotos ? '✓' : '○'}{' '}
+            {photoRequirementLabel(afterCount, item.minAfterPhotos)}
           </Text>
         </View>
       ) : (

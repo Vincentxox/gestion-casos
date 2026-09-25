@@ -6,6 +6,14 @@ import { ROLE_LABELS, type AppRole } from '@/features/auth/types'
 import { colors, spacing, typography } from '@/theme/tokens'
 import { usePhotoUrl } from '@/features/photos/usePhotos'
 
+import {
+  orderedReviewDates,
+  reviewDateLabel,
+  reviewHoursLabel,
+  reviewPriorityLabel,
+  reviewQuantityLabel,
+  reviewResourceKindLabel,
+} from '../reportPresentation'
 import type { FrozenReportContent, ReportSignature } from '../types'
 
 function FrozenPhoto({ path, label }: { path: string; label: string }) {
@@ -43,6 +51,8 @@ export function ReportContent({
 }) {
   const caseInfo = content.solicitud
   const report = content.reporte
+  const beforePhotos = content.fotos.filter((photo) => photo.tipo === 'antes')
+  const afterPhotos = content.fotos.filter((photo) => photo.tipo === 'despues')
   return (
     <View style={styles.container}>
       <Card contentStyle={styles.card}>
@@ -53,13 +63,13 @@ export function ReportContent({
         <Row label="Área solicitante" value={caseInfo.area_solicitante} />
         <Row label="Área técnica" value={caseInfo.area_destino} />
         <Row label="Ubicación" value={caseInfo.ubicacion} />
-        <Row label="Prioridad" value={caseInfo.prioridad} />
+        <Row label="Prioridad" value={reviewPriorityLabel(caseInfo.prioridad)} />
         <Row label="Solicitante" value={caseInfo.creada_por} />
         <Row label="Técnico" value={caseInfo.tecnico} />
-        {Object.entries(content.fechas).map(([key, value]) => (
+        {orderedReviewDates(content.fechas).map(([key, value]) => (
           <Row
             key={key}
-            label={key.replaceAll('_', ' ')}
+            label={reviewDateLabel(key)}
             value={value ? new Date(value).toLocaleString('es-GT') : null}
           />
         ))}
@@ -78,9 +88,23 @@ export function ReportContent({
         ) : (
           content.recursos.map((entry, index) => (
             <View key={index} style={styles.resource}>
-              <Row label="Recurso" value={entry.recurso ?? entry.tecnico ?? entry.tipo} />
-              <Row label="Cantidad" value={entry.cantidad} />
-              <Row label="Horas" value={entry.horas} />
+              {index > 0 ? <View style={styles.separator} /> : null}
+              <Text style={styles.text}>{String(entry.recurso ?? entry.tecnico ?? 'Recurso')}</Text>
+              {reviewResourceKindLabel(entry.clase ?? entry.tipo) ? (
+                <Text style={styles.muted}>
+                  {reviewResourceKindLabel(entry.clase ?? entry.tipo)}
+                </Text>
+              ) : null}
+              <View style={styles.metrics}>
+                {reviewQuantityLabel(entry.cantidad, entry.unidad) ? (
+                  <Text style={styles.metric}>
+                    Cantidad: {reviewQuantityLabel(entry.cantidad, entry.unidad)}
+                  </Text>
+                ) : null}
+                {reviewHoursLabel(entry.horas) ? (
+                  <Text style={styles.metric}>Horas: {reviewHoursLabel(entry.horas)}</Text>
+                ) : null}
+              </View>
               <Row label="Notas" value={entry.notas} />
             </View>
           ))
@@ -91,15 +115,36 @@ export function ReportContent({
         {content.fotos.length === 0 ? (
           <Text style={styles.muted}>Sin fotografías</Text>
         ) : (
-          <View style={styles.photos}>
-            {content.fotos.map((photo, index) => (
-              <FrozenPhoto
-                key={photo.id}
-                path={photo.miniatura}
-                label={`Foto ${photo.tipo} ${index + 1}`}
-              />
-            ))}
-          </View>
+          <>
+            <Text style={styles.photoSubtitle}>Antes</Text>
+            <View style={styles.photos}>
+              {beforePhotos.length ? (
+                beforePhotos.map((photo, index) => (
+                  <FrozenPhoto
+                    key={photo.id}
+                    path={photo.miniatura}
+                    label={`Foto antes ${index + 1} de ${beforePhotos.length}`}
+                  />
+                ))
+              ) : (
+                <Text style={styles.muted}>Sin fotos de antes</Text>
+              )}
+            </View>
+            <Text style={styles.photoSubtitle}>Después</Text>
+            <View style={styles.photos}>
+              {afterPhotos.length ? (
+                afterPhotos.map((photo, index) => (
+                  <FrozenPhoto
+                    key={photo.id}
+                    path={photo.miniatura}
+                    label={`Foto después ${index + 1} de ${afterPhotos.length}`}
+                  />
+                ))
+              ) : (
+                <Text style={styles.muted}>Sin fotos de después</Text>
+              )}
+            </View>
+          </>
         )}
       </Card>
       {signatures.length > 0 ? (
@@ -123,10 +168,14 @@ const styles = StyleSheet.create({
   card: { gap: spacing.sm },
   heading: { ...typography.heading, color: colors.text },
   row: { gap: spacing.xs },
-  label: { ...typography.caption, color: colors.textMuted, textTransform: 'capitalize' },
+  label: { ...typography.caption, color: colors.textMuted },
   text: { ...typography.body, color: colors.text },
   muted: { ...typography.body, color: colors.textMuted },
-  resource: { paddingVertical: spacing.xs, borderBottomColor: colors.border, borderBottomWidth: 1 },
+  resource: { gap: spacing.xs, paddingVertical: spacing.xs },
+  separator: { borderTopColor: colors.border, borderTopWidth: 1, marginVertical: spacing.sm },
+  metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  metric: { ...typography.body, color: colors.textMuted },
+  photoSubtitle: { ...typography.body, color: colors.text },
   photos: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   photo: { width: 96, height: 96 },
 })
