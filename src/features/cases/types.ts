@@ -31,6 +31,7 @@ export interface CaseRecord {
   title: string
   description: string
   category: string
+  minAfterPhotos: number
   categoryId: string
   requestingAreaId: string
   requestingAreaName: string
@@ -44,6 +45,9 @@ export interface CaseRecord {
   creatorName: string
   assigneeName: string | null
   createdAt: string
+  acceptedAt?: string | null
+  assignedAt?: string | null
+  startedAt?: string | null
   updatedAt: string
 }
 

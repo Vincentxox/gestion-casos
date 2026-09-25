@@ -15,6 +15,9 @@ import { Card } from '@/components/ui/Card'
 import { SkeletonList } from '@/components/ui/SkeletonList'
 import { Icon, type IconName } from '@/components/ui/Icon'
 import { IconTile } from '@/components/ui/IconTile'
+import { ReportSummary } from '@/features/reports/components/ReportSummary'
+import { getReportActions } from '@/features/reports/reportPermissions'
+import { useAreaChiefs } from '@/features/reports/useReports'
 import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
 import { colors, spacing, typography } from '@/theme/tokens'
@@ -63,6 +66,7 @@ export function CaseDetailScreen({ navigation, route }: Props) {
   const profile = useAuthStore((state) => state.profile)
   const detail = useCaseDetail(caseId)
   const history = useCaseHistory(caseId)
+  const chiefs = useAreaChiefs()
   const [actionsVisible, setActionsVisible] = useState(false)
   const reduceMotion = useReducedMotion()
 
@@ -83,6 +87,14 @@ export function CaseDetailScreen({ navigation, route }: Props) {
   const item = detail.data
   const canUpdate = canEditCase(item, profile)
   const actions = getAvailableCaseActions(item, profile)
+  const reportActions = getReportActions(item, profile, chiefs.data ?? [])
+  const reportPrimary = reportActions.includes('submit')
+    ? 'Completar reporte'
+    : reportActions.includes('validate')
+      ? 'Revisar y validar'
+      : reportActions.includes('approve')
+        ? 'Revisar y aprobar'
+        : null
   const primaryAction = actions.find((action) => !['rechazar', 'cancelar'].includes(action))
   const otherActions = actions.filter((action) => action !== primaryAction)
   const secondaryPresentation = getSecondaryActionPresentation(otherActions)
@@ -121,6 +133,24 @@ export function CaseDetailScreen({ navigation, route }: Props) {
           />
         </Card>
 
+        {[
+          'asignado',
+          'en_ejecucion',
+          'en_espera',
+          'reporte_enviado',
+          'validado',
+          'aprobado',
+        ].includes(item.status) ? (
+          <ReportSummary
+            item={item}
+            beforeEditable={reportActions.includes('photos_before')}
+            afterEditable={reportActions.includes('edit')}
+            userId={profile?.id}
+            onOpen={() => navigation.navigate('CaseReport', { caseId })}
+            onReview={() => navigation.navigate('ReportReview', { caseId })}
+          />
+        ) : null}
+
         <DetailSection title="Datos de la solicitud">
           <Field icon="business-outline" label="Área solicitante" value={item.requestingAreaName} />
           <Field icon="pricetag-outline" label="Tipo de servicio" value={item.category} />
@@ -156,17 +186,38 @@ export function CaseDetailScreen({ navigation, route }: Props) {
           {history.data ? <Timeline events={history.data} /> : null}
         </DetailSection>
       </ScrollView>
-      {primaryAction || canUpdate || otherActions.length > 0 ? (
+      {reportPrimary || primaryAction || canUpdate || otherActions.length > 0 ? (
         <View style={styles.stickyAction}>
-          {primaryAction ? (
+          {reportPrimary ? (
+            <Button
+              label={reportPrimary}
+              icon="document-text-outline"
+              onPress={() =>
+                navigation.navigate(
+                  reportPrimary === 'Completar reporte' ? 'CaseReport' : 'ReportReview',
+                  { caseId },
+                )
+              }
+            />
+          ) : primaryAction ? (
             <Button
               label={actionMeta[primaryAction].label}
               icon={actionMeta[primaryAction].icon}
               onPress={() => navigateAction(primaryAction)}
             />
           ) : null}
-          {canUpdate || otherActions.length > 0 ? (
+          {canUpdate || otherActions.length > 0 || (reportPrimary && primaryAction) ? (
             <View style={styles.secondaryActions}>
+              {reportPrimary && primaryAction ? (
+                <View style={styles.secondaryAction}>
+                  <Button
+                    label={actionMeta[primaryAction].label}
+                    icon={actionMeta[primaryAction].icon}
+                    variant="secondary"
+                    onPress={() => navigateAction(primaryAction)}
+                  />
+                </View>
+              ) : null}
               {canUpdate ? (
                 <View style={styles.secondaryAction}>
                   <Button

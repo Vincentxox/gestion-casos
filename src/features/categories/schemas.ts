@@ -10,4 +10,5 @@ export const categorySchema = z.object({
     .refine((value) => value.length === 0 || value.length >= 3, {
       message: 'Ingresa al menos 3 caracteres o deja el campo vacío.',
     }),
+  minAfterPhotos: z.number().int().min(0).max(3),
 })

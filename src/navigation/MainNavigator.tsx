@@ -21,6 +21,8 @@ import { CategoriesScreen } from '@/features/categories/screens/CategoriesScreen
 import { ProfileScreen } from '@/features/settings/ProfileScreen'
 import { ResourcesScreen } from '@/features/resources/screens/ResourcesScreen'
 import { CaseResourcesScreen } from '@/features/resources/screens/CaseResourcesScreen'
+import { CaseReportScreen } from '@/features/reports/screens/CaseReportScreen'
+import { ReportReviewScreen } from '@/features/reports/screens/ReportReviewScreen'
 import { useAuthStore } from '@/store/authStore'
 import { colors, typography } from '@/theme/tokens'
 
@@ -69,6 +71,12 @@ function CasesNavigator() {
         component={CaseResourcesScreen}
         name="CaseResources"
         options={{ title: 'Recursos utilizados' }}
+      />
+      <Stack.Screen component={CaseReportScreen} name="CaseReport" options={{ title: 'Reporte' }} />
+      <Stack.Screen
+        component={ReportReviewScreen}
+        name="ReportReview"
+        options={{ title: 'Revisar reporte' }}
       />
     </Stack.Navigator>
   )

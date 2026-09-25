@@ -28,6 +28,7 @@ export function CategoryForm({ areas, category, loading, onSubmit }: Props) {
       areaId: category?.areaId ?? '',
       name: category?.name ?? '',
       description: category?.description ?? '',
+      minAfterPhotos: category?.minAfterPhotos ?? 0,
     },
   })
 
@@ -101,6 +102,33 @@ export function CategoryForm({ areas, category, loading, onSubmit }: Props) {
           />
         )}
       />
+      <Controller
+        control={control}
+        name="minAfterPhotos"
+        render={({ field: { onChange, value } }) => (
+          <View style={styles.field}>
+            <Text style={styles.label}>Fotos de después obligatorias</Text>
+            <View style={styles.photoOptions}>
+              {[0, 1, 2, 3].map((count) => (
+                <Pressable
+                  accessibilityLabel={`${count} fotos de después obligatorias`}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: value === count }}
+                  key={count}
+                  onPress={() => onChange(count)}
+                  style={[styles.areaOption, value === count && styles.areaOptionActive]}
+                >
+                  <Text
+                    style={[styles.areaOptionText, value === count && styles.areaOptionTextActive]}
+                  >
+                    {count}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        )}
+      />
       <Button
         label={category ? 'Guardar cambios' : 'Crear tipo de servicio'}
         loading={loading}
@@ -115,7 +143,12 @@ const styles = StyleSheet.create({
   field: { gap: spacing.xs },
   label: { ...typography.body, color: colors.text },
   areaOptions: { gap: spacing.sm, paddingVertical: spacing.xs },
+  photoOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   areaOption: {
+    minHeight: 44,
+    minWidth: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.pill,

@@ -17,7 +17,7 @@ interface CaseRow {
   title: string
   description: string
   category_id: string
-  category: { name: string } | null
+  category: { name: string; min_after_photos: number } | null
   requesting_area_id: string
   requesting_area: { name: string } | null
   target_area_id: string
@@ -30,15 +30,18 @@ interface CaseRow {
   assigned_to: string | null
   assignee: { full_name: string } | null
   created_at: string
+  accepted_at: string | null
+  assigned_at: string | null
+  started_at: string | null
   updated_at: string
 }
 
 const caseSelection = `id, case_number, title, description, category_id,
-  category:categories!cases_category_id_fkey(name),
+  category:categories!cases_category_id_fkey(name,min_after_photos),
   requesting_area_id, requesting_area:areas!cases_requesting_area_id_fkey(name),
   target_area_id, target_area:areas!cases_target_area_id_fkey(name),
   location, priority, status, created_by, creator:profiles!cases_created_by_fkey(full_name),
-  assigned_to, assignee:profiles!cases_assigned_to_fkey(full_name), created_at, updated_at`
+  assigned_to, assignee:profiles!cases_assigned_to_fkey(full_name), created_at, accepted_at, assigned_at, started_at, updated_at`
 
 function mapCase(row: CaseRow): CaseRecord {
   return {
@@ -48,6 +51,7 @@ function mapCase(row: CaseRow): CaseRecord {
     description: row.description,
     categoryId: row.category_id,
     category: row.category?.name ?? 'Tipo no disponible',
+    minAfterPhotos: row.category?.min_after_photos ?? 0,
     requestingAreaId: row.requesting_area_id,
     requestingAreaName: row.requesting_area?.name ?? 'Área no disponible',
     targetAreaId: row.target_area_id,
@@ -60,6 +64,9 @@ function mapCase(row: CaseRow): CaseRecord {
     assignedTo: row.assigned_to,
     assigneeName: row.assignee?.full_name ?? null,
     createdAt: row.created_at,
+    acceptedAt: row.accepted_at,
+    assignedAt: row.assigned_at,
+    startedAt: row.started_at,
     updatedAt: row.updated_at,
   }
 }

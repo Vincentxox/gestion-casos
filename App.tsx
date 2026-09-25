@@ -7,6 +7,7 @@ import {
   useFonts,
 } from '@expo-google-fonts/plus-jakarta-sans'
 import { QueryClientProvider } from '@tanstack/react-query'
+import NetInfo from '@react-native-community/netinfo'
 import { NavigationContainer } from '@react-navigation/native'
 import { StatusBar } from 'expo-status-bar'
 import { useCallback, useEffect, useState } from 'react'
@@ -18,6 +19,8 @@ import { queryClient } from '@/config/queryClient'
 import { AuthLoadingScreen } from '@/features/auth/screens/AuthLoadingScreen'
 import { PendingInvitationScreen } from '@/features/auth/screens/PendingInvitationScreen'
 import { CompleteNameScreen } from '@/features/settings/CompleteNameScreen'
+import { resumePendingPhotos } from '@/features/photos/uploadQueue'
+import { photosQueryKey } from '@/features/photos/usePhotos'
 import { AuthNavigator } from '@/navigation/AuthNavigator'
 import { MainNavigator } from '@/navigation/MainNavigator'
 import { registerAuthAutoRefresh, supabase } from '@/services/supabase/client'
@@ -28,6 +31,7 @@ function RootContent({ fontsReady }: { fontsReady: boolean }) {
   const [showIntro, setShowIntro] = useState(true)
   const status = useAuthStore((state) => state.status)
   const organizationId = useAuthStore((state) => state.profile?.organizationId)
+  const userId = useAuthStore((state) => state.profile?.id)
   const fullName = useAuthStore((state) => state.profile?.fullName)
   const initialize = useAuthStore((state) => state.initialize)
   const applySession = useAuthStore((state) => state.applySession)
@@ -54,6 +58,25 @@ function RootContent({ fontsReady }: { fontsReady: boolean }) {
       pendingCallbacks.forEach(clearTimeout)
     }
   }, [applySession, initialize])
+
+  useEffect(() => {
+    if (!userId || !organizationId) return
+    const resume = (mode: 'startup' | 'reconnect') =>
+      void resumePendingPhotos(
+        userId,
+        (caseId) => {
+          void queryClient.invalidateQueries({ queryKey: [...photosQueryKey, caseId] })
+        },
+        mode,
+      )
+    resume('startup')
+    let wasConnected: boolean | null = null
+    const subscription = NetInfo.addEventListener((network) => {
+      if (network.isConnected && wasConnected === false) resume('reconnect')
+      wasConnected = network.isConnected
+    })
+    return () => subscription()
+  }, [userId, organizationId])
 
   const finishIntro = useCallback(() => setShowIntro(false), [])
 

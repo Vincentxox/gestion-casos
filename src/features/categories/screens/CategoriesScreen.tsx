@@ -163,6 +163,12 @@ export function CategoriesScreen() {
                     />
                   </View>
                   <Text style={styles.areaName}>{item.areaName}</Text>
+                  {item.minAfterPhotos > 0 ? (
+                    <Text style={styles.areaName}>
+                      Pide {item.minAfterPhotos} foto{item.minAfterPhotos === 1 ? '' : 's'} de
+                      después
+                    </Text>
+                  ) : null}
                   <Text style={styles.description}>{item.description || 'Sin descripción'}</Text>
                 </View>
                 <Pressable

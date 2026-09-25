@@ -24,6 +24,8 @@ export type MainStackParamList = {
   ChangeCaseStatus: { caseId: string; action?: CaseAction }
   AssignCase: { caseId: string }
   CaseResources: { caseId: string }
+  CaseReport: { caseId: string }
+  ReportReview: { caseId: string }
 }
 
 export type AdministrationStackParamList = {

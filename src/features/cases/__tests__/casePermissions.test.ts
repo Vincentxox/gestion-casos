@@ -20,6 +20,7 @@ const item: CaseRecord = {
   title: 'Reparación',
   description: 'Falla de equipo',
   categoryId: 'category',
+  minAfterPhotos: 0,
   category: 'Equipos',
   requestingAreaId: 'requesting',
   requestingAreaName: 'Administración',

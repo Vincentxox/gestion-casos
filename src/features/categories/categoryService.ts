@@ -8,6 +8,7 @@ interface CategoryRow {
   name: string
   description: string | null
   is_active: boolean
+  min_after_photos: number
   created_at: string
   updated_at: string
   area: { name: string } | null
@@ -21,6 +22,7 @@ function mapCategory(row: CategoryRow): CategoryRecord {
     name: row.name,
     description: row.description,
     isActive: row.is_active,
+    minAfterPhotos: row.min_after_photos,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -41,6 +43,7 @@ export async function createCategory(input: CategoryInput): Promise<CategoryReco
       area_id: input.areaId,
       name: input.name.trim(),
       description: input.description.trim() || null,
+      min_after_photos: input.minAfterPhotos,
     })
     .select(categorySelection)
     .single()
@@ -58,6 +61,7 @@ export async function updateCategory(
       area_id: input.areaId,
       name: input.name.trim(),
       description: input.description.trim() || null,
+      min_after_photos: input.minAfterPhotos,
     })
     .eq('id', categoryId)
     .select(categorySelection)

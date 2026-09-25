@@ -19,6 +19,7 @@ const item: CaseRecord = {
   description: 'Falla',
   category: 'Electricidad',
   categoryId: 'cat',
+  minAfterPhotos: 0,
   requestingAreaId: 'office',
   requestingAreaName: 'Oficina',
   targetAreaId: 'area',
