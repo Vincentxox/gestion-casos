@@ -9,6 +9,8 @@ import type { HomeSummary } from './homeService'
 
 export interface HomeTile {
   id:
+    | 'reportes_por_validar'
+    | 'reportes_por_aprobar'
     | 'por_aceptar'
     | 'sin_asignar'
     | 'por_iniciar'
@@ -33,28 +35,47 @@ export function getGreeting(hour: number) {
 
 export function getHomeHero(profile: Profile, summary: HomeSummary) {
   if (profile.role === 'auditor') return null
+  const reportsToValidate = summary.inbox.reportes_por_validar
+  const reportsToApprove = summary.inbox.reportes_por_aprobar
   if (
     (profile.role === 'jefe_area' && summary.area_kind === 'tecnica') ||
-    profile.role === 'administrador'
+    profile.role === 'administrador' ||
+    (profile.role === 'jefe_area' && reportsToValidate + reportsToApprove > 0)
   ) {
-    const count = summary.inbox.por_aceptar + summary.inbox.sin_asignar
+    const count =
+      reportsToValidate + reportsToApprove + summary.inbox.por_aceptar + summary.inbox.sin_asignar
+    const detail = [
+      reportsToValidate > 0
+        ? {
+            id: 'reportes_por_validar' as const,
+            label: `${reportsToValidate} ${plural(reportsToValidate, 'reporte por validar', 'reportes por validar')}`,
+          }
+        : null,
+      reportsToApprove > 0
+        ? {
+            id: 'reportes_por_aprobar' as const,
+            label: `${reportsToApprove} ${plural(reportsToApprove, 'reporte por aprobar', 'reportes por aprobar')}`,
+          }
+        : null,
+      summary.inbox.por_aceptar > 0
+        ? { id: 'por_aceptar' as const, label: `${summary.inbox.por_aceptar} por aceptar` }
+        : null,
+      summary.inbox.sin_asignar > 0
+        ? { id: 'sin_asignar' as const, label: `${summary.inbox.sin_asignar} por asignar` }
+        : null,
+    ].filter((part): part is NonNullable<typeof part> => part !== null)
     return {
       count,
       eyebrow: 'TU BANDEJA',
-      title: `${count} ${plural(count, 'solicitud espera', 'solicitudes esperan')} tu decisión`,
-      detail: [
-        summary.inbox.por_aceptar > 0 ? `${summary.inbox.por_aceptar} por aceptar` : null,
-        summary.inbox.sin_asignar > 0 ? `${summary.inbox.sin_asignar} por asignar` : null,
-      ].filter((part): part is string => Boolean(part)),
+      title: `${count} ${plural(count, 'pendiente requiere', 'pendientes requieren')} tu decisión`,
+      detail,
       supportingText: null,
       actionLabel: 'Revisar bandeja',
-      target:
-        profile.role === 'jefe_area'
+      target: detail[0]
+        ? getHomeTileTarget(profile, detail[0].id)
+        : profile.role === 'jefe_area'
           ? { scope: 'bandeja' as const }
-          : {
-              scope:
-                summary.inbox.por_aceptar > 0 ? ('por_aceptar' as const) : ('sin_asignar' as const),
-            },
+          : { scope: 'todas' as const },
     }
   }
   if (profile.role === 'tecnico') {
@@ -117,6 +138,11 @@ export function getHomeTileTarget(
   activeOnly?: boolean
 } {
   const chief = profile.role === 'jefe_area'
+  if (id === 'reportes_por_validar' || id === 'reportes_por_aprobar')
+    return {
+      scope: chief ? 'mi_area' : 'todas',
+      exactStatus: id === 'reportes_por_validar' ? 'reporte_enviado' : 'validado',
+    }
   if (id === 'por_aceptar')
     return chief
       ? { scope: 'bandeja', exactStatus: 'solicitado' }
@@ -153,6 +179,35 @@ export function getHomeTileTarget(
 }
 
 export function getHomeTiles(profile: Profile, summary: HomeSummary): HomeTile[] {
+  const reportTiles: HomeTile[] =
+    profile.role === 'jefe_area' || profile.role === 'administrador'
+      ? [
+          ...(summary.inbox.reportes_por_validar > 0
+            ? [
+                {
+                  id: 'reportes_por_validar' as const,
+                  label: 'Por validar',
+                  value: summary.inbox.reportes_por_validar,
+                  icon: 'document-text-outline' as const,
+                  phase: 'nueva' as const,
+                  emphasis: true,
+                },
+              ]
+            : []),
+          ...(summary.inbox.reportes_por_aprobar > 0
+            ? [
+                {
+                  id: 'reportes_por_aprobar' as const,
+                  label: 'Por aprobar',
+                  value: summary.inbox.reportes_por_aprobar,
+                  icon: 'checkmark-circle-outline' as const,
+                  phase: 'nueva' as const,
+                  emphasis: true,
+                },
+              ]
+            : []),
+        ]
+      : []
   if (profile.role === 'tecnico') {
     return [
       {
@@ -180,6 +235,7 @@ export function getHomeTiles(profile: Profile, summary: HomeSummary): HomeTile[]
   }
   if (profile.role === 'jefe_area' && summary.area_kind === 'tecnica') {
     return [
+      ...reportTiles,
       {
         id: 'por_aceptar',
         label: 'Por aceptar',
@@ -214,6 +270,7 @@ export function getHomeTiles(profile: Profile, summary: HomeSummary): HomeTile[]
   }
   if (profile.role === 'administrador' || profile.role === 'auditor') {
     return [
+      ...reportTiles,
       {
         id: 'por_aceptar',
         label: 'Por aceptar',
@@ -253,6 +310,7 @@ export function getHomeTiles(profile: Profile, summary: HomeSummary): HomeTile[]
   }
   return profile.role === 'jefe_area'
     ? [
+        ...reportTiles,
         {
           id: 'en_curso',
           label: 'En curso',

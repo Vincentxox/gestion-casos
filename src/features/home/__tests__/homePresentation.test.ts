@@ -42,7 +42,12 @@ const summary: HomeSummary = {
     trabajos_en_ejecucion: 2,
     trabajos_en_espera: 3,
   },
-  inbox: { por_aceptar: 4, sin_asignar: 1 },
+  inbox: {
+    por_aceptar: 4,
+    sin_asignar: 1,
+    reportes_por_validar: 0,
+    reportes_por_aprobar: 0,
+  },
   admin: null,
 }
 
@@ -65,15 +70,22 @@ test('el destacado usa los conteos y rutas del rol', () => {
   expect(getHomeHero({ ...profile, role: 'tecnico' }, summary)?.count).toBe(6)
   expect(getHomeHero({ ...profile, role: 'administrador' }, summary)?.target).toEqual({
     scope: 'por_aceptar',
+    exactStatus: 'solicitado',
   })
   expect(
     getHomeHero(
       { ...profile, role: 'administrador' },
-      { ...summary, inbox: { por_aceptar: 0, sin_asignar: 1 } },
+      { ...summary, inbox: { ...summary.inbox, por_aceptar: 0, sin_asignar: 1 } },
     )?.target,
-  ).toEqual({ scope: 'sin_asignar' })
+  ).toEqual({ scope: 'sin_asignar', exactStatus: 'aceptado' })
   expect(
-    getHomeHero({ ...profile, role: 'jefe_area' }, { ...summary, area_kind: 'tecnica' })?.detail,
+    getHomeHero(
+      { ...profile, role: 'jefe_area' },
+      {
+        ...summary,
+        area_kind: 'tecnica',
+      },
+    )?.detail.map((part) => part.label),
   ).toEqual(['4 por aceptar', '1 por asignar'])
   expect(getHomeHero({ ...profile, role: 'auditor' }, summary)).toBeNull()
 })
@@ -81,7 +93,7 @@ test('el destacado usa los conteos y rutas del rol', () => {
 test('el destacado diferencia la bandeja de los trabajos y solicitudes', () => {
   const inbox = getHomeHero({ ...profile, role: 'administrador' }, summary)
   expect(inbox?.eyebrow).toBe('TU BANDEJA')
-  expect(inbox?.detail).toEqual(['4 por aceptar', '1 por asignar'])
+  expect(inbox?.detail.map((part) => part.label)).toEqual(['4 por aceptar', '1 por asignar'])
   expect(inbox?.supportingText).toBeNull()
 
   const work = getHomeHero({ ...profile, role: 'tecnico' }, summary)
@@ -213,10 +225,16 @@ test('jefe solicitante y auditor reciben resúmenes diferentes', () => {
 
 test('el Inicio usa singulares y omite los componentes en cero', () => {
   const admin = { ...profile, role: 'administrador' as const }
-  const one = getHomeHero(admin, { ...summary, inbox: { por_aceptar: 1, sin_asignar: 0 } })
-  expect(one?.title).toBe('1 solicitud espera tu decisión')
-  expect(one?.detail).toEqual(['1 por aceptar'])
-  const zero = getHomeHero(admin, { ...summary, inbox: { por_aceptar: 0, sin_asignar: 0 } })
+  const one = getHomeHero(admin, {
+    ...summary,
+    inbox: { ...summary.inbox, por_aceptar: 1, sin_asignar: 0 },
+  })
+  expect(one?.title).toBe('1 pendiente requiere tu decisión')
+  expect(one?.detail.map((part) => part.label)).toEqual(['1 por aceptar'])
+  const zero = getHomeHero(admin, {
+    ...summary,
+    inbox: { ...summary.inbox, por_aceptar: 0, sin_asignar: 0 },
+  })
   expect(zero?.detail).toEqual([])
   expect(
     getHomeHero(profile, { ...summary, mine: { ...summary.mine, solicitudes_activas: 1 } })?.title,
@@ -233,4 +251,74 @@ test('el Inicio usa singulares y omite los componentes en cero', () => {
       areas_tecnicas_sin_tecnico: [],
     })[0]?.label,
   ).toBe('1 usuario sin área')
+})
+
+test('el jefe técnico ve primero un reporte por validar y luego las solicitudes por aceptar', () => {
+  const chief = { ...profile, role: 'jefe_area' as const }
+  const data = {
+    ...summary,
+    area_kind: 'tecnica' as const,
+    inbox: { ...summary.inbox, reportes_por_validar: 1 },
+  }
+  const hero = getHomeHero(chief, data)
+  expect(hero?.count).toBe(6)
+  expect(hero?.detail.map((part) => part.label)).toEqual([
+    '1 reporte por validar',
+    '4 por aceptar',
+    '1 por asignar',
+  ])
+  expect(hero?.target).toEqual({ scope: 'mi_area', exactStatus: 'reporte_enviado' })
+  expect(getHomeTiles(chief, data)[0]).toMatchObject({
+    id: 'reportes_por_validar',
+    value: 1,
+    emphasis: true,
+  })
+})
+
+test('el administrador suplente ve un reporte por aprobar y el enlace exacto', () => {
+  const admin = { ...profile, role: 'administrador' as const }
+  const data = {
+    ...summary,
+    inbox: { ...summary.inbox, reportes_por_aprobar: 1 },
+  }
+  expect(getHomeHero(admin, data)?.detail[0]?.label).toBe('1 reporte por aprobar')
+  expect(getHomeHero(admin, data)?.target).toEqual({ scope: 'todas', exactStatus: 'validado' })
+  expect(getHomeTiles(admin, data)[0]).toMatchObject({
+    id: 'reportes_por_aprobar',
+    value: 1,
+    emphasis: true,
+  })
+})
+
+test('el jefe solicitante ve los reportes por aprobar, pero los ceros no crean avisos', () => {
+  const chief = { ...profile, role: 'jefe_area' as const }
+  const data = {
+    ...summary,
+    inbox: {
+      por_aceptar: 0,
+      sin_asignar: 0,
+      reportes_por_validar: 0,
+      reportes_por_aprobar: 2,
+    },
+  }
+  expect(getHomeHero(chief, data)?.detail.map((part) => part.label)).toEqual([
+    '2 reportes por aprobar',
+  ])
+  expect(getHomeTiles(chief, data)[0]?.id).toBe('reportes_por_aprobar')
+  const zero = { ...data, inbox: { ...data.inbox, reportes_por_aprobar: 0 } }
+  expect(getHomeHero(chief, zero)?.eyebrow).toBe('TUS SOLICITUDES')
+  expect(getHomeTiles(chief, zero).some((tile) => tile.id.startsWith('reportes_'))).toBe(false)
+  expect(getHomeHero({ ...profile, role: 'tecnico' }, data)?.eyebrow).toBe('TUS TRABAJOS')
+  expect(getHomeTiles(profile, data).some((tile) => tile.id.startsWith('reportes_'))).toBe(false)
+})
+
+test('cada aviso de reporte abre la lista por estado exacto', () => {
+  expect(getHomeTileTarget({ ...profile, role: 'jefe_area' }, 'reportes_por_validar')).toEqual({
+    scope: 'mi_area',
+    exactStatus: 'reporte_enviado',
+  })
+  expect(getHomeTileTarget({ ...profile, role: 'administrador' }, 'reportes_por_aprobar')).toEqual({
+    scope: 'todas',
+    exactStatus: 'validado',
+  })
 })

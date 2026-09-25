@@ -21,7 +21,12 @@ export interface HomeSummary {
     trabajos_en_ejecucion: number
     trabajos_en_espera: number
   }
-  inbox: { por_aceptar: number; sin_asignar: number }
+  inbox: {
+    por_aceptar: number
+    sin_asignar: number
+    reportes_por_validar: number
+    reportes_por_aprobar: number
+  }
   admin: null | {
     usuarios_sin_area: number
     usuarios_sin_nombre: number

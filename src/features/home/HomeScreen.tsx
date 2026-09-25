@@ -130,9 +130,20 @@ export function HomeScreen({ navigation }: Props) {
               {hero.detail.length > 0 ? (
                 <View style={styles.heroDetails}>
                   {hero.detail.map((part) => (
-                    <View key={part} style={styles.heroTag}>
-                      <Text style={styles.heroDetail}>{part}</Text>
-                    </View>
+                    <Pressable
+                      accessibilityLabel={part.label}
+                      accessibilityRole="button"
+                      key={part.id}
+                      onPress={() =>
+                        navigation.navigate('CasesTab', {
+                          screen: 'Cases',
+                          params: getHomeTileTarget(profile, part.id),
+                        })
+                      }
+                      style={styles.heroTag}
+                    >
+                      <Text style={styles.heroDetail}>{part.label}</Text>
+                    </Pressable>
                   ))}
                 </View>
               ) : null}
@@ -291,6 +302,8 @@ const styles = StyleSheet.create({
   heroEyebrow: { ...typography.overline, color: colors.white },
   heroDetails: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   heroTag: {
+    minHeight: 44,
+    justifyContent: 'center',
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.white,
