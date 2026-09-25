@@ -404,6 +404,7 @@ async function buildPdf(input: PdfInput): Promise<Uint8Array> {
   w.heading('Fechas')
   w.field('Creada', formatDateTime(f.creada))
   w.field('Aceptada', formatDateTime(f.aceptada))
+  w.field('Asignada', formatDateTime(f.asignada))
   w.field('Inicio del trabajo', formatDateTime(f.iniciada))
   w.field('Reporte enviado', formatDateTime(f.enviada))
 
