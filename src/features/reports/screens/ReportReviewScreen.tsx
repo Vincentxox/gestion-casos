@@ -18,7 +18,7 @@ import { colors, spacing, typography } from '@/theme/tokens'
 import { ReportContent } from '../components/ReportContent'
 import { ReturnSheet } from '../components/ReturnSheet'
 import { SignatureSheet } from '../components/SignatureSheet'
-import { generateReportPdf, type SignatureAction } from '../reportService'
+import { generateReportPdf, shareReportPdf, type SignatureAction } from '../reportService'
 import { getReportActions } from '../reportPermissions'
 import { getReportRequirements } from '../schemas'
 import type { FrozenReportContent } from '../types'
@@ -111,6 +111,7 @@ export function ReportReviewScreen({ navigation, route }: Props) {
   const [signatureAction, setSignatureAction] = useState<SignatureAction | null>(null)
   const [returnVisible, setReturnVisible] = useState(false)
   const [pdfLoading, setPdfLoading] = useState(false)
+  const [shareLoading, setShareLoading] = useState(false)
   const [showPast, setShowPast] = useState(false)
 
   if (detail.isLoading || draft.isLoading || versions.isLoading || signatures.isLoading) {
@@ -177,6 +178,21 @@ export function ReportReviewScreen({ navigation, route }: Props) {
       )
     } finally {
       setPdfLoading(false)
+    }
+  }
+
+  async function sharePdf() {
+    if (!current) return
+    setShareLoading(true)
+    try {
+      await shareReportPdf(caseId, item.caseNumber, current.versionNumber)
+    } catch (error) {
+      Alert.alert(
+        'No fue posible compartir el PDF',
+        error instanceof Error ? error.message : 'Inténtalo de nuevo.',
+      )
+    } finally {
+      setShareLoading(false)
     }
   }
 
@@ -285,8 +301,22 @@ export function ReportReviewScreen({ navigation, route }: Props) {
             label={pdfLoading ? 'Generando PDF…' : 'Descargar PDF'}
             icon="download-outline"
             loading={pdfLoading}
+            disabled={shareLoading}
             onPress={() => void downloadPdf()}
           />
+          {current ? (
+            <>
+              <Button
+                label={shareLoading ? 'Preparando PDF…' : 'Compartir PDF'}
+                icon="share-social-outline"
+                variant="secondary"
+                loading={shareLoading}
+                disabled={pdfLoading}
+                onPress={() => void sharePdf()}
+              />
+              {shareLoading ? <Text style={styles.muted}>Preparando PDF…</Text> : null}
+            </>
+          ) : null}
         </View>
       ) : null}
       <SignatureSheet

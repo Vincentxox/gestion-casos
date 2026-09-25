@@ -1,3 +1,6 @@
+import { File, Paths } from 'expo-file-system'
+import * as Sharing from 'expo-sharing'
+
 import { supabase } from '@/services/supabase/client'
 
 import type {
@@ -180,4 +183,43 @@ export async function generateReportPdf(caseId: string): Promise<string> {
     throw new Error('No fue posible generar el reporte. Inténtalo de nuevo.')
   }
   return url
+}
+
+export async function downloadReportPdf(
+  caseId: string,
+  caseNumber: string,
+  versionNumber: number,
+): Promise<string> {
+  const url = await generateReportPdf(caseId)
+  const safeNumber = caseNumber.replace(/[^A-Za-z0-9-]/g, '-')
+  const file = new File(Paths.cache, `Reporte-${safeNumber}-v${versionNumber}.pdf`)
+  try {
+    const downloaded = await File.downloadFileAsync(url, file, { idempotent: true })
+    return downloaded.uri
+  } catch {
+    // Android may leave a partial file when a download is interrupted.
+    if (file.exists) file.delete()
+    throw new Error('No fue posible preparar el PDF. Inténtalo de nuevo.')
+  }
+}
+
+export async function shareReportPdf(
+  caseId: string,
+  caseNumber: string,
+  versionNumber: number,
+): Promise<void> {
+  if (!(await Sharing.isAvailableAsync())) {
+    throw new Error('No es posible compartir en este dispositivo')
+  }
+  const uri = await downloadReportPdf(caseId, caseNumber, versionNumber)
+  try {
+    await Sharing.shareAsync(uri, {
+      mimeType: 'application/pdf',
+      dialogTitle: 'Compartir reporte',
+      UTI: 'com.adobe.pdf',
+    })
+  } finally {
+    const file = new File(uri)
+    if (file.exists) file.delete()
+  }
 }

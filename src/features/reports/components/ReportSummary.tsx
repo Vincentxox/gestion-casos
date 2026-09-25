@@ -11,7 +11,7 @@ import { PhotoGrid } from '@/features/photos/components/PhotoGrid'
 import { useCasePhotos } from '@/features/photos/usePhotos'
 import { colors, spacing, typography } from '@/theme/tokens'
 
-import { generateReportPdf } from '../reportService'
+import { generateReportPdf, shareReportPdf } from '../reportService'
 import { photoRequirementLabel } from '../reportPresentation'
 import { getReportRequirements } from '../schemas'
 import { useReportDraft, useReportSignatures, useReportVersions } from '../useReports'
@@ -46,6 +46,7 @@ export function ReportSummary({
   const signatures = useReportSignatures(item.id)
   const photos = useCasePhotos(item.id)
   const [pdfLoading, setPdfLoading] = useState(false)
+  const [shareLoading, setShareLoading] = useState(false)
   const current = versions.data?.find((version) => version.status === 'vigente')
   const returned = versions.data?.find((version) => version.status === 'devuelta')
   const afterCount = photos.data?.filter((photo) => photo.kind === 'despues').length ?? 0
@@ -79,6 +80,21 @@ export function ReportSummary({
       )
     } finally {
       setPdfLoading(false)
+    }
+  }
+
+  async function sharePdf() {
+    if (!current) return
+    setShareLoading(true)
+    try {
+      await shareReportPdf(item.id, item.caseNumber, current.versionNumber)
+    } catch (error) {
+      Alert.alert(
+        'No fue posible compartir el PDF',
+        error instanceof Error ? error.message : 'Inténtalo de nuevo.',
+      )
+    } finally {
+      setShareLoading(false)
     }
   }
 
@@ -149,8 +165,22 @@ export function ReportSummary({
           <Button
             label={pdfLoading ? 'Generando PDF…' : 'Descargar PDF'}
             loading={pdfLoading}
+            disabled={shareLoading}
             onPress={() => void downloadPdf()}
           />
+        ) : null}
+        {item.status === 'aprobado' && current ? (
+          <>
+            <Button
+              label={shareLoading ? 'Preparando PDF…' : 'Compartir PDF'}
+              icon="share-social-outline"
+              variant="secondary"
+              loading={shareLoading}
+              disabled={pdfLoading}
+              onPress={() => void sharePdf()}
+            />
+            {shareLoading ? <Text style={styles.muted}>Preparando PDF…</Text> : null}
+          </>
         ) : null}
       </View>
     </Card>
