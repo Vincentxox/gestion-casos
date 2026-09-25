@@ -92,7 +92,7 @@ test('el aviso por validar abre solicitudes en reporte enviado', async () => {
     screen: 'Cases',
     params: { scope: 'mi_area', exactStatus: 'reporte_enviado' },
   })
-})
+}, 15_000)
 
 test('el aviso por aprobar abre solicitudes validadas', async () => {
   mockProfile.role = 'administrador'

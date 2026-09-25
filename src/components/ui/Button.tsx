@@ -15,6 +15,7 @@ export function Button({
   label,
   variant = 'primary',
   loading = false,
+  showLabelWhileLoading = false,
   disabled,
   icon,
   destructive = false,
@@ -26,6 +27,7 @@ export function Button({
   label: string
   variant?: Variant
   loading?: boolean
+  showLabelWhileLoading?: boolean
   icon?: IconName
   destructive?: boolean
 }) {
@@ -67,14 +69,11 @@ export function Button({
           typeof style === 'function' ? style({ pressed }) : style,
         ]}
       >
-        {loading ? (
-          <ActivityIndicator color={foreground} />
-        ) : (
-          <>
-            {icon ? <Icon name={icon} size="inline" color={foreground} /> : null}
-            <Text style={[styles.label, { color: foreground }]}>{label}</Text>
-          </>
-        )}
+        {loading ? <ActivityIndicator color={foreground} /> : null}
+        {!loading && icon ? <Icon name={icon} size="inline" color={foreground} /> : null}
+        {!loading || showLabelWhileLoading ? (
+          <Text style={[styles.label, { color: foreground }]}>{label}</Text>
+        ) : null}
       </Pressable>
     </Animated.View>
   )

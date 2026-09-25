@@ -311,10 +311,10 @@ export function ReportReviewScreen({ navigation, route }: Props) {
                 icon="share-social-outline"
                 variant="secondary"
                 loading={shareLoading}
+                showLabelWhileLoading
                 disabled={pdfLoading}
                 onPress={() => void sharePdf()}
               />
-              {shareLoading ? <Text style={styles.muted}>Preparando PDF…</Text> : null}
             </>
           ) : null}
         </View>

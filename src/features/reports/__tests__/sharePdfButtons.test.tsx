@@ -106,7 +106,7 @@ test('muestra progreso visible mientras prepara el archivo', async () => {
   const screen = await render(<ReportSummary {...props} />)
 
   await fireEvent.press(screen.getByRole('button', { name: 'Compartir PDF' }))
-  expect(screen.getByText('Preparando PDF…')).toBeTruthy()
+  expect(screen.getAllByText('Preparando PDF…')).toHaveLength(1)
 
   await act(async () => finishShare())
 })
