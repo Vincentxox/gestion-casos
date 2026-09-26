@@ -12,6 +12,21 @@ import type { CasePhoto, PendingPhoto, PhotoReservation, PreparedPhoto } from '.
 const PREFIX = 'pending-photo:'
 const RETRY_DELAYS = [2000, 8000, 30000]
 const pendingDirectory = new Directory(Paths.document, 'pending-photos')
+const queueListeners = new Set<(userId: string, caseId: string) => void>()
+
+function notifyQueueChanged(userId: string, caseId: string) {
+  queueListeners.forEach((listener) => listener(userId, caseId))
+}
+
+export function subscribePendingPhotos(userId: string, caseId: string, onChange: () => void) {
+  const listener = (changedUserId: string, changedCaseId: string) => {
+    if (changedUserId === userId && changedCaseId === caseId) onChange()
+  }
+  queueListeners.add(listener)
+  return () => {
+    queueListeners.delete(listener)
+  }
+}
 
 export interface UploadDependencies {
   reserve: (caseId: string, kind: PendingPhoto['kind']) => Promise<PhotoReservation>
@@ -28,6 +43,7 @@ function key(localId: string) {
 
 export async function savePendingPhoto(entry: PendingPhoto) {
   await Storage.setItemAsync(key(entry.localId), JSON.stringify(entry))
+  notifyQueueChanged(entry.userId, entry.caseId)
 }
 
 export async function listPendingPhotos(userId: string, caseId?: string): Promise<PendingPhoto[]> {
@@ -52,6 +68,7 @@ export async function discardPendingPhoto(userId: string, localId: string): Prom
     if (file.exists) file.delete()
   }
   await Storage.removeItemAsync(key(localId))
+  notifyQueueChanged(entry.userId, entry.caseId)
 }
 
 export async function enqueuePhoto(
@@ -87,6 +104,7 @@ export async function enqueuePhoto(
 
 async function finishPendingPhoto(entry: PendingPhoto) {
   await Storage.removeItemAsync(key(entry.localId))
+  notifyQueueChanged(entry.userId, entry.caseId)
   for (const uri of [entry.fullUri, entry.thumbUri]) {
     const file = new File(uri)
     if (file.exists) file.delete()

@@ -1,7 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query'
+import { useNetInfo } from '@react-native-community/netinfo'
 import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -26,6 +27,7 @@ import {
   enqueuePhoto,
   listPendingPhotos,
   resumePendingPhotos,
+  subscribePendingPhotos,
 } from '../uploadQueue'
 import type { CasePhoto, PendingPhoto, PhotoKind } from '../types'
 
@@ -117,6 +119,7 @@ export function PhotoGrid({
   editable: boolean
 }) {
   const client = useQueryClient()
+  const network = useNetInfo()
   const photos = useCasePhotos(caseId)
   const remove = useDeletePhoto(caseId)
   const [pending, setPending] = useState<PendingPhoto[]>([])
@@ -128,12 +131,17 @@ export function PhotoGrid({
   const [discardBusy, setDiscardBusy] = useState(false)
   const [discardError, setDiscardError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const queueReadVersion = useRef(0)
   const label = kind === 'antes' ? 'Antes' : 'Después'
   const confirmed = (photos.data ?? []).filter((photo) => photo.kind === kind)
   const queued = pending.filter((photo) => photo.kind === kind)
+  const offline = network.isConnected === false || network.isInternetReachable === false
 
   const refreshQueue = useCallback(async () => {
-    if (userId) setPending(await listPendingPhotos(userId, caseId))
+    if (!userId) return
+    const version = ++queueReadVersion.current
+    const entries = await listPendingPhotos(userId, caseId)
+    if (version === queueReadVersion.current) setPending(entries)
   }, [userId, caseId])
 
   const resume = useCallback(
@@ -156,6 +164,11 @@ export function PhotoGrid({
     },
     [userId, client, refreshQueue],
   )
+
+  useEffect(() => {
+    if (!userId) return
+    return subscribePendingPhotos(userId, caseId, () => void refreshQueue())
+  }, [userId, caseId, refreshQueue])
 
   useEffect(() => {
     const timer = setTimeout(() => void resume(), 0)
@@ -255,7 +268,9 @@ export function PhotoGrid({
             <View key={pendingPhoto.localId} style={styles.slot}>
               <Image source={{ uri: pendingPhoto.thumbUri }} style={styles.image} />
               <View style={styles.pendingOverlay}>
-                {pendingPhoto.status === 'error' ? (
+                {offline && (pendingPhoto.status !== 'error' || pendingPhoto.retryOnReconnect) ? (
+                  <Text style={styles.pendingLabel}>Sin conexión; se subirá al reconectar</Text>
+                ) : pendingPhoto.status === 'error' ? (
                   <Pressable
                     accessibilityLabel={`Reintentar foto ${label} ${index + 1}`}
                     onPress={() => void resume('manual', pendingPhoto.localId)}
@@ -288,7 +303,11 @@ export function PhotoGrid({
         .filter((photo) => photo.status === 'error')
         .map((photo) => (
           <View key={photo.localId} style={styles.errorRow}>
-            <Text style={styles.error}>{photo.error ?? 'No fue posible subir la foto.'}</Text>
+            <Text style={styles.error}>
+              {offline && photo.retryOnReconnect
+                ? 'Sin conexión; se subirá al reconectar'
+                : (photo.error ?? 'No fue posible subir la foto.')}
+            </Text>
             <Button
               label="Descartar"
               variant="text"
