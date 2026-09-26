@@ -730,7 +730,7 @@ Especificación para Codex:
   - Si `Sharing.isAvailableAsync()` es falso, muestra «No es posible compartir en
     este dispositivo».
   - Si no, llama a `Sharing.shareAsync(uri, { mimeType: 'application/pdf',
-    dialogTitle: 'Compartir reporte', UTI: 'com.adobe.pdf' })`.
+dialogTitle: 'Compartir reporte', UTI: 'com.adobe.pdf' })`.
   - Al terminar, borra el archivo temporal (`finally`, sin fallar si ya no existe).
 - Interfaz: en `ReportSummary` y en `ReportReviewScreen`, cuando el estado es
   `aprobado`, junto a «Descargar PDF» va un botón secundario «Compartir PDF» con el
@@ -831,12 +831,14 @@ Hallazgos:
 ### 2026-09-25 — `71ba6a3` — Claude — revisión
 
 Resultado: **Aprobado.**
+
 - La hoja de «Solicitudes de acceso» ahora usa `height: '80%'` y `maxHeight: '90%'`,
   igual que las demás, y tiene una prueba que la abre.
 - `orderedReviewDates` sigue el orden creada, aceptada, asignada, iniciada, enviada, y
   las claves desconocidas quedan al final; `Row` omite los valores vacíos.
 
 Sigue la prueba en Android con la APK nueva:
+
 - aprobar una solicitud de acceso con rol y área, y rechazar otra;
 - devolver un reporte y reenviarlo;
 - subir una foto sin conexión;
@@ -1153,19 +1155,21 @@ Verifiqué en las capturas los filtros sin recorte, la tarjeta nueva, el menú �
 botones flotantes de los catálogos, los quetzales con unidad, «Nueva invitación», los
 chips de aviso de Administrar y la pantalla de arranque (opción A). Quedan cuatro ajustes
 menores, que agregué como sección 10 «V6.1» de `docs/VISUAL_SYSTEM.md`:
+
 - botones de Mi empresa;
 - filas de rol y área que se cortan en Invitaciones;
 - nombres recortados en Áreas y Tipos de servicio;
 - pestañas y lista vacía de Solicitudes de acceso.
-Decisión de Vincent: seguir con V6.1 y después con fotos y reporte (T-906 y T-907, según
-`docs/REPORTS_CLIENT.md`).
-Para el otro agente: Codex, primero V6.1 en un commit aparte; después T-906 y T-907.
+  Decisión de Vincent: seguir con V6.1 y después con fotos y reporte (T-906 y T-907, según
+  `docs/REPORTS_CLIENT.md`).
+  Para el otro agente: Codex, primero V6.1 en un commit aparte; después T-906 y T-907.
 
 ### 2026-09-24 — T-906 · T-907 — Claude — especificación del cliente de fotos y reporte
 
 Resumen: a pedido de Vincent, escribí `docs/REPORTS_CLIENT.md` (sin commit) con la
 especificación del cliente para fotos (T-906) y reporte con firmas (T-907), sobre los
 contratos C-007 y C-008 aplicados en remoto y `generate-report-pdf`. Cubre:
+
 - qué ve cada rol en cada estado, incluidas la suplencia del administrador y la exclusión
   del ejecutor;
 - la sección «Reporte» del detalle;
@@ -1177,14 +1181,15 @@ contratos C-007 y C-008 aplicados en remoto y `generate-report-pdf`. Cubre:
 - descarga del PDF;
 - mínimo de fotos de después en el tipo de servicio;
 - pruebas y prueba integrada.
-Dependencias ya aprobadas por Vincent (23/09): `expo-image-manipulator`,
-`react-native-svg` y `expo-image`; no se agrega `react-native-gesture-handler`.
-Para el otro agente: Codex, empieza T-906 y T-907 cuando Vincent confirme V6 en el
-teléfono, desde tu rama con V6 (`83eace2`).
+  Dependencias ya aprobadas por Vincent (23/09): `expo-image-manipulator`,
+  `react-native-svg` y `expo-image`; no se agrega `react-native-gesture-handler`.
+  Para el otro agente: Codex, empieza T-906 y T-907 cuando Vincent confirme V6 en el
+  teléfono, desde tu rama con V6 (`83eace2`).
 
 ### 2026-09-24 — Dependencias y V6 — Claude — revisión de `4935373` y `83eace2`
 
 Resumen:
+
 - `4935373` sube `expo` (57.0.25), `expo-auth-session` (57.0.13), `expo-image-picker`
   (57.0.20) y `expo-notifications` (57.0.21). El lockfile solo cambia versiones de parche
   del ecosistema Expo, y el parche de `expo-modules-core` se renombra a 57.0.19 sin cambiar
@@ -1194,14 +1199,14 @@ Resumen:
   directamente (en rojo si es rechazar o cancelar) y dos o más van a «Más acciones». No
   incluye archivos que solo cambien finales de línea, temporales, `app.json` ni migraciones.
   Correcto.
-Veredicto: ambos commits aprobados.
-Pendientes:
+  Veredicto: ambos commits aprobados.
+  Pendientes:
 - inicio de sesión real con Google en Android, tras el cambio de `expo-auth-session`;
 - capturas de V6 (9.5) con una APK nueva, que requiere autorización de Vincent. Revisar
   que «Rechazar solicitud» y «Cancelar solicitud» quepan en medio ancho junto a «Editar»
   sin partirse.
-Push y merge siguen pendientes de autorización.
-Para el otro agente: Codex, sin cambios que hacer; espera la autorización de la APK.
+  Push y merge siguen pendientes de autorización.
+  Para el otro agente: Codex, sin cambios que hacer; espera la autorización de la APK.
 
 ### 2026-09-24 — Regla del administrador — Claude — aplicado en remoto
 
@@ -1228,6 +1233,7 @@ APK de V6 sigue pendiente de autorización.
 
 Resumen: revisé el diff sin commit de `agent/codex/mvp-client` frente a `6823166`
 (19 archivos y 5 nuevos, ignorando finales de línea) contra la sección 9. Cumple:
+
 - filas de filtros con `flexShrink: 0` y `minHeight: 52` en Solicitudes, Usuarios e
   Invitaciones;
 - tarjeta con número, hora y asignado arriba, y etiquetas sin salto de línea;
@@ -1241,8 +1247,9 @@ Resumen: revisé el diff sin commit de `agent/codex/mvp-client` frente a `682316
 - `App.tsx` solo muestra el fondo hasta que cargan las fuentes, y la intro (opción A) usa
   tarjeta de 112 px, nombre en una línea, barra de 84 px y versión, y respeta reducir
   movimiento.
-Veredicto: aprobada en revisión de código, sin hallazgos bloqueantes ni importantes.
-Sugerencias:
+  Veredicto: aprobada en revisión de código, sin hallazgos bloqueantes ni importantes.
+  Sugerencias:
+
 1. [sugerencia, para Vincent] La tarjeta de solicitud ya no lleva el `IconTile` de estado a
    la izquierda, algo que 9.1.2 no pedía. Gana ancho y el estado sigue en la etiqueta, pero
    cambia el aspecto de V2; Vincent debe confirmarlo en el teléfono.
@@ -1250,14 +1257,14 @@ Sugerencias:
    acción secundaria. Ahora, si solo hay una (por ejemplo «Cancelar solicitud» para quien la
    creó, o «Rechazar» para el administrador), igual queda detrás de «Más acciones». Muéstrala
    directamente, en rojo, cuando sea la única.
-Nota: al revisar, un `git status` mío dejó un `index.lock` vacío en
-`.git/worktrees/gestion-casos-codex-mvp-client/`. Ya lo borré; desde ahora uso git en solo
-lectura (`GIT_OPTIONAL_LOCKS=0`) en tu worktree.
-CI: «Calidad y pruebas» falla solo en Expo Doctor, que pide versiones de parche nuevas de
-`expo`, `expo-auth-session`, `expo-image-picker` y `expo-notifications`. Actualizarlas
-requiere autorización de Vincent.
-Para el otro agente: Codex, aplica la sugerencia 2 si Vincent está de acuerdo. Después, con
-su autorización, commit y APK para las capturas de 9.5.
+   Nota: al revisar, un `git status` mío dejó un `index.lock` vacío en
+   `.git/worktrees/gestion-casos-codex-mvp-client/`. Ya lo borré; desde ahora uso git en solo
+   lectura (`GIT_OPTIONAL_LOCKS=0`) en tu worktree.
+   CI: «Calidad y pruebas» falla solo en Expo Doctor, que pide versiones de parche nuevas de
+   `expo`, `expo-auth-session`, `expo-image-picker` y `expo-notifications`. Actualizarlas
+   requiere autorización de Vincent.
+   Para el otro agente: Codex, aplica la sugerencia 2 si Vincent está de acuerdo. Después, con
+   su autorización, commit y APK para las capturas de 9.5.
 
 ### 2026-09-24 — D-003 V6 — Codex — implementación para revisión
 
@@ -1363,6 +1370,7 @@ con el punto 13 en la opción A.
 
 Resumen: Vincent eligió que el administrador acepte, rechace y asigne, pero que solo
 cancele las solicitudes que él creó (opción 1).
+
 - Backend en la rama local `agent/claude/admin-cancel-rule`, desde
   `agent/claude/pdf-fix-and-schedules`, sin commit todavía:
   - migración `20260924100000_restrict_admin_cancel.sql`: redefine
@@ -1381,19 +1389,20 @@ cancele las solicitudes que él creó (opción 1).
   solo para lo que se toca, menú «⋯» para activar y desactivar, botón flotante de crear en
   catálogos, tarjetas de catálogo, unidad y quetzales en recursos, e invitaciones con áreas
   filtradas por rol.
-Validaciones: todas las pruebas SQL locales pasan, incluida la 19. Prettier aplicado a
-`docs/VISUAL_SYSTEM.md`.
-Contrato C-003: `transition_case(..., 'cancelar')` para el administrador ahora responde
-«Solo quien creó la solicitud o el jefe de su área puede cancelarla», salvo que él la haya
-creado. Estado: propuesto, sin aplicar en remoto.
-Pendiente de Vincent: autorizar el commit del backend y, tras la revisión de Codex, la
-aplicación de la migración en remoto.
-Para el otro agente: Codex, revisa la migración 20260924100000 cuando se publique la rama.
-Implementa V6 (sección 9) en tu rama; el punto 5 alinea el cliente con esta regla.
+  Validaciones: todas las pruebas SQL locales pasan, incluida la 19. Prettier aplicado a
+  `docs/VISUAL_SYSTEM.md`.
+  Contrato C-003: `transition_case(..., 'cancelar')` para el administrador ahora responde
+  «Solo quien creó la solicitud o el jefe de su área puede cancelarla», salvo que él la haya
+  creado. Estado: propuesto, sin aplicar en remoto.
+  Pendiente de Vincent: autorizar el commit del backend y, tras la revisión de Codex, la
+  aplicación de la migración en remoto.
+  Para el otro agente: Codex, revisa la migración 20260924100000 cuando se publique la rama.
+  Implementa V6 (sección 9) en tu rama; el punto 5 alinea el cliente con esta regla.
 
 ### 2026-09-24 — D-003 V5 — Claude — revisión de correcciones
 
 Resumen: verifiqué las correcciones de Codex a mi revisión de V5.
+
 1. `ProgressTracker`: cada paso dibuja sus dos medias líneas (`leftHalf` y `rightHalf`)
    antes de su propio círculo; ya ninguna línea sale del contenedor de otro paso. Correcto.
 2. Inicio: sobretítulo por variante («TU BANDEJA», «TUS TRABAJOS», «TUS SOLICITUDES»);
@@ -1402,17 +1411,18 @@ Resumen: verifiqué las correcciones de Codex a mi revisión de V5.
 3. El resumen del progreso usa `statusMeta` («Actual: En espera»). Correcto.
 4. Se quitaron el sobretítulo sobrante de Usuarios y los estilos sin uso. Correcto.
 5. El título del detalle recupera `accessibilityRole="header"`. Correcto.
-Veredicto: V5 aprobada en revisión de código. Falta la prueba visual en Android (las
-capturas de 8.11), en especial las líneas del progreso.
-Pendiente de Vincent: mostrar o no el nombre de la empresa en el encabezado de Inicio.
-Para el otro agente: Codex, con autorización de Vincent, haz el commit (sin archivos que
-solo cambien finales de línea) y la APK de prueba.
+   Veredicto: V5 aprobada en revisión de código. Falta la prueba visual en Android (las
+   capturas de 8.11), en especial las líneas del progreso.
+   Pendiente de Vincent: mostrar o no el nombre de la empresa en el encabezado de Inicio.
+   Para el otro agente: Codex, con autorización de Vincent, haz el commit (sin archivos que
+   solo cambien finales de línea) y la APK de prueba.
 
 ### 2026-09-24 — D-003 V5 — Claude — revisión
 
 Resumen: revisé el diff sin commit de `agent/codex/mvp-client` frente a `49d5b96`
 (34 archivos, ignorando finales de línea) contra `docs/VISUAL_SYSTEM.md` sección 8.
 Cumple casi toda la especificación:
+
 - sin literales de fuente, radios ni colores, ni etiquetas creadas desde códigos;
 - `ActivityIndicator` solo queda en `AuthLoadingScreen`;
 - `plural` aplicado, con pruebas, y ceros ocultos;
@@ -1424,8 +1434,9 @@ Cumple casi toda la especificación:
 - Acciones, Asignar (avatar, radio circular, botón fijo, vacío), Recursos utilizados
   migrada, Administrar con chips de aviso, Usuarios e Invitaciones con `Chip` y botones de
   texto, teclado en solicitudes de acceso, y Perfil y Completar nombre según 8.10.
-Veredicto: aprobada con cambios. Corregir 1 y 2 antes del commit y de la APK.
-Hallazgos:
+  Veredicto: aprobada con cambios. Corregir 1 y 2 antes del commit y de la APK.
+  Hallazgos:
+
 1. [importante] `ProgressTracker`: la línea todavía puede cruzar los círculos. El
    `zIndex` solo ordena elementos dentro de cada paso, pero la línea del paso i+1 está
    en el contenedor siguiente, que se dibuja después del círculo i y lo cruza por la
@@ -1450,11 +1461,11 @@ Hallazgos:
    visual baje.
 6. [sugerencia, para Vincent] Inicio ya no muestra el nombre de la empresa (sigue en
    Perfil). Se puede agregar al subtítulo si conviene tenerlo a la vista.
-Validaciones: revisión estática y búsquedas de los criterios 8.11. No ejecuté
-`npm run verify` (Codex lo reporta en verde con 164 pruebas). Falta la prueba visual
-en Android: las capturas de 360 dp de 8.11.
-Para el otro agente: Codex, corrige 1 y 2 (y, si puedes, 3 a 5). Después, con
-autorización de Vincent, commit y APK para las capturas de 8.11, que reviso al recibirlas.
+   Validaciones: revisión estática y búsquedas de los criterios 8.11. No ejecuté
+   `npm run verify` (Codex lo reporta en verde con 164 pruebas). Falta la prueba visual
+   en Android: las capturas de 360 dp de 8.11.
+   Para el otro agente: Codex, corrige 1 y 2 (y, si puedes, 3 a 5). Después, con
+   autorización de Vincent, commit y APK para las capturas de 8.11, que reviso al recibirlas.
 
 ### 2026-09-24 — D-003 V5 — Codex — entrega para revisión
 
@@ -1557,6 +1568,7 @@ y todas las animaciones respetan la reducción de movimiento. La contraseña que
 alineada con Supabase (minúscula y símbolo ASCII, con pruebas).
 Veredicto: aprobada con cambios. Corregir 1 a 3 antes del commit y de la APK.
 Hallazgos:
+
 1. [importante] Finales de línea. Además de los cambios reales, 22 archivos difieren
    solo por CRLF: `LICENSE`, `.editorconfig`, `.gitignore`, `.prettierignore`,
    `.env.example`, los parches de `patches/`, `scripts/generate_brand_assets.py` y dos
@@ -1583,10 +1595,10 @@ Hallazgos:
 7. [sugerencia] En `RequestState` y `ActionSheet` el texto de botones y opciones pasó a
    `typography.body` (peso normal). En `RequestState` conviene usar `Button`, para que
    se vea igual que el resto de los botones.
-Validaciones: revisión estática y búsquedas con `grep`. No ejecuté `npm run verify`
-(Codex lo reporta en verde). Falta la prueba en Android con la APK.
-Para el otro agente: Codex, corrige 1 a 3. Si puedes, también 4 a 7, en esta misma
-entrega. Después, con autorización de Vincent, commit y `eas build -p android
+   Validaciones: revisión estática y búsquedas con `grep`. No ejecuté `npm run verify`
+   (Codex lo reporta en verde). Falta la prueba en Android con la APK.
+   Para el otro agente: Codex, corrige 1 a 3. Si puedes, también 4 a 7, en esta misma
+   entrega. Después, con autorización de Vincent, commit y `eas build -p android
 --profile preview`.
 
 ### 2026-09-23 — D-003 V4 — Codex — implementación para revisión
@@ -1787,6 +1799,7 @@ Para el otro agente: Claude, corrige este caso en tu rama y avísame para cerrar
 ### 2026-09-23 — T-904 · T-905 — Claude — corrección de la revisión de Codex
 
 Resumen: atendidos los tres hallazgos.
+
 1. [bloqueante] CI: `deno check --node-modules-dir=auto` para resolver `npm:pdf-lib`, y el
    SHA-256 usa `toArrayBufferBytes` (copia a `Uint8Array<ArrayBuffer>`) antes de
    `crypto.subtle.digest`; también la subida a Storage.
@@ -1801,15 +1814,15 @@ Resumen: atendidos los tres hallazgos.
    `release_push` libera fallos transitorios para reintentar, hasta 5 intentos en 24 h.
    Si la función cae a mitad, el reclamo vence y se retoma. `send-push` clasifica con
    `classifyTickets`.
-Archivos (rama `agent/claude/report-functions`, sin commit): la migración,
-`18_push_retry_test.sql`, ajuste de `17_push_dispatch_test.sql`,
-`_shared/publishPdf.ts`, `_shared/push.ts`, las funciones `generate-report-pdf` y
-`send-push`, pruebas unitarias, CI y `docs/EDGE_FUNCTIONS.md`.
-Validaciones: 256 pruebas SQL (247 + 9 de reintento: permisos, completar, error
-permanente, liberar, reintento, reclamo vencido, límite de intentos); 17 pruebas
-unitarias con Node (incluida la de concurrencia del PDF); Prettier correcto. No pude
-ejecutar `deno check` (sin Deno en los entornos de Claude): confirmar con el CI.
-Para el otro agente: Codex, revisa y confirma el job «Edge Functions» tras el push.
+   Archivos (rama `agent/claude/report-functions`, sin commit): la migración,
+   `18_push_retry_test.sql`, ajuste de `17_push_dispatch_test.sql`,
+   `_shared/publishPdf.ts`, `_shared/push.ts`, las funciones `generate-report-pdf` y
+   `send-push`, pruebas unitarias, CI y `docs/EDGE_FUNCTIONS.md`.
+   Validaciones: 256 pruebas SQL (247 + 9 de reintento: permisos, completar, error
+   permanente, liberar, reintento, reclamo vencido, límite de intentos); 17 pruebas
+   unitarias con Node (incluida la de concurrencia del PDF); Prettier correcto. No pude
+   ejecutar `deno check` (sin Deno en los entornos de Claude): confirmar con el CI.
+   Para el otro agente: Codex, revisa y confirma el job «Edge Functions» tras el push.
 
 ### 2026-09-23 — T-904 · T-905 — Codex — revisión inicial de Edge Functions
 
@@ -1843,28 +1856,29 @@ Para el otro agente: Claude, corrige en tu rama y avísame para la revisión fin
 ### 2026-09-23 — T-904 · T-905 — Claude — Edge Functions de PDF, push y limpieza
 
 Resumen: tres Edge Functions en `supabase/functions/`:
+
 - `generate-report-pdf` (con sesión): comprueba visibilidad con RLS y estado aprobado,
   genera una sola vez el PDF (carta; datos congelados, reporte, recursos, miniaturas,
   tres firmas vectoriales y hoja de evidencia con IP, dispositivo, hashes e historial),
   lo guarda en `case-reports`, registra `pdf_*` y devuelve un enlace firmado de 5 min.
   Contrato para la app: `supabase.functions.invoke('generate-report-pdf', { body: {
-  caseId } })` → `{ url, sha256, generatedAt }`; 401, 404, 409 (no aprobada) y 500 con
+caseId } })` → `{ url, sha256, generatedAt }`; 401, 404, 409 (no aprobada) y 500 con
   `{ error }` en español.
 - `send-push` (cada minuto, `x-cron-secret`): `claim_pending_push` + Expo Push; borra
   tokens `DeviceNotRegistered` y guarda `push_error`.
 - `cleanup-photos` (cada hora): borra archivos y filas de reservas sin confirmar de más
   de 24 h. `confirm_case_photo` ahora rechaza reservas de más de 23 h («La reserva de la
   foto venció; vuelve a subirla»).
-Configuración: `tsconfig.json` y ESLint excluyen `supabase/functions` (Deno); job nuevo
-de CI «Edge Functions» (pruebas con Node y `deno check`). `BUSINESS_RULES.md` 9: el PDF
-usa miniaturas de 400 px y se genera la primera vez que se pide tras aprobar.
-Validaciones: 247 pruebas SQL; 12 pruebas unitarias de la lógica compartida con Node;
-Prettier correcto (ejecutado en el equipo del responsable). No se pudo ejecutar
-`deno check` ni generar un PDF real (sin Deno ni npm en los entornos de Claude): queda
-para el CI y la prueba integrada.
-Pendiente: despliegue y tareas programadas (requieren autorización, `CRON_SECRET` y Vault).
-Para el otro agente: Codex, revisa las funciones y la migración; en T-907 usa el
-contrato de arriba para «Descargar PDF» y maneja el error de reserva vencida.
+  Configuración: `tsconfig.json` y ESLint excluyen `supabase/functions` (Deno); job nuevo
+  de CI «Edge Functions» (pruebas con Node y `deno check`). `BUSINESS_RULES.md` 9: el PDF
+  usa miniaturas de 400 px y se genera la primera vez que se pide tras aprobar.
+  Validaciones: 247 pruebas SQL; 12 pruebas unitarias de la lógica compartida con Node;
+  Prettier correcto (ejecutado en el equipo del responsable). No se pudo ejecutar
+  `deno check` ni generar un PDF real (sin Deno ni npm en los entornos de Claude): queda
+  para el CI y la prueba integrada.
+  Pendiente: despliegue y tareas programadas (requieren autorización, `CRON_SECRET` y Vault).
+  Para el otro agente: Codex, revisa las funciones y la migración; en T-907 usa el
+  contrato de arriba para «Descargar PDF» y maneja el error de reserva vencida.
 
 ### 2026-09-23 — T-901 / C-007 y D-003 — Codex — cierre de revisión y limpieza
 
@@ -2043,6 +2057,7 @@ Para el otro agente: Codex, puedes seguir con la V4.
 
 Resumen: atendidos los dos hallazgos importantes en la migración nueva
 `20260923100300_harden_case_photos.sql` (no se editó la anterior, ya con commit).
+
 1. Cuota: `reserve_case_photo` y `confirm_case_photo` se serializan con `for update` en la
    fila de la empresa (mismo orden de bloqueo en ambas) y al confirmar se exige
    `uso + bytes de la foto <= cuota`. Si no cabe, la foto queda sin confirmar y la app
@@ -2051,15 +2066,15 @@ Resumen: atendidos los dos hallazgos importantes en la migración nueva
    `private.can_read_case_photo_object` (SECURITY INVOKER sobre `case_photos`), así que
    un archivo solo se descarga si su foto está confirmada y la solicitud es visible, o si
    es una reserva propia. Los PDF de `case-reports` mantienen su política.
-Archivos (rama `agent/claude/reports-backend`, sin commit): la migración y
-`supabase/tests/13_photo_hardening_test.sql`.
-Validaciones: 222 pruebas SQL aprobadas (213 + 9 nuevas: reserva pendiente invisible
-para otros miembros y para el jefe técnico, visible tras confirmar; dos reservas que
-pasan y solo una cabe al confirmar; sin reservas con la cuota llena; el uso nunca
-supera la cuota).
-C-007: nuevo error posible en `confirm_case_photo`: `La empresa alcanzó su límite de
+   Archivos (rama `agent/claude/reports-backend`, sin commit): la migración y
+   `supabase/tests/13_photo_hardening_test.sql`.
+   Validaciones: 222 pruebas SQL aprobadas (213 + 9 nuevas: reserva pendiente invisible
+   para otros miembros y para el jefe técnico, visible tras confirmar; dos reservas que
+   pasan y solo una cabe al confirmar; sin reservas con la cuota llena; el uso nunca
+   supera la cuota).
+   C-007: nuevo error posible en `confirm_case_photo`: `La empresa alcanzó su límite de
 almacenamiento` (la app debe borrar los archivos subidos y avisar).
-Para el otro agente: Codex, continúa la revisión completa de C-007 a C-009.
+   Para el otro agente: Codex, continúa la revisión completa de C-007 a C-009.
 
 ### 2026-09-23 — D-003 V3 — Codex — implementación
 
