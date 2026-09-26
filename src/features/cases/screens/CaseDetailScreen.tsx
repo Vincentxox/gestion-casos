@@ -1,28 +1,63 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useState, type ReactNode } from 'react'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import Animated, { LinearTransition, useReducedMotion } from 'react-native-reanimated'
 
-import { hasPermission } from '@/features/auth/permissions'
+import { PriorityBadge } from '@/components/badges/PriorityBadge'
+import { StatusBadge } from '@/components/badges/StatusBadge'
+import { ActionSheet } from '@/components/actions/ActionSheet'
+import { Timeline } from '@/components/timeline/Timeline'
+import { RequestState } from '@/components/feedback/RequestState'
+import { ProgressTracker } from '@/components/progress/ProgressTracker'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { SkeletonList } from '@/components/ui/SkeletonList'
+import { Icon, type IconName } from '@/components/ui/Icon'
+import { IconTile } from '@/components/ui/IconTile'
+import { ReportSummary } from '@/features/reports/components/ReportSummary'
+import { getReportActions } from '@/features/reports/reportPermissions'
+import { useAreaChiefs } from '@/features/reports/useReports'
 import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
-import { colors, radius, spacing } from '@/theme/tokens'
+import { colors, spacing, typography } from '@/theme/tokens'
+import { actionMeta } from '@/theme/statusMeta'
 
 import { useCaseDetail, useCaseHistory } from '../useCases'
+import { canEditCase, getAvailableCaseActions } from '../casePermissions'
+import { getSecondaryActionPresentation } from '../caseActionPresentation'
+import type { CaseAction } from '../types'
 
 type Props = NativeStackScreenProps<MainStackParamList, 'CaseDetail'>
 
-const STATUS_LABELS = {
-  abierto: 'Abierto',
-  en_progreso: 'En progreso',
-  cerrado: 'Cerrado',
-} as const
-
-function Field({ label, value }: { label: string; value: string }) {
+function Field({ label, value, icon }: { label: string; value: string; icon: IconName }) {
   return (
     <View style={styles.field}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <Text style={styles.fieldValue}>{value}</Text>
+      <IconTile icon={icon} size={36} />
+      <View style={styles.fieldContent}>
+        <Text style={styles.fieldLabel}>{label}</Text>
+        <Text style={styles.fieldValue}>{value}</Text>
+      </View>
     </View>
+  )
+}
+
+function DetailSection({ title, children }: { title: string; children: ReactNode }) {
+  const [open, setOpen] = useState(true)
+  return (
+    <Card style={styles.panel}>
+      <Pressable
+        accessibilityLabel={`${open ? 'Contraer' : 'Expandir'} ${title}`}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        onPress={() => setOpen(!open)}
+        style={styles.sectionHeader}
+      >
+        <Text style={styles.panelTitle}>{title}</Text>
+        <Icon name={open ? 'chevron-down' : 'chevron-forward'} color={colors.textMuted} />
+      </Pressable>
+      {open ? children : null}
+    </Card>
   )
 }
 
@@ -31,110 +66,208 @@ export function CaseDetailScreen({ navigation, route }: Props) {
   const profile = useAuthStore((state) => state.profile)
   const detail = useCaseDetail(caseId)
   const history = useCaseHistory(caseId)
-  const canUpdate = hasPermission(profile?.role, 'cases.update')
-  const canAssign = hasPermission(profile?.role, 'cases.assign')
+  const chiefs = useAreaChiefs()
+  const [actionsVisible, setActionsVisible] = useState(false)
+  const reduceMotion = useReducedMotion()
 
   if (detail.isLoading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={colors.primary} size="large" />
-        <Text style={styles.muted}>Cargando detalle...</Text>
-      </View>
-    )
+    return <RequestState kind="loading" title="Cargando solicitud…" />
   }
 
   if (detail.error || !detail.data) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.error}>No fue posible cargar el caso.</Text>
-      </View>
+      <RequestState
+        kind="error"
+        title="No fue posible cargar la solicitud"
+        onRetry={() => void detail.refetch()}
+      />
     )
   }
 
   const item = detail.data
+  const canUpdate = canEditCase(item, profile)
+  const actions = getAvailableCaseActions(item, profile)
+  const reportActions = getReportActions(item, profile, chiefs.data ?? [])
+  const reportPrimary = reportActions.includes('submit')
+    ? 'Completar reporte'
+    : reportActions.includes('validate')
+      ? 'Revisar y validar'
+      : reportActions.includes('approve')
+        ? 'Revisar y aprobar'
+        : null
+  const primaryAction = actions.find((action) => !['rechazar', 'cancelar'].includes(action))
+  const otherActions = actions.filter((action) => action !== primaryAction)
+  const secondaryPresentation = getSecondaryActionPresentation(otherActions)
+  function navigateAction(action: CaseAction) {
+    if (action === 'asignar') navigation.navigate('AssignCase', { caseId })
+    else navigation.navigate('ChangeCaseStatus', { caseId, action })
+  }
   return (
     <SafeAreaView edges={['bottom']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.heading}>
+        <Animated.View
+          layout={reduceMotion ? undefined : LinearTransition.duration(250)}
+          style={styles.heading}
+        >
+          <Text style={styles.caseNumber}>{item.caseNumber}</Text>
           <View style={styles.headingRow}>
-            <Text style={styles.caseNumber}>{item.caseNumber}</Text>
-            <Text style={styles.status}>{STATUS_LABELS[item.status]}</Text>
+            <StatusBadge status={item.status} />
+            <PriorityBadge priority={item.priority} />
           </View>
           <Text accessibilityRole="header" style={styles.title}>
             {item.title}
           </Text>
-          <Text style={styles.description}>{item.description}</Text>
-        </View>
+          <Text style={styles.subtitle}>
+            Solicitada por {item.creatorName} · {item.requestingAreaName} ·{' '}
+            {new Date(item.createdAt).toLocaleDateString('es-GT')}
+          </Text>
+        </Animated.View>
 
-        <View style={styles.panel}>
-          <Text style={styles.panelTitle}>Información general</Text>
-          <Field label="Categoría" value={item.category} />
-          <Field label="Ubicación" value={item.location} />
-          <Field
-            label="Prioridad"
-            value={item.priority.charAt(0).toUpperCase() + item.priority.slice(1)}
+        <Card style={styles.panel}>
+          <ProgressTracker
+            status={item.status}
+            reason={
+              history.data?.find((event) => ['rechazar', 'cancelar'].includes(event.action))
+                ?.comment
+            }
           />
-          <Field label="Asignación" value={item.assignedTo ? 'Personal asignado' : 'Sin asignar'} />
-          <Field label="Creado" value={new Date(item.createdAt).toLocaleString('es-GT')} />
-        </View>
+        </Card>
 
-        {canUpdate || canAssign ? (
-          <View style={styles.actions}>
-            <Text style={styles.panelTitle}>Acciones</Text>
-            {canUpdate ? (
-              <>
-                <ActionButton
-                  label="Editar información"
-                  onPress={() => navigation.navigate('EditCase', { caseId })}
-                />
-                <ActionButton
-                  label="Cambiar estado"
-                  onPress={() => navigation.navigate('ChangeCaseStatus', { caseId })}
-                />
-              </>
-            ) : null}
-            {canAssign ? (
-              <ActionButton
-                label="Asignar personal"
-                onPress={() => navigation.navigate('AssignCase', { caseId })}
-              />
-            ) : null}
-          </View>
+        {[
+          'asignado',
+          'en_ejecucion',
+          'en_espera',
+          'reporte_enviado',
+          'validado',
+          'aprobado',
+        ].includes(item.status) ? (
+          <ReportSummary
+            item={item}
+            beforeEditable={reportActions.includes('photos_before')}
+            afterEditable={reportActions.includes('edit')}
+            userId={profile?.id}
+            onOpen={() => navigation.navigate('CaseReport', { caseId })}
+            onReview={() => navigation.navigate('ReportReview', { caseId })}
+          />
         ) : null}
 
-        <View style={styles.panel}>
-          <Text style={styles.panelTitle}>Historial de estados</Text>
-          {history.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
+        <DetailSection title="Datos de la solicitud">
+          <Field icon="business-outline" label="Área solicitante" value={item.requestingAreaName} />
+          <Field icon="pricetag-outline" label="Tipo de servicio" value={item.category} />
+          <Field icon="location-outline" label="Ubicación" value={item.location} />
+          <Field
+            icon="person-outline"
+            label="Técnico asignado"
+            value={item.assigneeName || 'Sin asignar'}
+          />
+        </DetailSection>
+
+        <DetailSection title="Descripción">
+          <Text style={styles.description}>{item.description}</Text>
+        </DetailSection>
+
+        <DetailSection title="Recursos utilizados">
+          <Text style={styles.description}>
+            Consulta materiales, equipos y horas de trabajo de esta solicitud.
+          </Text>
+          <Button
+            label="Ver recursos y mano de obra"
+            icon="cube-outline"
+            variant="secondary"
+            onPress={() => navigation.navigate('CaseResources', { caseId })}
+          />
+        </DetailSection>
+
+        <DetailSection title="Línea de tiempo">
+          {history.isLoading ? <SkeletonList count={3} /> : null}
           {history.error ? (
             <Text style={styles.error}>No fue posible cargar el historial.</Text>
           ) : null}
-          {history.data?.map((entry) => (
-            <View key={entry.id} style={styles.historyItem}>
-              <View style={styles.timelineDot} />
-              <View style={styles.historyContent}>
-                <Text style={styles.historyTitle}>{STATUS_LABELS[entry.newStatus]}</Text>
-                <Text style={styles.muted}>
-                  {new Date(entry.createdAt).toLocaleString('es-GT')}
-                </Text>
-                {entry.comment ? <Text style={styles.historyComment}>{entry.comment}</Text> : null}
-              </View>
+          {history.data ? <Timeline events={history.data} /> : null}
+        </DetailSection>
+      </ScrollView>
+      {reportPrimary || primaryAction || canUpdate || otherActions.length > 0 ? (
+        <View style={styles.stickyAction}>
+          {reportPrimary ? (
+            <Button
+              label={reportPrimary}
+              icon="document-text-outline"
+              onPress={() =>
+                navigation.navigate(
+                  reportPrimary === 'Completar reporte' ? 'CaseReport' : 'ReportReview',
+                  { caseId },
+                )
+              }
+            />
+          ) : primaryAction ? (
+            <Button
+              label={actionMeta[primaryAction].label}
+              icon={actionMeta[primaryAction].icon}
+              onPress={() => navigateAction(primaryAction)}
+            />
+          ) : null}
+          {canUpdate || otherActions.length > 0 || (reportPrimary && primaryAction) ? (
+            <View style={styles.secondaryActions}>
+              {reportPrimary && primaryAction ? (
+                <View style={styles.secondaryAction}>
+                  <Button
+                    label={actionMeta[primaryAction].label}
+                    icon={actionMeta[primaryAction].icon}
+                    variant="secondary"
+                    onPress={() => navigateAction(primaryAction)}
+                  />
+                </View>
+              ) : null}
+              {canUpdate ? (
+                <View style={styles.secondaryAction}>
+                  <Button
+                    label="Editar"
+                    variant="secondary"
+                    onPress={() => navigation.navigate('EditCase', { caseId })}
+                  />
+                </View>
+              ) : null}
+              {secondaryPresentation.kind === 'direct' ? (
+                <View style={styles.secondaryAction}>
+                  <Button
+                    label={actionMeta[secondaryPresentation.action].label}
+                    icon={actionMeta[secondaryPresentation.action].icon}
+                    variant={secondaryPresentation.variant}
+                    onPress={() => navigateAction(secondaryPresentation.action)}
+                  />
+                </View>
+              ) : null}
+              {secondaryPresentation.kind === 'menu' ? (
+                <View style={styles.secondaryAction}>
+                  <Button
+                    label="Más acciones"
+                    icon="ellipsis-horizontal"
+                    variant="secondary"
+                    onPress={() => setActionsVisible(true)}
+                  />
+                </View>
+              ) : null}
             </View>
-          ))}
-          {!history.isLoading && history.data?.length === 0 ? (
-            <Text style={styles.muted}>Todavía no hay cambios registrados.</Text>
           ) : null}
         </View>
-      </ScrollView>
+      ) : null}
+      <ActionSheet<CaseAction>
+        title="Acciones disponibles"
+        actions={otherActions.map((action) => ({
+          id: action,
+          label: actionMeta[action].label,
+          description: actionMeta[action].description,
+          icon: actionMeta[action].icon,
+          destructive: ['rechazar', 'cancelar'].includes(action),
+        }))}
+        visible={actionsVisible}
+        onClose={() => setActionsVisible(false)}
+        onSelect={(action) => {
+          setActionsVisible(false)
+          navigateAction(action)
+        }}
+      />
     </SafeAreaView>
-  )
-}
-
-function ActionButton({ label, onPress }: { label: string; onPress: () => void }) {
-  return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={styles.actionButton}>
-      <Text style={styles.actionButtonText}>{label}</Text>
-      <Text style={styles.actionChevron}>›</Text>
-    </Pressable>
   )
 }
 
@@ -149,68 +282,31 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   heading: { gap: spacing.sm },
-  headingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  caseNumber: { color: colors.primary, fontSize: 13, fontWeight: '800' },
-  status: {
-    overflow: 'hidden',
-    borderRadius: 999,
-    backgroundColor: colors.primarySoft,
-    color: colors.primary,
-    fontSize: 12,
-    fontWeight: '800',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  title: { color: colors.text, fontSize: 25, fontWeight: '800' },
-  description: { color: colors.textMuted, fontSize: 15, lineHeight: 22 },
-  panel: {
-    gap: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    padding: spacing.md,
-  },
-  panelTitle: { color: colors.text, fontSize: 17, fontWeight: '800' },
-  actions: {
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    padding: spacing.md,
-  },
-  actionButton: {
-    minHeight: 48,
+  headingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  subtitle: { ...typography.caption, color: colors.textMuted },
+  caseNumber: { ...typography.caption, color: colors.primary },
+  title: { ...typography.heading, color: colors.text },
+  description: { ...typography.body, color: colors.textMuted },
+  panel: { gap: spacing.md },
+  panelTitle: { ...typography.heading, color: colors.text },
+  sectionHeader: {
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderRadius: radius.md,
-    backgroundColor: colors.primarySoft,
-    paddingHorizontal: spacing.md,
   },
-  actionButtonText: { color: colors.primary, fontWeight: '800' },
-  actionChevron: { color: colors.primary, fontSize: 24, fontWeight: '700' },
-  field: { gap: spacing.xs },
-  fieldLabel: { color: colors.textMuted, fontSize: 12, fontWeight: '700' },
-  fieldValue: { color: colors.text, fontSize: 15 },
-  historyItem: { flexDirection: 'row', gap: spacing.sm },
-  timelineDot: {
-    width: 10,
-    height: 10,
-    marginTop: 5,
-    borderRadius: 5,
-    backgroundColor: colors.primary,
+  stickyAction: {
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.surface,
   },
-  historyContent: {
-    flex: 1,
-    gap: spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingBottom: spacing.sm,
-  },
-  historyTitle: { color: colors.text, fontWeight: '800' },
-  historyComment: { color: colors.text, lineHeight: 20 },
-  muted: { color: colors.textMuted },
-  error: { color: colors.error, textAlign: 'center' },
+  secondaryActions: { flexDirection: 'row', gap: spacing.sm },
+  secondaryAction: { flex: 1 },
+  field: { flexDirection: 'row', alignItems: 'center', gap: spacing.base },
+  fieldContent: { flex: 1, gap: spacing.xs },
+  fieldLabel: { ...typography.caption, color: colors.textMuted },
+  fieldValue: { ...typography.body, color: colors.text },
+  error: { ...typography.body, color: colors.error, textAlign: 'center' },
 })

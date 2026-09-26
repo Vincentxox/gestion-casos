@@ -1,6 +1,6 @@
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
 
-import { colors, spacing } from '@/theme/tokens'
+import { colors, spacing, typography } from '@/theme/tokens'
 
 export function AuthLoadingScreen() {
   return (
@@ -21,6 +21,6 @@ const styles = StyleSheet.create({
   },
   text: {
     color: colors.textMuted,
-    fontSize: 15,
+    ...typography.body,
   },
 })

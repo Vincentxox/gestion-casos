@@ -1,50 +1,76 @@
 import { Ionicons } from '@expo/vector-icons'
 import { useState } from 'react'
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   Modal,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
+import { Button } from '@/components/ui/Button'
+import { Avatar } from '@/components/ui/Avatar'
+import { EmptyState } from '@/components/feedback/EmptyState'
+import { RequestState } from '@/components/feedback/RequestState'
+import { SkeletonList } from '@/components/ui/SkeletonList'
+import { Card } from '@/components/ui/Card'
+import { Chip } from '@/components/ui/Chip'
+import { ScreenContainer } from '@/components/ui/ScreenContainer'
 import { useAreas } from '@/features/areas/useAreas'
+import { APP_ROLES, ROLE_ICONS, ROLE_LABELS, type AppRole } from '@/features/auth/types'
 import { useAuthStore } from '@/store/authStore'
-import { colors, radius, spacing } from '@/theme/tokens'
+import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 import type { ManagedProfile } from '../types'
-import { useManagedProfiles, useSetManagedProfileArea } from '../useManagedProfiles'
-
-const ROLE_LABELS = {
-  administrador: 'Administrador',
-  auditor: 'Auditor',
-  visualizador: 'Visualizador',
-} as const
+import { useManagedProfiles, useSetMemberAccess } from '../useManagedProfiles'
 
 export function UsersScreen() {
   const profiles = useManagedProfiles()
   const areas = useAreas()
-  const mutation = useSetManagedProfileArea()
-  const applyOwnAreaAssignment = useAuthStore((state) => state.applyOwnAreaAssignment)
+  const mutation = useSetMemberAccess()
+  const applyOwnAccess = useAuthStore((state) => state.applyOwnAccess)
   const [selectedProfile, setSelectedProfile] = useState<ManagedProfile | null>(null)
+  const [role, setRole] = useState<AppRole>('solicitante')
+  const [areaId, setAreaId] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState<'todos' | 'sin_area' | AppRole>('todos')
 
   const refreshing = profiles.isRefetching || areas.isRefetching
 
-  async function assignArea(areaId: string | null) {
+  function openProfile(profile: ManagedProfile) {
+    setSelectedProfile(profile)
+    setRole(profile.role)
+    setAreaId(profile.areaId)
+  }
+
+  async function saveAccess() {
     if (!selectedProfile) return
 
+    if ((role === 'tecnico' || role === 'jefe_area') && !areaId) {
+      Alert.alert('Selecciona un área', 'Este rol necesita un área asignada.')
+      return
+    }
+    if (role === 'tecnico' && areas.data?.find((area) => area.id === areaId)?.kind !== 'tecnica') {
+      Alert.alert('Área inválida', 'Un técnico debe pertenecer a un área técnica.')
+      return
+    }
+
     try {
-      await mutation.mutateAsync({ userId: selectedProfile.id, areaId })
+      await mutation.mutateAsync({ userId: selectedProfile.id, role, areaId })
       const areaName = areas.data?.find((area) => area.id === areaId)?.name ?? null
-      applyOwnAreaAssignment(selectedProfile.id, areaId, areaName)
+      applyOwnAccess(selectedProfile.id, role, areaId, areaName)
       setSelectedProfile(null)
-    } catch {
-      Alert.alert('No fue posible asignar el área', 'Comprueba tus permisos y la conexión.')
+    } catch (error) {
+      Alert.alert(
+        'No fue posible guardar el acceso',
+        error instanceof Error ? error.message : 'Comprueba tus permisos y la conexión.',
+      )
     }
   }
 
@@ -55,35 +81,68 @@ export function UsersScreen() {
 
   const loading = profiles.isLoading || areas.isLoading
   const error = profiles.error || areas.error
+  const filteredProfiles = (profiles.data ?? []).filter((item) => {
+    const matchesFilter =
+      filter === 'todos' || (filter === 'sin_area' ? !item.areaId : item.role === filter)
+    return (
+      matchesFilter &&
+      item.fullName.toLocaleLowerCase('es').includes(search.trim().toLocaleLowerCase('es'))
+    )
+  })
 
   return (
-    <SafeAreaView edges={['bottom']} style={styles.safeArea}>
+    <ScreenContainer edges={['bottom']} padded={false}>
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>ADMINISTRACIÓN</Text>
-          <Text accessibilityRole="header" style={styles.title}>
-            Usuarios
+          <Text style={styles.subtitle}>
+            Administra el rol y el área de los miembros de tu empresa.
           </Text>
-          <Text style={styles.subtitle}>Asigna el área principal de cada usuario registrado.</Text>
         </View>
+        <TextInput
+          accessibilityLabel="Buscar usuarios"
+          onChangeText={setSearch}
+          placeholder="Buscar por nombre"
+          style={styles.search}
+          value={search}
+        />
+        <ScrollView
+          horizontal
+          style={styles.filterScroll}
+          contentContainerStyle={styles.filterRow}
+          showsHorizontalScrollIndicator={false}
+        >
+          {(['todos', 'sin_area', ...APP_ROLES] as const).map((value) => (
+            <Chip
+              key={value}
+              label={
+                value === 'todos' ? 'Todos' : value === 'sin_area' ? 'Sin área' : ROLE_LABELS[value]
+              }
+              selected={filter === value}
+              onPress={() => setFilter(value)}
+            />
+          ))}
+        </ScrollView>
 
         {loading ? (
-          <View style={styles.center}>
-            <ActivityIndicator color={colors.primary} size="large" />
-          </View>
+          <SkeletonList />
         ) : error ? (
-          <View style={styles.center}>
-            <Text style={styles.errorText}>No fue posible cargar los usuarios y las áreas.</Text>
-            <Pressable onPress={refresh} style={styles.retryButton}>
-              <Text style={styles.retryText}>Reintentar</Text>
-            </Pressable>
-          </View>
+          <RequestState
+            kind="error"
+            title="No fue posible cargar los usuarios y las áreas"
+            onRetry={refresh}
+          />
         ) : (
           <FlatList
             contentContainerStyle={styles.list}
-            data={profiles.data ?? []}
+            data={filteredProfiles}
             keyExtractor={(item) => item.id}
-            ListEmptyComponent={<Text style={styles.empty}>No hay usuarios registrados.</Text>}
+            ListEmptyComponent={
+              <EmptyState
+                title="No hay usuarios registrados"
+                message="Prueba con otro filtro o búsqueda."
+                variant="noResults"
+              />
+            }
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
@@ -92,24 +151,22 @@ export function UsersScreen() {
               />
             }
             renderItem={({ item }) => (
-              <Pressable
-                accessibilityLabel={`Asignar área a ${item.fullName}`}
-                onPress={() => setSelectedProfile(item)}
-                style={styles.card}
+              <Card
+                accessibilityLabel={`Editar acceso de ${item.fullName}`}
+                onPress={() => openProfile(item)}
+                contentStyle={styles.card}
               >
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{item.fullName.charAt(0).toUpperCase()}</Text>
-                </View>
+                <Avatar name={item.fullName} id={item.id} size={44} />
                 <View style={styles.cardContent}>
                   <Text style={styles.name}>{item.fullName}</Text>
-                  <Text style={styles.role}>{ROLE_LABELS[item.role]}</Text>
+                  <Chip icon={ROLE_ICONS[item.role]} label={ROLE_LABELS[item.role]} />
                   <View style={styles.areaRow}>
-                    <Ionicons color={colors.primary} name="business-outline" size={15} />
+                    <Ionicons color={colors.textMuted} name="business-outline" size={15} />
                     <Text style={styles.areaName}>{item.areaName || 'Sin área asignada'}</Text>
                   </View>
                 </View>
                 <Ionicons color={colors.primary} name="chevron-forward" size={23} />
-              </Pressable>
+              </Card>
             )}
           />
         )}
@@ -125,38 +182,67 @@ export function UsersScreen() {
           <SafeAreaView edges={['bottom']} style={styles.modalCard}>
             <View style={styles.modalHeader}>
               <View style={styles.modalTitleGroup}>
-                <Text style={styles.modalTitle}>Asignar área</Text>
+                <Text style={styles.modalTitle}>Acceso del usuario</Text>
                 <Text style={styles.modalSubtitle}>{selectedProfile?.fullName}</Text>
               </View>
-              <Pressable accessibilityLabel="Cerrar" onPress={() => setSelectedProfile(null)}>
+              <Pressable
+                accessibilityLabel="Cerrar"
+                accessibilityRole="button"
+                onPress={() => setSelectedProfile(null)}
+                style={styles.closeButton}
+              >
                 <Ionicons color={colors.text} name="close" size={28} />
               </Pressable>
             </View>
             <FlatList
               contentContainerStyle={styles.areaOptions}
-              data={(areas.data ?? []).filter((area) => area.isActive)}
+              data={(areas.data ?? []).filter(
+                (area) =>
+                  (area.isActive || area.id === areaId) &&
+                  (role !== 'tecnico' || area.kind === 'tecnica'),
+              )}
               keyExtractor={(item) => item.id}
               ListHeaderComponent={
-                <AreaOption
-                  label="Sin área asignada"
-                  loading={mutation.isPending}
-                  onPress={() => void assignArea(null)}
-                  selected={selectedProfile?.areaId === null}
-                />
+                <View style={styles.areaOptions}>
+                  <Text style={styles.sectionLabel}>Rol</Text>
+                  {APP_ROLES.map((option) => (
+                    <AreaOption
+                      key={option}
+                      label={ROLE_LABELS[option]}
+                      loading={mutation.isPending}
+                      onPress={() => setRole(option)}
+                      selected={role === option}
+                    />
+                  ))}
+                  <Text style={styles.sectionLabel}>Área</Text>
+                  <AreaOption
+                    label="Sin área asignada"
+                    loading={mutation.isPending}
+                    onPress={() => setAreaId(null)}
+                    selected={areaId === null}
+                  />
+                </View>
               }
               renderItem={({ item }) => (
                 <AreaOption
-                  label={item.name}
+                  label={`${item.name} · ${item.kind === 'tecnica' ? 'Técnica' : 'Solicitante'}`}
                   loading={mutation.isPending}
-                  onPress={() => void assignArea(item.id)}
-                  selected={selectedProfile?.areaId === item.id}
+                  onPress={() => setAreaId(item.id)}
+                  selected={areaId === item.id}
                 />
               )}
+              ListFooterComponent={
+                <Button
+                  label="Guardar acceso"
+                  loading={mutation.isPending}
+                  onPress={() => void saveAccess()}
+                />
+              }
             />
           </SafeAreaView>
         </View>
       </Modal>
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 
@@ -186,43 +272,33 @@ function AreaOption({
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
   container: { flex: 1, gap: spacing.lg, padding: spacing.lg },
   header: { gap: spacing.xs },
-  eyebrow: { color: colors.primary, fontSize: 12, fontWeight: '800', letterSpacing: 1.2 },
-  title: { color: colors.text, fontSize: 28, fontWeight: '800' },
-  subtitle: { color: colors.textMuted, fontSize: 14, lineHeight: 20 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md },
-  errorText: { color: colors.error, fontWeight: '700', textAlign: 'center' },
-  retryButton: { borderRadius: radius.md, backgroundColor: colors.primary, padding: spacing.md },
-  retryText: { color: colors.white, fontWeight: '700' },
-  list: { gap: spacing.md, paddingBottom: spacing.xl },
-  empty: { color: colors.textMuted, paddingTop: spacing.xl, textAlign: 'center' },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
+  subtitle: { ...typography.body, color: colors.textMuted },
+  search: {
+    minHeight: 48,
+    paddingHorizontal: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.md,
     backgroundColor: colors.surface,
-    padding: spacing.md,
+    color: colors.text,
   },
-  avatar: {
-    width: 48,
-    height: 48,
+  filterScroll: { flexGrow: 0, flexShrink: 0, minHeight: 52 },
+  filterRow: { flexDirection: 'row', gap: spacing.sm, paddingVertical: spacing.xs },
+  closeButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  list: { gap: spacing.md, paddingBottom: spacing.xl },
+  card: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 24,
-    backgroundColor: colors.primarySoft,
+    gap: spacing.md,
+    minHeight: 88,
   },
-  avatarText: { color: colors.primary, fontSize: 19, fontWeight: '800' },
   cardContent: { flex: 1, gap: spacing.xs },
-  name: { color: colors.text, fontSize: 16, fontWeight: '800' },
-  role: { color: colors.textMuted, fontSize: 12 },
+  name: { ...typography.heading, color: colors.text },
   areaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  areaName: { color: colors.primary, fontSize: 13, fontWeight: '700' },
-  modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(23, 43, 77, 0.42)' },
+  areaName: { ...typography.caption, color: colors.textMuted },
+  modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.backdrop },
   modalCard: {
     maxHeight: '75%',
     borderTopLeftRadius: radius.lg,
@@ -238,9 +314,10 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   modalTitleGroup: { flex: 1, gap: spacing.xs },
-  modalTitle: { color: colors.text, fontSize: 21, fontWeight: '800' },
-  modalSubtitle: { color: colors.textMuted, fontSize: 13 },
+  modalTitle: { ...typography.title, color: colors.text },
+  modalSubtitle: { ...typography.caption, color: colors.textMuted },
   areaOptions: { gap: spacing.sm, padding: spacing.lg, paddingBottom: spacing.xl },
+  sectionLabel: { ...typography.heading, color: colors.text },
   areaOption: {
     minHeight: 54,
     flexDirection: 'row',
@@ -252,5 +329,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   areaOptionSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-  areaOptionText: { flex: 1, color: colors.text, fontSize: 15, fontWeight: '700' },
+  areaOptionText: { ...typography.body, flex: 1, color: colors.text },
 })

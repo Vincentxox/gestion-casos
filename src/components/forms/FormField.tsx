@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useState } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, type TextInputProps, View } from 'react-native'
 
-import { colors, radius, spacing } from '@/theme/tokens'
+import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 interface FormFieldProps extends TextInputProps {
   label: string
@@ -56,9 +56,8 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   label: {
+    ...typography.caption,
     color: colors.text,
-    fontSize: 14,
-    fontWeight: '600',
   },
   inputContainer: {
     minHeight: 50,
@@ -70,10 +69,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   input: {
+    ...typography.body,
     minHeight: 48,
     flex: 1,
     color: colors.text,
-    fontSize: 16,
     paddingHorizontal: spacing.md,
   },
   visibilityButton: {
@@ -86,7 +85,7 @@ const styles = StyleSheet.create({
     borderColor: colors.error,
   },
   error: {
+    ...typography.caption,
     color: colors.error,
-    fontSize: 12,
   },
 })

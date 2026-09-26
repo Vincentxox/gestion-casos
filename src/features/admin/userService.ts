@@ -27,10 +27,15 @@ export async function listManagedProfiles(): Promise<ManagedProfile[]> {
   }))
 }
 
-export async function setManagedProfileArea(userId: string, areaId: string | null) {
-  const { error } = await supabase.rpc('set_user_area', {
+export async function setMemberAccess(
+  userId: string,
+  role: ManagedProfile['role'],
+  areaId: string | null,
+) {
+  const { error } = await supabase.rpc('set_member_access', {
     target_user_id: userId,
     new_area_id: areaId,
+    new_role: role,
   })
 
   if (error) throw error

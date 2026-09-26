@@ -9,14 +9,22 @@ import { ChangeCaseStatusScreen } from '@/features/cases/screens/ChangeCaseStatu
 import { CreateCaseScreen } from '@/features/cases/screens/CreateCaseScreen'
 import { EditCaseScreen } from '@/features/cases/screens/EditCaseScreen'
 import { HomeScreen } from '@/features/home/HomeScreen'
+import { useHomeSummary } from '@/features/home/useHomeSummary'
 import { AdministrationHomeScreen } from '@/features/admin/screens/AdministrationHomeScreen'
+import { AccessRequestsScreen } from '@/features/admin/screens/AccessRequestsScreen'
 import { UsersScreen } from '@/features/admin/screens/UsersScreen'
+import { InvitationsScreen } from '@/features/admin/screens/InvitationsScreen'
+import { OrganizationScreen } from '@/features/admin/screens/OrganizationScreen'
 import { AreasScreen } from '@/features/areas/screens/AreasScreen'
 import { hasPermission } from '@/features/auth/permissions'
 import { CategoriesScreen } from '@/features/categories/screens/CategoriesScreen'
 import { ProfileScreen } from '@/features/settings/ProfileScreen'
+import { ResourcesScreen } from '@/features/resources/screens/ResourcesScreen'
+import { CaseResourcesScreen } from '@/features/resources/screens/CaseResourcesScreen'
+import { CaseReportScreen } from '@/features/reports/screens/CaseReportScreen'
+import { ReportReviewScreen } from '@/features/reports/screens/ReportReviewScreen'
 import { useAuthStore } from '@/store/authStore'
-import { colors } from '@/theme/tokens'
+import { colors, typography } from '@/theme/tokens'
 
 import type { AdministrationStackParamList, MainStackParamList, MainTabParamList } from './types'
 
@@ -33,27 +41,42 @@ function CasesNavigator() {
         headerTintColor: colors.primary,
       }}
     >
-      <Stack.Screen component={CasesListScreen} name="Cases" options={{ title: 'Casos' }} />
+      <Stack.Screen component={CasesListScreen} name="Cases" options={{ headerShown: false }} />
       <Stack.Screen
         component={CreateCaseScreen}
         name="CreateCase"
-        options={{ title: 'Crear caso' }}
+        options={{ title: 'Nueva solicitud' }}
       />
       <Stack.Screen
         component={CaseDetailScreen}
         name="CaseDetail"
-        options={{ title: 'Detalle del caso' }}
+        options={{ title: 'Detalle de solicitud' }}
       />
-      <Stack.Screen component={EditCaseScreen} name="EditCase" options={{ title: 'Editar caso' }} />
+      <Stack.Screen
+        component={EditCaseScreen}
+        name="EditCase"
+        options={{ title: 'Editar solicitud' }}
+      />
       <Stack.Screen
         component={ChangeCaseStatusScreen}
         name="ChangeCaseStatus"
-        options={{ title: 'Cambiar estado' }}
+        options={{ title: 'Acciones' }}
       />
       <Stack.Screen
         component={AssignCaseScreen}
         name="AssignCase"
         options={{ title: 'Asignar personal' }}
+      />
+      <Stack.Screen
+        component={CaseResourcesScreen}
+        name="CaseResources"
+        options={{ title: 'Recursos utilizados' }}
+      />
+      <Stack.Screen component={CaseReportScreen} name="CaseReport" options={{ title: 'Reporte' }} />
+      <Stack.Screen
+        component={ReportReviewScreen}
+        name="ReportReview"
+        options={{ title: 'Revisar reporte' }}
       />
     </Stack.Navigator>
   )
@@ -86,7 +109,27 @@ function AdministrationNavigator() {
       <AdministrationStack.Screen
         component={CategoriesScreen}
         name="Categories"
-        options={{ title: 'Categorías' }}
+        options={{ title: 'Tipos de servicio' }}
+      />
+      <AdministrationStack.Screen
+        component={InvitationsScreen}
+        name="Invitations"
+        options={{ title: 'Invitaciones' }}
+      />
+      <AdministrationStack.Screen
+        component={OrganizationScreen}
+        name="Organization"
+        options={{ title: 'Mi empresa' }}
+      />
+      <AdministrationStack.Screen
+        component={ResourcesScreen}
+        name="Resources"
+        options={{ title: 'Recursos' }}
+      />
+      <AdministrationStack.Screen
+        component={AccessRequestsScreen}
+        name="AccessRequests"
+        options={{ title: 'Solicitudes de acceso' }}
       />
     </AdministrationStack.Navigator>
   )
@@ -101,7 +144,19 @@ const TAB_ICONS = {
 
 export function MainNavigator() {
   const role = useAuthStore((state) => state.profile?.role)
+  const organizationId = useAuthStore((state) => state.profile?.organizationId)
+  const home = useHomeSummary(Boolean(organizationId))
   const canManageAreas = hasPermission(role, 'areas.manage')
+  const caseTabTitle =
+    role === 'solicitante'
+      ? 'Mis solicitudes'
+      : role === 'tecnico'
+        ? 'Mis trabajos'
+        : role === 'jefe_area'
+          ? home.data?.area_kind === 'tecnica'
+            ? 'Bandeja'
+            : 'Solicitudes del área'
+          : 'Solicitudes'
 
   return (
     <Tab.Navigator
@@ -110,7 +165,7 @@ export function MainNavigator() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarHideOnKeyboard: true,
-        tabBarLabelStyle: { fontSize: 12, fontWeight: '700' },
+        tabBarLabelStyle: typography.caption,
         tabBarStyle: { borderTopColor: colors.border, backgroundColor: colors.surface },
         tabBarIcon: ({ color, focused, size }) => (
           <Ionicons color={color} name={TAB_ICONS[route.name][focused ? 1 : 0]} size={size} />
@@ -118,12 +173,15 @@ export function MainNavigator() {
       })}
     >
       <Tab.Screen component={HomeScreen} name="Home" options={{ title: 'Inicio' }} />
-      <Tab.Screen component={CasesNavigator} name="CasesTab" options={{ title: 'Casos' }} />
+      <Tab.Screen component={CasesNavigator} name="CasesTab" options={{ title: caseTabTitle }} />
       {canManageAreas ? (
         <Tab.Screen
           component={AdministrationNavigator}
           name="Administration"
-          options={{ title: 'Administrar' }}
+          options={{
+            title: 'Administrar',
+            tabBarBadge: home.data?.admin?.solicitudes_acceso_pendientes || undefined,
+          }}
         />
       ) : null}
       <Tab.Screen component={ProfileScreen} name="Profile" options={{ title: 'Perfil' }} />

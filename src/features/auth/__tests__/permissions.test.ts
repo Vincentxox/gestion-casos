@@ -21,13 +21,16 @@ describe('matriz RBAC', () => {
     expect(hasPermission('auditor', 'users.manage')).toBe(false)
   })
 
-  test('el visualizador puede consultar y crear casos', () => {
-    expect(getPermissions('visualizador')).toEqual(['cases.read', 'cases.create'])
-    expect(hasPermission('visualizador', 'cases.read')).toBe(true)
-    expect(hasPermission('visualizador', 'cases.create')).toBe(true)
-    expect(hasPermission('visualizador', 'cases.update')).toBe(false)
-    expect(hasPermission('visualizador', 'cases.assign')).toBe(false)
-    expect(hasPermission('visualizador', 'reports.read')).toBe(false)
+  test('el solicitante consulta, crea y edita solicitudes propias', () => {
+    expect(getPermissions('solicitante')).toEqual(['cases.read', 'cases.create', 'cases.update'])
+    expect(hasPermission('solicitante', 'cases.assign')).toBe(false)
+    expect(hasPermission('solicitante', 'reports.read')).toBe(false)
+  })
+
+  test('el jefe técnico revisa y asigna, pero el técnico no', () => {
+    expect(hasPermission('jefe_area', 'cases.review')).toBe(true)
+    expect(hasPermission('jefe_area', 'cases.assign')).toBe(true)
+    expect(hasPermission('tecnico', 'cases.assign')).toBe(false)
   })
 
   test('un usuario sin perfil no recibe permisos', () => {

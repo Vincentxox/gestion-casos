@@ -3,7 +3,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import type { CategoryRecord } from '@/features/categories/types'
-import { colors, radius, spacing } from '@/theme/tokens'
+import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 interface Props {
   categories: CategoryRecord[]
@@ -30,17 +30,20 @@ export function CategorySelectField({
 }: Props) {
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Categoría</Text>
+      <Text style={styles.label}>Tipo de servicio</Text>
       <Pressable
-        accessibilityHint="Abre el catálogo de categorías"
-        accessibilityLabel="Categoría"
+        accessibilityHint="Abre el catálogo de tipos de servicio"
+        accessibilityLabel="Tipo de servicio"
         accessibilityRole="button"
         disabled={disabled || loading}
         onPress={onOpen}
         style={[styles.selector, error ? styles.selectorError : null]}
       >
         <Text style={[styles.value, !value ? styles.placeholder : null]}>
-          {loading ? 'Cargando categorías…' : value || 'Selecciona una categoría'}
+          {loading
+            ? 'Cargando tipos de servicio…'
+            : categories.find((item) => item.id === value)?.name ||
+              'Selecciona un tipo de servicio'}
         </Text>
         <Ionicons color={colors.textMuted} name="chevron-down" size={22} />
       </Pressable>
@@ -53,7 +56,7 @@ export function CategorySelectField({
       <Modal animationType="slide" onRequestClose={onClose} transparent visible={open}>
         <SafeAreaView edges={['bottom']} style={styles.overlay}>
           <Pressable
-            accessibilityLabel="Cerrar categorías"
+            accessibilityLabel="Cerrar tipos de servicio"
             onPress={onClose}
             style={styles.backdrop}
           />
@@ -61,24 +64,31 @@ export function CategorySelectField({
             <View style={styles.sheetHeader}>
               <View style={styles.sheetTitleGroup}>
                 <Text accessibilityRole="header" style={styles.sheetTitle}>
-                  Seleccionar categoría
+                  Seleccionar tipo de servicio
                 </Text>
-                <Text style={styles.sheetSubtitle}>Elige una categoría activa del catálogo.</Text>
+                <Text style={styles.sheetSubtitle}>
+                  Elige el servicio que atenderá un área técnica.
+                </Text>
               </View>
-              <Pressable accessibilityLabel="Cerrar" hitSlop={8} onPress={onClose}>
+              <Pressable
+                accessibilityLabel="Cerrar"
+                accessibilityRole="button"
+                onPress={onClose}
+                style={styles.closeButton}
+              >
                 <Ionicons color={colors.text} name="close" size={28} />
               </Pressable>
             </View>
             <ScrollView contentContainerStyle={styles.options}>
               {categories.map((category) => {
-                const selected = category.name === value
+                const selected = category.id === value
                 return (
                   <Pressable
                     accessibilityRole="radio"
                     accessibilityState={{ checked: selected }}
                     key={category.id}
                     onPress={() => {
-                      onChange(category.name)
+                      onChange(category.id)
                       onClose()
                     }}
                     style={[styles.option, selected ? styles.optionSelected : null]}
@@ -103,7 +113,7 @@ export function CategorySelectField({
 
 const styles = StyleSheet.create({
   container: { gap: spacing.xs },
-  label: { color: colors.text, fontSize: 14, fontWeight: '600' },
+  label: { ...typography.body, color: colors.text },
   selector: {
     minHeight: 50,
     flexDirection: 'row',
@@ -116,9 +126,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   selectorError: { borderColor: colors.error },
-  value: { flex: 1, color: colors.text, fontSize: 16 },
+  value: { ...typography.body, flex: 1, color: colors.text },
   placeholder: { color: colors.textMuted },
-  error: { color: colors.error, fontSize: 12 },
+  error: { ...typography.caption, color: colors.error },
   overlay: { flex: 1, justifyContent: 'flex-end' },
   backdrop: {
     position: 'absolute',
@@ -145,8 +155,9 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
   },
   sheetTitleGroup: { flex: 1, gap: spacing.xs },
-  sheetTitle: { color: colors.text, fontSize: 22, fontWeight: '800' },
-  sheetSubtitle: { color: colors.textMuted, fontSize: 13, lineHeight: 18 },
+  sheetTitle: { ...typography.title, color: colors.text },
+  closeButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  sheetSubtitle: { ...typography.caption, color: colors.textMuted },
   options: { gap: spacing.sm, padding: spacing.lg, paddingBottom: spacing.xl },
   option: {
     minHeight: 68,
@@ -160,6 +171,6 @@ const styles = StyleSheet.create({
   },
   optionSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
   optionContent: { flex: 1, gap: spacing.xs },
-  optionName: { color: colors.text, fontSize: 15, fontWeight: '700' },
-  areaName: { color: colors.primary, fontSize: 12, fontWeight: '700' },
+  optionName: { ...typography.body, color: colors.text },
+  areaName: { ...typography.caption, color: colors.primary },
 })

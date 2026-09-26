@@ -1,5 +1,6 @@
 import type { Session } from '@supabase/supabase-js'
 
+import { queryClient } from '@/config/queryClient'
 import {
   getCurrentSession,
   resolveSessionProfile,
@@ -7,6 +8,7 @@ import {
   signInWithGoogle,
   signOut,
   signUp,
+  retryPendingInvitation,
 } from '@/features/auth/authService'
 import type { Profile } from '@/features/auth/types'
 
@@ -19,6 +21,7 @@ jest.mock('@/features/auth/authService', () => ({
   signInWithGoogle: jest.fn(),
   signOut: jest.fn(),
   signUp: jest.fn(),
+  retryPendingInvitation: jest.fn(),
 }))
 
 const mockGetCurrentSession = jest.mocked(getCurrentSession)
@@ -27,6 +30,7 @@ const mockSignIn = jest.mocked(signIn)
 const mockSignInWithGoogle = jest.mocked(signInWithGoogle)
 const mockSignOut = jest.mocked(signOut)
 const mockSignUp = jest.mocked(signUp)
+const mockRetryPendingInvitation = jest.mocked(retryPendingInvitation)
 
 const session = {
   user: { id: 'user-1' },
@@ -36,9 +40,11 @@ const profile: Profile = {
   id: 'user-1',
   fullName: 'Usuario',
   avatarUrl: null,
-  role: 'visualizador',
+  role: 'solicitante',
   areaId: null,
   areaName: null,
+  organizationId: 'org-1',
+  organizationName: 'Empresa',
 }
 
 describe('estado global de autenticación', () => {
@@ -218,5 +224,47 @@ describe('estado global de autenticación', () => {
       status: 'unauthenticated',
       initializationError: 'No fue posible cargar el perfil del usuario.',
     })
+  })
+
+  test('aplica el nuevo rol, área y nombre de empresa al propio perfil', () => {
+    useAuthStore.setState({ session, profile, status: 'authenticated' })
+    useAuthStore.getState().applyOwnAccess('otro', 'tecnico', 'area', 'Técnica')
+    expect(useAuthStore.getState().profile?.role).toBe('solicitante')
+    useAuthStore.getState().applyOwnAccess('user-1', 'tecnico', 'area', 'Técnica')
+    useAuthStore.getState().applyOrganizationName('Empresa nueva')
+    expect(useAuthStore.getState().profile).toMatchObject({
+      role: 'tecnico',
+      areaId: 'area',
+      organizationName: 'Empresa nueva',
+    })
+  })
+
+  test('reintenta la invitación únicamente con una sesión', async () => {
+    await expect(useAuthStore.getState().retryInvitation()).resolves.toBe(false)
+    expect(mockRetryPendingInvitation).not.toHaveBeenCalled()
+    useAuthStore.setState({
+      session,
+      profile: { ...profile, organizationId: null },
+      status: 'authenticated',
+    })
+    mockRetryPendingInvitation.mockResolvedValue(profile)
+    await expect(useAuthStore.getState().retryInvitation()).resolves.toBe(true)
+    expect(useAuthStore.getState().profile?.organizationId).toBe('org-1')
+  })
+
+  test('borra datos en caché al cambiar de usuario para no mostrar otra empresa', async () => {
+    queryClient.setQueryData(['cases'], [{ id: 'private' }])
+    useAuthStore.setState({ session, profile, status: 'authenticated' })
+    const anotherSession = { user: { id: 'user-2' } } as Session
+    mockResolveSessionProfile.mockResolvedValue({
+      ...profile,
+      id: 'user-2',
+      organizationId: 'org-2',
+    })
+
+    await useAuthStore.getState().applySession(anotherSession)
+
+    expect(queryClient.getQueryData(['cases'])).toBeUndefined()
+    expect(useAuthStore.getState().profile?.organizationId).toBe('org-2')
   })
 })

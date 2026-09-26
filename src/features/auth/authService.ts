@@ -20,6 +20,8 @@ interface ProfileRow {
   role: string
   area_id: string | null
   area: { name: string } | null
+  organization_id: string | null
+  organization: { name: string } | null
 }
 
 function isAppRole(value: string): value is AppRole {
@@ -38,6 +40,8 @@ function mapProfile(row: ProfileRow): Profile {
     role: row.role,
     areaId: row.area_id,
     areaName: row.area?.name ?? null,
+    organizationId: row.organization_id,
+    organizationName: row.organization?.name ?? null,
   }
 }
 
@@ -54,7 +58,9 @@ export async function getCurrentSession() {
 export async function getProfile(userId: string) {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, full_name, avatar_url, role, area_id, area:areas(name)')
+    .select(
+      'id, full_name, avatar_url, role, area_id, area:areas(name), organization_id, organization:organizations(name)',
+    )
     .eq('id', userId)
     .single<ProfileRow>()
 
@@ -160,5 +166,26 @@ export async function signOut() {
 }
 
 export async function resolveSessionProfile(session: Session | null) {
-  return session ? getProfile(session.user.id) : null
+  if (!session) return null
+  const profile = await getProfile(session.user.id)
+  if (profile.organizationId) return profile
+  try {
+    const { data, error } = await supabase.rpc('accept_pending_invitation')
+    if (error) throw error
+    return data ? getProfile(session.user.id) : profile
+  } catch (error) {
+    if (
+      error instanceof TypeError ||
+      (error instanceof Error && /fetch|network|conexi[oó]n|timeout/i.test(error.message))
+    ) {
+      return profile
+    }
+    throw error
+  }
+}
+
+export async function retryPendingInvitation(userId: string) {
+  const { error } = await supabase.rpc('accept_pending_invitation')
+  if (error) throw error
+  return getProfile(userId)
 }

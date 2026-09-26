@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
-import { PrimaryButton } from '@/components/buttons/PrimaryButton'
+import { Button } from '@/components/ui/Button'
+import { Icon } from '@/components/ui/Icon'
 import { FormField } from '@/components/forms/FormField'
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
 import { useCategories } from '@/features/categories/useCategories'
-import { colors, radius, spacing } from '@/theme/tokens'
+import { colors, radius, spacing, typography } from '@/theme/tokens'
+import { priorityMeta } from '@/theme/statusMeta'
 
 import { updateCaseSchema } from '../schemas'
 import type { CasePriority, UpdateCaseInput } from '../types'
@@ -23,7 +25,7 @@ interface Props {
 const emptyValues: UpdateCaseInput = {
   title: '',
   description: '',
-  category: '',
+  categoryId: '',
   location: '',
   priority: 'media',
 }
@@ -39,7 +41,7 @@ export function CaseForm({
   const [categorySelectorOpen, setCategorySelectorOpen] = useState(false)
   const categoriesQuery = useCategories()
   const availableCategories = (categoriesQuery.data ?? []).filter(
-    (category) => category.isActive || category.name === values.category,
+    (category) => category.isActive || category.id === values.categoryId,
   )
 
   function updateValue<Key extends keyof UpdateCaseInput>(key: Key, value: UpdateCaseInput[Key]) {
@@ -67,6 +69,26 @@ export function CaseForm({
 
   return (
     <KeyboardFormScrollView contentContainerStyle={styles.content}>
+      <Text style={styles.sectionTitle}>¿Qué necesitas?</Text>
+      <CategorySelectField
+        categories={availableCategories}
+        disabled={categoriesQuery.isError || availableCategories.length === 0}
+        error={errors.categoryId}
+        loading={categoriesQuery.isLoading}
+        onChange={(value) => updateValue('categoryId', value)}
+        onClose={() => setCategorySelectorOpen(false)}
+        onOpen={() => setCategorySelectorOpen(true)}
+        open={categorySelectorOpen}
+        value={values.categoryId}
+      />
+      {categoriesQuery.isError ? (
+        <Pressable accessibilityRole="button" onPress={() => void categoriesQuery.refetch()}>
+          <Text style={styles.catalogError}>
+            No se cargaron los tipos de servicio. Toca para reintentar.
+          </Text>
+        </Pressable>
+      ) : null}
+      <Text style={styles.sectionTitle}>Detalles</Text>
       <FormField
         error={errors.title}
         label="Título"
@@ -86,24 +108,6 @@ export function CaseForm({
         textAlignVertical="top"
         value={values.description}
       />
-      <CategorySelectField
-        categories={availableCategories}
-        disabled={categoriesQuery.isError || availableCategories.length === 0}
-        error={errors.category}
-        loading={categoriesQuery.isLoading}
-        onChange={(value) => updateValue('category', value)}
-        onClose={() => setCategorySelectorOpen(false)}
-        onOpen={() => setCategorySelectorOpen(true)}
-        open={categorySelectorOpen}
-        value={values.category}
-      />
-      {categoriesQuery.isError ? (
-        <Pressable onPress={() => void categoriesQuery.refetch()}>
-          <Text style={styles.catalogError}>
-            No se cargaron las categorías. Toca para reintentar.
-          </Text>
-        </Pressable>
-      ) : null}
       <FormField
         error={errors.location}
         label="Ubicación"
@@ -114,6 +118,9 @@ export function CaseForm({
       />
       <View style={styles.priorityGroup}>
         <Text style={styles.label}>Prioridad</Text>
+        <Text style={styles.priorityHint}>
+          Alta: detiene la operación. Media: requiere atención. Baja: puede programarse.
+        </Text>
         <View style={styles.priorityRow}>
           {PRIORITIES.map((priority) => (
             <Pressable
@@ -121,34 +128,42 @@ export function CaseForm({
               accessibilityState={{ checked: values.priority === priority }}
               key={priority}
               onPress={() => updateValue('priority', priority)}
-              style={[styles.priority, values.priority === priority ? styles.priorityActive : null]}
+              style={[
+                styles.priority,
+                values.priority === priority ? { borderColor: priorityMeta[priority].color } : null,
+              ]}
             >
-              <Text
-                style={[
-                  styles.priorityText,
-                  values.priority === priority ? styles.priorityTextActive : null,
-                ]}
-              >
-                {priority.charAt(0).toUpperCase() + priority.slice(1)}
+              <Icon
+                name={priorityMeta[priority].icon}
+                size="inline"
+                color={priorityMeta[priority].color}
+              />
+              <Text style={[styles.priorityText, { color: priorityMeta[priority].color }]}>
+                {priorityMeta[priority].label}
               </Text>
             </Pressable>
           ))}
         </View>
       </View>
-      <PrimaryButton label={submitLabel} loading={loading} onPress={() => void handleSubmit()} />
+      <Button label={submitLabel} loading={loading} onPress={() => void handleSubmit()} />
     </KeyboardFormScrollView>
   )
 }
 
 const styles = StyleSheet.create({
   content: { gap: spacing.md, padding: spacing.lg, paddingBottom: spacing.xl },
+  sectionTitle: { ...typography.heading, color: colors.text, marginTop: spacing.sm },
   multiline: { minHeight: 110, paddingTop: spacing.md },
-  catalogError: { color: colors.error, fontSize: 12, fontWeight: '600' },
+  catalogError: { ...typography.caption, color: colors.error },
   priorityGroup: { gap: spacing.sm },
-  label: { color: colors.text, fontSize: 14, fontWeight: '600' },
+  label: { ...typography.body, color: colors.text },
+  priorityHint: { ...typography.caption, color: colors.textMuted },
   priorityRow: { flexDirection: 'row', gap: spacing.sm },
   priority: {
     flex: 1,
+    flexDirection: 'row',
+    gap: spacing.xs,
+    justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.border,
@@ -156,7 +171,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     paddingVertical: 12,
   },
-  priorityActive: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-  priorityText: { color: colors.textMuted, fontWeight: '700' },
-  priorityTextActive: { color: colors.primary },
+  priorityText: { ...typography.body, color: colors.textMuted },
 })

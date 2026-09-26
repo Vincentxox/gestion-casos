@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'
 import { useMemo, useState } from 'react'
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   Modal,
@@ -14,8 +13,17 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
+import { CatalogActionSheet } from '@/components/actions/CatalogActionSheet'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { Chip } from '@/components/ui/Chip'
+import { IconTile } from '@/components/ui/IconTile'
+import { ScreenContainer } from '@/components/ui/ScreenContainer'
+import { EmptyState } from '@/components/feedback/EmptyState'
+import { RequestState } from '@/components/feedback/RequestState'
+import { SkeletonList } from '@/components/ui/SkeletonList'
 import { useAreas } from '@/features/areas/useAreas'
-import { colors, radius, spacing } from '@/theme/tokens'
+import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 import { CategoryForm } from '../components/CategoryForm'
 import type { CategoryInput, CategoryRecord } from '../types'
@@ -34,6 +42,7 @@ export function CategoriesScreen() {
   const activeMutation = useSetCategoryActive()
   const [areaFilter, setAreaFilter] = useState<string | null>(null)
   const [editing, setEditing] = useState<CategoryRecord | null>(null)
+  const [actionCategory, setActionCategory] = useState<CategoryRecord | null>(null)
   const [formVisible, setFormVisible] = useState(false)
 
   const filteredCategories = useMemo(
@@ -85,72 +94,54 @@ export function CategoriesScreen() {
   const loadError = categories.error || areas.error
 
   return (
-    <SafeAreaView edges={['bottom']} style={styles.safeArea}>
+    <ScreenContainer edges={['bottom']} padded={false}>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.headerText}>
-            <Text style={styles.eyebrow}>ADMINISTRACIÓN</Text>
-            <Text accessibilityRole="header" style={styles.title}>
-              Categorías
-            </Text>
-            <Text style={styles.subtitle}>Clasifica las solicitudes dentro de cada área.</Text>
-          </View>
-          <Pressable
-            accessibilityLabel="Crear categoría"
-            onPress={() => openForm()}
-            style={styles.addButton}
-          >
-            <Ionicons color={colors.white} name="add" size={25} />
-          </Pressable>
-        </View>
+        <Text style={styles.subtitle}>Define los servicios que atiende cada área técnica.</Text>
 
         <FlatList
           horizontal
           data={[
             { id: null, name: 'Todas' },
-            ...(areas.data ?? []).map(({ id, name }) => ({ id, name })),
+            ...(areas.data ?? [])
+              .filter((area) => area.kind === 'tecnica')
+              .map(({ id, name }) => ({ id, name })),
           ]}
           keyExtractor={(item) => item.id ?? 'all'}
           showsHorizontalScrollIndicator={false}
           style={styles.filterList}
           contentContainerStyle={styles.filters}
           renderItem={({ item }) => (
-            <Pressable
+            <Chip
+              label={item.name}
+              selected={areaFilter === item.id}
               onPress={() => setAreaFilter(item.id)}
-              style={[styles.filter, areaFilter === item.id ? styles.filterActive : null]}
-            >
-              <Text
-                style={[styles.filterText, areaFilter === item.id ? styles.filterTextActive : null]}
-              >
-                {item.name}
-              </Text>
-            </Pressable>
+            />
           )}
         />
 
         {loading ? (
-          <View style={styles.center}>
-            <ActivityIndicator color={colors.primary} size="large" />
-          </View>
+          <SkeletonList />
         ) : loadError ? (
-          <View style={styles.center}>
-            <Text style={styles.errorTitle}>No fue posible cargar las categorías</Text>
-            <Pressable
-              onPress={() => {
-                void categories.refetch()
-                void areas.refetch()
-              }}
-              style={styles.retry}
-            >
-              <Text style={styles.retryText}>Reintentar</Text>
-            </Pressable>
-          </View>
+          <RequestState
+            kind="error"
+            title="No fue posible cargar los tipos de servicio"
+            onRetry={() => {
+              void categories.refetch()
+              void areas.refetch()
+            }}
+          />
         ) : (
           <FlatList
             contentContainerStyle={styles.list}
             data={filteredCategories}
             keyExtractor={(item) => item.id}
-            ListEmptyComponent={<Text style={styles.empty}>No hay categorías para esta área.</Text>}
+            ListEmptyComponent={
+              <EmptyState
+                variant="noResults"
+                title="Sin tipos de servicio"
+                message="No hay tipos de servicio para esta área."
+              />
+            }
             refreshControl={
               <RefreshControl
                 refreshing={categories.isRefetching}
@@ -159,47 +150,52 @@ export function CategoriesScreen() {
               />
             }
             renderItem={({ item }) => (
-              <View style={[styles.card, !item.isActive ? styles.inactiveCard : null]}>
+              <Card contentStyle={styles.card} style={!item.isActive ? styles.inactiveCard : null}>
+                <IconTile icon="pricetag-outline" />
                 <View style={styles.cardContent}>
                   <View style={styles.nameRow}>
-                    <Text style={styles.categoryName}>{item.name}</Text>
-                    <Text
-                      style={[
-                        styles.badge,
-                        item.isActive ? styles.activeBadge : styles.inactiveBadge,
-                      ]}
-                    >
-                      {item.isActive ? 'Activa' : 'Inactiva'}
+                    <Text numberOfLines={2} style={styles.categoryName}>
+                      {item.name}
                     </Text>
+                    <Chip
+                      label={item.isActive ? 'Activa' : 'Inactiva'}
+                      tone={item.isActive ? 'success' : 'neutral'}
+                    />
                   </View>
                   <Text style={styles.areaName}>{item.areaName}</Text>
+                  {item.minAfterPhotos > 0 ? (
+                    <Text style={styles.areaName}>
+                      Pide {item.minAfterPhotos} foto{item.minAfterPhotos === 1 ? '' : 's'} de
+                      después
+                    </Text>
+                  ) : null}
                   <Text style={styles.description}>{item.description || 'Sin descripción'}</Text>
                 </View>
-                <View style={styles.actions}>
-                  <Pressable
-                    accessibilityLabel={`Editar ${item.name}`}
-                    onPress={() => openForm(item)}
-                    style={styles.iconButton}
-                  >
-                    <Ionicons color={colors.primary} name="pencil-outline" size={21} />
-                  </Pressable>
-                  <Pressable
-                    accessibilityLabel={`${item.isActive ? 'Desactivar' : 'Activar'} ${item.name}`}
-                    onPress={() => confirmStatus(item)}
-                    style={styles.iconButton}
-                  >
-                    <Ionicons
-                      color={item.isActive ? colors.error : colors.success}
-                      name={item.isActive ? 'pause-circle-outline' : 'checkmark-circle-outline'}
-                      size={23}
-                    />
-                  </Pressable>
-                </View>
-              </View>
+                <Pressable
+                  accessibilityLabel={`Opciones de ${item.name}`}
+                  accessibilityRole="button"
+                  onPress={() => setActionCategory(item)}
+                  style={styles.iconButton}
+                >
+                  <Ionicons color={colors.text} name="ellipsis-horizontal" size={23} />
+                </Pressable>
+              </Card>
             )}
           />
         )}
+        <View style={styles.floatingAction}>
+          <Button label="Nuevo tipo de servicio" icon="add" onPress={() => openForm()} />
+        </View>
       </View>
+
+      <CatalogActionSheet
+        name={actionCategory?.name ?? ''}
+        active={actionCategory?.isActive ?? false}
+        visible={actionCategory !== null}
+        onClose={() => setActionCategory(null)}
+        onEdit={() => actionCategory && openForm(actionCategory)}
+        onToggle={() => actionCategory && confirmStatus(actionCategory)}
+      />
 
       <Modal
         animationType="fade"
@@ -211,10 +207,11 @@ export function CategoriesScreen() {
           <SafeAreaView edges={['bottom']} style={styles.modalCard}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                {editing ? 'Editar categoría' : 'Nueva categoría'}
+                {editing ? 'Editar tipo de servicio' : 'Nuevo tipo de servicio'}
               </Text>
               <Pressable
                 accessibilityLabel="Cerrar formulario"
+                accessibilityRole="button"
                 onPress={() => setFormVisible(false)}
                 style={styles.iconButton}
               >
@@ -233,76 +230,31 @@ export function CategoriesScreen() {
           </SafeAreaView>
         </View>
       </Modal>
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
   container: { flex: 1, gap: spacing.md, padding: spacing.lg },
-  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  headerText: { flex: 1, gap: spacing.xs },
-  eyebrow: { color: colors.primary, fontSize: 12, fontWeight: '800', letterSpacing: 1.2 },
-  title: { color: colors.text, fontSize: 28, fontWeight: '800' },
-  subtitle: { color: colors.textMuted, fontSize: 14, lineHeight: 20 },
-  addButton: {
-    width: 48,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 24,
-    backgroundColor: colors.primary,
-  },
-  filterList: { flexGrow: 0, minHeight: 48 },
+  subtitle: { ...typography.body, color: colors.textMuted },
+  floatingAction: { position: 'absolute', right: spacing.lg, bottom: spacing.lg },
+  filterList: { flexGrow: 0, flexShrink: 0, minHeight: 52 },
   filters: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xs },
-  filter: {
-    minHeight: 40,
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 999,
-    backgroundColor: colors.surface,
-    paddingHorizontal: 13,
-    paddingVertical: 8,
-  },
-  filterActive: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-  filterText: { color: colors.textMuted, fontSize: 12, fontWeight: '700', lineHeight: 18 },
-  filterTextActive: { color: colors.primary },
-  list: { gap: spacing.md, paddingBottom: spacing.xl },
+  list: { gap: spacing.md, paddingBottom: 96 },
   card: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    padding: spacing.md,
+    minHeight: 88,
   },
   inactiveCard: { opacity: 0.7 },
   cardContent: { flex: 1, gap: spacing.xs },
-  nameRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm },
-  categoryName: { color: colors.text, fontSize: 16, fontWeight: '800' },
-  badge: {
-    overflow: 'hidden',
-    borderRadius: 999,
-    fontSize: 11,
-    fontWeight: '800',
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-  },
-  activeBadge: { color: colors.success, backgroundColor: colors.successSoft },
-  inactiveBadge: { color: colors.textMuted, backgroundColor: colors.background },
-  areaName: { color: colors.primary, fontSize: 12, fontWeight: '700' },
-  description: { color: colors.textMuted, fontSize: 13, lineHeight: 18 },
-  actions: { flexDirection: 'row' },
-  iconButton: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md },
-  errorTitle: { color: colors.error, fontWeight: '700', textAlign: 'center' },
-  retry: { borderRadius: radius.md, backgroundColor: colors.primary, padding: spacing.md },
-  retryText: { color: colors.white, fontWeight: '700' },
-  empty: { color: colors.textMuted, paddingTop: spacing.xl, textAlign: 'center' },
-  modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.38)' },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  categoryName: { ...typography.heading, color: colors.text, flex: 1, minWidth: 0 },
+  areaName: { ...typography.caption, color: colors.textMuted },
+  description: { ...typography.caption, color: colors.textMuted },
+  iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.backdrop },
   modalCard: {
     height: '78%',
     maxHeight: '90%',
@@ -318,6 +270,6 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     padding: spacing.lg,
   },
-  modalTitle: { color: colors.text, fontSize: 21, fontWeight: '800' },
+  modalTitle: { ...typography.title, color: colors.text },
   modalContent: { flexGrow: 1, padding: spacing.lg },
 })

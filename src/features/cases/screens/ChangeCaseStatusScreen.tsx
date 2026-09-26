@@ -1,19 +1,22 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { useState } from 'react'
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { FormField } from '@/components/forms/FormField'
+import { StatusBadge } from '@/components/badges/StatusBadge'
+import { RequestState } from '@/components/feedback/RequestState'
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
-import { PrimaryButton } from '@/components/buttons/PrimaryButton'
-import { hasPermission } from '@/features/auth/permissions'
+import { Button } from '@/components/ui/Button'
+import { Icon } from '@/components/ui/Icon'
 import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
-import { colors, radius, spacing } from '@/theme/tokens'
+import { colors, radius, spacing, typography } from '@/theme/tokens'
+import { actionMeta } from '@/theme/statusMeta'
 
 import { changeCaseStatusSchema } from '../schemas'
-import { CASE_STATUSES, type CaseStatus } from '../types'
-import { getStatusLabel } from '../caseService'
+import { getAvailableCaseActions } from '../casePermissions'
+import type { CaseAction } from '../types'
 import { useCaseDetail, useChangeCaseStatus } from '../useCases'
 
 type Props = NativeStackScreenProps<MainStackParamList, 'ChangeCaseStatus'>
@@ -22,28 +25,39 @@ export function ChangeCaseStatusScreen({ navigation, route }: Props) {
   const profile = useAuthStore((state) => state.profile)
   const detail = useCaseDetail(route.params.caseId)
   const mutation = useChangeCaseStatus(route.params.caseId)
-  const [status, setStatus] = useState<CaseStatus | null>(null)
+  const [action, setAction] = useState<CaseAction | null>(route.params.action ?? null)
   const [comment, setComment] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const canUpdate = hasPermission(profile?.role, 'cases.update')
-
-  if (!canUpdate) return <Message text="No tienes permiso para cambiar el estado." />
 
   if (detail.isLoading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={colors.primary} size="large" />
-      </View>
-    )
+    return <RequestState kind="loading" title="Cargando solicitud…" />
   }
 
-  if (!detail.data || detail.error) return <Message text="No fue posible cargar el caso." />
+  if (!detail.data || detail.error)
+    return (
+      <RequestState
+        kind="error"
+        title="No fue posible cargar la solicitud"
+        onRetry={() => void detail.refetch()}
+      />
+    )
 
-  const selectedStatus =
-    status ?? CASE_STATUSES.find((value) => value !== detail.data?.status) ?? null
+  const availableActions = getAvailableCaseActions(detail.data, profile).filter(
+    (item) => item !== 'asignar',
+  )
+  if (availableActions.length === 0)
+    return (
+      <RequestState
+        kind="empty"
+        title="No hay acciones disponibles para tu rol y el estado actual"
+      />
+    )
+
+  const selectedAction =
+    action && availableActions.some((item) => item === action) ? action : availableActions[0]!
 
   async function handleSubmit() {
-    const result = changeCaseStatusSchema.safeParse({ status: selectedStatus, comment })
+    const result = changeCaseStatusSchema.safeParse({ action: selectedAction, comment })
     if (!result.success) {
       const nextErrors: Record<string, string> = {}
       for (const issue of result.error.issues) nextErrors[String(issue.path[0])] ??= issue.message
@@ -51,19 +65,17 @@ export function ChangeCaseStatusScreen({ navigation, route }: Props) {
       return
     }
 
-    if (result.data.status === detail.data?.status) {
-      setErrors({ status: 'Selecciona un estado diferente al actual' })
-      return
-    }
-
     setErrors({})
     try {
       await mutation.mutateAsync(result.data)
-      Alert.alert('Estado actualizado', 'El cambio y su comentario quedaron registrados.', [
+      Alert.alert('Acción realizada', 'El cambio quedó registrado en el historial.', [
         { text: 'Entendido', onPress: () => navigation.goBack() },
       ])
-    } catch {
-      Alert.alert('No fue posible cambiar el estado', 'Comprueba tus permisos y la conexión.')
+    } catch (error) {
+      Alert.alert(
+        'No fue posible completar la acción',
+        error instanceof Error ? error.message : 'Comprueba tus permisos y la conexión.',
+      )
     }
   }
 
@@ -71,39 +83,49 @@ export function ChangeCaseStatusScreen({ navigation, route }: Props) {
     <SafeAreaView edges={['bottom']} style={styles.safeArea}>
       <KeyboardFormScrollView contentContainerStyle={styles.content}>
         <Text style={styles.currentLabel}>Estado actual</Text>
-        <Text style={styles.currentValue}>{getStatusLabel(detail.data.status)}</Text>
+        <StatusBadge status={detail.data.status} />
 
-        <Text style={styles.label}>Nuevo estado</Text>
+        <Text style={styles.label}>Acción</Text>
         <View style={styles.options}>
-          {CASE_STATUSES.map((value) => {
-            const isCurrent = value === detail.data?.status
-            const isSelected = value === selectedStatus
+          {availableActions.map((value) => {
+            const isSelected = value === selectedAction
             return (
               <Pressable
                 accessibilityRole="radio"
-                accessibilityState={{ checked: isSelected, disabled: isCurrent }}
-                disabled={isCurrent}
+                accessibilityState={{ checked: isSelected }}
                 key={value}
-                onPress={() => setStatus(value)}
-                style={[
-                  styles.option,
-                  isSelected ? styles.optionSelected : null,
-                  isCurrent ? styles.optionDisabled : null,
-                ]}
+                onPress={() => setAction(value)}
+                style={[styles.option, isSelected && styles.optionSelected]}
               >
-                <Text style={[styles.optionText, isSelected ? styles.optionTextSelected : null]}>
-                  {getStatusLabel(value)}
-                  {isCurrent ? ' (actual)' : ''}
-                </Text>
+                <Icon
+                  name={actionMeta[value].icon}
+                  color={['rechazar', 'cancelar'].includes(value) ? colors.error : colors.primary}
+                />
+                <View style={styles.optionContent}>
+                  <Text
+                    style={[
+                      styles.optionText,
+                      ['rechazar', 'cancelar'].includes(value) && styles.optionDanger,
+                    ]}
+                  >
+                    {actionMeta[value].label}
+                  </Text>
+                  <Text style={styles.optionDescription}>{actionMeta[value].description}</Text>
+                </View>
+                {isSelected ? <Icon name="checkmark-circle" color={colors.primary} /> : null}
               </Pressable>
             )
           })}
         </View>
-        {errors.status ? <Text style={styles.error}>{errors.status}</Text> : null}
+        {errors.action ? <Text style={styles.error}>{errors.action}</Text> : null}
 
         <FormField
           error={errors.comment}
-          label="Comentario del cambio"
+          label={
+            selectedAction === 'rechazar' || selectedAction === 'pausar'
+              ? 'Motivo obligatorio'
+              : 'Comentario (opcional)'
+          }
           maxLength={500}
           multiline
           onChangeText={setComment}
@@ -112,8 +134,9 @@ export function ChangeCaseStatusScreen({ navigation, route }: Props) {
           textAlignVertical="top"
           value={comment}
         />
-        <PrimaryButton
-          label="Confirmar cambio"
+        <Button
+          label={`Confirmar: ${actionMeta[selectedAction].label}`}
+          variant={['rechazar', 'cancelar'].includes(selectedAction) ? 'danger' : 'primary'}
           loading={mutation.isPending}
           onPress={() => void handleSubmit()}
         />
@@ -122,30 +145,16 @@ export function ChangeCaseStatusScreen({ navigation, route }: Props) {
   )
 }
 
-function Message({ text }: { text: string }) {
-  return (
-    <View style={styles.center}>
-      <Text style={styles.message}>{text}</Text>
-    </View>
-  )
-}
-
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: { gap: spacing.md, padding: spacing.lg, paddingBottom: spacing.xl },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.lg,
-    backgroundColor: colors.background,
-  },
-  message: { color: colors.textMuted, textAlign: 'center' },
-  currentLabel: { color: colors.textMuted, fontSize: 13, fontWeight: '700' },
-  currentValue: { color: colors.text, fontSize: 22, fontWeight: '800' },
-  label: { color: colors.text, fontSize: 14, fontWeight: '700' },
+  currentLabel: { ...typography.caption, color: colors.textMuted },
+  label: { ...typography.body, color: colors.text },
   options: { gap: spacing.sm },
   option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.md,
@@ -153,9 +162,10 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   optionSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-  optionDisabled: { opacity: 0.55 },
-  optionText: { color: colors.text, fontWeight: '700' },
-  optionTextSelected: { color: colors.primary },
-  error: { color: colors.error, fontSize: 12 },
+  optionContent: { flex: 1, gap: spacing.xs },
+  optionText: { ...typography.body, color: colors.text },
+  optionDanger: { color: colors.error },
+  optionDescription: { ...typography.caption, color: colors.textMuted },
+  error: { ...typography.caption, color: colors.error },
   comment: { minHeight: 120, paddingTop: spacing.md },
 })

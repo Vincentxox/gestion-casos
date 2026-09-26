@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'
 import { useState } from 'react'
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   Modal,
@@ -14,7 +13,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
-import { colors, radius, spacing } from '@/theme/tokens'
+import { CatalogActionSheet } from '@/components/actions/CatalogActionSheet'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { Chip } from '@/components/ui/Chip'
+import { IconTile } from '@/components/ui/IconTile'
+import { ScreenContainer } from '@/components/ui/ScreenContainer'
+import { EmptyState } from '@/components/feedback/EmptyState'
+import { RequestState } from '@/components/feedback/RequestState'
+import { SkeletonList } from '@/components/ui/SkeletonList'
+import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 import { AreaForm } from '../components/AreaForm'
 import type { AreaInput, AreaRecord } from '../types'
@@ -26,6 +34,7 @@ export function AreasScreen() {
   const updateMutation = useUpdateArea()
   const activeMutation = useSetAreaActive()
   const [editingArea, setEditingArea] = useState<AreaRecord | null>(null)
+  const [actionArea, setActionArea] = useState<AreaRecord | null>(null)
   const [formVisible, setFormVisible] = useState(false)
 
   function openForm(area?: AreaRecord) {
@@ -48,62 +57,50 @@ export function AreasScreen() {
   }
 
   function confirmStatus(area: AreaRecord) {
-    const action = area.isActive ? 'desactivar' : 'activar'
-    Alert.alert(
-      `${action.charAt(0).toUpperCase()}${action.slice(1)} área`,
-      `¿Deseas ${action} ${area.name}?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: action.charAt(0).toUpperCase() + action.slice(1),
-          style: area.isActive ? 'destructive' : 'default',
-          onPress: () => {
-            void activeMutation
-              .mutateAsync({ areaId: area.id, isActive: !area.isActive })
-              .catch(() => Alert.alert('No fue posible actualizar el área.'))
-          },
+    const action = area.isActive ? 'Desactivar' : 'Activar'
+    Alert.alert(`${action} área`, `¿Deseas ${action.toLocaleLowerCase('es-GT')} ${area.name}?`, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: action,
+        style: area.isActive ? 'destructive' : 'default',
+        onPress: () => {
+          void activeMutation
+            .mutateAsync({ areaId: area.id, isActive: !area.isActive })
+            .catch(() => Alert.alert('No fue posible actualizar el área.'))
         },
-      ],
-    )
+      },
+    ])
   }
 
   return (
-    <SafeAreaView edges={['bottom']} style={styles.safeArea}>
+    <ScreenContainer edges={['bottom']} padded={false}>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.headerText}>
-            <Text style={styles.eyebrow}>ADMINISTRACIÓN</Text>
-            <Text accessibilityRole="header" style={styles.title}>
-              Áreas
-            </Text>
-            <Text style={styles.subtitle}>Organiza los departamentos que atenderán los casos.</Text>
-          </View>
-          <Pressable
-            accessibilityLabel="Crear área"
-            onPress={() => openForm()}
-            style={styles.addButton}
-          >
-            <Ionicons color={colors.white} name="add" size={25} />
-          </Pressable>
-        </View>
+        <Text style={styles.subtitle}>
+          Organiza las áreas solicitantes y técnicas de tu empresa.
+        </Text>
 
         {isLoading ? (
-          <View style={styles.center}>
-            <ActivityIndicator color={colors.primary} size="large" />
-          </View>
+          <SkeletonList />
         ) : error ? (
-          <View style={styles.center}>
-            <Text style={styles.errorTitle}>No fue posible cargar las áreas</Text>
-            <Pressable onPress={() => void refetch()} style={styles.retry}>
-              <Text style={styles.retryText}>Reintentar</Text>
-            </Pressable>
-          </View>
+          <RequestState
+            kind="error"
+            title="No fue posible cargar las áreas"
+            onRetry={() => void refetch()}
+          />
         ) : (
           <FlatList
             contentContainerStyle={styles.list}
             data={data}
             keyExtractor={(item) => item.id}
-            ListEmptyComponent={<Text style={styles.empty}>Aún no hay áreas registradas.</Text>}
+            ListEmptyComponent={
+              <EmptyState
+                variant="firstUse"
+                title="Aún no hay áreas"
+                message="Crea la primera área para organizar las solicitudes."
+                action="Crear área"
+                onAction={() => openForm()}
+              />
+            }
             refreshControl={
               <RefreshControl
                 refreshing={isRefetching}
@@ -112,46 +109,48 @@ export function AreasScreen() {
               />
             }
             renderItem={({ item }) => (
-              <View style={[styles.card, !item.isActive ? styles.inactiveCard : null]}>
+              <Card contentStyle={styles.card} style={!item.isActive ? styles.inactiveCard : null}>
+                <IconTile icon="business-outline" />
                 <View style={styles.cardContent}>
                   <View style={styles.nameRow}>
-                    <Text style={styles.areaName}>{item.name}</Text>
-                    <Text
-                      style={[
-                        styles.badge,
-                        item.isActive ? styles.activeBadge : styles.inactiveBadge,
-                      ]}
-                    >
-                      {item.isActive ? 'Activa' : 'Inactiva'}
+                    <Text numberOfLines={2} style={styles.areaName}>
+                      {item.name}
                     </Text>
+                    <Chip
+                      label={item.isActive ? 'Activa' : 'Inactiva'}
+                      tone={item.isActive ? 'success' : 'neutral'}
+                    />
                   </View>
                   <Text style={styles.description}>{item.description || 'Sin descripción'}</Text>
+                  <Text style={styles.kind}>
+                    {item.kind === 'tecnica' ? 'Área técnica' : 'Área solicitante'}
+                  </Text>
                 </View>
-                <View style={styles.actions}>
-                  <Pressable
-                    accessibilityLabel={`Editar ${item.name}`}
-                    onPress={() => openForm(item)}
-                    style={styles.iconButton}
-                  >
-                    <Ionicons color={colors.primary} name="pencil-outline" size={21} />
-                  </Pressable>
-                  <Pressable
-                    accessibilityLabel={`${item.isActive ? 'Desactivar' : 'Activar'} ${item.name}`}
-                    onPress={() => confirmStatus(item)}
-                    style={styles.iconButton}
-                  >
-                    <Ionicons
-                      color={item.isActive ? colors.error : colors.success}
-                      name={item.isActive ? 'pause-circle-outline' : 'checkmark-circle-outline'}
-                      size={23}
-                    />
-                  </Pressable>
-                </View>
-              </View>
+                <Pressable
+                  accessibilityLabel={`Opciones de ${item.name}`}
+                  accessibilityRole="button"
+                  onPress={() => setActionArea(item)}
+                  style={styles.iconButton}
+                >
+                  <Ionicons color={colors.text} name="ellipsis-horizontal" size={23} />
+                </Pressable>
+              </Card>
             )}
           />
         )}
+        <View style={styles.floatingAction}>
+          <Button label="Nueva área" icon="add" onPress={() => openForm()} />
+        </View>
       </View>
+
+      <CatalogActionSheet
+        name={actionArea?.name ?? ''}
+        active={actionArea?.isActive ?? false}
+        visible={actionArea !== null}
+        onClose={() => setActionArea(null)}
+        onEdit={() => actionArea && openForm(actionArea)}
+        onToggle={() => actionArea && confirmStatus(actionArea)}
+      />
 
       <Modal
         animationType="fade"
@@ -165,6 +164,7 @@ export function AreasScreen() {
               <Text style={styles.modalTitle}>{editingArea ? 'Editar área' : 'Nueva área'}</Text>
               <Pressable
                 accessibilityLabel="Cerrar formulario"
+                accessibilityRole="button"
                 onPress={() => setFormVisible(false)}
                 style={styles.closeButton}
               >
@@ -182,60 +182,29 @@ export function AreasScreen() {
           </SafeAreaView>
         </View>
       </Modal>
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
   container: { flex: 1, gap: spacing.lg, padding: spacing.lg },
-  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  headerText: { flex: 1, gap: spacing.xs },
-  eyebrow: { color: colors.primary, fontSize: 12, fontWeight: '800', letterSpacing: 1.2 },
-  title: { color: colors.text, fontSize: 28, fontWeight: '800' },
-  subtitle: { color: colors.textMuted, fontSize: 14, lineHeight: 20 },
-  addButton: {
-    width: 48,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 24,
-    backgroundColor: colors.primary,
-  },
-  list: { gap: spacing.md, paddingBottom: spacing.xl },
+  subtitle: { ...typography.body, color: colors.textMuted },
+  floatingAction: { position: 'absolute', right: spacing.lg, bottom: spacing.lg },
+  list: { gap: spacing.md, paddingBottom: 96 },
   card: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    padding: spacing.md,
+    minHeight: 88,
   },
   inactiveCard: { opacity: 0.7 },
   cardContent: { flex: 1, gap: spacing.sm },
-  nameRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm },
-  areaName: { color: colors.text, fontSize: 17, fontWeight: '800' },
-  badge: {
-    overflow: 'hidden',
-    borderRadius: 999,
-    fontSize: 11,
-    fontWeight: '800',
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-  },
-  activeBadge: { color: colors.success, backgroundColor: colors.successSoft },
-  inactiveBadge: { color: colors.textMuted, backgroundColor: colors.background },
-  description: { color: colors.textMuted, fontSize: 13, lineHeight: 19 },
-  actions: { flexDirection: 'row' },
-  iconButton: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md },
-  errorTitle: { color: colors.error, fontSize: 16, fontWeight: '700', textAlign: 'center' },
-  retry: { borderRadius: radius.md, backgroundColor: colors.primary, padding: spacing.md },
-  retryText: { color: colors.white, fontWeight: '700' },
-  empty: { color: colors.textMuted, paddingTop: spacing.xl, textAlign: 'center' },
-  modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.38)' },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  areaName: { ...typography.heading, color: colors.text, flex: 1, minWidth: 0 },
+  description: { ...typography.caption, color: colors.textMuted },
+  kind: { ...typography.caption, color: colors.textMuted },
+  iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.backdrop },
   modalCard: {
     height: '72%',
     maxHeight: '86%',
@@ -251,7 +220,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     padding: spacing.lg,
   },
-  modalTitle: { color: colors.text, fontSize: 21, fontWeight: '800' },
-  closeButton: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
+  modalTitle: { ...typography.title, color: colors.text },
+  closeButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   modalContent: { flexGrow: 1, padding: spacing.lg },
 })

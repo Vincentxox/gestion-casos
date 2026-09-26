@@ -7,6 +7,7 @@ interface AreaRow {
   name: string
   description: string | null
   is_active: boolean
+  kind: AreaRecord['kind']
   created_at: string
   updated_at: string
 }
@@ -17,6 +18,7 @@ function mapArea(row: AreaRow): AreaRecord {
     name: row.name,
     description: row.description,
     isActive: row.is_active,
+    kind: row.kind,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -34,6 +36,7 @@ export async function createArea(input: AreaInput): Promise<AreaRecord> {
     .insert({
       name: input.name.trim(),
       description: input.description.trim() || null,
+      kind: input.kind,
     })
     .select('*')
     .single()
@@ -48,6 +51,7 @@ export async function updateArea(areaId: string, input: AreaInput): Promise<Area
     .update({
       name: input.name.trim(),
       description: input.description.trim() || null,
+      kind: input.kind,
     })
     .eq('id', areaId)
     .select('*')

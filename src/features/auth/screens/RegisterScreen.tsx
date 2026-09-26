@@ -3,14 +3,15 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { Controller, useForm } from 'react-hook-form'
 import { Alert, StyleSheet, Text, View } from 'react-native'
 
-import { PrimaryButton } from '@/components/buttons/PrimaryButton'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
 import { FormField } from '@/components/forms/FormField'
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
 import { getAuthErrorMessage } from '@/features/auth/authErrors'
 import { registrationSchema, type RegistrationInput } from '@/features/auth/schemas'
 import type { AuthStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
-import { colors, radius, spacing } from '@/theme/tokens'
+import { colors, spacing, typography } from '@/theme/tokens'
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Register'>
 
@@ -59,11 +60,11 @@ export function RegisterScreen({ navigation }: Props) {
           Crear cuenta
         </Text>
         <Text style={styles.subtitle}>
-          Completa tus datos. Tu rol será asignado de forma segura por un administrador.
+          Usa el correo al que recibiste la invitación. El administrador definirá tu rol y tu área.
         </Text>
       </View>
 
-      <View style={styles.card}>
+      <Card contentStyle={styles.card}>
         <Controller
           control={control}
           name="fullName"
@@ -137,8 +138,8 @@ export function RegisterScreen({ navigation }: Props) {
           )}
         />
 
-        <PrimaryButton label="Crear cuenta" loading={isSubmitting} onPress={() => void submit()} />
-      </View>
+        <Button label="Crear cuenta" loading={isSubmitting} onPress={() => void submit()} />
+      </Card>
     </KeyboardFormScrollView>
   )
 }
@@ -159,18 +160,14 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontSize: 28,
-    fontWeight: '800',
+    ...typography.display,
   },
   subtitle: {
     color: colors.textMuted,
-    fontSize: 15,
-    lineHeight: 22,
+    ...typography.body,
   },
   card: {
     gap: spacing.md,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
     padding: spacing.lg,
   },
 })

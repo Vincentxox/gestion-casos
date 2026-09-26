@@ -21,9 +21,12 @@ describe('esquemas de autenticación', () => {
 
   test.each([
     ['menos de ocho caracteres', 'Aa1!'],
+    ['sin minúscula', 'PASSWORD1!'],
     ['sin mayúscula', 'password1!'],
     ['sin número', 'Password!'],
     ['sin carácter especial', 'Password1'],
+    ['con espacio como único símbolo', 'Password1 '],
+    ['con letra no ASCII como único símbolo', 'Password1ñ'],
   ])('rechaza una contraseña %s', (_caseName, password) => {
     const result = registrationSchema.safeParse({
       fullName: 'Usuario de Prueba',
