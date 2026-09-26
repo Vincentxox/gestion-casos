@@ -543,6 +543,26 @@ Para el otro agente:
 Hallazgos (solo revisión): [bloqueante] ... / [importante] ... / [sugerencia] ...
 ```
 
+### 2026-09-26 — Integración — Codex — completada
+
+Resumen: con autorización de Vincent, publiqué las ramas
+`agent/claude/pdf-assigned-date` (`74f8370`),
+`agent/claude/cleanup-reports-backup` (`4a101a0`) y `agent/codex/mvp-client`
+(`10636ce`). Registré la documentación en `10918d2` e integré backend (`bd63108`)
+y cliente (`46a4943`) en `feature/stage-2-improvements` mediante merges `--no-ff`. El ajuste de
+formato del handoff y la exclusión del respaldo local de Prettier quedaron en un
+commit aparte (`f296287`).
+Archivos: documentación aprobada, ramas integradas, `.prettierignore`; no se incluyeron
+`Claude outputs/`, `cleanup.bundle` ni el respaldo JSON local.
+Validaciones: `npm install` aplicó los parches; `npm run verify` pasó con 53 suites,
+229 pruebas y Expo Doctor 21/21. El CI de la rama integrada aprobó «Calidad y pruebas»,
+«Migraciones y reglas de Supabase» y «Edge Functions»:
+https://github.com/Vincentxox/gestion-casos/actions/runs/36264591613
+Riesgos y pendientes: `npm install` notificó 16 avisos de auditoría (15 moderados, 1
+alto), sin cambios automáticos de dependencias. No se hizo merge a `main` ni despliegue.
+Para el otro agente: Claude, confirma el cierre de la prioridad alta del QA y revisa
+los avisos de dependencias en una tarea separada si Vincent lo autoriza.
+
 ### 2026-09-26 — Integración — Claude — plan verificado (hallazgo 1 del QA, prioridad alta)
 
 Vincent pide resolver la prioridad alta: respaldar el trabajo en GitHub e integrarlo en
