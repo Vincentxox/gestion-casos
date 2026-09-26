@@ -1,6 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
+import { useQueryClient } from '@tanstack/react-query'
 import { useState, type ReactNode } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Animated, { LinearTransition, useReducedMotion } from 'react-native-reanimated'
 
@@ -24,6 +25,7 @@ import { colors, spacing, typography } from '@/theme/tokens'
 import { actionMeta } from '@/theme/statusMeta'
 
 import { useCaseDetail, useCaseHistory } from '../useCases'
+import { refreshCaseDetail } from '../refreshCaseDetail'
 import { canEditCase, getAvailableCaseActions } from '../casePermissions'
 import { getSecondaryActionPresentation } from '../caseActionPresentation'
 import type { CaseAction } from '../types'
@@ -63,12 +65,23 @@ function DetailSection({ title, children }: { title: string; children: ReactNode
 
 export function CaseDetailScreen({ navigation, route }: Props) {
   const { caseId } = route.params
+  const queryClient = useQueryClient()
   const profile = useAuthStore((state) => state.profile)
   const detail = useCaseDetail(caseId)
   const history = useCaseHistory(caseId)
   const chiefs = useAreaChiefs()
   const [actionsVisible, setActionsVisible] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const reduceMotion = useReducedMotion()
+
+  async function refreshDetail() {
+    setRefreshing(true)
+    try {
+      await refreshCaseDetail(queryClient, caseId)
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   if (detail.isLoading) {
     return <RequestState kind="loading" title="Cargando solicitud…" />
@@ -104,7 +117,12 @@ export function CaseDetailScreen({ navigation, route }: Props) {
   }
   return (
     <SafeAreaView edges={['bottom']} style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => void refreshDetail()} />
+        }
+      >
         <Animated.View
           layout={reduceMotion ? undefined : LinearTransition.duration(250)}
           style={styles.heading}

@@ -16,6 +16,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import { BrandIntroScreen } from '@/components/branding/BrandIntroScreen'
 import { queryClient } from '@/config/queryClient'
+import { registerQueryLifecycle } from '@/config/queryLifecycle'
 import { AuthLoadingScreen } from '@/features/auth/screens/AuthLoadingScreen'
 import { PendingInvitationScreen } from '@/features/auth/screens/PendingInvitationScreen'
 import { CompleteNameScreen } from '@/features/settings/CompleteNameScreen'
@@ -117,6 +118,8 @@ export default function App() {
     PlusJakartaSans_700Bold,
     PlusJakartaSans_800ExtraBold,
   })
+
+  useEffect(() => registerQueryLifecycle(), [])
 
   return (
     <SafeAreaProvider>

@@ -87,6 +87,8 @@
       "^@/(.*)$": "<rootDir>/src/$1"
     },
     "collectCoverageFrom": [
+      "src/config/queryClient.ts",
+      "src/config/queryLifecycle.ts",
       "src/features/auth/authService.ts",
       "src/features/auth/authErrors.ts",
       "src/features/auth/permissions.ts",
@@ -103,6 +105,7 @@
       "src/features/cases/caseService.ts",
       "src/features/cases/caseListPresentation.ts",
       "src/features/cases/caseDateGroups.ts",
+      "src/features/cases/refreshCaseDetail.ts",
       "src/features/cases/schemas.ts",
       "src/features/photos/photoService.ts",
       "src/features/photos/imagePreparation.ts",
