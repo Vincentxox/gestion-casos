@@ -107,6 +107,7 @@ describe('servicio de autenticación', () => {
       options: {
         redirectTo: 'gestion-casos://auth/callback',
         skipBrowserRedirect: true,
+        queryParams: { prompt: 'select_account' },
       },
     })
     expect(auth.setSession).toHaveBeenCalledWith({
