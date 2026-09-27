@@ -10,6 +10,7 @@ import { StatusBadge } from '@/components/badges/StatusBadge'
 import { ActionSheet } from '@/components/actions/ActionSheet'
 import { Timeline } from '@/components/timeline/Timeline'
 import { RequestState } from '@/components/feedback/RequestState'
+import { OfflineBanner } from '@/components/feedback/OfflineBanner'
 import { ProgressTracker } from '@/components/progress/ProgressTracker'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -140,6 +141,8 @@ export function CaseDetailScreen({ navigation, route }: Props) {
             {new Date(item.createdAt).toLocaleDateString('es-GT')}
           </Text>
         </Animated.View>
+
+        <OfflineBanner />
 
         <Card style={styles.panel}>
           <ProgressTracker

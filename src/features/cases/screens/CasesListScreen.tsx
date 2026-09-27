@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { EmptyState } from '@/components/feedback/EmptyState'
+import { OfflineBanner } from '@/components/feedback/OfflineBanner'
 import { Button } from '@/components/ui/Button'
 import { Chip } from '@/components/ui/Chip'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
@@ -167,6 +168,7 @@ export function CasesListScreen({ navigation, route }: Props) {
         <Text accessibilityRole="header" style={styles.heading}>
           Solicitudes
         </Text>
+        <OfflineBanner />
         <View style={styles.toolbar}>
           <TextInput
             accessibilityLabel="Buscar casos"

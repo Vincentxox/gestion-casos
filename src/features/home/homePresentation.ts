@@ -189,7 +189,7 @@ export function getHomeTiles(profile: Profile, summary: HomeSummary): HomeTile[]
                   label: 'Por validar',
                   value: summary.inbox.reportes_por_validar,
                   icon: 'document-text-outline' as const,
-                  phase: 'nueva' as const,
+                  phase: 'revision' as const,
                   emphasis: true,
                 },
               ]
@@ -201,7 +201,7 @@ export function getHomeTiles(profile: Profile, summary: HomeSummary): HomeTile[]
                   label: 'Por aprobar',
                   value: summary.inbox.reportes_por_aprobar,
                   icon: 'checkmark-circle-outline' as const,
-                  phase: 'nueva' as const,
+                  phase: 'revision' as const,
                   emphasis: true,
                 },
               ]

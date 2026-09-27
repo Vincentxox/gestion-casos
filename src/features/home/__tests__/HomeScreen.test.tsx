@@ -51,6 +51,9 @@ jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
   useFocusEffect: jest.fn(),
 }))
+jest.mock('@react-native-community/netinfo', () => ({
+  useNetInfo: () => ({ isConnected: true, isInternetReachable: true }),
+}))
 jest.mock('@/store/authStore', () => ({
   useAuthStore: (selector: (state: { profile: Profile }) => Profile) =>
     selector({ profile: mockProfile }),
