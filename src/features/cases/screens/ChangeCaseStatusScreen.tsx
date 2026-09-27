@@ -94,7 +94,10 @@ export function ChangeCaseStatusScreen({ navigation, route }: Props) {
                 accessibilityRole="radio"
                 accessibilityState={{ checked: isSelected }}
                 key={value}
-                onPress={() => setAction(value)}
+                onPress={() => {
+                  setAction(value)
+                  setErrors({})
+                }}
                 style={[styles.option, isSelected && styles.optionSelected]}
               >
                 <Icon
