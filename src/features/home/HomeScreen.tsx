@@ -261,6 +261,7 @@ export function HomeScreen({ navigation }: Props) {
                     navigation.navigate('CasesTab', {
                       screen: 'CaseDetail',
                       params: { caseId: item.id },
+                      initial: false,
                     })
                   }
                 />

@@ -1,10 +1,12 @@
 import { fireEvent, render } from '@testing-library/react-native'
 
 import type { Profile } from '@/features/auth/types'
+import type { CaseRecord } from '@/features/cases/types'
 import type { HomeSummary } from '../homeService'
 import { HomeScreen } from '../HomeScreen'
 
 const mockNavigate = jest.fn()
+const mockCases: CaseRecord[] = []
 const mockProfile: Profile = {
   id: 'chief',
   fullName: 'Ana López',
@@ -64,7 +66,7 @@ jest.mock('../useHomeSummary', () => ({
 }))
 jest.mock('@/features/cases/useCases', () => ({
   useCases: () => ({
-    data: [],
+    data: mockCases,
     isLoading: false,
     isError: false,
     refetch: jest.fn(),
@@ -73,10 +75,53 @@ jest.mock('@/features/cases/useCases', () => ({
 
 beforeEach(() => {
   mockNavigate.mockClear()
+  mockCases.length = 0
   mockProfile.role = 'jefe_area'
   mockSummary.inbox.reportes_por_validar = 1
   mockSummary.inbox.reportes_por_aprobar = 0
   mockSummary.inbox.por_aceptar = 1
+})
+
+test('una solicitud reciente abre el detalle con regreso a la lista', async () => {
+  mockCases.push({
+    id: 'case-1',
+    caseNumber: 'CAS-2026-00001',
+    title: 'Fuga de agua',
+    description: 'Fuga en la bodega',
+    category: 'Plomería',
+    minAfterPhotos: 0,
+    categoryId: 'category',
+    requestingAreaId: 'requesting',
+    requestingAreaName: 'Administración',
+    targetAreaId: 'technical-area',
+    targetAreaName: 'Mantenimiento',
+    location: 'Bodega',
+    priority: 'media',
+    status: 'solicitado',
+    createdBy: 'creator',
+    assignedTo: null,
+    creatorName: 'Luis',
+    assigneeName: null,
+    createdAt: '2026-09-26T12:00:00Z',
+    updatedAt: '2026-09-26T12:00:00Z',
+  })
+  const props = {
+    navigation: { navigate: mockNavigate },
+    route: { key: 'Home', name: 'Home' },
+  } as unknown as Parameters<typeof HomeScreen>[0]
+  const screen = await render(<HomeScreen {...props} />)
+
+  fireEvent.press(
+    screen.getByRole('button', {
+      name: 'CAS-2026-00001, Fuga de agua, Solicitada, prioridad media',
+    }),
+  )
+
+  expect(mockNavigate).toHaveBeenCalledWith('CasesTab', {
+    screen: 'CaseDetail',
+    params: { caseId: 'case-1' },
+    initial: false,
+  })
 })
 
 test('el aviso por validar abre solicitudes en reporte enviado', async () => {
