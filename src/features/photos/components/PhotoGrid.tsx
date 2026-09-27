@@ -254,51 +254,55 @@ export function PhotoGrid({
       <Text style={styles.title}>
         Fotos de {label.toLowerCase()} · {confirmed.length} de 3
       </Text>
-      <View style={styles.row}>
-        {slots.map(({ confirmedPhoto, pendingPhoto, index }) =>
-          confirmedPhoto ? (
-            <ConfirmedTile
-              key={confirmedPhoto.id}
-              photo={confirmedPhoto}
-              label={`${label} ${index + 1}`}
-              onPress={() => setSelectedPhoto(confirmedPhoto)}
-              onOptions={editable ? () => setOptionsPhoto(confirmedPhoto) : undefined}
-            />
-          ) : pendingPhoto ? (
-            <View key={pendingPhoto.localId} style={styles.slot}>
-              <Image source={{ uri: pendingPhoto.thumbUri }} style={styles.image} />
-              <View style={styles.pendingOverlay}>
-                {offline && (pendingPhoto.status !== 'error' || pendingPhoto.retryOnReconnect) ? (
-                  <Text style={styles.pendingLabel}>Sin conexión; se subirá al reconectar</Text>
-                ) : pendingPhoto.status === 'error' ? (
-                  <Pressable
-                    accessibilityLabel={`Reintentar foto ${label} ${index + 1}`}
-                    onPress={() => void resume('manual', pendingPhoto.localId)}
-                    style={styles.pendingAction}
-                  >
-                    <Text style={styles.pendingLabel}>Error · Reintentar</Text>
-                  </Pressable>
-                ) : (
-                  <Text style={styles.pendingLabel}>Subiendo…</Text>
-                )}
+      {!editable && confirmed.length === 0 ? (
+        <Text style={styles.description}>Sin fotos de {label.toLowerCase()}</Text>
+      ) : (
+        <View style={styles.row}>
+          {slots.map(({ confirmedPhoto, pendingPhoto, index }) =>
+            confirmedPhoto ? (
+              <ConfirmedTile
+                key={confirmedPhoto.id}
+                photo={confirmedPhoto}
+                label={`${label} ${index + 1}`}
+                onPress={() => setSelectedPhoto(confirmedPhoto)}
+                onOptions={editable ? () => setOptionsPhoto(confirmedPhoto) : undefined}
+              />
+            ) : pendingPhoto ? (
+              <View key={pendingPhoto.localId} style={styles.slot}>
+                <Image source={{ uri: pendingPhoto.thumbUri }} style={styles.image} />
+                <View style={styles.pendingOverlay}>
+                  {offline && (pendingPhoto.status !== 'error' || pendingPhoto.retryOnReconnect) ? (
+                    <Text style={styles.pendingLabel}>Sin conexión; se subirá al reconectar</Text>
+                  ) : pendingPhoto.status === 'error' ? (
+                    <Pressable
+                      accessibilityLabel={`Reintentar foto ${label} ${index + 1}`}
+                      onPress={() => void resume('manual', pendingPhoto.localId)}
+                      style={styles.pendingAction}
+                    >
+                      <Text style={styles.pendingLabel}>Error · Reintentar</Text>
+                    </Pressable>
+                  ) : (
+                    <Text style={styles.pendingLabel}>Subiendo…</Text>
+                  )}
+                </View>
               </View>
-            </View>
-          ) : editable && confirmed.length + queued.length < 3 ? (
-            <Pressable
-              key={index}
-              accessibilityLabel={`Agregar foto de ${label.toLowerCase()}`}
-              accessibilityRole="button"
-              onPress={() => setPickerVisible(true)}
-              style={[styles.slot, styles.emptySlot]}
-            >
-              <Icon name="camera-outline" color={colors.primary} />
-              <Text style={styles.addLabel}>Agregar</Text>
-            </Pressable>
-          ) : (
-            <View key={index} style={[styles.slot, styles.emptySlot]} />
-          ),
-        )}
-      </View>
+            ) : editable && confirmed.length + queued.length < 3 ? (
+              <Pressable
+                key={index}
+                accessibilityLabel={`Agregar foto de ${label.toLowerCase()}`}
+                accessibilityRole="button"
+                onPress={() => setPickerVisible(true)}
+                style={[styles.slot, styles.emptySlot]}
+              >
+                <Icon name="camera-outline" color={colors.primary} />
+                <Text style={styles.addLabel}>Agregar</Text>
+              </Pressable>
+            ) : editable ? (
+              <View key={index} style={[styles.slot, styles.emptySlot]} />
+            ) : null,
+          )}
+        </View>
+      )}
       {queued
         .filter((photo) => photo.status === 'error')
         .map((photo) => (

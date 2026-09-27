@@ -231,7 +231,7 @@ export function CaseDetailScreen({ navigation, route }: Props) {
                   <Button
                     label={actionMeta[primaryAction].label}
                     icon={actionMeta[primaryAction].icon}
-                    variant="secondary"
+                    variant="text"
                     onPress={() => navigateAction(primaryAction)}
                   />
                 </View>
@@ -240,7 +240,7 @@ export function CaseDetailScreen({ navigation, route }: Props) {
                 <View style={styles.secondaryAction}>
                   <Button
                     label="Editar"
-                    variant="secondary"
+                    variant="text"
                     onPress={() => navigation.navigate('EditCase', { caseId })}
                   />
                 </View>
@@ -250,7 +250,11 @@ export function CaseDetailScreen({ navigation, route }: Props) {
                   <Button
                     label={actionMeta[secondaryPresentation.action].label}
                     icon={actionMeta[secondaryPresentation.action].icon}
-                    variant={secondaryPresentation.variant}
+                    variant={
+                      secondaryPresentation.variant === 'secondary'
+                        ? 'text'
+                        : secondaryPresentation.variant
+                    }
                     onPress={() => navigateAction(secondaryPresentation.action)}
                   />
                 </View>
@@ -260,7 +264,7 @@ export function CaseDetailScreen({ navigation, route }: Props) {
                   <Button
                     label="Más acciones"
                     icon="ellipsis-horizontal"
-                    variant="secondary"
+                    variant="text"
                     onPress={() => setActionsVisible(true)}
                   />
                 </View>

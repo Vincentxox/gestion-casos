@@ -153,7 +153,7 @@ export function CaseReportScreen({ navigation, route }: Props) {
     <SafeAreaView edges={['bottom']} style={styles.screen}>
       <KeyboardFormScrollView contentContainerStyle={styles.content}>
         <Text accessibilityRole="header" style={styles.title}>
-          Reporte · {item.caseNumber}
+          {item.caseNumber}
         </Text>
         {!canEdit ? (
           <Text style={styles.muted}>
@@ -261,7 +261,7 @@ export function CaseReportScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { gap: spacing.md, padding: spacing.lg, paddingBottom: spacing.xl },
-  title: { ...typography.title, color: colors.text },
+  title: { ...typography.caption, color: colors.textMuted },
   sectionTitle: { ...typography.heading, color: colors.text },
   card: { gap: spacing.md },
   field: { gap: spacing.xs },

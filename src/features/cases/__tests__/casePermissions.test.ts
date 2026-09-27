@@ -83,3 +83,13 @@ test('el asignado y el jefe técnico pueden pausar o reanudar', () => {
   expect(getAvailableCaseActions(item, null)).toEqual([])
   expect(canEditCase(item, null)).toBe(false)
 })
+
+test('editar desaparece desde que se envía el reporte', () => {
+  const admin = { ...profile, id: 'admin', role: 'administrador' as const }
+  const chief = { ...profile, id: 'chief', role: 'jefe_area' as const, areaId: 'technical' }
+  for (const status of ['reporte_enviado', 'validado', 'aprobado'] as const) {
+    expect(canEditCase({ ...item, status }, admin)).toBe(false)
+    expect(canEditCase({ ...item, status }, chief)).toBe(false)
+  }
+  expect(canEditCase({ ...item, status: 'en_ejecucion' }, admin)).toBe(true)
+})

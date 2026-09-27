@@ -66,3 +66,13 @@ test('la foto pendiente se actualiza al terminar la subida en segundo plano', as
     expect(screen.queryAllByText('Sin conexión; se subirá al reconectar')).toHaveLength(0),
   )
 })
+
+test('sin permiso de edición muestra un estado vacío sin casillas para agregar', async () => {
+  mockListPendingPhotos.mockResolvedValue([])
+  const screen = await render(
+    <PhotoGrid caseId="case" kind="despues" userId="tech" editable={false} />,
+  )
+
+  expect(screen.getByText('Sin fotos de después')).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Agregar foto de después' })).toBeNull()
+})
