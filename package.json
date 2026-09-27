@@ -91,6 +91,7 @@
       "src/config/queryLifecycle.ts",
       "src/features/auth/authService.ts",
       "src/features/auth/authErrors.ts",
+      "src/features/auth/confirmLogout.ts",
       "src/features/auth/permissions.ts",
       "src/features/auth/schemas.ts",
       "src/features/auth/accessService.ts",
