@@ -636,8 +636,11 @@ B. **Configuración de publicación.** Rama `agent/codex/release-config` desde
   cambia solo `app.json` y `eas.json` al identificador `com.nexocasos.app`, versiones
   remotas y perfil AAB de producción. Conserva scheme, slug, projectId y `preview` APK.
   `npm run verify` aprobó 255 pruebas y Expo Doctor 21/21. No se compiló producción.
-- Pendiente: PRs de V8 y release-config hacia `develop`; no hubo merge ni despliegue.
-  Vincent aún debe proteger `main` y `develop` en GitHub.
+- PR #2 (`agent/codex/v8-ui`) y PR #3 (`agent/codex/release-config`) apuntan a
+  `develop`; ninguno se fusionó. Se agregó `develop` a los disparadores de CI en
+  `.github/workflows/ci.yml`, porque antes no se ejecutaba CI de tipo PR hacia esa
+  rama. La comprobación de CI de PR quedará disponible cuando ese cambio se integre.
+  No hubo despliegue. Vincent aún debe proteger `main` y `develop` en GitHub.
 
 ### 2026-09-28 — V8 (`ab5e6ba`…`02ecbe3`) — Claude — revisión
 
