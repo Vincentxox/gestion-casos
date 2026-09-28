@@ -121,6 +121,18 @@ analizarán después.
   Java/Gradle: `Unable to establish loopback connection`; pendiente repetirla
   en un entorno con JDK funcional.
 
+- ID: Q-002
+  Tarea: correcciones autorizadas del QA (hallazgos 2, 3 y 6; E1 a E6) y ajustes V7,
+  incluida la decisión posterior sobre E7. T-908 sigue fuera del alcance.
+  Implementa: Codex
+  Revisa: Claude
+  Rama: agent/codex/qa-fixes (desde `94a9468`)
+  Archivos o contratos que bloquea: Jest, conexión/recarga del cliente, Google OAuth,
+  cola de fotos y pantallas de solicitudes.
+  Depende de: integración `94a9468`
+  Estado: Aprobado (28/09/2026; Claude revisó los dos commits de cierre y Vincent
+  aprobó la prueba de la APK). Pendiente integración en la rama de desarrollo.
+
 - ID: T-801
   Tarea: backend de solicitudes de acceso con código de empresa y resumen del Inicio por
   rol (C-005, C-006) e índices sugeridos por Supabase.
@@ -542,6 +554,294 @@ Riesgos y pendientes:
 Para el otro agente:
 Hallazgos (solo revisión): [bloqueante] ... / [importante] ... / [sugerencia] ...
 ```
+
+### 2026-09-28 — APK de `qa-fixes` — Vincent — aprobado
+
+Vincent aprobó la prueba de la APK generada desde `53c4973` y autorizó continuar con
+los pasos 3 a 5 de «Cierre de `qa-fixes` y paso a `main`»: integración en
+`feature/stage-2-improvements`, PR a `main`, merge con commit, etiqueta anotada
+`v0.9.0-mvp` y actualización de las copias locales. Sin despliegue ni T-908.
+
+### 2026-09-28 — `693389b` y `53c4973` — Claude — revisión
+
+Resultado: **Aprobados.**
+
+- **`693389b`:**
+  - `clearImageCaches` limpia la memoria y el disco de `expo-image` con
+    `Promise.allSettled`, así que un fallo nunca bloquea el cierre de sesión;
+  - se llama al cerrar sesión, al cambiar de usuario de sesión y al cambiar de empresa;
+  - además, `applySession` ahora toma la sesión y el perfil anteriores antes de
+    actualizarlos, lo que evita una comparación con valores ya reemplazados.
+- **`53c4973`:** `isPublicSupabaseKey` acepta solo `sb_publishable_…` o un JWT de tres
+  partes cuyo `role` decodificado sea `anon`. Rechaza `sb_secret_`, JWT de
+  `service_role` y cualquier otro valor. El decodificador base64url es propio y no
+  depende de `atob`. La clave del `.env` local es `sb_publishable_` y pasa el filtro.
+
+Siguiente paso: Vincent prueba la APK de `qa-fixes`. Con su visto bueno, Codex sigue con
+los pasos 3 a 5 de la entrada «Cierre de `qa-fixes` y paso a `main`».
+
+### 2026-09-28 — Cierre de `qa-fixes` — Codex — En revisión
+
+En `agent/codex/qa-fixes` publiqué dos commits independientes: `693389b` limpia la
+caché de memoria y disco de `expo-image` al cerrar sesión y al cambiar de usuario o
+empresa, incluso tras aceptar una invitación; los errores de limpieza no impiden cerrar
+sesión. `53c4973` acepta en `src/config/env.ts` solo claves `sb_publishable_…` o JWT
+heredados cuyo `role` decodificado sea `anon`; rechaza JWT `service_role` y claves
+opacas. Agregué pruebas en `authStore.test.ts` y `env.test.ts`, e incluí `env.ts` en
+la cobertura.
+
+Validaciones: `npm run verify` aprobado (255 pruebas, Expo Doctor 21/21),
+`npm run test:coverage` aprobado (global: 90,36 % sentencias; 83,99 % ramas;
+94,09 % funciones; 94,22 % líneas). Push de `agent/codex/qa-fixes` completado.
+APK `preview` solicitada desde `53c4973`; compilación en curso:
+https://expo.dev/accounts/vincentxox/projects/gestion-casos/builds/de4a86df-c1b5-41f1-adce-571ea10b8d67
+
+Riesgos y pendientes: Vincent debe instalarla y aprobar la prueba V7. La verificación
+de la clave JWT es un filtro de configuración, no una validación criptográfica; Supabase
+valida la credencial en el servidor. Quedan detenidos el merge, PR, etiqueta y despliegue
+hasta el visto bueno explícito. Para Claude: revisar ambos diffs y la prueba en Android.
+
+### 2026-09-28 — Cierre de `qa-fixes` y paso a `main` — Vincent — autorización
+
+Vincent autoriza, en este orden:
+
+1. **Cerrar `agent/codex/qa-fixes`** con dos commits, cada uno con sus pruebas:
+   - borrar la caché de `expo-image` (`clearMemoryCache` y `clearDiskCache`) al cerrar
+     sesión y al cambiar de empresa, sin bloquear el cierre si falla (entrada
+     «Caché»);
+   - endurecer `src/config/env.ts` para aceptar solo `sb_publishable_…` o un JWT con
+     `role: anon` (entrada «auditoría de `service_role`»).
+
+   Después, `npm run verify` y push.
+2. **APK** desde el último commit de `qa-fixes`. Vincent la prueba con el guion de V7.
+   Los pasos 3 a 5 solo se hacen **después del visto bueno de Vincent a esa prueba**.
+3. **Integrar en `feature/stage-2-improvements`:** `git merge --no-ff
+   agent/codex/qa-fixes`, `npm run verify`, push y CI en verde.
+4. **Pasar a `main`:** abrir un pull request de `feature/stage-2-improvements` a
+   `main`, esperar CI y hacer el merge con un commit de merge (sin squash ni rebase).
+   Luego crear la etiqueta anotada `v0.9.0-mvp` sobre el commit de merge en `main` y
+   subirla.
+5. **Actualizar las copias locales:** `git pull --ff-only` en `main` y en
+   `feature/stage-2-improvements`.
+
+Van a `main` todas las ramas ya integradas en `feature/stage-2-improvements` (backend
+de Claude y cliente de Codex) más `qa-fixes`. No van ramas nuevas ni T-908. Sin
+despliegue: Supabase ya está al día, y la APK es aparte. No se borran ramas remotas
+sin otra autorización.
+
+### 2026-09-28 — Caché — Claude — revisión
+
+Revisión de las capas de caché del cliente:
+
+- **React Query:** valores por defecto (`staleTime` 0, `gcTime` 5 min). Se refresca al
+  volver a la app y se vacía (`queryClient.clear()`) al cerrar sesión y al cambiar de
+  empresa. Correcto.
+- **URL firmadas de fotos:** `staleTime` de 4 min contra un vencimiento de 5 min.
+  Correcto.
+- **Imágenes (`expo-image`, `cachePolicy="disk"`, `cacheKey` = ruta):** correcto para
+  el rendimiento, pero **no se borran al cerrar sesión**.
+- **PDF compartido:** se descarga a `Paths.cache` y se borra en `finally`. Correcto.
+- **Cola de fotos pendientes:** `kv-store` y `Paths.document`, por usuario, y se
+  eliminan al subirse. Correcto.
+- **Sesión de Supabase:** almacenamiento seguro (`secureSessionStorage`). Correcto.
+
+Corrección recomendada (Codex, rama `agent/codex/qa-fixes`):
+
+- En `logout` y cuando cambia la empresa, después de `queryClient.clear()`, llamar a
+  `Image.clearMemoryCache()` e `Image.clearDiskCache()` de `expo-image`, sin bloquear
+  el cierre de sesión si fallan.
+- Así, en un teléfono compartido, no quedan en disco las fotos de otro usuario u otra
+  empresa.
+- Agregar una prueba con un mock.
+
+### 2026-09-28 — Seguridad — Claude — auditoría de `service_role` en la app
+
+Pedido de Vincent: comprobar que la clave `service_role` nunca esté en el código de la
+app. Resultado: **no está.**
+
+- **Historial completo de todas las ramas.** Ningún token JWT ni clave `sb_secret_` o
+  `sb_publishable_` real. Las únicas coincidencias son valores falsos de prueba en
+  `src/config/__tests__/env.test.ts`.
+- **Código actual (`origin/agent/codex/qa-fixes`).** `service_role` y
+  `SUPABASE_SERVICE_ROLE_KEY` aparecen solo en:
+  - la documentación;
+  - las pruebas SQL (rol de Postgres);
+  - `supabase/functions/_shared/clients.ts`, que la lee de `Deno.env` en el servidor
+    y nunca en la app.
+- **Archivos `.env` locales.** Nunca se rastrearon; `.gitignore` los excluye y solo
+  `.env.example` está en git. El `.env` de la carpeta principal contiene la URL y una
+  clave `sb_publishable_`.
+- **Configuración de compilación.** `app.json` y `eas.json` no tienen claves; la build
+  usa las variables del entorno `preview` de EAS.
+
+Mejora recomendada (Codex): endurecer `src/config/env.ts`. Hoy rechaza `sb_secret_` y
+el texto literal «service_role», pero una clave JWT antigua de `service_role` no
+contiene ese texto: está codificado en base64.
+
+- Aceptar solo claves `sb_publishable_…`, o un JWT cuyo `role` decodificado sea
+  `anon`.
+- Rechazar cualquier otro caso, con el mismo mensaje.
+- Agregar pruebas con un JWT `role: service_role`, uno `role: anon` y una clave
+  `sb_publishable_`.
+
+Pendiente para Vincent: en expo.dev, Environment variables del entorno `preview`,
+confirmar que solo existen `EXPO_PUBLIC_SUPABASE_URL` y
+`EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, y ninguna variable con `SERVICE_ROLE` ni
+`SECRET`.
+
+### 2026-09-27 — V7 (`50e27d7`…`8029ddd`) — Claude — revisión
+
+Resultado: **Aprobado** contra `docs/VISUAL_SYSTEM.md`, sección 11.
+
+- **Lista:** el espacio inferior de la lista se calcula con el alto real de la acción
+  flotante (`onLayout`).
+- **Detalle:**
+  - las acciones secundarias pasan a botón de texto;
+  - «Editar» se oculta en `reporte_enviado`, `validado` y `aprobado`, con prueba;
+  - con permiso, la `PhotoGrid` muestra solo las fotos existentes; si no hay, «Sin fotos
+    de …».
+- **Firma:**
+  - «Borrar» es botón de texto junto al lienzo;
+  - «Cancelar» y «Firmar» van en fila y del mismo ancho;
+  - la casilla usa `checkbox` / `square-outline`.
+- **Revisión:** título sin repetir (solo el número); las acciones van en fila.
+- **Requisitos:** `checkmark-circle` en `success` y `ellipse-outline`. No quedan ✓,
+  ○, ☐ ni ☑.
+- **Inicio:** los cuadros y chips del reporte usan `phaseColors.revision`; la campana
+  se quitó hasta T-908.
+- **Historial:** `actionMeta` tiene `enviar_reporte`, `validar_reporte`,
+  `devolver_reporte` y `aprobar_reporte`, con verbo e ícono.
+- **`OfflineBanner`:** aparece en el Inicio, la lista y el detalle, con
+  `accessibilityRole="alert"`.
+- **Cerrar sesión:** pide confirmación en Perfil, en Invitación pendiente y en
+  Completar nombre.
+
+Queda la prueba visual en Android: a 360 dp, la fila «Validar y firmar» / «Devolver»,
+la hoja de firma y la barra de acciones. Siguiente paso: una APK con
+`agent/codex/qa-fixes` (`8029ddd`) y luego la integración en
+`feature/stage-2-improvements`, las dos con autorización de Vincent.
+Vincent autoriza la APK (27/09). Integración: pendiente de su visto bueno tras la prueba.
+Codex inició la build Android `preview` de `8029ddd` en EAS (27/09), ID
+`bf04990f-d694-4ec4-b413-1ac6ab83d25f`; estado inicial `NEW`. Enlace:
+https://expo.dev/accounts/vincentxox/projects/gestion-casos/builds/bf04990f-d694-4ec4-b413-1ac6ab83d25f.
+La compilación continúa en EAS; no hubo merge ni despliegue.
+
+### 2026-09-27 — `agent/codex/qa-fixes` (`bbb4aa9`…`6cc9056`) — Claude — revisión
+
+Resultado: **Aprobado.** Los seis commits cubren los hallazgos 2, 3 y 6 y E1 a E6:
+
+- **`testTimeout: 15000`.**
+- **Google:** `prompt: 'select_account'`, con prueba.
+- **Consultas:**
+  - `focusManager` con `AppState` y `onlineManager` con NetInfo, que se limpian al
+    desmontar;
+  - `shouldRetryQuery` no reintenta errores 4xx, 22/23/28, 42501, PGRST116/301 ni
+    mensajes de permisos;
+  - «jalar para actualizar» en el detalle invalida la solicitud, el reporte y las fotos.
+- **Fotos:**
+  - `subscribePendingPhotos` refresca la `PhotoGrid` cuando cambia la cola, con un
+    contador de versión contra lecturas viejas;
+  - sin conexión muestra «Sin conexión; se subirá al reconectar».
+- **Acciones:** el error se limpia al cambiar de acción; la ubicación corta muestra
+  «Escribe al menos 3 caracteres».
+- **Progreso:** muestra «Validación» o «Aprobación» según el estado; al navegar desde
+  el Inicio se usa `initial: false`, así que aparece la flecha de regreso.
+
+Observación, sin cambio necesario: con `onlineManager`, las mutaciones sin conexión
+quedan en pausa y se envían al reconectar, en lugar de fallar. Es el comportamiento
+esperado, pero conviene verlo en la prueba en Android junto con el aviso sin conexión
+de V7.
+V7 sigue en curso en la misma rama.
+
+### 2026-09-27 — Q-002 — Codex — implementación para revisión
+
+Resumen: correcciones de QA 2, 3 y 6 y E1–E6, sin E7 ni T-908, en
+`agent/codex/qa-fixes` desde `94a9468`. Commits por tema: `bbb4aa9` (Jest),
+`6096e16` (selección de cuenta Google), `1a86376` (AppState/NetInfo, reintentos y
+recarga del detalle), `cc67b48` (cola de fotos), `cfcb7ba` (comentario y ubicación)
+y `6cc9056` (regreso desde Inicio y progreso). No hubo merge ni despliegue.
+Validaciones: `npm run verify` correcto: TypeScript, ESLint, Prettier, 240 pruebas
+en 59 suites y Expo Doctor 21/21. Pruebas nuevas para cada corrección.
+Riesgos y pendientes: probar en teléfono físico la reconexión, subida de fotos y
+selección de cuenta Google; revisión de Claude. La autorización de V7 y E7 llegó
+después de esta entrega y se registra en la entrada siguiente. T-908 sigue fuera.
+Para el otro agente: Claude, revisar los seis commits y sus pruebas antes de integrar.
+
+### 2026-09-27 — V7 — Codex — implementación para revisión
+
+Resumen: ajustes de la sección 11 de `docs/VISUAL_SYSTEM.md` en la misma rama de QA.
+Se compactaron pantallas de solicitudes y reportes, el historial usa verbos propios,
+las señales de revisión son moradas, se oculta la campana sin pantalla y se confirma
+el cierre de sesión. «Editar» se oculta desde `reporte_enviado`.
+Archivos: pantallas de solicitudes, reportes, fotos, Inicio y perfil; componentes
+`SegmentedControl`, `OfflineBanner`, metadatos de acciones y pruebas. También se
+incluyen las dos actualizaciones documentales autorizadas en un commit aparte.
+Commits: `50e27d7` (pantallas y controles), `83030ad` (estados, historial y red)
+y `2a448dc` (confirmación al cerrar sesión); documentación en commit separado.
+Validaciones: `npm run verify` correcto: TypeScript, ESLint, Prettier, 248 pruebas
+en 62 suites y Expo Doctor 21/21. `npm run test:coverage` correcto: 94,67 %
+de líneas y 83,91 % de ramas globales.
+Riesgos y pendientes: revisión visual en Android de pantallas de 360 dp, barra fija y
+hoja de firma; T-908 no implementada. Sin merge ni despliegue.
+Para el otro agente: Claude, revisar especialmente las medidas táctiles y el contraste
+de los estados morados y de la franja sin conexión.
+
+### 2026-09-26 — V7 — Claude — especificación visual para `agent/codex/qa-fixes`
+
+Vincent aprueba sumar a las correcciones del QA los ajustes visuales V7, descritos en
+`docs/VISUAL_SYSTEM.md`, sección 11. Incluye:
+
+- la acción flotante que tapa la lista;
+- la barra fija del detalle;
+- la sección Reporte más compacta;
+- los títulos repetidos;
+- la hoja de firma;
+- las pestañas de filtro;
+- íconos en lugar de ✓, ○, ☐ y ☑;
+- el color morado de revisión;
+- los verbos del reporte en el historial;
+- la campana sin punto rojo;
+- el aviso sin conexión;
+- la confirmación al cerrar sesión;
+- ocultar «Editar» desde `reporte_enviado` (E7, decidido por Vincent).
+
+Para el otro agente: Codex, todo va en la misma rama `agent/codex/qa-fixes`, en commits
+por tema. Corre `npm run verify`, haz push de la rama y avisa para revisión. Sin merge ni
+despliegue.
+
+### 2026-09-26 — Correcciones del QA — Vincent — luz verde
+
+Vincent autoriza que Codex corrija los hallazgos de prioridad media y baja del QA, en
+una rama nueva `agent/codex/qa-fixes` creada desde `feature/stage-2-improvements`
+(`94a9468`). El detalle está en las entradas «QA en emulador — resultado» y «Google no
+deja cambiar de cuenta».
+
+- **Hallazgo 2:** `testTimeout` global de 15 s en Jest.
+- **Hallazgos 3 y 6:**
+  - `focusManager` con `AppState` y `onlineManager` con NetInfo;
+  - no reintentar errores 4xx ni de permisos;
+  - «jalar para actualizar» en el detalle.
+- **E1:** `prompt: 'select_account'` en el inicio de sesión con Google, con prueba.
+- **E2:** refrescar la cola de `PhotoGrid` cuando termina la reanudación en segundo
+  plano; mensaje «Sin conexión; se subirá al reconectar».
+- **E3 a E6:** error del comentario en Acciones, mensaje de ubicación corta, flecha de
+  regreso al abrir desde el Inicio, y texto del paso siguiente en el progreso.
+- **E7** (ocultar «Editar» con el reporte enviado): queda fuera hasta que Vincent
+  decida.
+- Commits pequeños por tema, `npm run verify`, push de la rama y aviso para revisión.
+  Sin merge ni despliegue. T-908 (avisos) va aparte.
+
+### 2026-09-26 — Integración — Claude — verificación
+
+Verificado en `origin/feature/stage-2-improvements` (`94a9468`):
+
+- incluye `agent/claude/cleanup-reports-backup`, `agent/claude/pdf-assigned-date` y
+  `agent/codex/mvp-client`, las tres también publicadas en GitHub;
+- tiene las 30 migraciones, iguales a las aplicadas en Supabase;
+- no incluye `Claude outputs/`, `cleanup.bundle` ni `backups/`, este último
+  ignorado en `.prettierignore` según `f296287`.
+
+Hallazgo 1 del QA (prioridad alta): **resuelto**.
 
 ### 2026-09-26 — Integración — Codex — completada
 

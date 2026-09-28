@@ -616,3 +616,78 @@ ajustes pequeños, que se hacen en un commit aparte antes de T-906 y T-907.
 4. **Solicitudes de acceso.** Las pestañas «Pendientes» y «Resueltas» usan un estilo propio:
    pasan a `SegmentedControl`. La lista vacía usa `EmptyState` («Todo al día · No hay
    solicitudes pendientes»).
+
+## 11. V7 — Ajustes tras el QA en el emulador (26/09/2026)
+
+Salen de la prueba del flujo completo en el emulador de Android y de la revisión del
+cliente. Van en la rama `agent/codex/qa-fixes`, junto con las correcciones del QA.
+
+### 11.1 Posición y espacio
+
+1. **La acción flotante tapa la lista.** En Solicitudes, «Nueva solicitud» cubre el final
+   de la última tarjeta (por ejemplo, el chip de prioridad). La lista reserva abajo un
+   `paddingBottom` igual a la altura del botón más `spacing.lg`.
+2. **Barra de acciones fija.** En el detalle, la acción principal y la secundaria
+   apiladas, más la barra de pestañas, ocupan casi un tercio de la pantalla. La
+   secundaria («Pausar trabajo», «Editar») pasa a botón de texto o comparte fila con la
+   principal. Nunca deben quedar más de dos filas fijas.
+3. **Sección Reporte del detalle.** Solo quien puede agregar fotos ve los espacios vacíos
+   de «Agregar». Los demás ven solo las fotos que existen. Si no hay fotos, una línea
+   «Sin fotos de antes» o «Sin fotos de después».
+4. **Títulos repetidos.** Si el encabezado ya dice «Revisar reporte» o «Reporte», el
+   título interno se quita y el número de la solicitud queda como subtítulo
+   (`typography.caption`, `textMuted`).
+
+### 11.2 Tamaños y consistencia
+
+5. **Hoja de firma.**
+   - «Borrar» pasa a botón de texto junto al lienzo, arriba a la derecha.
+   - «Cancelar» (secundario) y «Firmar» (principal) van en una fila, con el mismo
+     ancho.
+6. **Pestañas de filtro de Solicitudes.**
+   - Las no seleccionadas usan `typography.caption` en `colors.text` con el contador
+     en `textMuted`, no un texto más chico y tenue.
+   - Si no caben en 360 dp, se permite desplazamiento horizontal, nunca recortar.
+
+### 11.3 Colores e íconos
+
+7. **Íconos en lugar de símbolos de texto.**
+   - Los requisitos del reporte usan `checkmark-circle` en `colors.success` cuando se
+     cumplen y `ellipse-outline` en `textMuted` cuando falta, en lugar de ✓ y ○.
+   - El consentimiento de la firma usa `checkbox` y `square-outline` con
+     `accessibilityRole="checkbox"`, en lugar de ☐ y ☑.
+8. **Fase de revisión.**
+   - Los cuadros y avisos «Por validar» y «Por aprobar» del Inicio usan
+     `phaseColors.revision` (morado), igual que los chips «Reporte enviado» y
+     «Validada».
+   - «Por aceptar» y «Sin asignar» siguen con `nueva`.
+
+### 11.4 Cambios de comportamiento con impacto visual
+
+9. **Historial.** Las acciones del reporte tienen verbo propio en `actionMeta`:
+   - «firmó y envió el reporte»;
+   - «firmó la validación técnica»;
+   - «devolvió el reporte», mostrando el motivo como comentario;
+   - «firmó la conformidad».
+
+   Cada una con su ícono. Ya no se usa «cambió el estado a …».
+
+10. **Campana.**
+    - Hasta que exista T-908, sin punto rojo.
+    - Si no hay pantalla de avisos, se oculta.
+11. **Aviso sin conexión.** Una franja delgada bajo el encabezado, en `warningSoft` y
+    `warning`, con «Sin conexión. Los cambios se enviarán al reconectar.». Usa el mismo
+    estado de NetInfo que `onlineManager`.
+12. **Cerrar sesión.** Pide confirmación: «¿Cerrar sesión?», con «Cancelar» y «Cerrar
+    sesión».
+13. **«Editar» con el reporte enviado.** Decidido por Vincent: se oculta en
+    `reporte_enviado`, `validado` y `aprobado`.
+
+### 11.5 Criterios de aceptación
+
+- Ninguna tarjeta de lista queda tapada por la acción flotante.
+- En el detalle no hay más de dos filas fijas sobre la barra de pestañas.
+- No quedan ✓, ○, ☐ ni ☑ como texto en la interfaz.
+- El historial de una solicitud aprobada no contiene «cambió el estado a».
+- Las pruebas cubren: `actionMeta` de las acciones del reporte, la confirmación al
+  cerrar sesión, «Editar» oculto por estado y el aviso sin conexión.
