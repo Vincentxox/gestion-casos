@@ -7,19 +7,37 @@ import { colors, radius, spacing, typography } from '@/theme/tokens'
 interface FormFieldProps extends TextInputProps {
   label: string
   error?: string
+  required?: boolean
+  showCharacterCount?: boolean
 }
 
-export function FormField({ label, error, secureTextEntry, style, ...inputProps }: FormFieldProps) {
+export function FormField({
+  label,
+  error,
+  required = false,
+  showCharacterCount = false,
+  secureTextEntry,
+  style,
+  ...inputProps
+}: FormFieldProps) {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
   const canTogglePassword = secureTextEntry === true
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
+      <Text
+        accessibilityLabel={required ? `${label}, obligatorio` : undefined}
+        style={styles.label}
+      >
+        {label}
+        {required ? <Text style={styles.required}> *</Text> : null}
+      </Text>
       <View style={[styles.inputContainer, error ? styles.inputError : null]}>
         <TextInput
           {...inputProps}
-          accessibilityLabel={inputProps.accessibilityLabel ?? label}
+          accessibilityLabel={
+            inputProps.accessibilityLabel ?? (required ? `${label}, obligatorio` : label)
+          }
           accessibilityHint={error}
           autoCorrect={canTogglePassword ? false : inputProps.autoCorrect}
           secureTextEntry={canTogglePassword && !isPasswordVisible}
@@ -42,6 +60,11 @@ export function FormField({ label, error, secureTextEntry, style, ...inputProps 
           </Pressable>
         ) : null}
       </View>
+      {showCharacterCount && inputProps.maxLength ? (
+        <Text style={styles.count}>
+          {(inputProps.value ?? '').length} / {inputProps.maxLength}
+        </Text>
+      ) : null}
       {error ? (
         <Text accessibilityLiveRegion="polite" style={styles.error}>
           {error}
@@ -59,6 +82,8 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.text,
   },
+  required: { color: colors.error },
+  count: { ...typography.caption, color: colors.textMuted, textAlign: 'right' },
   inputContainer: {
     minHeight: 50,
     flexDirection: 'row',

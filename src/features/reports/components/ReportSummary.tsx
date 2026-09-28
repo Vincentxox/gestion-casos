@@ -1,5 +1,6 @@
+import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { useState } from 'react'
-import { Alert, StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
 import * as WebBrowser from 'expo-web-browser'
 
 import { Button } from '@/components/ui/Button'
@@ -89,7 +90,7 @@ export function ReportSummary({
     try {
       await WebBrowser.openBrowserAsync(await generateReportPdf(item.id))
     } catch (error) {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible descargar el PDF',
         error instanceof Error ? error.message : 'Inténtalo de nuevo.',
       )
@@ -104,7 +105,7 @@ export function ReportSummary({
     try {
       await shareReportPdf(item.id, item.caseNumber, current.versionNumber)
     } catch (error) {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible compartir el PDF',
         error instanceof Error ? error.message : 'Inténtalo de nuevo.',
       )

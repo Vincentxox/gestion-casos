@@ -1,15 +1,7 @@
+import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { Ionicons } from '@expo/vector-icons'
 import { useState } from 'react'
-import {
-  Alert,
-  FlatList,
-  Modal,
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native'
+import { FlatList, Modal, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
@@ -49,7 +41,7 @@ export function AreasScreen() {
       setFormVisible(false)
       setEditingArea(null)
     } catch {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible guardar el área',
         'Verifica que el nombre no esté repetido y vuelve a intentarlo.',
       )
@@ -58,18 +50,22 @@ export function AreasScreen() {
 
   function confirmStatus(area: AreaRecord) {
     const action = area.isActive ? 'Desactivar' : 'Activar'
-    Alert.alert(`${action} área`, `¿Deseas ${action.toLocaleLowerCase('es-GT')} ${area.name}?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: action,
-        style: area.isActive ? 'destructive' : 'default',
-        onPress: () => {
-          void activeMutation
-            .mutateAsync({ areaId: area.id, isActive: !area.isActive })
-            .catch(() => Alert.alert('No fue posible actualizar el área.'))
+    AppFeedback.show(
+      `${action} área`,
+      `¿Deseas ${action.toLocaleLowerCase('es-GT')} ${area.name}?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: action,
+          style: area.isActive ? 'destructive' : 'default',
+          onPress: () => {
+            void activeMutation
+              .mutateAsync({ areaId: area.id, isActive: !area.isActive })
+              .catch(() => AppFeedback.show('No fue posible actualizar el área.'))
+          },
         },
-      },
-    ])
+      ],
+    )
   }
 
   return (

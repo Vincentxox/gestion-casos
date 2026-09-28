@@ -691,3 +691,107 @@ cliente. Van en la rama `agent/codex/qa-fixes`, junto con las correcciones del Q
 - El historial de una solicitud aprobada no contiene «cambió el estado a».
 - Las pruebas cubren: `actionMeta` de las acciones del reporte, la confirmación al
   cerrar sesión, «Editar» oculto por estado y el aviso sin conexión.
+
+## 12. V8 — Solicitudes, diálogos y tarjetas (28/09/2026)
+
+Pedido por Vincent tras probar `v0.9.0-mvp`. Va en una rama nueva `agent/codex/v8-ui`
+creada desde `main`.
+
+### 12.1 Contadores de las pestañas de filtro
+
+- **Problema:**
+  - los números no quedan centrados dentro del círculo;
+  - «Pendientes» se ve más pequeño que las demás pestañas.
+- **Causas:**
+  - `SegmentedControl` usa `adjustsFontSizeToFit`, que reduce solo la etiqueta más
+    larga;
+  - el contador no tiene altura fija, y Plus Jakarta Sans en Android agrega relleno de
+    fuente.
+- **Corrección:**
+  - quitar `adjustsFontSizeToFit`: todas las etiquetas con el mismo tamaño y, si no
+    caben a 360 dp, desplazamiento horizontal (ya permitido en 11.2);
+  - contador con `minWidth: 22`, `height: 22`, `borderRadius: radius.pill`,
+    `alignItems` y `justifyContent: 'center'`;
+  - el texto del contador con `lineHeight` igual a su `fontSize`,
+    `includeFontPadding: false` y `textAlignVertical: 'center'`.
+
+### 12.2 Ligadura «fi» (se ve mal «Quitar filtros», «Perfil»)
+
+- **Problema:** Plus Jakarta Sans une «f» + «i» en una ligadura que en Android se ve
+  como un carácter extraño («filtros», «Perfil»).
+- **Corrección global:** desactivar ligaduras en el texto base. Primero con
+  `fontVariant: ['no-common-ligatures']` en `typography`. Si RN 0.86 no lo aplica en
+  Android, usar `letterSpacing: 0.1`, que en Android desactiva las ligaduras.
+- **Prueba:** buscar «filtros», «Perfil», «Firmar», «Oficina» en pantallas reales.
+
+### 12.3 Formulario «Nueva solicitud»
+
+- **Estado:** los cinco campos ya son obligatorios en la app y en la base de datos
+  (tipo de servicio, título de 5 a 120 caracteres, descripción de 10 a 2000,
+  ubicación de 3 a 180 y prioridad, que empieza en «Media»). Pero la pantalla no
+  marca cuáles son obligatorios.
+- **Corrección:**
+  - `FormField` y el selector reciben `required`; la etiqueta muestra « *» en
+    `colors.error`, con `accessibilityLabel` «<campo>, obligatorio»;
+  - el texto de arriba pasa a «Los campos con * son obligatorios.»;
+  - los contadores de título y descripción muestran `n / máx` como en el reporte;
+  - la sección Prioridad sigue visible sin quedar cortada detrás de la barra de
+    pestañas: el `KeyboardFormScrollView` reserva abajo el alto de la barra más
+    `spacing.lg`.
+
+### 12.4 Ventanas emergentes (rediseño)
+
+- **Problema:** las 72 llamadas a `Alert.alert` (22 archivos) usan el diálogo nativo
+  gris oscuro de Android, que no sigue el diseño de la app.
+- **Corrección:** dos componentes propios en `src/components/feedback/`, con un
+  proveedor en `App.tsx`:
+  - **`AppDialog` (confirmaciones y errores):**
+    - hoja centrada con fondo `colors.surface`, `radius.lg` y `elevation.md`;
+    - ícono de estado arriba (info, advertencia o peligro, con `phaseColors`);
+    - título en `typography.heading` y mensaje en `typography.body`;
+    - botones de la app en fila: secundario «Cancelar» y principal, o `danger` para
+      acciones destructivas como cerrar sesión, descartar o rechazar;
+    - se cierra con Atrás; `accessibilityViewIsModal`.
+  - **`AppToast` (confirmaciones breves de éxito):**
+    - franja inferior sobre la barra de pestañas, `colors.text` al 92 %, texto
+      blanco, ícono `checkmark-circle`;
+    - desaparece a los 3 s; `accessibilityLiveRegion="polite"`.
+- **API:**
+  - `useFeedback().confirm({ title, message, confirmLabel, tone })` devuelve una
+    promesa booleana;
+  - también `alert({ title, message })` y `toast(message)`, que mantiene la
+    vibración de `feedback.success`.
+- **Reemplazos:**
+  - éxitos como «Nombre actualizado», «Solicitud enviada», «Acción realizada»,
+    «Asignación actualizada», «Reporte enviado/validado/devuelto» y «Solicitud
+    aprobada y cerrada» pasan a `toast`;
+  - las confirmaciones (cerrar sesión, regenerar código, descartar foto, eliminar)
+    pasan a `confirm`;
+  - los errores pasan a `alert`;
+  - los permisos del sistema (cámara) siguen siendo nativos.
+- Al terminar no queda ningún `Alert.alert` en `src/`, salvo donde se justifique en
+  un comentario.
+
+### 12.5 Tarjeta de solicitud (`CaseCard`)
+
+- **Problema:** el avatar de la persona asignada está arriba, a la izquierda de la
+  columna de la flecha. La flecha va centrada verticalmente en otra columna, y los dos
+  no quedan alineados con el borde de la tarjeta.
+- **Corrección:**
+  - se quita la flecha, porque toda la tarjeta ya se puede tocar y tiene
+    `accessibilityRole="button"`;
+  - el avatar queda en la fila superior, alineado al borde derecho del contenido;
+  - si no hay asignado, en su lugar va el texto «Sin asignar»;
+  - los chips de estado y prioridad ocupan todo el ancho.
+- Las tarjetas del Inicio («Lo que te toca hoy») usan el mismo componente.
+
+### 12.6 Criterios de aceptación
+
+- A 360 dp y a 412 dp, todas las etiquetas de las pestañas tienen el mismo tamaño y los
+  números quedan centrados.
+- No se ve ninguna ligadura «fi».
+- Los campos obligatorios de «Nueva solicitud» muestran « *».
+- No queda ningún diálogo nativo gris, salvo los permisos del sistema.
+- En la tarjeta, el avatar queda alineado al borde derecho y no hay flecha.
+- Pruebas para `AppDialog` (confirmar, cancelar, Atrás), `AppToast`, `required` en
+  `FormField` y los contadores de `SegmentedControl`.

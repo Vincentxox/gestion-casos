@@ -1,15 +1,7 @@
+import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { Ionicons } from '@expo/vector-icons'
 import { useMemo, useState } from 'react'
-import {
-  Alert,
-  FlatList,
-  Modal,
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native'
+import { FlatList, Modal, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
@@ -63,7 +55,7 @@ export function CategoriesScreen() {
       setFormVisible(false)
       setEditing(null)
     } catch {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible guardar la categoría',
         'Verifica que el nombre no esté repetido dentro del área.',
       )
@@ -72,7 +64,7 @@ export function CategoriesScreen() {
 
   function confirmStatus(category: CategoryRecord) {
     const activate = !category.isActive
-    Alert.alert(
+    AppFeedback.show(
       `${activate ? 'Activar' : 'Desactivar'} categoría`,
       `¿Deseas ${activate ? 'activar' : 'desactivar'} ${category.name}?`,
       [
@@ -83,7 +75,7 @@ export function CategoriesScreen() {
           onPress: () => {
             void activeMutation
               .mutateAsync({ categoryId: category.id, isActive: activate })
-              .catch(() => Alert.alert('No fue posible actualizar la categoría.'))
+              .catch(() => AppFeedback.show('No fue posible actualizar la categoría.'))
           },
         },
       ],

@@ -55,13 +55,16 @@ export const fonts = {
   extrabold: 'PlusJakartaSans_800ExtraBold',
 } as const
 
+const noLigatures = { fontVariant: ['no-common-ligatures'] as ['no-common-ligatures'] }
+
 export const typography = {
-  display: { fontFamily: fonts.extrabold, fontSize: 28, lineHeight: 34 },
-  title: { fontFamily: fonts.bold, fontSize: 20, lineHeight: 26 },
-  heading: { fontFamily: fonts.bold, fontSize: 17, lineHeight: 22 },
-  body: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22 },
-  caption: { fontFamily: fonts.medium, fontSize: 13, lineHeight: 18 },
+  display: { ...noLigatures, fontFamily: fonts.extrabold, fontSize: 28, lineHeight: 34 },
+  title: { ...noLigatures, fontFamily: fonts.bold, fontSize: 20, lineHeight: 26 },
+  heading: { ...noLigatures, fontFamily: fonts.bold, fontSize: 17, lineHeight: 22 },
+  body: { ...noLigatures, fontFamily: fonts.regular, fontSize: 15, lineHeight: 22 },
+  caption: { ...noLigatures, fontFamily: fonts.medium, fontSize: 13, lineHeight: 18 },
   overline: {
+    ...noLigatures,
     fontFamily: fonts.bold,
     fontSize: 11,
     lineHeight: 14,

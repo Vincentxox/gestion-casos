@@ -130,8 +130,19 @@ analizarán después.
   Archivos o contratos que bloquea: Jest, conexión/recarga del cliente, Google OAuth,
   cola de fotos y pantallas de solicitudes.
   Depende de: integración `94a9468`
-  Estado: Aprobado (28/09/2026; Claude revisó los dos commits de cierre y Vincent
-  aprobó la prueba de la APK). Pendiente integración en la rama de desarrollo.
+  Estado: Integrado (28/09/2026; Claude revisó los dos commits de cierre y Vincent
+  aprobó la prueba de la APK). Merge `a676438` en la rama de desarrollo y PR #1
+  fusionado en `main` (`ab29ee0`).
+
+- ID: V8
+  Tarea: pulido de filtros, tipografía, formulario, diálogos y tarjetas según
+  `docs/VISUAL_SYSTEM.md`, sección 12.
+  Implementa: Codex
+  Revisa: Claude
+  Rama: agent/codex/v8-ui (desde `main`, `ab29ee0`)
+  Archivos o módulos: `src/components/`, `src/features/`, `src/theme/`, `App.tsx` y pruebas.
+  Estado: En revisión (28/09/2026). Implementado y verificado en la rama; pendiente
+  revisión visual en Android y revisión de Claude. Sin merge ni despliegue.
 
 - ID: T-801
   Tarea: backend de solicitudes de acceso con código de empresa y resumen del Inicio por
@@ -554,6 +565,223 @@ Riesgos y pendientes:
 Para el otro agente:
 Hallazgos (solo revisión): [bloqueante] ... / [importante] ... / [sugerencia] ...
 ```
+
+### 2026-09-28 — Ramas e identificador — Vincent — decisiones
+
+Vincent decide:
+
+1. descartar `agent/codex/mantenimiento-esquema-v3`;
+2. adoptar `main` como rama estable y `develop` como rama de integración;
+3. usar `com.nexocasos.app` como identificador definitivo.
+
+**Tareas para Codex:**
+
+A. **Ramas.** Solo operaciones de Git; no cambian código.
+
+1. Etiqueta anotada `archive/mantenimiento-esquema-v3` sobre `dc94a88`, con push, y
+   después borrar la rama remota `agent/codex/mantenimiento-esquema-v3`.
+2. Crear `develop` desde `main` (`ab29ee0`) y hacer push. Confirmar que
+   `feature/stage-2-improvements` ya está contenida en `main` y borrarla (local y
+   remota).
+3. Borrar las ramas remotas ya integradas en `main`: las 8 `agent/claude/*`,
+   `agent/codex/mvp-client`, `agent/codex/qa-fixes`,
+   `agent/codex/expo-sdk-patches`, `feature/authentication`,
+   `feature/case-management` y `feature/google-auth`. Antes de borrar cada una,
+   comprobar con `git merge-base --is-ancestor` que está en `main`; si alguna no lo
+   está, no borrarla y avisar.
+4. Documentar la estrategia en `AGENTS.md` y en `docs/AGENT_HANDOFF.md`:
+   - `main` es estable: solo recibe PR desde `develop`, con CI en verde y etiqueta
+     `vX.Y.Z`;
+   - `develop` es la rama de integración;
+   - las ramas `agent/<agente>/<tema>` salen de `develop`, llegan por PR a `develop`
+     y se borran al integrarse;
+   - las migraciones requieren revisión humana en el PR.
+5. `agent/codex/v8-ui` pasa a `develop` por PR; no se integra en `main`.
+
+B. **Configuración de publicación.** Rama `agent/codex/release-config` desde
+`develop`.
+
+1. En `app.json`, `android.package` y `ios.bundleIdentifier` pasan a
+   `com.nexocasos.app`.
+   - `scheme` (`gestion-casos`) no cambia, para no tocar la redirección de Google ya
+     configurada en Supabase.
+   - `slug` y `projectId` de EAS tampoco cambian.
+2. En `eas.json`:
+   - `cli.appVersionSource: "remote"`;
+   - perfil `production` con `android.buildType: "app-bundle"`, `autoIncrement: true`
+     y `environment: "production"`;
+   - `preview` se mantiene como APK interna.
+3. `npm run verify`, PR a `develop` y aviso para revisión. No se compila `production`
+   todavía.
+
+**Tareas para Vincent:**
+
+- Al instalar la APK con el identificador nuevo, Android la trata como otra app:
+  desinstalar primero la versión anterior.
+- En GitHub, _Settings → Branches_: proteger `main` y `develop` (PR obligatorio y CI
+  aprobado).
+
+### 2026-09-28 — Ramas y publicación — Codex — implementación para revisión
+
+- `archive/mantenimiento-esquema-v3` es una etiqueta anotada publicada sobre
+  `dc94a88`; la rama remota incompatible se borró después de verificar la etiqueta.
+- `develop` se creó desde `main` (`ab29ee0`) y está en GitHub. Se comprobó con
+  `git merge-base --is-ancestor` que `feature/stage-2-improvements` y las otras ramas
+  enumeradas estaban contenidas en `main` antes de borrarlas. La rama de etapa 2
+  también se borró localmente. `agent/codex/expo-sdk-patches` no existía en remoto:
+  no hubo nada que borrar allí; su copia local permanece.
+- Se documentó en `AGENTS.md` el flujo `main` estable / `develop` de integración,
+  PRs de `agent/*` hacia `develop` y revisión humana de migraciones.
+- `agent/codex/release-config` sale de `develop` (`ab29ee0`): commit `f7e33db`
+  cambia solo `app.json` y `eas.json` al identificador `com.nexocasos.app`, versiones
+  remotas y perfil AAB de producción. Conserva scheme, slug, projectId y `preview` APK.
+  `npm run verify` aprobó 255 pruebas y Expo Doctor 21/21. No se compiló producción.
+- PR #2 (`agent/codex/v8-ui`) y PR #3 (`agent/codex/release-config`) apuntan a
+  `develop`; ninguno se fusionó. Se agregó `develop` a los disparadores de CI en
+  `.github/workflows/ci.yml`, porque antes no se ejecutaba CI de tipo PR hacia esa
+  rama. El PR #2 ya inició su CI de PR; el PR #3 tiene CI de push aprobado, y el de
+  PR se ejecutará cuando el cambio del workflow llegue a `develop`.
+  `npm ci` informó 16 avisos de dependencias (15 moderados, 1 alto), sin cambios en el
+  lockfile ni actualización forzada. No hubo despliegue. Vincent aún debe proteger
+  `main` y `develop` en GitHub.
+
+### 2026-09-28 — V8 (`ab5e6ba`…`02ecbe3`) — Claude — revisión
+
+Resultado: **Aprobado** contra `docs/VISUAL_SYSTEM.md`, sección 12.
+
+- **12.1 Filtros:**
+  - se quitó `adjustsFontSizeToFit`;
+  - el contador mide 22 × 22 y está centrado, con `lineHeight` igual al tamaño de la
+    fuente, `includeFontPadding: false` y `textAlignVertical: 'center'`.
+- **12.2 Ligaduras:** `fontVariant: ['no-common-ligatures']` aplicado en toda la
+  tipografía, con prueba. **Falta confirmar en Android.** Si «fi» sigue unida, el
+  plan B de la especificación es `letterSpacing: 0.1`.
+- **12.3 Formulario:** `FormField` tiene `required` (« *» y etiqueta accesible) y los
+  contadores `n / máx` en el formulario de solicitud.
+- **12.4 Diálogos:**
+  - `AppFeedback.tsx` agrega `AppDialog` (`Modal` con `onRequestClose`,
+    `accessibilityViewIsModal`, tono con ícono y color) y `AppToast` (3 s,
+    `accessibilityLiveRegion="polite"`), con `useFeedback()`;
+  - queda **un solo** `Alert.alert` en `src/`: el permiso de cámara o galería con
+    «Abrir ajustes», justificado en un comentario según 12.4.
+- **12.5 `CaseCard`:** sin flecha; el avatar o «Sin asignar» queda en la fila
+  superior, alineado a la derecha; los chips se ajustan a la siguiente línea
+  (`flexWrap`).
+
+Siguiente paso: una APK de `agent/codex/v8-ui` para revisar en Android la ligadura, los
+filtros a 360 y 412 dp, los diálogos y las tarjetas. Siguen pendientes de Vincent las
+decisiones de la entrada «Revisión externa»: descartar esquema-v3, `main`/`develop` y el
+identificador de la app.
+
+### 2026-09-28 — Revisión externa del repositorio — Claude — verificación
+
+Vincent comparte observaciones externas. Resultado de verificarlas contra
+`origin/main` (`ab29ee0`) y Supabase:
+
+1. **«`main` solo tiene la plantilla»: ya no aplica.**
+   - `main` tiene todo el MVP (`v0.9.0-mvp`).
+   - De las 17 ramas remotas, 16 ya están en `main`.
+   - La única que no está es `agent/codex/mantenimiento-esquema-v3` (`dc94a88`,
+     23/09). Es un diseño paralelo anterior al modelo aprobado: esquema de
+     mantenimiento en español, rol coordinador, actividades y fotos de perfil, con 9
+     migraciones que nunca se aplicaron en remoto. Es incompatible con las 30
+     migraciones actuales.
+   - Recomendación: no integrarla. Archivarla con la etiqueta
+     `archive/mantenimiento-esquema-v3` y borrarla. Las ideas útiles (actividades,
+     fotos de perfil) pasan al backlog.
+   - Estrategia propuesta: `main` estable (solo por PR y con etiqueta); `develop` de
+     integración (renombrar `feature/stage-2-improvements`); ramas `agent/*` cortas
+     desde `develop`.
+2. **Revisión humana de migraciones: de acuerdo.** `reset_case_domain` fue
+   intencional, con respaldo y autorización, pero la regla aporta. Propuesta:
+   - un CODEOWNERS de `supabase/migrations/` que exija aprobación de Vincent en el PR;
+   - aplicar en remoto solo después del merge.
+3. **Tipos de Supabase: de acuerdo.** Hay 14 `as unknown as` y 27 `as …Row`.
+   - Generar `src/types/database.ts` y usar `createClient<Database>`.
+   - Quitar los casts por módulo.
+   - Agregar una verificación en CI de que los tipos están al día.
+4. **Push (T-908): de acuerdo.** Falta el registro del token y FCM. La configuración
+   de Firebase y de las credenciales de EAS la hace Vincent.
+5. **Dependencias sin uso: confirmado** (0 importaciones). Se quitan `expo-camera`,
+   `expo-document-picker`, `expo-local-authentication`, `i18next` y
+   `react-i18next`. `expo-notifications` se queda porque la necesita T-908.
+6. **`eas.json`: de acuerdo.**
+   - Agregar un perfil `production` con AAB.
+   - Usar `appVersionSource: "remote"` con `autoIncrement`.
+   - Decisión de Vincent: el identificador definitivo. Hoy es `com.gestioncasos.app`
+     y no coincide con la marca «Nexo Casos».
+7. **Cobertura: de acuerdo.** `collectCoverageFrom` lista 42 archivos de lógica y
+   servicios; hay que reportar aparte la cobertura de pantallas y hooks.
+8. **Mejoras menores:**
+   - `secureStorage`: **confirmado.** Borra los pedazos sobrantes antes de escribir
+     el contador; un cierre a mitad deja un contador viejo y cierra la sesión.
+     Orden correcto: escribir los pedazos, luego el contador, y al final borrar los
+     sobrantes.
+   - Pasar las pruebas SQL a `supabase start` + `supabase test db`: de acuerdo como
+     mejora. Requiere Docker en CI.
+9. **Documento de arquitectura:** no existe como tal. La frase desactualizada
+   («`Animated`… sin dependencias») está en `docs/MVP_PROGRESS.md:190`. Hay que
+   crear `docs/ARCHITECTURE.md` con:
+   - Expo, Reanimated, React Query y Zustand;
+   - Supabase: RLS, RPC, Storage, Edge Functions y cron;
+   - las pruebas SQL, ESLint/Prettier y CI;
+   - los 5 parches de `patch-package`.
+
+### 2026-09-28 — V8 — Claude — especificación (Solicitudes, diálogos y tarjetas)
+
+Vincent pide, tras probar `v0.9.0-mvp`:
+
+- centrar los números de los filtros;
+- corregir cómo se ve «filtros»;
+- revisar los campos obligatorios de «Nueva solicitud»;
+- rediseñar las ventanas emergentes;
+- alinear el avatar de la persona asignada en las tarjetas.
+
+Especificación en `docs/VISUAL_SYSTEM.md`, sección 12, con las causas encontradas en el
+código:
+
+- `SegmentedControl` usa `adjustsFontSizeToFit`, y el contador no tiene altura fija
+  ni `includeFontPadding: false`;
+- Plus Jakarta Sans une «fi» en una ligadura;
+- los cinco campos ya son obligatorios, pero la pantalla no los marca;
+- hay 72 `Alert.alert` nativos en 22 archivos;
+- en `CaseCard`, el avatar y la flecha van en columnas distintas.
+
+Para el otro agente: Codex, con la autorización de Vincent:
+
+- rama `agent/codex/v8-ui` desde `main` (`ab29ee0`);
+- commits por tema (12.1 a 12.5), `npm run verify`, push y aviso para revisión;
+- sin merge ni despliegue.
+
+### 2026-09-28 — V8 — Codex — entrega para revisión
+
+Implementadas las secciones 12.1–12.5 en `agent/codex/v8-ui`, desde `main`
+`ab29ee0`, en commits separados:
+
+- `ab5e6ba`: contadores y etiquetas de `SegmentedControl`;
+- `62944f7`: desactivación de ligaduras comunes en `typography`;
+- `f1f5fb6`: campos obligatorios y contadores de «Nueva solicitud»;
+- `118f600`: tarjeta sin flecha y avatar alineado;
+- `9660ab2`: diálogo y aviso de la app. Las confirmaciones existentes conservan sus
+  acciones mediante un adaptador; el permiso del sistema para fotos sigue nativo.
+
+`npm run verify` aprobó TypeScript, ESLint, Prettier, 264 pruebas y Expo Doctor
+21/21. Queda por confirmar en Android la ligadura «fi» y las medidas a 360 y 412 dp.
+No se hizo merge ni despliegue. Se solicita revisión de Claude.
+
+### 2026-09-28 — Q-002 y paso a `main` — Codex — completado
+
+Merge de `agent/codex/qa-fixes` en `feature/stage-2-improvements`: `a676438`.
+`npm run verify` aprobado (255 pruebas y Expo Doctor 21/21). Los tres trabajos de CI
+de la rama y del PR #1 aprobaron. PR #1 fusionado con commit de merge `ab29ee0`,
+sin squash ni rebase. La etiqueta anotada `v0.9.0-mvp` está publicada sobre ese
+commit. `git pull --ff-only` completado en `main` y
+`feature/stage-2-improvements`; los tres trabajos de CI de `main` también aprobaron.
+
+Riesgos y pendientes: T-908 sigue fuera, no hubo despliegue, y se conservaron las
+ramas. `Claude outputs/` y `cleanup.bundle` permanecen locales, sin seguimiento y
+fuera de los commits. Esta entrada del tablero queda sin commit para el siguiente
+ciclo de documentación; el código y la etiqueta publicados no dependen de ella.
 
 ### 2026-09-28 — APK de `qa-fixes` — Vincent — aprobado
 

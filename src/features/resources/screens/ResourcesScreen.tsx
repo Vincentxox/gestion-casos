@@ -1,15 +1,7 @@
+import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { Ionicons } from '@expo/vector-icons'
 import { useState } from 'react'
-import {
-  Alert,
-  FlatList,
-  Modal,
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native'
+import { FlatList, Modal, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
@@ -55,7 +47,7 @@ export function ResourcesScreen() {
       setFormVisible(false)
       setEditing(null)
     } catch (error) {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible guardar el recurso',
         error instanceof Error ? error.message : 'Comprueba la conexión y los datos.',
       )
@@ -63,7 +55,7 @@ export function ResourcesScreen() {
   }
 
   function toggle(resource: ResourceRecord) {
-    Alert.alert(
+    AppFeedback.show(
       `${resource.isActive ? 'Desactivar' : 'Activar'} recurso`,
       `¿Deseas cambiar la disponibilidad de ${resource.name}?`,
       [
@@ -74,7 +66,7 @@ export function ResourcesScreen() {
             void active
               .mutateAsync({ resourceId: resource.id, isActive: !resource.isActive })
               .catch((error) =>
-                Alert.alert(
+                AppFeedback.show(
                   'No fue posible actualizar el recurso',
                   error instanceof Error ? error.message : 'Comprueba la conexión.',
                 ),

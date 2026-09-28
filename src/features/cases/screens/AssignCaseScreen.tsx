@@ -1,7 +1,8 @@
+import { AppFeedback } from '@/components/feedback/AppFeedback'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs'
 import { useState } from 'react'
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Button } from '@/components/ui/Button'
@@ -52,16 +53,15 @@ export function AssignCaseScreen({ navigation, route }: Props) {
 
   async function handleSubmit() {
     if (!effectiveSelectedId || effectiveSelectedId === detail.data?.assignedTo) {
-      Alert.alert('Selecciona otra persona', 'Elige un técnico o jefe del área responsable.')
+      AppFeedback.show('Selecciona otra persona', 'Elige un técnico o jefe del área responsable.')
       return
     }
     try {
       await mutation.mutateAsync(effectiveSelectedId)
-      Alert.alert('Asignación actualizada', 'El responsable del caso se guardó correctamente.', [
-        { text: 'Entendido', onPress: () => navigation.goBack() },
-      ])
+      AppFeedback.toast('Asignación actualizada')
+      navigation.goBack()
     } catch {
-      Alert.alert('No fue posible asignar', 'Comprueba tus permisos y la conexión.')
+      AppFeedback.show('No fue posible asignar', 'Comprueba tus permisos y la conexión.')
     }
   }
 
