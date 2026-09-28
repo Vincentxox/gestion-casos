@@ -13,11 +13,11 @@
     "primaryColor": "#0868B7",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.gestioncasos.app",
+      "bundleIdentifier": "com.nexocasos.app",
       "buildNumber": "1"
     },
     "android": {
-      "package": "com.gestioncasos.app",
+      "package": "com.nexocasos.app",
       "versionCode": 1,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
