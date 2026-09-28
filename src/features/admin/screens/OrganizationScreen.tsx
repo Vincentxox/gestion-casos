@@ -1,6 +1,6 @@
+import { AppFeedback, useFeedback } from '@/components/feedback/AppFeedback'
 import { useState } from 'react'
-import { Alert, Modal, Share, StyleSheet, Text, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { Share, StyleSheet, Text } from 'react-native'
 
 import { Button } from '@/components/ui/Button'
 import { RequestState } from '@/components/feedback/RequestState'
@@ -10,7 +10,7 @@ import { ScreenContainer } from '@/components/ui/ScreenContainer'
 import { FormField } from '@/components/forms/FormField'
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
 import { useAuthStore } from '@/store/authStore'
-import { colors, radius, spacing, typography } from '@/theme/tokens'
+import { colors, spacing, typography } from '@/theme/tokens'
 
 import {
   useOrganization,
@@ -20,6 +20,7 @@ import {
 } from '../useOrganization'
 
 export function OrganizationScreen() {
+  const { confirm } = useFeedback()
   const organizationId = useAuthStore((state) => state.profile?.organizationId)
   const organization = useOrganization(organizationId)
   const rename = useRenameOrganization(organizationId ?? '')
@@ -27,31 +28,40 @@ export function OrganizationScreen() {
   const regenerate = useRegenerateOrganizationJoinCode()
   const applyOrganizationName = useAuthStore((state) => state.applyOrganizationName)
   const [draftName, setDraftName] = useState<string | null>(null)
-  const [confirmVisible, setConfirmVisible] = useState(false)
   const name = draftName ?? organization.data?.name ?? ''
   const nameChanged = Boolean(organization.data && name.trim() !== organization.data.name.trim())
 
   async function save() {
     if (name.trim().length < 2 || name.trim().length > 120) {
-      Alert.alert('Nombre inválido', 'Usa entre 2 y 120 caracteres.')
+      AppFeedback.show('Nombre inválido', 'Usa entre 2 y 120 caracteres.')
       return
     }
     try {
       const updated = await rename.mutateAsync(name)
       applyOrganizationName(updated.name)
       setDraftName(null)
-      Alert.alert('Empresa actualizada')
+      AppFeedback.toast('Empresa actualizada')
     } catch {
-      Alert.alert('No fue posible guardar', 'Comprueba tu conexión e inténtalo de nuevo.')
+      AppFeedback.show('No fue posible guardar', 'Comprueba tu conexión e inténtalo de nuevo.')
     }
   }
 
   async function confirmRegeneration() {
+    if (
+      !(await confirm({
+        title: 'Regenerar código',
+        message: 'Las personas con el código anterior ya no podrán usarlo. ¿Deseas continuar?',
+        confirmLabel: 'Regenerar código',
+        cancelLabel: 'Conservar código',
+        tone: 'danger',
+      }))
+    )
+      return
     try {
       await regenerate.mutateAsync()
-      setConfirmVisible(false)
+      AppFeedback.toast('Código regenerado')
     } catch (error) {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible regenerar',
         error instanceof Error ? error.message : 'Inténtalo de nuevo.',
       )
@@ -118,41 +128,12 @@ export function OrganizationScreen() {
                 variant="text"
                 destructive
                 loading={regenerate.isPending}
-                onPress={() => setConfirmVisible(true)}
+                onPress={() => void confirmRegeneration()}
               />
             </>
           )}
         </Card>
       </KeyboardFormScrollView>
-      <Modal
-        animationType="fade"
-        onRequestClose={() => setConfirmVisible(false)}
-        transparent
-        visible={confirmVisible}
-      >
-        <View style={styles.backdrop}>
-          <SafeAreaView edges={['bottom']} style={styles.confirmCard}>
-            <Text accessibilityRole="header" style={styles.codeTitle}>
-              Regenerar código
-            </Text>
-            <Text style={styles.hint}>
-              Las personas con el código anterior ya no podrán usarlo. ¿Deseas continuar?
-            </Text>
-            <Button
-              label="Regenerar código"
-              variant="danger"
-              loading={regenerate.isPending}
-              onPress={() => void confirmRegeneration()}
-            />
-            <Button
-              label="Conservar código"
-              variant="secondary"
-              disabled={regenerate.isPending}
-              onPress={() => setConfirmVisible(false)}
-            />
-          </SafeAreaView>
-        </View>
-      </Modal>
     </ScreenContainer>
   )
 }
@@ -163,16 +144,4 @@ const styles = StyleSheet.create({
   codeTitle: { ...typography.heading, color: colors.text },
   code: { ...typography.display, color: colors.primary, letterSpacing: 2 },
   hint: { ...typography.body, color: colors.textMuted },
-  backdrop: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: spacing.lg,
-    backgroundColor: colors.backdrop,
-  },
-  confirmCard: {
-    gap: spacing.md,
-    padding: spacing.lg,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
-  },
 })

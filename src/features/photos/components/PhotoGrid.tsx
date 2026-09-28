@@ -1,3 +1,4 @@
+import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNetInfo } from '@react-native-community/netinfo'
 import { Image } from 'expo-image'
@@ -182,6 +183,7 @@ export function PhotoGrid({
         ? await ImagePicker.requestCameraPermissionsAsync()
         : await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!permission.granted) {
+      // Permiso del sistema: mantenemos el aviso nativo con acceso directo a Ajustes.
       Alert.alert(
         'Permiso necesario',
         `Activa el acceso a ${source === 'camera' ? 'la cámara' : 'las fotos'} en los ajustes del teléfono.`,
@@ -206,7 +208,7 @@ export function PhotoGrid({
       await refreshQueue()
       await resume()
     } catch (error) {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible preparar la foto',
         error instanceof Error ? error.message : 'Inténtalo de nuevo.',
       )
@@ -221,7 +223,7 @@ export function PhotoGrid({
       await remove.mutateAsync(deletePhoto)
       setDeletePhoto(null)
     } catch (error) {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible eliminar la foto',
         error instanceof Error ? error.message : 'Inténtalo de nuevo.',
       )

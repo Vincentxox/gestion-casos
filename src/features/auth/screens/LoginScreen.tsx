@@ -1,9 +1,10 @@
+import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { zodResolver } from '@hookform/resolvers/zod'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { FontAwesome } from '@expo/vector-icons'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
-import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -41,7 +42,7 @@ export function LoginScreen({ navigation }: Props) {
     try {
       await login(values.email, values.password)
     } catch (error) {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible iniciar sesión',
         getAuthErrorMessage(
           error,
@@ -56,7 +57,7 @@ export function LoginScreen({ navigation }: Props) {
       setIsGoogleSubmitting(true)
       await loginWithGoogle()
     } catch (error) {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible iniciar sesión con Google',
         getAuthErrorMessage(
           error,

@@ -1,6 +1,6 @@
+import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { useState } from 'react'
 import {
-  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -55,15 +55,15 @@ export function AccessRequestsScreen() {
   async function submitApproval() {
     if (!selected) return
     if ((role === 'tecnico' || role === 'jefe_area') && !areaId) {
-      Alert.alert('Selecciona un área', 'Este rol necesita un área asignada.')
+      AppFeedback.show('Selecciona un área', 'Este rol necesita un área asignada.')
       return
     }
     try {
       await approve.mutateAsync({ id: selected.id, role, areaId })
       setSelected(null)
-      Alert.alert('Acceso aprobado')
+      AppFeedback.toast('Acceso aprobado')
     } catch (error) {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible aprobar',
         error instanceof Error ? error.message : 'Inténtalo de nuevo.',
       )
@@ -73,15 +73,15 @@ export function AccessRequestsScreen() {
   async function submitRejection() {
     if (!selected) return
     if (note.trim().length > 0 && (note.trim().length < 3 || note.trim().length > 300)) {
-      Alert.alert('Motivo inválido', 'El motivo debe tener entre 3 y 300 caracteres.')
+      AppFeedback.show('Motivo inválido', 'El motivo debe tener entre 3 y 300 caracteres.')
       return
     }
     try {
       await reject.mutateAsync({ id: selected.id, note })
       setSelected(null)
-      Alert.alert('Solicitud rechazada')
+      AppFeedback.toast('Solicitud rechazada')
     } catch (error) {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible rechazar',
         error instanceof Error ? error.message : 'Inténtalo de nuevo.',
       )

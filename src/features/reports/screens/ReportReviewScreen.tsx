@@ -1,7 +1,8 @@
+import { AppFeedback } from '@/components/feedback/AppFeedback'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import * as WebBrowser from 'expo-web-browser'
 import { useState } from 'react'
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { RequestState } from '@/components/feedback/RequestState'
@@ -172,7 +173,7 @@ export function ReportReviewScreen({ navigation, route }: Props) {
       const url = await generateReportPdf(caseId)
       await WebBrowser.openBrowserAsync(url)
     } catch (error) {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible descargar el PDF',
         error instanceof Error ? error.message : 'Inténtalo de nuevo.',
       )
@@ -187,7 +188,7 @@ export function ReportReviewScreen({ navigation, route }: Props) {
     try {
       await shareReportPdf(caseId, item.caseNumber, current.versionNumber)
     } catch (error) {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible compartir el PDF',
         error instanceof Error ? error.message : 'Inténtalo de nuevo.',
       )
@@ -200,7 +201,7 @@ export function ReportReviewScreen({ navigation, route }: Props) {
     if (!signatureAction) return
     await sign.mutateAsync({ action: signatureAction, stroke: path })
     setSignatureAction(null)
-    Alert.alert(
+    AppFeedback.toast(
       signatureAction === 'submit'
         ? 'Reporte enviado'
         : signatureAction === 'validate'
@@ -213,7 +214,7 @@ export function ReportReviewScreen({ navigation, route }: Props) {
   async function onReturn(reason: string) {
     await returnMutation.mutateAsync(reason)
     setReturnVisible(false)
-    Alert.alert('Reporte devuelto')
+    AppFeedback.toast('Reporte devuelto')
     navigation.popTo('CaseDetail', { caseId })
   }
 

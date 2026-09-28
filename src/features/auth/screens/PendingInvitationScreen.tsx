@@ -1,5 +1,6 @@
+import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { useEffect, useState } from 'react'
-import { Alert, AppState, Pressable, ScrollView, StyleSheet, Text, TextInput } from 'react-native'
+import { AppState, Pressable, ScrollView, StyleSheet, Text, TextInput } from 'react-native'
 
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -46,13 +47,13 @@ export function PendingInvitationScreen() {
     try {
       if (!(await retryInvitation())) {
         await pending.refetch()
-        Alert.alert(
+        AppFeedback.show(
           'Acceso aún pendiente',
           'Si te invitaron, usa el mismo correo con el que entraste.',
         )
       }
     } catch {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible comprobar el acceso',
         'Comprueba tu conexión e inténtalo de nuevo.',
       )
@@ -63,24 +64,24 @@ export function PendingInvitationScreen() {
 
   async function submitCode() {
     if (normalizeJoinCode(code).length !== 9) {
-      Alert.alert('Código incompleto', 'Escribe los ocho caracteres del código de tu empresa.')
+      AppFeedback.show('Código incompleto', 'Escribe los ocho caracteres del código de tu empresa.')
       return
     }
     try {
       const result = await request.mutateAsync(code)
       if (result.status === 'codigo_invalido')
-        Alert.alert('Código no válido', 'Pídelo al administrador de tu empresa.')
+        AppFeedback.show('Código no válido', 'Pídelo al administrador de tu empresa.')
       else if (result.status === 'demasiados_intentos')
-        Alert.alert('Demasiados intentos', 'Vuelve a intentarlo en una hora.')
+        AppFeedback.show('Demasiados intentos', 'Vuelve a intentarlo en una hora.')
       else {
         setShowCode(false)
-        Alert.alert(
+        AppFeedback.show(
           'Solicitud enviada',
           `Solicitud enviada a ${result.organizationName || 'tu empresa'}. El administrador revisará tu acceso.`,
         )
       }
     } catch (error) {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible enviar la solicitud',
         error instanceof Error ? error.message : 'Comprueba tu conexión.',
       )
@@ -90,9 +91,9 @@ export function PendingInvitationScreen() {
   async function cancelRequest() {
     try {
       await cancel.mutateAsync()
-      Alert.alert('Solicitud cancelada')
+      AppFeedback.toast('Solicitud cancelada')
     } catch (error) {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible cancelar',
         error instanceof Error ? error.message : 'Inténtalo de nuevo.',
       )

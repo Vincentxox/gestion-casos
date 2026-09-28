@@ -1,5 +1,6 @@
+import { AppFeedback } from '@/components/feedback/AppFeedback'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
-import { Alert, StyleSheet } from 'react-native'
+import { StyleSheet } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { RequestState } from '@/components/feedback/RequestState'
 
@@ -46,11 +47,10 @@ export function EditCaseScreen({ navigation, route }: Props) {
   async function handleSubmit(input: UpdateCaseInput) {
     try {
       await mutation.mutateAsync(input)
-      Alert.alert('Caso actualizado', 'Los cambios se guardaron correctamente.', [
-        { text: 'Entendido', onPress: () => navigation.goBack() },
-      ])
+      AppFeedback.toast('Caso actualizado')
+      navigation.goBack()
     } catch (error) {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible actualizar',
         error instanceof Error ? error.message : 'Comprueba tus permisos y la conexión.',
       )
