@@ -639,8 +639,11 @@ B. **Configuración de publicación.** Rama `agent/codex/release-config` desde
 - PR #2 (`agent/codex/v8-ui`) y PR #3 (`agent/codex/release-config`) apuntan a
   `develop`; ninguno se fusionó. Se agregó `develop` a los disparadores de CI en
   `.github/workflows/ci.yml`, porque antes no se ejecutaba CI de tipo PR hacia esa
-  rama. La comprobación de CI de PR quedará disponible cuando ese cambio se integre.
-  No hubo despliegue. Vincent aún debe proteger `main` y `develop` en GitHub.
+  rama. El PR #2 ya inició su CI de PR; el PR #3 tiene CI de push aprobado, y el de
+  PR se ejecutará cuando el cambio del workflow llegue a `develop`.
+  `npm ci` informó 16 avisos de dependencias (15 moderados, 1 alto), sin cambios en el
+  lockfile ni actualización forzada. No hubo despliegue. Vincent aún debe proteger
+  `main` y `develop` en GitHub.
 
 ### 2026-09-28 — V8 (`ab5e6ba`…`02ecbe3`) — Claude — revisión
 
