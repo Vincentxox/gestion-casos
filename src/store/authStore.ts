@@ -1,4 +1,5 @@
 import type { Session } from '@supabase/supabase-js'
+import { Image } from 'expo-image'
 import { create } from 'zustand'
 
 import { queryClient } from '@/config/queryClient'
@@ -38,6 +39,14 @@ interface AuthStore {
   retryInvitation: () => Promise<boolean>
 }
 
+async function clearImageCaches(): Promise<void> {
+  // A failed native cache operation must never keep a user signed in.
+  await Promise.allSettled([
+    Promise.resolve().then(() => Image.clearMemoryCache()),
+    Promise.resolve().then(() => Image.clearDiskCache()),
+  ])
+}
+
 async function getAuthValues(
   session: Session | null,
   previousSession: Session | null,
@@ -50,6 +59,7 @@ async function getAuthValues(
     profile?.organizationId !== previousProfile?.organizationId
   ) {
     queryClient.clear()
+    await clearImageCaches()
   }
 
   return {
@@ -145,16 +155,19 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       status: 'unauthenticated',
       initializationError: null,
     })
+    await clearImageCaches()
   },
 
   async applySession(session) {
-    if (session?.user.id !== get().session?.user.id) {
+    const previousSession = get().session
+    const previousProfile = get().profile
+    if (session?.user.id !== previousSession?.user.id) {
       queryClient.clear()
       set({ session: null, profile: null, status: 'initializing' })
     }
     try {
       set({
-        ...(await getAuthValues(session, get().session, get().profile)),
+        ...(await getAuthValues(session, previousSession, previousProfile)),
         initializationError: null,
       })
     } catch {
@@ -188,7 +201,10 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     const userId = get().session?.user.id
     if (!userId) return false
     const profile = await retryPendingInvitation(userId)
-    if (profile.organizationId !== get().profile?.organizationId) queryClient.clear()
+    if (profile.organizationId !== get().profile?.organizationId) {
+      queryClient.clear()
+      await clearImageCaches()
+    }
     set({ profile })
     return profile.organizationId !== null
   },
