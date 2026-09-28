@@ -87,6 +87,7 @@
       "^@/(.*)$": "<rootDir>/src/$1"
     },
     "collectCoverageFrom": [
+      "src/config/env.ts",
       "src/config/queryClient.ts",
       "src/config/queryLifecycle.ts",
       "src/features/auth/authService.ts",
