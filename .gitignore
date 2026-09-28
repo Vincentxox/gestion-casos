@@ -5,9 +5,11 @@ node_modules/
 
 # Expo
 .expo/
+.expo-*/
 dist/
 web-build/
 expo-env.d.ts
+coverage/
 
 # Native
 .kotlin/
@@ -39,3 +41,9 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+#Supabase
+supabase/.temp/
+.env
+.env.local
+.env.*.local

@@ -1,0 +1,337 @@
+import type { Profile } from '@/features/auth/types'
+import type { CaseRecord } from '@/features/cases/types'
+import {
+  getAdminAlerts,
+  getGreeting,
+  getHomeHero,
+  getHomeRecentCases,
+  getHomeTileTarget,
+  getHomeTiles,
+} from '../homePresentation'
+import type { HomeSummary } from '../homeService'
+
+const profile: Profile = {
+  id: 'user',
+  fullName: 'María Pérez',
+  avatarUrl: null,
+  role: 'solicitante',
+  areaId: 'area',
+  areaName: 'Oficina',
+  organizationId: 'org',
+  organizationName: 'Empresa',
+}
+
+const summary: HomeSummary = {
+  role: 'solicitante',
+  has_area: true,
+  area_kind: 'solicitante',
+  cases: {
+    activas: 5,
+    solicitado: 1,
+    aceptado: 2,
+    asignado: 1,
+    en_ejecucion: 2,
+    en_espera: 1,
+    en_revision: 0,
+    cerradas_30_dias: 3,
+    alta_prioridad_activas: 1,
+  },
+  mine: {
+    solicitudes_activas: 2,
+    trabajos_por_iniciar: 1,
+    trabajos_en_ejecucion: 2,
+    trabajos_en_espera: 3,
+  },
+  inbox: {
+    por_aceptar: 4,
+    sin_asignar: 1,
+    reportes_por_validar: 0,
+    reportes_por_aprobar: 0,
+  },
+  admin: null,
+}
+
+test('el solicitante ve únicamente sus solicitudes activas', () => {
+  expect(getHomeTiles(profile, summary)).toEqual([
+    { id: 'en_curso', label: 'En curso', value: 2, icon: 'list-outline', phase: 'curso' },
+  ])
+})
+
+test('el saludo depende de la hora local', () => {
+  expect([getGreeting(8), getGreeting(15), getGreeting(21)]).toEqual([
+    'Buenos días',
+    'Buenas tardes',
+    'Buenas noches',
+  ])
+})
+
+test('los reportes pendientes usan la fase morada de revisión', () => {
+  const tiles = getHomeTiles(
+    { ...profile, role: 'jefe_area' },
+    {
+      ...summary,
+      inbox: { ...summary.inbox, reportes_por_validar: 1, reportes_por_aprobar: 1 },
+    },
+  )
+  expect(tiles.filter((tile) => tile.id.startsWith('reportes_')).map((tile) => tile.phase)).toEqual(
+    ['revision', 'revision'],
+  )
+})
+
+test('el destacado usa los conteos y rutas del rol', () => {
+  expect(getHomeHero(profile, summary)?.count).toBe(2)
+  expect(getHomeHero({ ...profile, role: 'tecnico' }, summary)?.count).toBe(6)
+  expect(getHomeHero({ ...profile, role: 'administrador' }, summary)?.target).toEqual({
+    scope: 'por_aceptar',
+    exactStatus: 'solicitado',
+  })
+  expect(
+    getHomeHero(
+      { ...profile, role: 'administrador' },
+      { ...summary, inbox: { ...summary.inbox, por_aceptar: 0, sin_asignar: 1 } },
+    )?.target,
+  ).toEqual({ scope: 'sin_asignar', exactStatus: 'aceptado' })
+  expect(
+    getHomeHero(
+      { ...profile, role: 'jefe_area' },
+      {
+        ...summary,
+        area_kind: 'tecnica',
+      },
+    )?.detail.map((part) => part.label),
+  ).toEqual(['4 por aceptar', '1 por asignar'])
+  expect(getHomeHero({ ...profile, role: 'auditor' }, summary)).toBeNull()
+})
+
+test('el destacado diferencia la bandeja de los trabajos y solicitudes', () => {
+  const inbox = getHomeHero({ ...profile, role: 'administrador' }, summary)
+  expect(inbox?.eyebrow).toBe('TU BANDEJA')
+  expect(inbox?.detail.map((part) => part.label)).toEqual(['4 por aceptar', '1 por asignar'])
+  expect(inbox?.supportingText).toBeNull()
+
+  const work = getHomeHero({ ...profile, role: 'tecnico' }, summary)
+  expect(work?.eyebrow).toBe('TUS TRABAJOS')
+  expect(work?.detail).toEqual([])
+  expect(work?.supportingText).toBe('Consulta tus tareas y continúa el trabajo')
+
+  const requests = getHomeHero(profile, summary)
+  expect(requests?.eyebrow).toBe('TUS SOLICITUDES')
+  expect(requests?.detail).toEqual([])
+  expect(requests?.supportingText).toBe('Sigue el progreso de tus solicitudes')
+})
+
+test('Inicio muestra como máximo tres solicitudes activas relevantes al rol', () => {
+  const cases = [
+    {
+      id: 'a',
+      status: 'solicitado',
+      assignedTo: null,
+      createdBy: 'user',
+      createdAt: '2026-09-23T12:00:00Z',
+    },
+    {
+      id: 'b',
+      status: 'en_ejecucion',
+      assignedTo: 'user',
+      createdBy: 'other',
+      createdAt: '2026-09-22T12:00:00Z',
+    },
+    {
+      id: 'c',
+      status: 'aprobado',
+      assignedTo: 'user',
+      createdBy: 'other',
+      createdAt: '2026-09-24T12:00:00Z',
+    },
+  ] as CaseRecord[]
+  expect(getHomeRecentCases(profile, 'solicitante', cases).map((item) => item.id)).toEqual(['a'])
+  expect(
+    getHomeRecentCases({ ...profile, role: 'tecnico' }, 'tecnica', cases).map((item) => item.id),
+  ).toEqual(['b'])
+  expect(
+    getHomeRecentCases({ ...profile, role: 'administrador' }, null, cases).map((item) => item.id),
+  ).toEqual(['a', 'b'])
+})
+
+test('el técnico ve sus tres contadores de trabajo', () => {
+  expect(getHomeTiles({ ...profile, role: 'tecnico' }, summary).map((tile) => tile.value)).toEqual([
+    1, 2, 3,
+  ])
+})
+
+test('cada contador define ícono y fase sin depender del texto visible', () => {
+  for (const role of ['administrador', 'auditor', 'jefe_area', 'tecnico', 'solicitante'] as const) {
+    for (const tile of getHomeTiles({ ...profile, role }, summary)) {
+      expect(tile.icon).toBeTruthy()
+      expect(tile.phase).toBeTruthy()
+    }
+  }
+})
+
+test('el jefe técnico ve su bandeja y alertas operativas', () => {
+  const tiles = getHomeTiles(
+    { ...profile, role: 'jefe_area' },
+    { ...summary, area_kind: 'tecnica' },
+  )
+  expect(tiles[0]).toEqual({
+    id: 'por_aceptar',
+    label: 'Por aceptar',
+    value: 4,
+    icon: 'file-tray-outline',
+    phase: 'nueva',
+    emphasis: true,
+  })
+  expect(tiles[1]?.label).toBe('Sin asignar')
+})
+
+test('el administrador ve problemas configurables', () => {
+  const alerts = getAdminAlerts({
+    usuarios_sin_area: 2,
+    usuarios_sin_nombre: 0,
+    solicitudes_acceso_pendientes: 1,
+    invitaciones_pendientes: 0,
+    tipos_servicio_activos: 0,
+    recursos_activos: 2,
+    areas_tecnicas_sin_jefe: ['Mantenimiento'],
+    areas_tecnicas_sin_tecnico: [],
+  })
+  expect(alerts.map((alert) => alert.screen)).toEqual([
+    'Users',
+    'Users',
+    'AccessRequests',
+    'Categories',
+  ])
+})
+
+test('cada contador lleva a su filtro de solicitudes', () => {
+  expect(getHomeTileTarget({ ...profile, role: 'jefe_area' }, 'por_aceptar')).toEqual({
+    scope: 'bandeja',
+    exactStatus: 'solicitado',
+  })
+  expect(getHomeTileTarget({ ...profile, role: 'tecnico' }, 'en_espera')).toEqual({
+    scope: 'mis_trabajos',
+    exactStatus: 'en_espera',
+  })
+  expect(getHomeTileTarget({ ...profile, role: 'administrador' }, 'cerradas_30_dias')).toEqual({
+    status: 'cerradas',
+    sinceDays: 30,
+  })
+})
+
+test('jefe solicitante y auditor reciben resúmenes diferentes', () => {
+  expect(
+    getHomeTiles({ ...profile, role: 'jefe_area' }, summary).map((tile) => tile.label),
+  ).toEqual(['En curso', 'Activas en mi área'])
+  expect(
+    getHomeTiles({ ...profile, role: 'auditor' }, summary).map((tile) => tile.label),
+  ).toContain('Cerradas en 30 días')
+  expect(getHomeTileTarget({ ...profile, role: 'tecnico' }, 'por_iniciar')).toEqual({
+    scope: 'mis_trabajos',
+    exactStatus: 'asignado',
+  })
+  expect(getHomeTileTarget({ ...profile, role: 'administrador' }, 'alta_prioridad')).toEqual({
+    scope: 'mi_area',
+    priority: 'alta',
+    activeOnly: true,
+  })
+})
+
+test('el Inicio usa singulares y omite los componentes en cero', () => {
+  const admin = { ...profile, role: 'administrador' as const }
+  const one = getHomeHero(admin, {
+    ...summary,
+    inbox: { ...summary.inbox, por_aceptar: 1, sin_asignar: 0 },
+  })
+  expect(one?.title).toBe('1 pendiente requiere tu decisión')
+  expect(one?.detail.map((part) => part.label)).toEqual(['1 por aceptar'])
+  const zero = getHomeHero(admin, {
+    ...summary,
+    inbox: { ...summary.inbox, por_aceptar: 0, sin_asignar: 0 },
+  })
+  expect(zero?.detail).toEqual([])
+  expect(
+    getHomeHero(profile, { ...summary, mine: { ...summary.mine, solicitudes_activas: 1 } })?.title,
+  ).toBe('1 solicitud activa')
+  expect(
+    getAdminAlerts({
+      usuarios_sin_area: 1,
+      usuarios_sin_nombre: 0,
+      solicitudes_acceso_pendientes: 0,
+      invitaciones_pendientes: 0,
+      tipos_servicio_activos: 1,
+      recursos_activos: 1,
+      areas_tecnicas_sin_jefe: [],
+      areas_tecnicas_sin_tecnico: [],
+    })[0]?.label,
+  ).toBe('1 usuario sin área')
+})
+
+test('el jefe técnico ve primero un reporte por validar y luego las solicitudes por aceptar', () => {
+  const chief = { ...profile, role: 'jefe_area' as const }
+  const data = {
+    ...summary,
+    area_kind: 'tecnica' as const,
+    inbox: { ...summary.inbox, reportes_por_validar: 1 },
+  }
+  const hero = getHomeHero(chief, data)
+  expect(hero?.count).toBe(6)
+  expect(hero?.detail.map((part) => part.label)).toEqual([
+    '1 reporte por validar',
+    '4 por aceptar',
+    '1 por asignar',
+  ])
+  expect(hero?.target).toEqual({ scope: 'mi_area', exactStatus: 'reporte_enviado' })
+  expect(getHomeTiles(chief, data)[0]).toMatchObject({
+    id: 'reportes_por_validar',
+    value: 1,
+    emphasis: true,
+  })
+})
+
+test('el administrador suplente ve un reporte por aprobar y el enlace exacto', () => {
+  const admin = { ...profile, role: 'administrador' as const }
+  const data = {
+    ...summary,
+    inbox: { ...summary.inbox, reportes_por_aprobar: 1 },
+  }
+  expect(getHomeHero(admin, data)?.detail[0]?.label).toBe('1 reporte por aprobar')
+  expect(getHomeHero(admin, data)?.target).toEqual({ scope: 'todas', exactStatus: 'validado' })
+  expect(getHomeTiles(admin, data)[0]).toMatchObject({
+    id: 'reportes_por_aprobar',
+    value: 1,
+    emphasis: true,
+  })
+})
+
+test('el jefe solicitante ve los reportes por aprobar, pero los ceros no crean avisos', () => {
+  const chief = { ...profile, role: 'jefe_area' as const }
+  const data = {
+    ...summary,
+    inbox: {
+      por_aceptar: 0,
+      sin_asignar: 0,
+      reportes_por_validar: 0,
+      reportes_por_aprobar: 2,
+    },
+  }
+  expect(getHomeHero(chief, data)?.detail.map((part) => part.label)).toEqual([
+    '2 reportes por aprobar',
+  ])
+  expect(getHomeTiles(chief, data)[0]?.id).toBe('reportes_por_aprobar')
+  const zero = { ...data, inbox: { ...data.inbox, reportes_por_aprobar: 0 } }
+  expect(getHomeHero(chief, zero)?.eyebrow).toBe('TUS SOLICITUDES')
+  expect(getHomeTiles(chief, zero).some((tile) => tile.id.startsWith('reportes_'))).toBe(false)
+  expect(getHomeHero({ ...profile, role: 'tecnico' }, data)?.eyebrow).toBe('TUS TRABAJOS')
+  expect(getHomeTiles(profile, data).some((tile) => tile.id.startsWith('reportes_'))).toBe(false)
+})
+
+test('cada aviso de reporte abre la lista por estado exacto', () => {
+  expect(getHomeTileTarget({ ...profile, role: 'jefe_area' }, 'reportes_por_validar')).toEqual({
+    scope: 'mi_area',
+    exactStatus: 'reporte_enviado',
+  })
+  expect(getHomeTileTarget({ ...profile, role: 'administrador' }, 'reportes_por_aprobar')).toEqual({
+    scope: 'todas',
+    exactStatus: 'validado',
+  })
+})
