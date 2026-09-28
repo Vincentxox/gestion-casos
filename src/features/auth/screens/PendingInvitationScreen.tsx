@@ -9,6 +9,7 @@ import { useAuthStore } from '@/store/authStore'
 import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 import { normalizeJoinCode } from '../accessService'
+import { confirmLogout } from '../confirmLogout'
 import {
   useCancelMyAccessRequest,
   useMyAccessRequest,
@@ -176,7 +177,11 @@ export function PendingInvitationScreen() {
           </Text>
           <Button label="Comprobar invitación" loading={busy} onPress={() => void retry()} />
         </Card>
-        <Button label="Cerrar sesión" variant="text" onPress={() => void logout()} />
+        <Button
+          label="Cerrar sesión"
+          variant="text"
+          onPress={() => confirmLogout(() => void logout())}
+        />
       </ScrollView>
     </ScreenContainer>
   )

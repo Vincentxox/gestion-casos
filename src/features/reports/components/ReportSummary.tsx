@@ -5,6 +5,7 @@ import * as WebBrowser from 'expo-web-browser'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Chip } from '@/components/ui/Chip'
+import { Icon } from '@/components/ui/Icon'
 import { ROLE_LABELS, type AppRole } from '@/features/auth/types'
 import type { CaseRecord } from '@/features/cases/types'
 import { PhotoGrid } from '@/features/photos/components/PhotoGrid'
@@ -56,6 +57,20 @@ export function ReportSummary({
     afterCount,
     item.minAfterPhotos,
   )
+  const requirements = [
+    {
+      label: 'Diagnóstico de 10 caracteres o más',
+      complete: !missing.some((entry) => entry.includes('diagnóstico')),
+    },
+    {
+      label: 'Trabajo realizado de 10 caracteres o más',
+      complete: !missing.some((entry) => entry.includes('trabajo realizado')),
+    },
+    {
+      label: photoRequirementLabel(afterCount, item.minAfterPhotos),
+      complete: afterCount >= item.minAfterPhotos,
+    },
+  ]
   const state =
     item.status === 'aprobado'
       ? 'Aprobado'
@@ -125,18 +140,16 @@ export function ReportSummary({
       {!current ? (
         <View style={styles.requirements}>
           <Text style={styles.text}>Requisitos para enviar:</Text>
-          <Text style={styles.muted}>
-            {missing.some((entry) => entry.includes('diagnóstico')) ? '○' : '✓'} Diagnóstico de 10
-            caracteres o más
-          </Text>
-          <Text style={styles.muted}>
-            {missing.some((entry) => entry.includes('trabajo realizado')) ? '○' : '✓'} Trabajo
-            realizado de 10 caracteres o más
-          </Text>
-          <Text style={styles.muted}>
-            {afterCount >= item.minAfterPhotos ? '✓' : '○'}{' '}
-            {photoRequirementLabel(afterCount, item.minAfterPhotos)}
-          </Text>
+          {requirements.map((requirement) => (
+            <View key={requirement.label} style={styles.requirementRow}>
+              <Icon
+                name={requirement.complete ? 'checkmark-circle' : 'ellipse-outline'}
+                size="inline"
+                color={requirement.complete ? colors.success : colors.textMuted}
+              />
+              <Text style={styles.muted}>{requirement.label}</Text>
+            </View>
+          ))}
         </View>
       ) : (
         <View style={styles.requirements}>
@@ -192,6 +205,7 @@ const styles = StyleSheet.create({
   heading: { ...typography.heading, color: colors.text },
   returnNotice: { gap: spacing.xs, padding: spacing.sm, backgroundColor: colors.dangerBadge },
   requirements: { gap: spacing.xs },
+  requirementRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   text: { ...typography.body, color: colors.text },
   muted: { ...typography.caption, color: colors.textMuted },
   actions: { gap: spacing.sm },

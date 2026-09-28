@@ -21,4 +21,17 @@ describe('metadatos visuales', () => {
       expect(phaseColors[meta.phase]).toBeDefined()
     }
   })
+
+  it('describe con verbos propios las cuatro acciones del reporte', () => {
+    expect(
+      ['enviar_reporte', 'validar_reporte', 'devolver_reporte', 'aprobar_reporte'].map(
+        (action) => actionMeta[action as keyof typeof actionMeta].verb,
+      ),
+    ).toEqual([
+      'firmó y envió el reporte',
+      'firmó la validación técnica',
+      'devolvió el reporte',
+      'firmó la conformidad',
+    ])
+  })
 })

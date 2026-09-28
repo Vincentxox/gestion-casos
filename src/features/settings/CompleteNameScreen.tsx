@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card'
 import { ScreenContainer } from '@/components/ui/ScreenContainer'
 import { FormField } from '@/components/forms/FormField'
 import { useAuthStore } from '@/store/authStore'
+import { confirmLogout } from '@/features/auth/confirmLogout'
 import { colors, spacing, typography } from '@/theme/tokens'
 
 import { updateOwnName } from './profileService'
@@ -50,7 +51,11 @@ export function CompleteNameScreen() {
           value={name}
         />
         <Button label="Continuar" loading={saving} onPress={() => void save()} />
-        <Button label="Cerrar sesión" variant="text" onPress={() => void logout()} />
+        <Button
+          label="Cerrar sesión"
+          variant="text"
+          onPress={() => confirmLogout(() => void logout())}
+        />
       </Card>
     </ScreenContainer>
   )

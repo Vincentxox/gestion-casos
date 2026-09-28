@@ -4,7 +4,7 @@ export const createCaseSchema = z.object({
   title: z.string().trim().min(5, 'Escribe un título de al menos 5 caracteres').max(120),
   description: z.string().trim().min(10, 'Describe el caso con al menos 10 caracteres').max(2000),
   categoryId: z.uuid('Selecciona un tipo de servicio.'),
-  location: z.string().trim().min(3, 'Indica una ubicación').max(180),
+  location: z.string().trim().min(3, 'Escribe al menos 3 caracteres').max(180),
   priority: z.enum(['alta', 'media', 'baja']),
 })
 

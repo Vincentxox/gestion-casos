@@ -4,7 +4,8 @@ import type { CaseAction, CaseRecord } from './types'
 
 export function canEditCase(item: CaseRecord, profile: Profile | null): boolean {
   if (!profile || profile.organizationId === null) return false
-  if (['rechazado', 'cancelado', 'aprobado'].includes(item.status)) return false
+  if (['rechazado', 'cancelado', 'reporte_enviado', 'validado', 'aprobado'].includes(item.status))
+    return false
   return (
     profile.role === 'administrador' ||
     (item.status === 'solicitado' && item.createdBy === profile.id) ||

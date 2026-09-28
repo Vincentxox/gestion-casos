@@ -11,6 +11,7 @@ import { Card } from '@/components/ui/Card'
 import { Icon } from '@/components/ui/Icon'
 import { IconTile } from '@/components/ui/IconTile'
 import { EmptyState } from '@/components/feedback/EmptyState'
+import { OfflineBanner } from '@/components/feedback/OfflineBanner'
 import { hasPermission } from '@/features/auth/permissions'
 import { ROLE_LABELS } from '@/features/auth/types'
 import { useCases } from '@/features/cases/useCases'
@@ -53,7 +54,6 @@ export function HomeScreen({ navigation }: Props) {
   const alerts = summary.data?.admin ? getAdminAlerts(summary.data.admin) : []
   const tiles = summary.data ? getHomeTiles(profile, summary.data).slice(0, 4) : []
   const hero = summary.data ? getHomeHero(profile, summary.data) : null
-  const hasPending = Boolean(hero?.count || summary.data?.admin?.solicitudes_acceso_pendientes)
   const rawFirstName = profile.fullName.trim().split(/\s+/)[0] || 'usuario'
   const firstName = rawFirstName.charAt(0).toLocaleUpperCase('es-GT') + rawFirstName.slice(1)
   const rawDateLabel = new Intl.DateTimeFormat('es-GT', {
@@ -89,24 +89,11 @@ export function HomeScreen({ navigation }: Props) {
                 {ROLE_LABELS[profile.role]} · {profile.areaName || 'Sin área asignada'}
               </Text>
             </View>
-            <Pressable
-              accessibilityLabel="Ver pendientes"
-              accessibilityRole="button"
-              onPress={() => {
-                if (hero?.count)
-                  navigation.navigate('CasesTab', { screen: 'Cases', params: hero.target })
-                else if (summary.data?.admin?.solicitudes_acceso_pendientes)
-                  navigation.navigate('Administration', { screen: 'AccessRequests' })
-                else navigation.navigate('CasesTab', { screen: 'Cases' })
-              }}
-              style={styles.bell}
-            >
-              <Icon name="notifications-outline" color={colors.text} />
-              {hasPending ? <View style={styles.notificationDot} /> : null}
-            </Pressable>
             <Avatar name={profile.fullName} id={profile.id} size={44} />
           </View>
         </View>
+
+        <OfflineBanner />
 
         {summary.isLoading ? <SkeletonList count={2} /> : null}
         {summary.isError ? (
@@ -140,9 +127,16 @@ export function HomeScreen({ navigation }: Props) {
                           params: getHomeTileTarget(profile, part.id),
                         })
                       }
-                      style={styles.heroTag}
+                      style={[styles.heroTag, part.id.startsWith('reportes_') && styles.reportTag]}
                     >
-                      <Text style={styles.heroDetail}>{part.label}</Text>
+                      <Text
+                        style={[
+                          styles.heroDetail,
+                          part.id.startsWith('reportes_') && styles.reportTagText,
+                        ]}
+                      >
+                        {part.label}
+                      </Text>
                     </Pressable>
                   ))}
                 </View>
@@ -261,6 +255,7 @@ export function HomeScreen({ navigation }: Props) {
                     navigation.navigate('CasesTab', {
                       screen: 'CaseDetail',
                       params: { caseId: item.id },
+                      initial: false,
                     })
                   }
                 />
@@ -279,16 +274,6 @@ const styles = StyleSheet.create({
   header: { gap: spacing.sm },
   headerTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.base },
   identity: { flex: 1, gap: spacing.xs },
-  bell: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  notificationDot: {
-    position: 'absolute',
-    top: 7,
-    right: 7,
-    width: 8,
-    height: 8,
-    borderRadius: radius.pill,
-    backgroundColor: phaseColors.nueva.fg,
-  },
   eyebrow: { color: colors.primary, ...typography.overline },
   title: { color: colors.text, ...typography.display },
   subtitle: { color: colors.textMuted, ...typography.caption },
@@ -311,6 +296,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   heroDetail: { ...typography.caption, color: colors.white },
+  reportTag: { backgroundColor: phaseColors.revision.bg, borderColor: phaseColors.revision.fg },
+  reportTagText: { color: phaseColors.revision.fg },
   heroSupport: { ...typography.body, color: colors.white },
   heroButton: { width: '100%' },
   section: { gap: spacing.md },

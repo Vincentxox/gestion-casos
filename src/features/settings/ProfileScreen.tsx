@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/Card'
 import { Chip } from '@/components/ui/Chip'
 import { ScreenContainer } from '@/components/ui/ScreenContainer'
 import { ROLE_ICONS, ROLE_LABELS } from '@/features/auth/types'
+import { confirmLogout } from '@/features/auth/confirmLogout'
 import { useAuthStore } from '@/store/authStore'
 import { colors, spacing, typography } from '@/theme/tokens'
 import { updateOwnName } from './profileService'
@@ -121,7 +122,11 @@ export function ProfileScreen() {
         <Text style={styles.securityNote}>
           Los permisos de la aplicación se aplican automáticamente de acuerdo con tu rol.
         </Text>
-        <Button label="Cerrar sesión" variant="secondary" onPress={() => void handleLogout()} />
+        <Button
+          label="Cerrar sesión"
+          variant="secondary"
+          onPress={() => confirmLogout(() => void handleLogout())}
+        />
         <Text style={styles.securityNote}>Versión {appConfig.expo.version}</Text>
       </ScrollView>
     </ScreenContainer>

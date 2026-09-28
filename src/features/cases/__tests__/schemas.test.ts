@@ -24,6 +24,19 @@ describe('createCaseSchema', () => {
     })
     expect(result.success).toBe(false)
   })
+
+  it('explica el mínimo de tres caracteres para la ubicación', () => {
+    const result = createCaseSchema.safeParse({ ...validCase, location: 'AB' })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toContainEqual(
+        expect.objectContaining({
+          path: ['location'],
+          message: 'Escribe al menos 3 caracteres',
+        }),
+      )
+    }
+  })
 })
 
 describe('changeCaseStatusSchema', () => {

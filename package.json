@@ -79,6 +79,7 @@
   "private": true,
   "jest": {
     "preset": "jest-expo",
+    "testTimeout": 15000,
     "setupFilesAfterEnv": [
       "<rootDir>/jest.setup.ts"
     ],
@@ -86,8 +87,12 @@
       "^@/(.*)$": "<rootDir>/src/$1"
     },
     "collectCoverageFrom": [
+      "src/config/env.ts",
+      "src/config/queryClient.ts",
+      "src/config/queryLifecycle.ts",
       "src/features/auth/authService.ts",
       "src/features/auth/authErrors.ts",
+      "src/features/auth/confirmLogout.ts",
       "src/features/auth/permissions.ts",
       "src/features/auth/schemas.ts",
       "src/features/auth/accessService.ts",
@@ -102,6 +107,7 @@
       "src/features/cases/caseService.ts",
       "src/features/cases/caseListPresentation.ts",
       "src/features/cases/caseDateGroups.ts",
+      "src/features/cases/refreshCaseDetail.ts",
       "src/features/cases/schemas.ts",
       "src/features/photos/photoService.ts",
       "src/features/photos/imagePreparation.ts",

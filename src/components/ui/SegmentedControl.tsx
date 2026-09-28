@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useState } from 'react'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
 import { feedback } from '@/services/feedback'
-import { colors, elevation, fonts, radius, spacing } from '@/theme/tokens'
+import { colors, elevation, fonts, radius, spacing, typography } from '@/theme/tokens'
 
 export interface Segment<T extends string> {
   value: T
@@ -18,8 +19,15 @@ export function SegmentedControl<T extends string>({
   selected: T
   onChange: (value: T) => void
 }) {
+  const [width, setWidth] = useState(0)
   return (
-    <View style={styles.container}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
+      contentContainerStyle={[styles.container, { minWidth: width }]}
+      style={styles.scroll}
+    >
       {segments.map((segment) => {
         const active = segment.value === selected
         const label = `${segment.label}${segment.count === undefined ? '' : `, ${segment.count}`}`
@@ -55,11 +63,12 @@ export function SegmentedControl<T extends string>({
           </Pressable>
         )
       })}
-    </View>
+    </ScrollView>
   )
 }
 
 const styles = StyleSheet.create({
+  scroll: { flexGrow: 0, flexShrink: 0 },
   container: {
     flexDirection: 'row',
     gap: spacing.xs,
@@ -69,6 +78,7 @@ const styles = StyleSheet.create({
   },
   segment: {
     minHeight: 44,
+    minWidth: 84,
     flex: 1,
     flexDirection: 'row',
     gap: spacing.xs,
@@ -79,12 +89,10 @@ const styles = StyleSheet.create({
   },
   active: { backgroundColor: colors.surface, ...elevation.sm },
   label: {
-    color: colors.textMuted,
-    fontFamily: fonts.medium,
-    fontSize: 13,
+    ...typography.caption,
+    color: colors.text,
     textAlign: 'center',
-    flexShrink: 1,
-    minWidth: 0,
+    flexShrink: 0,
   },
   activeLabel: { color: colors.text, fontFamily: fonts.bold },
   count: {
@@ -93,5 +101,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs,
   },
   activeCount: { backgroundColor: colors.primarySoft },
-  countText: { color: colors.textMuted, fontFamily: fonts.semibold, fontSize: 11 },
+  countText: { ...typography.caption, color: colors.textMuted, fontFamily: fonts.semibold },
 })

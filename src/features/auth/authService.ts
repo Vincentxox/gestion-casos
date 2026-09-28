@@ -111,6 +111,7 @@ export async function signInWithGoogle() {
     options: {
       redirectTo: googleAuthRedirectUrl,
       skipBrowserRedirect: true,
+      queryParams: { prompt: 'select_account' },
     },
   })
 

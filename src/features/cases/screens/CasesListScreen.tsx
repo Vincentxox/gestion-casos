@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { EmptyState } from '@/components/feedback/EmptyState'
+import { OfflineBanner } from '@/components/feedback/OfflineBanner'
 import { Button } from '@/components/ui/Button'
 import { Chip } from '@/components/ui/Chip'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
@@ -65,6 +66,7 @@ export function CasesListScreen({ navigation, route }: Props) {
   const { data = [], error, isLoading, isRefetching, refetch } = useCases()
   const home = useHomeSummary(Boolean(profile?.organizationId))
   const [search, setSearch] = useState('')
+  const [floatingActionHeight, setFloatingActionHeight] = useState(48)
   const [animateInitialList, setAnimateInitialList] = useState(true)
   const reduceMotion = useReducedMotion()
   const [filterNow, setFilterNow] = useState(() => Date.now())
@@ -166,6 +168,7 @@ export function CasesListScreen({ navigation, route }: Props) {
         <Text accessibilityRole="header" style={styles.heading}>
           Solicitudes
         </Text>
+        <OfflineBanner />
         <View style={styles.toolbar}>
           <TextInput
             accessibilityLabel="Buscar casos"
@@ -253,7 +256,12 @@ export function CasesListScreen({ navigation, route }: Props) {
           <SectionList
             contentContainerStyle={
               filteredCases.length
-                ? [styles.list, canCreate && styles.listWithAction]
+                ? [
+                    styles.list,
+                    canCreate && {
+                      paddingBottom: floatingActionHeight + spacing.md + spacing.lg,
+                    },
+                  ]
                 : styles.emptyList
             }
             sections={groupCasesByDay(filteredCases)}
@@ -317,7 +325,10 @@ export function CasesListScreen({ navigation, route }: Props) {
           />
         )}
         {canCreate ? (
-          <View style={styles.floatingAction}>
+          <View
+            style={styles.floatingAction}
+            onLayout={(event) => setFloatingActionHeight(event.nativeEvent.layout.height)}
+          >
             <Button
               label="Nueva solicitud"
               icon="add"
@@ -360,6 +371,5 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   list: { gap: spacing.md, paddingBottom: spacing.lg },
-  listWithAction: { paddingBottom: 96 },
   emptyList: { flexGrow: 1 },
 })

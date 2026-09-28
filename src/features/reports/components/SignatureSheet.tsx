@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 
 import { Button } from '@/components/ui/Button'
+import { Icon } from '@/components/ui/Icon'
 import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 import { signaturePath, type Point } from '../signaturePath'
@@ -86,16 +87,22 @@ export function SignatureSheet({
           <Text style={styles.copy}>
             {name} · {role}
           </Text>
-          <View
-            accessibilityLabel="Área para dibujar tu firma"
-            style={styles.canvas}
-            onLayout={(event) => setSize(event.nativeEvent.layout)}
-            {...pan.panHandlers}
-          >
-            <Svg pointerEvents="none" width="100%" height="100%">
-              <Path d={preview} stroke={colors.text} strokeWidth={2} fill="none" />
-            </Svg>
-            <View pointerEvents="none" style={styles.guide} />
+          <View style={styles.canvasHeading}>
+            <Text style={styles.note}>Dibuja tu firma</Text>
+            <Button label="Borrar" variant="text" disabled={loading} onPress={clear} />
+          </View>
+          <View style={styles.canvas}>
+            <View
+              accessibilityLabel="Área para dibujar tu firma"
+              style={styles.drawingArea}
+              onLayout={(event) => setSize(event.nativeEvent.layout)}
+              {...pan.panHandlers}
+            >
+              <Svg pointerEvents="none" width="100%" height="100%">
+                <Path d={preview} stroke={colors.text} strokeWidth={2} fill="none" />
+              </Svg>
+              <View pointerEvents="none" style={styles.guide} />
+            </View>
           </View>
           <Pressable
             accessibilityRole="checkbox"
@@ -103,24 +110,29 @@ export function SignatureSheet({
             onPress={() => setAccepted((current) => !current)}
             style={styles.consent}
           >
-            <Text style={styles.copy}>
-              {accepted ? '☑' : '☐'} {CONSENT_TEXT}
-            </Text>
+            <Icon
+              name={accepted ? 'checkbox' : 'square-outline'}
+              color={accepted ? colors.primary : colors.textMuted}
+            />
+            <Text style={[styles.copy, styles.consentText]}>{CONSENT_TEXT}</Text>
           </Pressable>
           <Text style={styles.note}>
             La fecha, la hora y el dispositivo los registra el servidor.
           </Text>
           {error ? <Text style={styles.error}>{error}</Text> : null}
           <View style={styles.actions}>
-            <Button label="Borrar" variant="secondary" disabled={loading} onPress={clear} />
-            <Button label="Cancelar" variant="secondary" disabled={loading} onPress={onClose} />
+            <View style={styles.actionCell}>
+              <Button label="Cancelar" variant="secondary" disabled={loading} onPress={onClose} />
+            </View>
+            <View style={styles.actionCell}>
+              <Button
+                label="Firmar"
+                loading={loading}
+                disabled={!accepted || display.length === 0}
+                onPress={() => void confirm()}
+              />
+            </View>
           </View>
-          <Button
-            label="Firmar"
-            loading={loading}
-            disabled={!accepted || display.length === 0}
-            onPress={() => void confirm()}
-          />
         </SafeAreaView>
       </View>
     </Modal>
@@ -148,6 +160,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     overflow: 'hidden',
   },
+  canvasHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  drawingArea: { flex: 1 },
   guide: {
     position: 'absolute',
     left: spacing.lg,
@@ -156,8 +170,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  consent: { minHeight: 44, justifyContent: 'center' },
+  consent: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  consentText: { flex: 1 },
   note: { ...typography.caption, color: colors.textMuted },
   error: { ...typography.caption, color: colors.error },
-  actions: { flexDirection: 'row', justifyContent: 'space-around', gap: spacing.sm },
+  actions: { flexDirection: 'row', gap: spacing.sm },
+  actionCell: { flex: 1 },
 })

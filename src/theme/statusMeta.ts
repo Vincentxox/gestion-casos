@@ -91,6 +91,34 @@ export const actionMeta = {
     phase: 'curso',
     icon: 'play-circle-outline',
   },
+  enviar_reporte: {
+    label: 'Enviar reporte',
+    description: 'Firma y envía el reporte para validación',
+    verb: 'firmó y envió el reporte',
+    phase: 'revision',
+    icon: 'document-text-outline',
+  },
+  validar_reporte: {
+    label: 'Validar reporte',
+    description: 'Firma la validación técnica',
+    verb: 'firmó la validación técnica',
+    phase: 'revision',
+    icon: 'shield-checkmark-outline',
+  },
+  devolver_reporte: {
+    label: 'Devolver reporte',
+    description: 'Devuelve el reporte con observaciones',
+    verb: 'devolvió el reporte',
+    phase: 'detenida',
+    icon: 'arrow-undo-outline',
+  },
+  aprobar_reporte: {
+    label: 'Aprobar reporte',
+    description: 'Firma la conformidad',
+    verb: 'firmó la conformidad',
+    phase: 'cerrada',
+    icon: 'checkmark-done-outline',
+  },
 } satisfies Record<
   string,
   { label: string; description: string; verb: string; phase: Phase; icon: IconName }

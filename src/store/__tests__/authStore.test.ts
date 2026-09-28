@@ -1,4 +1,5 @@
 import type { Session } from '@supabase/supabase-js'
+import { Image } from 'expo-image'
 
 import { queryClient } from '@/config/queryClient'
 import {
@@ -24,6 +25,13 @@ jest.mock('@/features/auth/authService', () => ({
   retryPendingInvitation: jest.fn(),
 }))
 
+jest.mock('expo-image', () => ({
+  Image: {
+    clearMemoryCache: jest.fn(),
+    clearDiskCache: jest.fn(),
+  },
+}))
+
 const mockGetCurrentSession = jest.mocked(getCurrentSession)
 const mockResolveSessionProfile = jest.mocked(resolveSessionProfile)
 const mockSignIn = jest.mocked(signIn)
@@ -31,6 +39,8 @@ const mockSignInWithGoogle = jest.mocked(signInWithGoogle)
 const mockSignOut = jest.mocked(signOut)
 const mockSignUp = jest.mocked(signUp)
 const mockRetryPendingInvitation = jest.mocked(retryPendingInvitation)
+const mockClearMemoryCache = jest.mocked(Image.clearMemoryCache)
+const mockClearDiskCache = jest.mocked(Image.clearDiskCache)
 
 const session = {
   user: { id: 'user-1' },
@@ -50,6 +60,8 @@ const profile: Profile = {
 describe('estado global de autenticación', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockClearMemoryCache.mockResolvedValue(true)
+    mockClearDiskCache.mockResolvedValue(true)
     useAuthStore.setState({
       session: null,
       profile: null,
@@ -185,6 +197,20 @@ describe('estado global de autenticación', () => {
       profile: null,
       status: 'unauthenticated',
     })
+    expect(mockClearMemoryCache).toHaveBeenCalledTimes(1)
+    expect(mockClearDiskCache).toHaveBeenCalledTimes(1)
+  })
+
+  test('cierra sesión aunque una caché de imágenes falle', async () => {
+    useAuthStore.setState({ session, profile, status: 'authenticated' })
+    mockSignOut.mockResolvedValue()
+    mockClearDiskCache.mockRejectedValue(new Error('disk unavailable'))
+
+    await expect(useAuthStore.getState().logout()).resolves.toBeUndefined()
+
+    expect(useAuthStore.getState().status).toBe('unauthenticated')
+    expect(mockClearMemoryCache).toHaveBeenCalledTimes(1)
+    expect(mockClearDiskCache).toHaveBeenCalledTimes(1)
   })
 
   test('aplica cambios de sesión emitidos por Supabase', async () => {
@@ -250,6 +276,8 @@ describe('estado global de autenticación', () => {
     mockRetryPendingInvitation.mockResolvedValue(profile)
     await expect(useAuthStore.getState().retryInvitation()).resolves.toBe(true)
     expect(useAuthStore.getState().profile?.organizationId).toBe('org-1')
+    expect(mockClearMemoryCache).toHaveBeenCalledTimes(1)
+    expect(mockClearDiskCache).toHaveBeenCalledTimes(1)
   })
 
   test('borra datos en caché al cambiar de usuario para no mostrar otra empresa', async () => {
@@ -265,6 +293,19 @@ describe('estado global de autenticación', () => {
     await useAuthStore.getState().applySession(anotherSession)
 
     expect(queryClient.getQueryData(['cases'])).toBeUndefined()
+    expect(useAuthStore.getState().profile?.organizationId).toBe('org-2')
+    expect(mockClearMemoryCache).toHaveBeenCalledTimes(1)
+    expect(mockClearDiskCache).toHaveBeenCalledTimes(1)
+  })
+
+  test('limpia imágenes cuando cambia de empresa con el mismo usuario', async () => {
+    useAuthStore.setState({ session, profile, status: 'authenticated' })
+    mockResolveSessionProfile.mockResolvedValue({ ...profile, organizationId: 'org-2' })
+
+    await useAuthStore.getState().applySession(session)
+
+    expect(mockClearMemoryCache).toHaveBeenCalledTimes(1)
+    expect(mockClearDiskCache).toHaveBeenCalledTimes(1)
     expect(useAuthStore.getState().profile?.organizationId).toBe('org-2')
   })
 })

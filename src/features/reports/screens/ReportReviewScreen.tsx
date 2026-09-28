@@ -221,7 +221,7 @@ export function ReportReviewScreen({ navigation, route }: Props) {
     <SafeAreaView edges={['bottom']} style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text accessibilityRole="header" style={styles.title}>
-          Revisar reporte · {item.caseNumber}
+          {item.caseNumber}
         </Text>
         {action ? (
           <Card contentStyle={styles.notice}>
@@ -286,14 +286,20 @@ export function ReportReviewScreen({ navigation, route }: Props) {
                 </Text>
               ))
             : null}
-          <Button
-            label={actionLabel}
-            disabled={action === 'submit' && missing.length > 0}
-            onPress={() => setSignatureAction(action)}
-          />
-          {actions.includes('return') ? (
-            <Button label="Devolver" variant="danger" onPress={() => setReturnVisible(true)} />
-          ) : null}
+          <View style={styles.actionRow}>
+            <View style={styles.actionCell}>
+              <Button
+                label={actionLabel}
+                disabled={action === 'submit' && missing.length > 0}
+                onPress={() => setSignatureAction(action)}
+              />
+            </View>
+            {actions.includes('return') ? (
+              <View style={styles.actionCell}>
+                <Button label="Devolver" variant="danger" onPress={() => setReturnVisible(true)} />
+              </View>
+            ) : null}
+          </View>
         </View>
       ) : item.status === 'aprobado' ? (
         <View style={styles.sticky}>
@@ -343,7 +349,7 @@ export function ReportReviewScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { gap: spacing.md, padding: spacing.lg, paddingBottom: spacing.xl },
-  title: { ...typography.title, color: colors.text },
+  title: { ...typography.caption, color: colors.textMuted },
   notice: { gap: spacing.sm },
   text: { ...typography.body, color: colors.text },
   muted: { ...typography.body, color: colors.textMuted },
@@ -355,4 +361,6 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     backgroundColor: colors.surface,
   },
+  actionRow: { flexDirection: 'row', gap: spacing.sm },
+  actionCell: { flex: 1 },
 })

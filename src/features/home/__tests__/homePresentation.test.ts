@@ -65,6 +65,19 @@ test('el saludo depende de la hora local', () => {
   ])
 })
 
+test('los reportes pendientes usan la fase morada de revisión', () => {
+  const tiles = getHomeTiles(
+    { ...profile, role: 'jefe_area' },
+    {
+      ...summary,
+      inbox: { ...summary.inbox, reportes_por_validar: 1, reportes_por_aprobar: 1 },
+    },
+  )
+  expect(tiles.filter((tile) => tile.id.startsWith('reportes_')).map((tile) => tile.phase)).toEqual(
+    ['revision', 'revision'],
+  )
+})
+
 test('el destacado usa los conteos y rutas del rol', () => {
   expect(getHomeHero(profile, summary)?.count).toBe(2)
   expect(getHomeHero({ ...profile, role: 'tecnico' }, summary)?.count).toBe(6)

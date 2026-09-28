@@ -49,6 +49,12 @@ export function ProgressTracker({
     )
   }
   const active = progress[status]
+  const nextStep =
+    status === 'reporte_enviado'
+      ? 'Validación'
+      : status === 'validado'
+        ? 'Aprobación'
+        : steps[active + 1]?.label
   return (
     <View accessibilityLabel={`Progreso: paso ${active + 1} de ${steps.length}, ${meta.label}`}>
       <Text style={styles.heading}>
@@ -99,7 +105,7 @@ export function ProgressTracker({
       </Animated.View>
       <Text style={styles.summary}>
         Actual: {meta.label}
-        {steps[active + 1] ? ` · Siguiente: ${steps[active + 1]?.label}` : ''}
+        {nextStep ? ` · Siguiente: ${nextStep}` : ''}
       </Text>
     </View>
   )

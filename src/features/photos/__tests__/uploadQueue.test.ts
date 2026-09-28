@@ -1,6 +1,12 @@
 import Storage from 'expo-sqlite/kv-store'
 
-import { processPendingPhoto, resumePendingPhotos, type UploadDependencies } from '../uploadQueue'
+import {
+  processPendingPhoto,
+  resumePendingPhotos,
+  savePendingPhoto,
+  subscribePendingPhotos,
+  type UploadDependencies,
+} from '../uploadQueue'
 import type { CasePhoto, PendingPhoto } from '../types'
 
 jest.mock('../photoService', () => ({
@@ -123,4 +129,21 @@ test('el reinicio y la reconexión no reintentan errores de negocio automáticam
   await resumePendingPhotos('tech')
   await resumePendingPhotos('tech', undefined, 'reconnect')
   expect(Storage.setItemAsync).not.toHaveBeenCalled()
+})
+
+test('avisa solo a la cuadrícula de la solicitud y el usuario cuya cola cambió', async () => {
+  const listener = jest.fn()
+  const otherCase = jest.fn()
+  const unsubscribe = subscribePendingPhotos('tech', 'case', listener)
+  const unsubscribeOther = subscribePendingPhotos('tech', 'other-case', otherCase)
+  ;(Storage.setItemAsync as jest.Mock).mockResolvedValue(undefined)
+
+  await savePendingPhoto(entry)
+  expect(listener).toHaveBeenCalledTimes(1)
+  expect(otherCase).not.toHaveBeenCalled()
+
+  unsubscribe()
+  unsubscribeOther()
+  await savePendingPhoto(entry)
+  expect(listener).toHaveBeenCalledTimes(1)
 })
