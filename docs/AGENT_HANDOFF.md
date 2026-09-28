@@ -613,10 +613,11 @@ Vincent autoriza, en este orden:
      `role: anon` (entrada «auditoría de `service_role`»).
 
    Después, `npm run verify` y push.
+
 2. **APK** desde el último commit de `qa-fixes`. Vincent la prueba con el guion de V7.
    Los pasos 3 a 5 solo se hacen **después del visto bueno de Vincent a esa prueba**.
 3. **Integrar en `feature/stage-2-improvements`:** `git merge --no-ff
-   agent/codex/qa-fixes`, `npm run verify`, push y CI en verde.
+agent/codex/qa-fixes`, `npm run verify`, push y CI en verde.
 4. **Pasar a `main`:** abrir un pull request de `feature/stage-2-improvements` a
    `main`, esperar CI y hacer el merge con un commit de merge (sin squash ni rebase).
    Luego crear la etiqueta anotada `v0.9.0-mvp` sobre el commit de merge en `main` y
