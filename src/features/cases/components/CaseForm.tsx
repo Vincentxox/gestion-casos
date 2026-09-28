@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { Button } from '@/components/ui/Button'
@@ -20,6 +21,7 @@ interface Props {
   loading?: boolean
   onSubmit: (input: UpdateCaseInput) => Promise<void>
   submitLabel: string
+  markRequired?: boolean
 }
 
 const emptyValues: UpdateCaseInput = {
@@ -35,7 +37,9 @@ export function CaseForm({
   loading = false,
   onSubmit,
   submitLabel,
+  markRequired = false,
 }: Props) {
+  const tabBarHeight = useBottomTabBarHeight()
   const [values, setValues] = useState(initialValues)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [categorySelectorOpen, setCategorySelectorOpen] = useState(false)
@@ -68,7 +72,9 @@ export function CaseForm({
   }
 
   return (
-    <KeyboardFormScrollView contentContainerStyle={styles.content}>
+    <KeyboardFormScrollView
+      contentContainerStyle={[styles.content, { paddingBottom: tabBarHeight + spacing.lg }]}
+    >
       <Text style={styles.sectionTitle}>¿Qué necesitas?</Text>
       <CategorySelectField
         categories={availableCategories}
@@ -79,6 +85,7 @@ export function CaseForm({
         onClose={() => setCategorySelectorOpen(false)}
         onOpen={() => setCategorySelectorOpen(true)}
         open={categorySelectorOpen}
+        required={markRequired}
         value={values.categoryId}
       />
       {categoriesQuery.isError ? (
@@ -93,6 +100,8 @@ export function CaseForm({
         error={errors.title}
         label="Título"
         maxLength={120}
+        required={markRequired}
+        showCharacterCount={markRequired}
         onChangeText={(value) => updateValue('title', value)}
         placeholder="Ej. Fuga de agua en medidor"
         value={values.title}
@@ -102,6 +111,8 @@ export function CaseForm({
         label="Descripción"
         maxLength={2000}
         multiline
+        required={markRequired}
+        showCharacterCount={markRequired}
         onChangeText={(value) => updateValue('description', value)}
         placeholder="Describe qué sucede y cualquier información útil"
         style={styles.multiline}
@@ -112,12 +123,18 @@ export function CaseForm({
         error={errors.location}
         label="Ubicación"
         maxLength={180}
+        required={markRequired}
         onChangeText={(value) => updateValue('location', value)}
         placeholder="Dirección o referencia"
         value={values.location}
       />
       <View style={styles.priorityGroup}>
-        <Text style={styles.label}>Prioridad</Text>
+        <Text
+          accessibilityLabel={markRequired ? 'Prioridad, obligatorio' : 'Prioridad'}
+          style={styles.label}
+        >
+          Prioridad{markRequired ? <Text style={styles.required}> *</Text> : null}
+        </Text>
         <Text style={styles.priorityHint}>
           Alta: detiene la operación. Media: requiere atención. Baja: puede programarse.
         </Text>
@@ -157,6 +174,7 @@ const styles = StyleSheet.create({
   catalogError: { ...typography.caption, color: colors.error },
   priorityGroup: { gap: spacing.sm },
   label: { ...typography.body, color: colors.text },
+  required: { color: colors.error },
   priorityHint: { ...typography.caption, color: colors.textMuted },
   priorityRow: { flexDirection: 'row', gap: spacing.sm },
   priority: {

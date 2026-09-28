@@ -39,9 +39,7 @@ export function CreateCaseScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView edges={['bottom']} style={styles.safeArea}>
-      <Text style={styles.subtitle}>
-        Completa los datos obligatorios para iniciar el seguimiento.
-      </Text>
+      <Text style={styles.subtitle}>Los campos con * son obligatorios.</Text>
       {!profile?.areaId ? (
         <Text style={styles.subtitle}>
           No tienes un área asignada. El administrador debe asignarla antes de crear solicitudes.
@@ -49,6 +47,7 @@ export function CreateCaseScreen({ navigation }: Props) {
       ) : (
         <CaseForm
           loading={mutation.isPending}
+          markRequired
           onSubmit={handleSubmit}
           submitLabel="Enviar solicitud"
         />
