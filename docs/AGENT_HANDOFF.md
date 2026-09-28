@@ -566,6 +566,107 @@ Para el otro agente:
 Hallazgos (solo revisión): [bloqueante] ... / [importante] ... / [sugerencia] ...
 ```
 
+### 2026-09-28 — Ramas e identificador — Vincent — decisiones
+
+Vincent decide:
+
+1. descartar `agent/codex/mantenimiento-esquema-v3`;
+2. adoptar `main` como rama estable y `develop` como rama de integración;
+3. usar `com.nexocasos.app` como identificador definitivo.
+
+**Tareas para Codex:**
+
+A. **Ramas.** Solo operaciones de Git; no cambian código.
+
+1. Etiqueta anotada `archive/mantenimiento-esquema-v3` sobre `dc94a88`, con push, y
+   después borrar la rama remota `agent/codex/mantenimiento-esquema-v3`.
+2. Crear `develop` desde `main` (`ab29ee0`) y hacer push. Confirmar que
+   `feature/stage-2-improvements` ya está contenida en `main` y borrarla (local y
+   remota).
+3. Borrar las ramas remotas ya integradas en `main`: las 8 `agent/claude/*`,
+   `agent/codex/mvp-client`, `agent/codex/qa-fixes`,
+   `agent/codex/expo-sdk-patches`, `feature/authentication`,
+   `feature/case-management` y `feature/google-auth`. Antes de borrar cada una,
+   comprobar con `git merge-base --is-ancestor` que está en `main`; si alguna no lo
+   está, no borrarla y avisar.
+4. Documentar la estrategia en `AGENTS.md` y en `docs/AGENT_HANDOFF.md`:
+   - `main` es estable: solo recibe PR desde `develop`, con CI en verde y etiqueta
+     `vX.Y.Z`;
+   - `develop` es la rama de integración;
+   - las ramas `agent/<agente>/<tema>` salen de `develop`, llegan por PR a `develop`
+     y se borran al integrarse;
+   - las migraciones requieren revisión humana en el PR.
+5. `agent/codex/v8-ui` pasa a `develop` por PR; no se integra en `main`.
+
+B. **Configuración de publicación.** Rama `agent/codex/release-config` desde
+`develop`.
+
+1. En `app.json`, `android.package` y `ios.bundleIdentifier` pasan a
+   `com.nexocasos.app`.
+   - `scheme` (`gestion-casos`) no cambia, para no tocar la redirección de Google ya
+     configurada en Supabase.
+   - `slug` y `projectId` de EAS tampoco cambian.
+2. En `eas.json`:
+   - `cli.appVersionSource: "remote"`;
+   - perfil `production` con `android.buildType: "app-bundle"`, `autoIncrement: true`
+     y `environment: "production"`;
+   - `preview` se mantiene como APK interna.
+3. `npm run verify`, PR a `develop` y aviso para revisión. No se compila `production`
+   todavía.
+
+**Tareas para Vincent:**
+
+- Al instalar la APK con el identificador nuevo, Android la trata como otra app:
+  desinstalar primero la versión anterior.
+- En GitHub, _Settings → Branches_: proteger `main` y `develop` (PR obligatorio y CI
+  aprobado).
+
+### 2026-09-28 — Ramas y publicación — Codex — implementación para revisión
+
+- `archive/mantenimiento-esquema-v3` es una etiqueta anotada publicada sobre
+  `dc94a88`; la rama remota incompatible se borró después de verificar la etiqueta.
+- `develop` se creó desde `main` (`ab29ee0`) y está en GitHub. Se comprobó con
+  `git merge-base --is-ancestor` que `feature/stage-2-improvements` y las otras ramas
+  enumeradas estaban contenidas en `main` antes de borrarlas. La rama de etapa 2
+  también se borró localmente. `agent/codex/expo-sdk-patches` no existía en remoto:
+  no hubo nada que borrar allí; su copia local permanece.
+- Se documentó en `AGENTS.md` el flujo `main` estable / `develop` de integración,
+  PRs de `agent/*` hacia `develop` y revisión humana de migraciones.
+- `agent/codex/release-config` sale de `develop` (`ab29ee0`): commit `f7e33db`
+  cambia solo `app.json` y `eas.json` al identificador `com.nexocasos.app`, versiones
+  remotas y perfil AAB de producción. Conserva scheme, slug, projectId y `preview` APK.
+  `npm run verify` aprobó 255 pruebas y Expo Doctor 21/21. No se compiló producción.
+- Pendiente: PRs de V8 y release-config hacia `develop`; no hubo merge ni despliegue.
+  Vincent aún debe proteger `main` y `develop` en GitHub.
+
+### 2026-09-28 — V8 (`ab5e6ba`…`02ecbe3`) — Claude — revisión
+
+Resultado: **Aprobado** contra `docs/VISUAL_SYSTEM.md`, sección 12.
+
+- **12.1 Filtros:**
+  - se quitó `adjustsFontSizeToFit`;
+  - el contador mide 22 × 22 y está centrado, con `lineHeight` igual al tamaño de la
+    fuente, `includeFontPadding: false` y `textAlignVertical: 'center'`.
+- **12.2 Ligaduras:** `fontVariant: ['no-common-ligatures']` aplicado en toda la
+  tipografía, con prueba. **Falta confirmar en Android.** Si «fi» sigue unida, el
+  plan B de la especificación es `letterSpacing: 0.1`.
+- **12.3 Formulario:** `FormField` tiene `required` (« *» y etiqueta accesible) y los
+  contadores `n / máx` en el formulario de solicitud.
+- **12.4 Diálogos:**
+  - `AppFeedback.tsx` agrega `AppDialog` (`Modal` con `onRequestClose`,
+    `accessibilityViewIsModal`, tono con ícono y color) y `AppToast` (3 s,
+    `accessibilityLiveRegion="polite"`), con `useFeedback()`;
+  - queda **un solo** `Alert.alert` en `src/`: el permiso de cámara o galería con
+    «Abrir ajustes», justificado en un comentario según 12.4.
+- **12.5 `CaseCard`:** sin flecha; el avatar o «Sin asignar» queda en la fila
+  superior, alineado a la derecha; los chips se ajustan a la siguiente línea
+  (`flexWrap`).
+
+Siguiente paso: una APK de `agent/codex/v8-ui` para revisar en Android la ligadura, los
+filtros a 360 y 412 dp, los diálogos y las tarjetas. Siguen pendientes de Vincent las
+decisiones de la entrada «Revisión externa»: descartar esquema-v3, `main`/`develop` y el
+identificador de la app.
+
 ### 2026-09-28 — Revisión externa del repositorio — Claude — verificación
 
 Vincent comparte observaciones externas. Resultado de verificarlas contra
