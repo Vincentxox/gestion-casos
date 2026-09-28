@@ -45,12 +45,7 @@ export function SegmentedControl<T extends string>({
             }}
             style={[styles.segment, active && styles.active]}
           >
-            <Text
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.85}
-              style={[styles.label, active && styles.activeLabel]}
-            >
+            <Text numberOfLines={1} style={[styles.label, active && styles.activeLabel]}>
               {segment.label}
             </Text>
             {segment.count === undefined ? null : (
@@ -96,10 +91,21 @@ const styles = StyleSheet.create({
   },
   activeLabel: { color: colors.text, fontFamily: fonts.bold },
   count: {
+    minWidth: 22,
+    height: 22,
     borderRadius: radius.pill,
     backgroundColor: colors.surface,
     paddingHorizontal: spacing.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   activeCount: { backgroundColor: colors.primarySoft },
-  countText: { ...typography.caption, color: colors.textMuted, fontFamily: fonts.semibold },
+  countText: {
+    ...typography.caption,
+    color: colors.textMuted,
+    fontFamily: fonts.semibold,
+    lineHeight: typography.caption.fontSize,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+  },
 })
