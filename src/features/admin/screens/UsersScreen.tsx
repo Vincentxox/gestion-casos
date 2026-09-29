@@ -1,7 +1,7 @@
+import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { Ionicons } from '@expo/vector-icons'
 import { useState } from 'react'
 import {
-  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -53,11 +53,11 @@ export function UsersScreen() {
     if (!selectedProfile) return
 
     if ((role === 'tecnico' || role === 'jefe_area') && !areaId) {
-      Alert.alert('Selecciona un área', 'Este rol necesita un área asignada.')
+      AppFeedback.show('Selecciona un área', 'Este rol necesita un área asignada.')
       return
     }
     if (role === 'tecnico' && areas.data?.find((area) => area.id === areaId)?.kind !== 'tecnica') {
-      Alert.alert('Área inválida', 'Un técnico debe pertenecer a un área técnica.')
+      AppFeedback.show('Área inválida', 'Un técnico debe pertenecer a un área técnica.')
       return
     }
 
@@ -67,7 +67,7 @@ export function UsersScreen() {
       applyOwnAccess(selectedProfile.id, role, areaId, areaName)
       setSelectedProfile(null)
     } catch (error) {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible guardar el acceso',
         error instanceof Error ? error.message : 'Comprueba tus permisos y la conexión.',
       )

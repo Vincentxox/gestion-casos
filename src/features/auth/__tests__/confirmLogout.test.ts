@@ -1,10 +1,10 @@
-import { Alert } from 'react-native'
+import { AppFeedback } from '@/components/feedback/AppFeedback'
 
 import { confirmLogout } from '../confirmLogout'
 
 test('solo cierra sesión tras la confirmación explícita', () => {
   const onConfirm = jest.fn()
-  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {})
+  const alert = jest.spyOn(AppFeedback, 'show').mockImplementation(() => {})
 
   confirmLogout(onConfirm)
 

@@ -15,6 +15,7 @@ import { StyleSheet, View } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import { BrandIntroScreen } from '@/components/branding/BrandIntroScreen'
+import { AppFeedbackProvider } from '@/components/feedback/AppFeedback'
 import { queryClient } from '@/config/queryClient'
 import { registerQueryLifecycle } from '@/config/queryLifecycle'
 import { AuthLoadingScreen } from '@/features/auth/screens/AuthLoadingScreen'
@@ -123,12 +124,14 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <QueryClientProvider client={queryClient}>
-        <View style={styles.container}>
-          <StatusBar style="dark" />
-          <RootContent fontsReady={fontsLoaded || Boolean(fontError)} />
-        </View>
-      </QueryClientProvider>
+      <AppFeedbackProvider>
+        <QueryClientProvider client={queryClient}>
+          <View style={styles.container}>
+            <StatusBar style="dark" />
+            <RootContent fontsReady={fontsLoaded || Boolean(fontError)} />
+          </View>
+        </QueryClientProvider>
+      </AppFeedbackProvider>
     </SafeAreaProvider>
   )
 }

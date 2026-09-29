@@ -26,4 +26,21 @@ describe('FormField', () => {
     expect(screen.getByText('El correo es obligatorio')).toBeTruthy()
     expect(screen.getByLabelText('Correo').props.accessibilityHint).toBe('El correo es obligatorio')
   })
+
+  test('señala un campo obligatorio y muestra su contador', async () => {
+    const screen = await render(
+      <FormField
+        label="Título"
+        maxLength={120}
+        onChangeText={jest.fn()}
+        required
+        showCharacterCount
+        value="Fuga"
+      />,
+    )
+
+    expect(screen.getAllByLabelText('Título, obligatorio')).toHaveLength(2)
+    expect(screen.getByText('4 / 120')).toBeTruthy()
+    expect(screen.getByText('*')).toBeTruthy()
+  })
 })

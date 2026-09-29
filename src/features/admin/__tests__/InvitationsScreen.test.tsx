@@ -1,5 +1,7 @@
 import { fireEvent, render, waitFor } from '@testing-library/react-native'
-import { Alert, Share } from 'react-native'
+import { Share } from 'react-native'
+
+import { AppFeedback } from '@/components/feedback/AppFeedback'
 
 import { InvitationsScreen } from '../screens/InvitationsScreen'
 
@@ -47,7 +49,7 @@ test('comparte una invitación pendiente sin código de empresa', async () => {
 })
 
 test('ofrece compartir el aviso después de guardar la invitación', async () => {
-  const alert = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn())
+  const alert = jest.spyOn(AppFeedback, 'show').mockImplementation(jest.fn())
   const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: Share.sharedAction })
   const screen = await render(<InvitationsScreen />)
 

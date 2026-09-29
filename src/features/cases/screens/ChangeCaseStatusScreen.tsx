@@ -1,6 +1,7 @@
+import { AppFeedback } from '@/components/feedback/AppFeedback'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { useState } from 'react'
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { FormField } from '@/components/forms/FormField'
@@ -68,11 +69,10 @@ export function ChangeCaseStatusScreen({ navigation, route }: Props) {
     setErrors({})
     try {
       await mutation.mutateAsync(result.data)
-      Alert.alert('Acción realizada', 'El cambio quedó registrado en el historial.', [
-        { text: 'Entendido', onPress: () => navigation.goBack() },
-      ])
+      AppFeedback.toast('Acción realizada')
+      navigation.goBack()
     } catch (error) {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible completar la acción',
         error instanceof Error ? error.message : 'Comprueba tus permisos y la conexión.',
       )

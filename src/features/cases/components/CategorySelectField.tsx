@@ -10,6 +10,7 @@ interface Props {
   disabled?: boolean
   error?: string
   loading?: boolean
+  required?: boolean
   onChange: (category: string) => void
   onClose: () => void
   onOpen: () => void
@@ -22,6 +23,7 @@ export function CategorySelectField({
   disabled = false,
   error,
   loading = false,
+  required = false,
   onChange,
   onClose,
   onOpen,
@@ -30,10 +32,15 @@ export function CategorySelectField({
 }: Props) {
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Tipo de servicio</Text>
+      <Text
+        accessibilityLabel={required ? 'Tipo de servicio, obligatorio' : 'Tipo de servicio'}
+        style={styles.label}
+      >
+        Tipo de servicio{required ? <Text style={styles.required}> *</Text> : null}
+      </Text>
       <Pressable
         accessibilityHint="Abre el catálogo de tipos de servicio"
-        accessibilityLabel="Tipo de servicio"
+        accessibilityLabel={required ? 'Tipo de servicio, obligatorio' : 'Tipo de servicio'}
         accessibilityRole="button"
         disabled={disabled || loading}
         onPress={onOpen}
@@ -114,6 +121,7 @@ export function CategorySelectField({
 const styles = StyleSheet.create({
   container: { gap: spacing.xs },
   label: { ...typography.body, color: colors.text },
+  required: { color: colors.error },
   selector: {
     minHeight: 50,
     flexDirection: 'row',

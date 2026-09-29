@@ -1,4 +1,5 @@
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { AppFeedback } from '@/components/feedback/AppFeedback'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useState } from 'react'
 import appConfig from '../../../app.json'
 
@@ -29,9 +30,9 @@ export function ProfileScreen() {
     try {
       applyOwnName(await updateOwnName(profile.id, name ?? profile.fullName))
       setName(null)
-      Alert.alert('Nombre actualizado')
+      AppFeedback.toast('Nombre actualizado')
     } catch (error) {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible guardar',
         error instanceof Error ? error.message : 'Inténtalo de nuevo.',
       )
@@ -44,7 +45,10 @@ export function ProfileScreen() {
     try {
       await logout()
     } catch {
-      Alert.alert('No fue posible cerrar sesión', 'Comprueba tu conexión e inténtalo nuevamente.')
+      AppFeedback.show(
+        'No fue posible cerrar sesión',
+        'Comprueba tu conexión e inténtalo nuevamente.',
+      )
     }
   }
 

@@ -1,16 +1,8 @@
+import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { Ionicons } from '@expo/vector-icons'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { useState } from 'react'
-import {
-  Alert,
-  FlatList,
-  Modal,
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native'
+import { FlatList, Modal, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
@@ -69,7 +61,7 @@ export function CaseResourcesScreen({ route }: Props) {
       setFormVisible(false)
       setEditing(null)
     } catch (error) {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible guardar el registro',
         error instanceof Error
           ? error.message
@@ -79,7 +71,7 @@ export function CaseResourcesScreen({ route }: Props) {
   }
 
   function confirmDelete(usage: CaseUsageRecord) {
-    Alert.alert('Eliminar registro', '¿Deseas quitar este uso de la solicitud?', [
+    AppFeedback.show('Eliminar registro', '¿Deseas quitar este uso de la solicitud?', [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Eliminar',
@@ -88,7 +80,7 @@ export function CaseResourcesScreen({ route }: Props) {
           void remove
             .mutateAsync(usage.id)
             .catch((error) =>
-              Alert.alert(
+              AppFeedback.show(
                 'No fue posible eliminar',
                 error instanceof Error ? error.message : 'Comprueba la conexión.',
               ),

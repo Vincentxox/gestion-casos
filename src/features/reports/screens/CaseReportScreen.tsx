@@ -1,8 +1,9 @@
+import { AppFeedback } from '@/components/feedback/AppFeedback'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Alert, StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { FormField } from '@/components/forms/FormField'
@@ -110,7 +111,7 @@ export function CaseReportScreen({ navigation, route }: Props) {
         if (profile?.id)
           void listPendingPhotos(profile.id, caseId).then((entries) => {
             if (entries.length > 0)
-              Alert.alert(
+              AppFeedback.show(
                 'Fotos pendientes',
                 'Hay fotos subiéndose. Se terminarán de subir en segundo plano mientras la app esté abierta.',
               )
@@ -246,7 +247,7 @@ export function CaseReportScreen({ navigation, route }: Props) {
             onPress={() =>
               void handleSubmit(
                 (input) => void review(input),
-                () => Alert.alert('Revisa el formulario'),
+                () => AppFeedback.show('Revisa el formulario'),
               )()
             }
           />

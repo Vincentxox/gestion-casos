@@ -18,44 +18,40 @@ export function CaseCard({ item, onPress }: { item: CaseRecord; onPress: () => v
       accessibilityLabel={`${item.caseNumber}, ${item.title}, ${status.label}, prioridad ${priorityMeta[item.priority].label.toLowerCase()}`}
       onPress={onPress}
     >
-      <View style={styles.row}>
-        <View style={styles.content}>
-          <View style={styles.topRow}>
-            <Text numberOfLines={1} style={styles.numberAndTime}>
-              <Text style={styles.number}>{item.caseNumber}</Text>
-              <Text style={styles.time}> · {formatRelativeDate(item.createdAt)}</Text>
-            </Text>
-            {item.assigneeName ? (
-              <Avatar name={item.assigneeName} id={item.assignedTo ?? item.id} size={24} />
-            ) : (
-              <Text numberOfLines={1} style={styles.unassigned}>
-                Sin asignar
-              </Text>
-            )}
-          </View>
-          <Text numberOfLines={2} style={styles.title}>
-            {item.title}
+      <View style={styles.content}>
+        <View style={styles.topRow}>
+          <Text numberOfLines={1} style={styles.numberAndTime}>
+            <Text style={styles.number}>{item.caseNumber}</Text>
+            <Text style={styles.time}> · {formatRelativeDate(item.createdAt)}</Text>
           </Text>
-          <View style={styles.locationRow}>
-            <Icon name="location-outline" size={14} color={colors.textMuted} />
-            <Text numberOfLines={1} style={styles.location}>
-              {item.location} · {item.requestingAreaName}
+          {item.assigneeName ? (
+            <Avatar name={item.assigneeName} id={item.assignedTo ?? item.id} size={24} />
+          ) : (
+            <Text numberOfLines={1} style={styles.unassigned}>
+              Sin asignar
             </Text>
-          </View>
-          <View style={styles.badges}>
-            <StatusBadge status={item.status} />
-            <PriorityBadge priority={item.priority} />
-          </View>
+          )}
         </View>
-        <Icon name="chevron-forward" size="inline" color={colors.textMuted} />
+        <Text numberOfLines={2} style={styles.title}>
+          {item.title}
+        </Text>
+        <View style={styles.locationRow}>
+          <Icon name="location-outline" size={14} color={colors.textMuted} />
+          <Text numberOfLines={1} style={styles.location}>
+            {item.location} · {item.requestingAreaName}
+          </Text>
+        </View>
+        <View style={styles.badges}>
+          <StatusBadge status={item.status} />
+          <PriorityBadge priority={item.priority} />
+        </View>
       </View>
     </Card>
   )
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.base },
-  content: { flex: 1, gap: spacing.sm },
+  content: { gap: spacing.sm },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   numberAndTime: { flex: 1 },
   number: {
@@ -68,6 +64,6 @@ const styles = StyleSheet.create({
   title: { ...typography.body, fontFamily: fonts.bold, color: colors.text },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   location: { ...typography.caption, color: colors.textMuted, flex: 1 },
-  badges: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  badges: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.xs },
   unassigned: { ...typography.caption, color: colors.textMuted },
 })

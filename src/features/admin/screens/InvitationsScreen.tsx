@@ -1,5 +1,6 @@
+import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { useState } from 'react'
-import { Alert, Share, StyleSheet, Text, View } from 'react-native'
+import { Share, StyleSheet, Text, View } from 'react-native'
 
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -40,7 +41,10 @@ export function InvitationsScreen() {
 
   async function shareNotice(invitationEmail: string, invitationRole: AppRole) {
     if (!organizationName?.trim()) {
-      Alert.alert('No fue posible compartir', 'No se pudo identificar el nombre de la empresa.')
+      AppFeedback.show(
+        'No fue posible compartir',
+        'No se pudo identificar el nombre de la empresa.',
+      )
       return
     }
     try {
@@ -52,27 +56,30 @@ export function InvitationsScreen() {
         }),
       })
     } catch {
-      Alert.alert('No fue posible compartir', 'Inténtalo de nuevo desde la invitación registrada.')
+      AppFeedback.show(
+        'No fue posible compartir',
+        'Inténtalo de nuevo desde la invitación registrada.',
+      )
     }
   }
 
   async function submit() {
     const result = invitationSchema.safeParse({ email, role, areaId: selectedAreaId })
     if (!result.success) {
-      Alert.alert('Revisa la invitación', result.error.issues[0]?.message ?? 'Datos inválidos')
+      AppFeedback.show('Revisa la invitación', result.error.issues[0]?.message ?? 'Datos inválidos')
       return
     }
     if (
       role === 'tecnico' &&
       areas.data?.find((area) => area.id === selectedAreaId)?.kind !== 'tecnica'
     ) {
-      Alert.alert('Área incorrecta', 'Un técnico debe pertenecer a un área técnica.')
+      AppFeedback.show('Área incorrecta', 'Un técnico debe pertenecer a un área técnica.')
       return
     }
     try {
       await create.mutateAsync(result.data)
       setEmail('')
-      Alert.alert(
+      AppFeedback.show(
         'Invitación creada',
         'La persona quedará vinculada al registrarse y confirmar este correo. Comparte el aviso para informarle.',
         [
@@ -84,7 +91,7 @@ export function InvitationsScreen() {
         ],
       )
     } catch (error) {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible invitar',
         error instanceof Error ? error.message : 'Inténtalo de nuevo.',
       )
@@ -92,7 +99,7 @@ export function InvitationsScreen() {
   }
 
   function confirmRevoke(id: string) {
-    Alert.alert('Revocar invitación', '¿Deseas cancelar esta invitación?', [
+    AppFeedback.show('Revocar invitación', '¿Deseas cancelar esta invitación?', [
       { text: 'Volver', style: 'cancel' },
       {
         text: 'Revocar',
@@ -100,7 +107,7 @@ export function InvitationsScreen() {
         onPress: () =>
           void revoke
             .mutateAsync(id)
-            .catch(() => Alert.alert('No fue posible revocar la invitación.')),
+            .catch(() => AppFeedback.show('No fue posible revocar la invitación.')),
       },
     ])
   }

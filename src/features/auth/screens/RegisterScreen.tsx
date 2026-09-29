@@ -1,7 +1,8 @@
+import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { zodResolver } from '@hookform/resolvers/zod'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { Controller, useForm } from 'react-hook-form'
-import { Alert, StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
 
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -36,14 +37,14 @@ export function RegisterScreen({ navigation }: Props) {
       const hasSession = await register(values)
 
       if (!hasSession) {
-        Alert.alert(
+        AppFeedback.show(
           'Confirma tu correo',
           'Enviamos un enlace de verificación a tu correo electrónico.',
           [{ text: 'Entendido', onPress: () => navigation.navigate('Login') }],
         )
       }
     } catch (error) {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible crear la cuenta',
         getAuthErrorMessage(
           error,
