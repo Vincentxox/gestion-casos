@@ -1,4 +1,5 @@
 import { act, render, waitFor } from '@testing-library/react-native'
+import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import { PhotoGrid } from '../components/PhotoGrid'
 import type { PendingPhoto } from '../types'
@@ -48,10 +49,25 @@ const pending: PendingPhoto = {
   retryOnReconnect: true,
 }
 
+function inSafeArea(children: React.ReactNode) {
+  return (
+    <SafeAreaProvider
+      initialMetrics={{
+        frame: { x: 0, y: 0, width: 400, height: 800 },
+        insets: { top: 0, right: 0, bottom: 0, left: 0 },
+      }}
+    >
+      {children}
+    </SafeAreaProvider>
+  )
+}
+
 test('la foto pendiente se actualiza al terminar la subida en segundo plano', async () => {
   let entries = [pending]
   mockListPendingPhotos.mockImplementation(async () => entries)
-  const screen = await render(<PhotoGrid caseId="case" kind="despues" userId="tech" editable />)
+  const screen = await render(
+    inSafeArea(<PhotoGrid caseId="case" kind="despues" userId="tech" editable />),
+  )
 
   await waitFor(() =>
     expect(screen.getAllByText('Sin conexión; se subirá al reconectar')).toHaveLength(2),
@@ -70,7 +86,7 @@ test('la foto pendiente se actualiza al terminar la subida en segundo plano', as
 test('sin permiso de edición muestra un estado vacío sin casillas para agregar', async () => {
   mockListPendingPhotos.mockResolvedValue([])
   const screen = await render(
-    <PhotoGrid caseId="case" kind="despues" userId="tech" editable={false} />,
+    inSafeArea(<PhotoGrid caseId="case" kind="despues" userId="tech" editable={false} />),
   )
 
   expect(screen.getByText('Sin fotos de después')).toBeTruthy()

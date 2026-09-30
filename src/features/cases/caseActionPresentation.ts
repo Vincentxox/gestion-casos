@@ -1,4 +1,10 @@
+import { actionMeta } from '@/theme/statusMeta'
+
 import type { CaseAction } from './types'
+
+export function getCaseActionMeta(action: CaseAction, assignedTo: string | null) {
+  return action === 'asignar' && assignedTo ? actionMeta.reasignar : actionMeta[action]
+}
 
 export function getSecondaryActionPresentation(actions: CaseAction[]) {
   if (actions.length === 1 && actions[0]) {

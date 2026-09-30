@@ -1,11 +1,11 @@
 import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { Ionicons } from '@expo/vector-icons'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
-import { useState } from 'react'
-import { FlatList, Modal, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
+import { useRef, useState } from 'react'
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
+import { BottomSheet } from '@/components/sheets/BottomSheet'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { RequestState } from '@/components/feedback/RequestState'
 import { SkeletonList } from '@/components/ui/SkeletonList'
@@ -16,7 +16,7 @@ import { formatNumber, formatQuetzales, plural } from '@/theme/formatters'
 import { useAssignableProfiles, useCaseDetail } from '@/features/cases/useCases'
 import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
-import { colors, radius, spacing, typography } from '@/theme/tokens'
+import { colors, spacing, typography } from '@/theme/tokens'
 
 import { UsageForm } from '../components/UsageForm'
 import { canManageCaseUsage } from '../resourcePermissions'
@@ -44,6 +44,7 @@ export function CaseResourcesScreen({ route }: Props) {
   const remove = useDeleteCaseUsage(caseId)
   const [editing, setEditing] = useState<CaseUsageRecord | null>(null)
   const [formVisible, setFormVisible] = useState(false)
+  const formSubmit = useRef<(() => void) | null>(null)
 
   function openForm(usage?: CaseUsageRecord) {
     setEditing(usage ?? null)
@@ -209,38 +210,28 @@ export function CaseResourcesScreen({ route }: Props) {
           />
         )}
       </View>
-      <Modal
-        animationType="fade"
-        onRequestClose={() => setFormVisible(false)}
-        transparent
+      <BottomSheet
+        title={editing ? 'Corregir uso' : 'Registrar uso'}
         visible={formVisible}
+        onClose={() => setFormVisible(false)}
+        form
+        height="82%"
+        footerAction={{
+          label: editing ? 'Guardar corrección' : 'Registrar uso',
+          loading: add.isPending || update.isPending,
+          onPress: () => formSubmit.current?.(),
+        }}
       >
-        <View style={styles.backdrop}>
-          <SafeAreaView edges={['bottom']} style={styles.modal}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{editing ? 'Corregir uso' : 'Registrar uso'}</Text>
-              <Pressable
-                accessibilityLabel="Cerrar formulario"
-                accessibilityRole="button"
-                onPress={() => setFormVisible(false)}
-                style={styles.iconButton}
-              >
-                <Ionicons color={colors.text} name="close" size={24} />
-              </Pressable>
-            </View>
-            <KeyboardFormScrollView contentContainerStyle={styles.modalContent}>
-              <UsageForm
-                key={editing?.id ?? 'new'}
-                usage={editing ?? undefined}
-                resources={resources.data ?? []}
-                technicians={technicians.data ?? []}
-                loading={add.isPending || update.isPending}
-                onSubmit={(input) => void save(input)}
-              />
-            </KeyboardFormScrollView>
-          </SafeAreaView>
-        </View>
-      </Modal>
+        <UsageForm
+          key={editing?.id ?? 'new'}
+          usage={editing ?? undefined}
+          resources={resources.data ?? []}
+          technicians={technicians.data ?? []}
+          loading={add.isPending || update.isPending}
+          onSubmit={(input) => void save(input)}
+          submitRef={formSubmit}
+        />
+      </BottomSheet>
     </SafeAreaView>
   )
 }
@@ -265,21 +256,4 @@ const styles = StyleSheet.create({
   notes: { color: colors.textMuted },
   actions: { justifyContent: 'center', gap: spacing.sm },
   iconButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.backdrop },
-  modal: {
-    height: '82%',
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    backgroundColor: colors.background,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    padding: spacing.lg,
-  },
-  modalTitle: { ...typography.title, color: colors.text },
-  modalContent: { flexGrow: 1, padding: spacing.lg },
 })

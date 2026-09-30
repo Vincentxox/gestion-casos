@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useEffect } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
@@ -18,9 +19,10 @@ interface Props {
   resource?: ResourceRecord
   loading: boolean
   onSubmit: (input: ResourceInput) => void
+  submitRef?: { current: (() => void) | null }
 }
 
-export function ResourceForm({ resource, loading, onSubmit }: Props) {
+export function ResourceForm({ resource, loading, onSubmit, submitRef }: Props) {
   const {
     control,
     handleSubmit,
@@ -35,6 +37,14 @@ export function ResourceForm({ resource, loading, onSubmit }: Props) {
       unitCost: resource?.unitCost == null ? '' : String(resource.unitCost),
     },
   })
+
+  useEffect(() => {
+    if (!submitRef) return
+    submitRef.current = handleSubmit(onSubmit)
+    return () => {
+      submitRef.current = null
+    }
+  }, [handleSubmit, onSubmit, submitRef])
 
   return (
     <View style={styles.form}>
@@ -123,11 +133,13 @@ export function ResourceForm({ resource, loading, onSubmit }: Props) {
           />
         )}
       />
-      <Button
-        label={resource ? 'Guardar cambios' : 'Crear recurso'}
-        loading={loading}
-        onPress={handleSubmit(onSubmit)}
-      />
+      {!submitRef ? (
+        <Button
+          label={resource ? 'Guardar cambios' : 'Crear recurso'}
+          loading={loading}
+          onPress={handleSubmit(onSubmit)}
+        />
+      ) : null}
     </View>
   )
 }

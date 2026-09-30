@@ -100,9 +100,9 @@ export function InvitationsScreen() {
 
   function confirmRevoke(id: string) {
     AppFeedback.show('Revocar invitación', '¿Deseas cancelar esta invitación?', [
-      { text: 'Volver', style: 'cancel' },
+      { text: 'Mantener invitación', style: 'cancel' },
       {
-        text: 'Revocar',
+        text: 'Revocar invitación',
         style: 'destructive',
         onPress: () =>
           void revoke

@@ -29,6 +29,22 @@ function Harness({ onDecision }: { onDecision: (value: boolean) => void }) {
       />
       <Pressable accessibilityLabel="Mostrar éxito" onPress={() => toast('Guardado')} />
       <Pressable
+        accessibilityLabel="Mostrar información"
+        onPress={() => toast('La solicitud ya se encuentra actualizada.', { tone: 'info' })}
+      />
+      <Pressable
+        accessibilityLabel="Abrir confirmación larga"
+        onPress={() =>
+          void confirm({
+            title: 'Revocar invitación',
+            message: 'La persona ya no podrá aceptarla.',
+            cancelLabel: 'Mantener invitación',
+            confirmLabel: 'Revocar invitación',
+            tone: 'danger',
+          })
+        }
+      />
+      <Pressable
         accessibilityLabel="Abrir confirmación existente"
         onPress={() =>
           AppFeedback.show('Eliminar registro', '¿Deseas continuar?', [
@@ -82,6 +98,24 @@ describe('AppFeedback', () => {
     expect(onDecision).toHaveBeenCalledWith(false)
   })
 
+  test('usa dos columnas de igual ancho o apila etiquetas largas', async () => {
+    const screen = await setup()
+    await fireEvent.press(screen.getByLabelText('Abrir confirmación'))
+    expect(screen.getByTestId('app-dialog-actions').props.style).toEqual(
+      expect.arrayContaining([expect.objectContaining({ flexDirection: 'row' })]),
+    )
+    const cancel = screen.getByLabelText('Cancelar')
+    const confirm = screen.getByLabelText('Confirmar')
+    expect(cancel.parent?.props.style).toEqual(confirm.parent?.props.style)
+    await fireEvent.press(cancel)
+
+    await fireEvent.press(screen.getByLabelText('Abrir confirmación larga'))
+    expect(screen.getByTestId('app-dialog-actions').props.style).toEqual(
+      expect.arrayContaining([expect.objectContaining({ flexDirection: 'column' })]),
+    )
+    expect(screen.getByLabelText('Revocar invitación')).toBeTruthy()
+  })
+
   test('conserva la acción destructiva de las confirmaciones existentes', async () => {
     const onDecision = jest.fn()
     const screen = await setup(onDecision)
@@ -99,6 +133,9 @@ describe('AppFeedback', () => {
     const screen = await setup()
     await fireEvent.press(screen.getByLabelText('Abrir aviso'))
     expect(screen.getByText('Sin conexión')).toBeTruthy()
+    expect(screen.getByLabelText('Entendido').parent?.props.style).toEqual(
+      expect.arrayContaining([expect.objectContaining({ flex: 1 })]),
+    )
     await fireEvent.press(screen.getByText('Entendido'))
 
     jest.useFakeTimers()
@@ -108,5 +145,17 @@ describe('AppFeedback', () => {
     await act(async () => jest.advanceTimersByTime(3000))
     expect(screen.queryByText('Guardado')).toBeNull()
     jest.useRealTimers()
+  })
+
+  test('muestra el tono informativo arriba y permite cerrar el aviso', async () => {
+    const screen = await setup()
+    await fireEvent.press(screen.getByLabelText('Mostrar información'))
+    const toast = screen.getByTestId('app-toast')
+    expect(toast.props.style).toEqual(
+      expect.arrayContaining([expect.objectContaining({ top: 128 })]),
+    )
+    expect(screen.getByText('La solicitud ya se encuentra actualizada.')).toBeTruthy()
+    await fireEvent.press(screen.getByLabelText('Cerrar aviso'))
+    expect(screen.queryByTestId('app-toast')).toBeNull()
   })
 })

@@ -8,10 +8,14 @@ test('solo cierra sesión tras la confirmación explícita', () => {
 
   confirmLogout(onConfirm)
 
-  expect(alert).toHaveBeenCalledWith('¿Cerrar sesión?', undefined, [
-    { text: 'Cancelar', style: 'cancel' },
-    { text: 'Cerrar sesión', style: 'destructive', onPress: onConfirm },
-  ])
+  expect(alert).toHaveBeenCalledWith(
+    '¿Cerrar sesión?',
+    'Tendrás que volver a ingresar con tu cuenta para ver tus solicitudes.',
+    [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Cerrar sesión', style: 'destructive', onPress: onConfirm },
+    ],
+  )
   expect(onConfirm).not.toHaveBeenCalled()
   const buttons = alert.mock.calls[0]?.[2]
   buttons?.[1]?.onPress?.()

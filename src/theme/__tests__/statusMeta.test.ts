@@ -1,5 +1,5 @@
 import { CASE_ACTIONS, CASE_STATUSES } from '@/features/cases/types'
-import { actionMeta, statusMeta } from '@/theme/statusMeta'
+import { actionMeta, actionToastMeta, statusMeta } from '@/theme/statusMeta'
 import { phaseColors } from '@/theme/tokens'
 
 describe('metadatos visuales', () => {
@@ -33,5 +33,10 @@ describe('metadatos visuales', () => {
       'devolvió el reporte',
       'firmó la conformidad',
     ])
+  })
+
+  it('usa el aviso informativo al cancelar o rechazar una solicitud', () => {
+    expect(actionToastMeta.cancelar).toEqual({ message: 'Solicitud cancelada', tone: 'info' })
+    expect(actionToastMeta.rechazar).toEqual({ message: 'Solicitud rechazada', tone: 'info' })
   })
 })

@@ -214,7 +214,7 @@ export function ReportReviewScreen({ navigation, route }: Props) {
   async function onReturn(reason: string) {
     await returnMutation.mutateAsync(reason)
     setReturnVisible(false)
-    AppFeedback.toast('Reporte devuelto')
+    AppFeedback.toast('Reporte devuelto', { tone: 'info' })
     navigation.popTo('CaseDetail', { caseId })
   }
 
@@ -330,6 +330,13 @@ export function ReportReviewScreen({ navigation, route }: Props) {
         key={signatureAction ?? 'closed'}
         visible={Boolean(signatureAction)}
         title={title}
+        buttonLabel={
+          signatureAction === 'submit'
+            ? 'Firmar y enviar'
+            : signatureAction === 'validate'
+              ? 'Firmar validación'
+              : 'Firmar conformidad'
+        }
         name={profile?.fullName || 'Usuario'}
         role={profile?.role ? ROLE_LABELS[profile.role] : ''}
         loading={sign.isPending}
@@ -340,6 +347,7 @@ export function ReportReviewScreen({ navigation, route }: Props) {
         visible={returnVisible}
         loading={returnMutation.isPending}
         label={action === 'validate' ? 'Devolver al técnico' : 'Devolver'}
+        nextVersion={(current?.versionNumber ?? 0) + 1}
         onClose={() => setReturnVisible(false)}
         onReturn={onReturn}
       />

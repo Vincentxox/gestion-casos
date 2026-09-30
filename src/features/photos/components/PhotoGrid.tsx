@@ -335,8 +335,18 @@ export function PhotoGrid({
       <ActionSheet<'camera' | 'library'>
         title={`Agregar foto de ${label.toLowerCase()}`}
         actions={[
-          { id: 'camera', label: 'Tomar foto', icon: 'camera-outline' },
-          { id: 'library', label: 'Elegir de la galería', icon: 'images-outline' },
+          {
+            id: 'camera',
+            label: 'Tomar foto',
+            description: 'Abrir la cámara del dispositivo',
+            icon: 'camera-outline',
+          },
+          {
+            id: 'library',
+            label: 'Elegir de la galería',
+            description: 'Seleccionar una imagen guardada',
+            icon: 'images-outline',
+          },
         ]}
         visible={pickerVisible}
         onClose={() => setPickerVisible(false)}
@@ -345,7 +355,13 @@ export function PhotoGrid({
       <ActionSheet<'delete'>
         title="Opciones de foto"
         actions={[
-          { id: 'delete', label: 'Eliminar foto', icon: 'trash-outline', destructive: true },
+          {
+            id: 'delete',
+            label: 'Eliminar foto',
+            description: 'Quitarla de la solicitud',
+            icon: 'trash-outline',
+            destructive: true,
+          },
         ]}
         visible={Boolean(optionsPhoto)}
         onClose={() => setOptionsPhoto(null)}

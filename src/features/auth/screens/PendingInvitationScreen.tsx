@@ -91,7 +91,7 @@ export function PendingInvitationScreen() {
   async function cancelRequest() {
     try {
       await cancel.mutateAsync()
-      AppFeedback.toast('Solicitud cancelada')
+      AppFeedback.toast('Solicitud cancelada', { tone: 'info' })
     } catch (error) {
       AppFeedback.show(
         'No fue posible cancelar',

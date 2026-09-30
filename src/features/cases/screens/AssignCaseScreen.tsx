@@ -1,7 +1,7 @@
 import { AppFeedback } from '@/components/feedback/AppFeedback'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -27,7 +27,12 @@ export function AssignCaseScreen({ navigation, route }: Props) {
     : false
   const profiles = useAssignableProfiles(detail.data?.targetAreaId, canAssign)
   const mutation = useAssignCase(route.params.caseId)
-  const [selectedId, setSelectedId] = useState<string | null | undefined>(undefined)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const isReassignment = Boolean(detail.data?.assignedTo)
+
+  useEffect(() => {
+    navigation.setOptions({ title: isReassignment ? 'Reasignar personal' : 'Asignar personal' })
+  }, [isReassignment, navigation])
 
   if (detail.isLoading || profiles.isLoading) {
     return <RequestState kind="loading" title="Cargando personal…" />
@@ -49,30 +54,74 @@ export function AssignCaseScreen({ navigation, route }: Props) {
   if (!canAssign)
     return <RequestState kind="empty" title="No tienes permiso para asignar esta solicitud" />
 
-  const effectiveSelectedId = selectedId === undefined ? detail.data.assignedTo : selectedId
+  const currentAssignee = profiles.data?.find((item) => item.id === detail.data.assignedTo)
+  const availableProfiles =
+    profiles.data?.filter((item) => item.id !== detail.data.assignedTo) ?? []
+  const selectedProfile = availableProfiles.find((item) => item.id === selectedId)
 
   async function handleSubmit() {
-    if (!effectiveSelectedId || effectiveSelectedId === detail.data?.assignedTo) {
-      AppFeedback.show('Selecciona otra persona', 'Elige un técnico o jefe del área responsable.')
-      return
-    }
+    if (!selectedProfile) return
     try {
-      await mutation.mutateAsync(effectiveSelectedId)
-      AppFeedback.toast('Asignación actualizada')
+      await mutation.mutateAsync(selectedProfile.id)
+      AppFeedback.toast(
+        `Solicitud ${isReassignment ? 'reasignada' : 'asignada'} a ${selectedProfile.fullName}`,
+      )
       navigation.goBack()
     } catch {
-      AppFeedback.show('No fue posible asignar', 'Comprueba tus permisos y la conexión.')
+      AppFeedback.show(
+        isReassignment ? 'No fue posible reasignar' : 'No fue posible asignar',
+        'Comprueba tus permisos y la conexión.',
+      )
     }
   }
 
   return (
     <SafeAreaView edges={['bottom']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.instructions}>Selecciona una persona responsable del seguimiento.</Text>
-        {!profiles.data?.length ? (
+        <Text style={styles.instructions}>
+          {isReassignment
+            ? `${detail.data.caseNumber} · Elige a quién pasarle la solicitud. La persona actual dejará de verla en «Mis trabajos».`
+            : `${detail.data.caseNumber} · Elige a la persona responsable de la solicitud.`}
+        </Text>
+        {detail.data.assignedTo ? (
+          <>
+            <Text style={styles.sectionLabel}>RESPONSABLE ACTUAL</Text>
+            <View style={styles.currentCard}>
+              <Avatar
+                name={detail.data.assigneeName || currentAssignee?.fullName || 'Responsable actual'}
+                id={detail.data.assignedTo}
+                size={44}
+                tone="neutral"
+              />
+              <View style={styles.optionContent}>
+                <Text style={[styles.optionTitle, styles.currentName]}>
+                  {detail.data.assigneeName || currentAssignee?.fullName || 'Responsable actual'}
+                </Text>
+                <Text style={styles.optionSubtitle}>
+                  {currentAssignee
+                    ? `${ROLE_LABELS[currentAssignee.role]} · ${currentAssignee.areaName || 'Sin área'}`
+                    : 'Asignado a esta solicitud'}
+                </Text>
+              </View>
+              <View style={styles.currentBadge}>
+                <Text style={styles.currentBadgeText}>Asignado ahora</Text>
+              </View>
+            </View>
+          </>
+        ) : null}
+        <Text style={styles.sectionLabel}>
+          {isReassignment ? 'ELIGE A OTRA PERSONA' : 'ELIGE UNA PERSONA'}
+        </Text>
+        {!availableProfiles.length ? (
           <EmptyState
-            title="No hay técnicos en esta área"
-            message="Pide al administrador que asigne personal al área técnica."
+            title={
+              isReassignment ? 'No hay otra persona disponible' : 'No hay personal en esta área'
+            }
+            message={
+              isReassignment
+                ? 'Pide al administrador que asigne otra persona al área técnica.'
+                : 'Pide al administrador que asigne personal al área técnica.'
+            }
             variant="noResults"
             action={profile?.role === 'administrador' ? 'Ir a Usuarios' : undefined}
             onAction={
@@ -85,21 +134,28 @@ export function AssignCaseScreen({ navigation, route }: Props) {
             }
           />
         ) : null}
-        {profiles.data?.map((item) => (
+        {availableProfiles.map((item) => (
           <ProfileOption
             id={item.id}
             key={item.id}
             label={item.fullName}
             onPress={() => setSelectedId(item.id)}
-            selected={effectiveSelectedId === item.id}
+            selected={selectedId === item.id}
             subtitle={`${ROLE_LABELS[item.role]} · ${item.areaName || 'Sin área'}`}
           />
         ))}
       </ScrollView>
-      {profiles.data?.length ? (
+      {availableProfiles.length ? (
         <View style={styles.stickyAction}>
           <Button
-            label="Guardar asignación"
+            label={
+              selectedProfile
+                ? `${isReassignment ? 'Reasignar' : 'Asignar'} a ${selectedProfile.fullName}`
+                : isReassignment
+                  ? 'Reasignar personal'
+                  : 'Asignar personal'
+            }
+            disabled={!selectedProfile}
             loading={mutation.isPending}
             onPress={() => void handleSubmit()}
           />
@@ -124,6 +180,7 @@ function ProfileOption({
 }) {
   return (
     <Pressable
+      accessibilityLabel={`Elegir a ${label}`}
       accessibilityRole="radio"
       accessibilityState={{ checked: selected }}
       onPress={onPress}
@@ -143,6 +200,27 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: { gap: spacing.sm, padding: spacing.lg, paddingBottom: spacing.xl },
   instructions: { color: colors.textMuted, lineHeight: 21, marginBottom: spacing.sm },
+  sectionLabel: { ...typography.overline, color: colors.textMuted, marginTop: spacing.md },
+  currentCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    backgroundColor: colors.neutralSoft,
+    padding: spacing.md,
+  },
+  currentBadge: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  currentBadgeText: { ...typography.caption, color: colors.textMuted },
+  currentName: { color: colors.neutral },
   stickyAction: {
     padding: spacing.md,
     borderTopWidth: 1,
@@ -155,7 +233,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.pill,
+    borderRadius: radius.lg,
     backgroundColor: colors.surface,
     padding: spacing.md,
   },

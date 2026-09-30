@@ -23,17 +23,24 @@ export function Avatar({
   name,
   id,
   size = 44,
+  tone = 'default',
 }: {
   name: string
   id: string
   size?: 24 | 28 | 44 | 72
+  tone?: 'default' | 'neutral'
 }) {
   return (
     <View
       accessibilityLabel={name}
       style={[
         styles.avatar,
-        { width: size, height: size, borderRadius: radius.pill, backgroundColor: avatarColor(id) },
+        {
+          width: size,
+          height: size,
+          borderRadius: radius.pill,
+          backgroundColor: tone === 'neutral' ? colors.neutral : avatarColor(id),
+        },
       ]}
     >
       <Text style={[styles.initials, size <= 28 && styles.small, size === 72 && styles.large]}>

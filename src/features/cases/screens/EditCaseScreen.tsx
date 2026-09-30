@@ -47,7 +47,7 @@ export function EditCaseScreen({ navigation, route }: Props) {
   async function handleSubmit(input: UpdateCaseInput) {
     try {
       await mutation.mutateAsync(input)
-      AppFeedback.toast('Caso actualizado')
+      AppFeedback.toast('Solicitud actualizada')
       navigation.goBack()
     } catch (error) {
       AppFeedback.show(
