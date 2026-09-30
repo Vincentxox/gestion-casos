@@ -1,10 +1,9 @@
 import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { Ionicons } from '@expo/vector-icons'
-import { useState } from 'react'
-import { FlatList, Modal, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { useRef, useState } from 'react'
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
 
-import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
+import { BottomSheet } from '@/components/sheets/BottomSheet'
 import { CatalogActionSheet } from '@/components/actions/CatalogActionSheet'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -14,7 +13,7 @@ import { ScreenContainer } from '@/components/ui/ScreenContainer'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { RequestState } from '@/components/feedback/RequestState'
 import { SkeletonList } from '@/components/ui/SkeletonList'
-import { colors, radius, spacing, typography } from '@/theme/tokens'
+import { colors, spacing, typography } from '@/theme/tokens'
 
 import { AreaForm } from '../components/AreaForm'
 import type { AreaInput, AreaRecord } from '../types'
@@ -28,6 +27,7 @@ export function AreasScreen() {
   const [editingArea, setEditingArea] = useState<AreaRecord | null>(null)
   const [actionArea, setActionArea] = useState<AreaRecord | null>(null)
   const [formVisible, setFormVisible] = useState(false)
+  const formSubmit = useRef<(() => void) | null>(null)
 
   function openForm(area?: AreaRecord) {
     setEditingArea(area ?? null)
@@ -148,36 +148,26 @@ export function AreasScreen() {
         onToggle={() => actionArea && confirmStatus(actionArea)}
       />
 
-      <Modal
-        animationType="fade"
-        onRequestClose={() => setFormVisible(false)}
-        transparent
+      <BottomSheet
+        title={editingArea ? 'Editar área' : 'Nueva área'}
         visible={formVisible}
+        onClose={() => setFormVisible(false)}
+        form
+        height="72%"
+        footerAction={{
+          label: 'Guardar área',
+          loading: createMutation.isPending || updateMutation.isPending,
+          onPress: () => formSubmit.current?.(),
+        }}
       >
-        <View style={styles.modalBackdrop}>
-          <SafeAreaView edges={['bottom']} style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{editingArea ? 'Editar área' : 'Nueva área'}</Text>
-              <Pressable
-                accessibilityLabel="Cerrar formulario"
-                accessibilityRole="button"
-                onPress={() => setFormVisible(false)}
-                style={styles.closeButton}
-              >
-                <Ionicons color={colors.text} name="close" size={24} />
-              </Pressable>
-            </View>
-            <KeyboardFormScrollView contentContainerStyle={styles.modalContent}>
-              <AreaForm
-                key={editingArea?.id ?? 'new'}
-                area={editingArea ?? undefined}
-                loading={createMutation.isPending || updateMutation.isPending}
-                onSubmit={(input) => void submitArea(input)}
-              />
-            </KeyboardFormScrollView>
-          </SafeAreaView>
-        </View>
-      </Modal>
+        <AreaForm
+          key={editingArea?.id ?? 'new'}
+          area={editingArea ?? undefined}
+          loading={createMutation.isPending || updateMutation.isPending}
+          onSubmit={(input) => void submitArea(input)}
+          submitRef={formSubmit}
+        />
+      </BottomSheet>
     </ScreenContainer>
   )
 }
@@ -200,23 +190,4 @@ const styles = StyleSheet.create({
   description: { ...typography.caption, color: colors.textMuted },
   kind: { ...typography.caption, color: colors.textMuted },
   iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.backdrop },
-  modalCard: {
-    height: '72%',
-    maxHeight: '86%',
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    backgroundColor: colors.background,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    padding: spacing.lg,
-  },
-  modalTitle: { ...typography.title, color: colors.text },
-  closeButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  modalContent: { flexGrow: 1, padding: spacing.lg },
 })

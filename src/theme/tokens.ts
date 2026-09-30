@@ -24,6 +24,7 @@ export const colors = {
   purple: '#6941C6',
   purpleSoft: '#F1EBFF',
   backdrop: '#00000088',
+  modalBackdrop: 'rgba(15,30,55,0.56)',
 } as const
 
 export const spacing = {

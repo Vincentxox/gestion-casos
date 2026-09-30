@@ -13,7 +13,7 @@ import { Icon } from '@/components/ui/Icon'
 import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
 import { colors, radius, spacing, typography } from '@/theme/tokens'
-import { actionMeta } from '@/theme/statusMeta'
+import { actionMeta, actionToastMeta } from '@/theme/statusMeta'
 
 import { changeCaseStatusSchema } from '../schemas'
 import { getAvailableCaseActions } from '../casePermissions'
@@ -69,7 +69,9 @@ export function ChangeCaseStatusScreen({ navigation, route }: Props) {
     setErrors({})
     try {
       await mutation.mutateAsync(result.data)
-      AppFeedback.toast('Acción realizada')
+      AppFeedback.toast(actionToastMeta[selectedAction].message, {
+        tone: actionToastMeta[selectedAction].tone,
+      })
       navigation.goBack()
     } catch (error) {
       AppFeedback.show(

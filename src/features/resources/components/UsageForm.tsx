@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useEffect } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
@@ -21,9 +22,10 @@ interface Props {
   usage?: CaseUsageRecord
   loading: boolean
   onSubmit: (input: UsageInput) => void
+  submitRef?: { current: (() => void) | null }
 }
 
-export function UsageForm({ resources, technicians, usage, loading, onSubmit }: Props) {
+export function UsageForm({ resources, technicians, usage, loading, onSubmit, submitRef }: Props) {
   const {
     control,
     handleSubmit,
@@ -45,6 +47,14 @@ export function UsageForm({ resources, technicians, usage, loading, onSubmit }: 
   const resourceId = useWatch({ control, name: 'resourceId' })
   const resourceKind = useWatch({ control, name: 'resourceKind' })
   const technicianId = useWatch({ control, name: 'technicianId' })
+
+  useEffect(() => {
+    if (!submitRef) return
+    submitRef.current = handleSubmit(onSubmit)
+    return () => {
+      submitRef.current = null
+    }
+  }, [handleSubmit, onSubmit, submitRef])
 
   return (
     <View style={styles.form}>
@@ -192,11 +202,13 @@ export function UsageForm({ resources, technicians, usage, loading, onSubmit }: 
           />
         )}
       />
-      <Button
-        label={usage ? 'Guardar corrección' : 'Registrar uso'}
-        loading={loading}
-        onPress={handleSubmit(onSubmit)}
-      />
+      {!submitRef ? (
+        <Button
+          label={usage ? 'Guardar corrección' : 'Registrar uso'}
+          loading={loading}
+          onPress={handleSubmit(onSubmit)}
+        />
+      ) : null}
     </View>
   )
 }

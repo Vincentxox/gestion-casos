@@ -1,10 +1,9 @@
 import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { Ionicons } from '@expo/vector-icons'
-import { useState } from 'react'
-import { FlatList, Modal, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { useRef, useState } from 'react'
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
 
-import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
+import { BottomSheet } from '@/components/sheets/BottomSheet'
 import { CatalogActionSheet } from '@/components/actions/CatalogActionSheet'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -15,7 +14,7 @@ import { EmptyState } from '@/components/feedback/EmptyState'
 import { RequestState } from '@/components/feedback/RequestState'
 import { SkeletonList } from '@/components/ui/SkeletonList'
 import { formatQuetzales } from '@/theme/formatters'
-import { colors, radius, spacing, typography } from '@/theme/tokens'
+import { colors, spacing, typography } from '@/theme/tokens'
 
 import { ResourceForm } from '../components/ResourceForm'
 import { RESOURCE_KIND_LABELS, type ResourceInput, type ResourceRecord } from '../types'
@@ -34,6 +33,7 @@ export function ResourcesScreen() {
   const [editing, setEditing] = useState<ResourceRecord | null>(null)
   const [actionResource, setActionResource] = useState<ResourceRecord | null>(null)
   const [formVisible, setFormVisible] = useState(false)
+  const formSubmit = useRef<(() => void) | null>(null)
 
   function openForm(resource?: ResourceRecord) {
     setEditing(resource ?? null)
@@ -155,36 +155,25 @@ export function ResourcesScreen() {
         onEdit={() => actionResource && openForm(actionResource)}
         onToggle={() => actionResource && toggle(actionResource)}
       />
-      <Modal
-        animationType="fade"
-        onRequestClose={() => setFormVisible(false)}
-        transparent
+      <BottomSheet
+        title={editing ? 'Editar recurso' : 'Nuevo recurso'}
         visible={formVisible}
+        onClose={() => setFormVisible(false)}
+        form
+        footerAction={{
+          label: 'Guardar recurso',
+          loading: create.isPending || update.isPending,
+          onPress: () => formSubmit.current?.(),
+        }}
       >
-        <View style={styles.backdrop}>
-          <SafeAreaView edges={['bottom']} style={styles.modal}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{editing ? 'Editar recurso' : 'Nuevo recurso'}</Text>
-              <Pressable
-                accessibilityLabel="Cerrar formulario"
-                accessibilityRole="button"
-                onPress={() => setFormVisible(false)}
-                style={styles.iconButton}
-              >
-                <Ionicons color={colors.text} name="close" size={24} />
-              </Pressable>
-            </View>
-            <KeyboardFormScrollView contentContainerStyle={styles.modalContent}>
-              <ResourceForm
-                key={editing?.id ?? 'new'}
-                resource={editing ?? undefined}
-                loading={create.isPending || update.isPending}
-                onSubmit={(input) => void save(input)}
-              />
-            </KeyboardFormScrollView>
-          </SafeAreaView>
-        </View>
-      </Modal>
+        <ResourceForm
+          key={editing?.id ?? 'new'}
+          resource={editing ?? undefined}
+          loading={create.isPending || update.isPending}
+          onSubmit={(input) => void save(input)}
+          submitRef={formSubmit}
+        />
+      </BottomSheet>
     </ScreenContainer>
   )
 }
@@ -206,21 +195,4 @@ const styles = StyleSheet.create({
   meta: { ...typography.caption, color: colors.textMuted },
   description: { ...typography.caption, color: colors.textMuted },
   iconButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.backdrop },
-  modal: {
-    height: '80%',
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    backgroundColor: colors.background,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  modalTitle: { ...typography.title, color: colors.text },
-  modalContent: { flexGrow: 1, padding: spacing.lg },
 })

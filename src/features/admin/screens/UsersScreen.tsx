@@ -3,7 +3,6 @@ import { Ionicons } from '@expo/vector-icons'
 import { useState } from 'react'
 import {
   FlatList,
-  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -12,9 +11,8 @@ import {
   TextInput,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { BottomSheet } from '@/components/sheets/BottomSheet'
 
-import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { RequestState } from '@/components/feedback/RequestState'
@@ -172,76 +170,58 @@ export function UsersScreen() {
         )}
       </View>
 
-      <Modal
-        animationType="fade"
-        onRequestClose={() => setSelectedProfile(null)}
-        transparent
+      <BottomSheet
+        title="Acceso del usuario"
+        subtitle={selectedProfile?.fullName}
         visible={selectedProfile !== null}
+        onClose={() => setSelectedProfile(null)}
+        height="75%"
+        scrollable={false}
+        footerAction={{
+          label: 'Guardar acceso',
+          loading: mutation.isPending,
+          onPress: () => void saveAccess(),
+        }}
       >
-        <View style={styles.modalBackdrop}>
-          <SafeAreaView edges={['bottom']} style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <View style={styles.modalTitleGroup}>
-                <Text style={styles.modalTitle}>Acceso del usuario</Text>
-                <Text style={styles.modalSubtitle}>{selectedProfile?.fullName}</Text>
-              </View>
-              <Pressable
-                accessibilityLabel="Cerrar"
-                accessibilityRole="button"
-                onPress={() => setSelectedProfile(null)}
-                style={styles.closeButton}
-              >
-                <Ionicons color={colors.text} name="close" size={28} />
-              </Pressable>
-            </View>
-            <FlatList
-              contentContainerStyle={styles.areaOptions}
-              data={(areas.data ?? []).filter(
-                (area) =>
-                  (area.isActive || area.id === areaId) &&
-                  (role !== 'tecnico' || area.kind === 'tecnica'),
-              )}
-              keyExtractor={(item) => item.id}
-              ListHeaderComponent={
-                <View style={styles.areaOptions}>
-                  <Text style={styles.sectionLabel}>Rol</Text>
-                  {APP_ROLES.map((option) => (
-                    <AreaOption
-                      key={option}
-                      label={ROLE_LABELS[option]}
-                      loading={mutation.isPending}
-                      onPress={() => setRole(option)}
-                      selected={role === option}
-                    />
-                  ))}
-                  <Text style={styles.sectionLabel}>Área</Text>
-                  <AreaOption
-                    label="Sin área asignada"
-                    loading={mutation.isPending}
-                    onPress={() => setAreaId(null)}
-                    selected={areaId === null}
-                  />
-                </View>
-              }
-              renderItem={({ item }) => (
+        <FlatList
+          contentContainerStyle={styles.areaOptions}
+          data={(areas.data ?? []).filter(
+            (area) =>
+              (area.isActive || area.id === areaId) &&
+              (role !== 'tecnico' || area.kind === 'tecnica'),
+          )}
+          keyExtractor={(item) => item.id}
+          ListHeaderComponent={
+            <View style={styles.areaOptions}>
+              <Text style={styles.sectionLabel}>Rol</Text>
+              {APP_ROLES.map((option) => (
                 <AreaOption
-                  label={`${item.name} · ${item.kind === 'tecnica' ? 'Técnica' : 'Solicitante'}`}
+                  key={option}
+                  label={ROLE_LABELS[option]}
                   loading={mutation.isPending}
-                  onPress={() => setAreaId(item.id)}
-                  selected={areaId === item.id}
+                  onPress={() => setRole(option)}
+                  selected={role === option}
                 />
-              )}
-              ListFooterComponent={
-                <Button
-                  label="Guardar acceso"
-                  loading={mutation.isPending}
-                  onPress={() => void saveAccess()}
-                />
-              }
+              ))}
+              <Text style={styles.sectionLabel}>Área</Text>
+              <AreaOption
+                label="Sin área asignada"
+                loading={mutation.isPending}
+                onPress={() => setAreaId(null)}
+                selected={areaId === null}
+              />
+            </View>
+          }
+          renderItem={({ item }) => (
+            <AreaOption
+              label={`${item.name} · ${item.kind === 'tecnica' ? 'Técnica' : 'Solicitante'}`}
+              loading={mutation.isPending}
+              onPress={() => setAreaId(item.id)}
+              selected={areaId === item.id}
             />
-          </SafeAreaView>
-        </View>
-      </Modal>
+          )}
+        />
+      </BottomSheet>
     </ScreenContainer>
   )
 }
@@ -298,24 +278,6 @@ const styles = StyleSheet.create({
   name: { ...typography.heading, color: colors.text },
   areaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   areaName: { ...typography.caption, color: colors.textMuted },
-  modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.backdrop },
-  modalCard: {
-    maxHeight: '75%',
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    backgroundColor: colors.background,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    padding: spacing.lg,
-  },
-  modalTitleGroup: { flex: 1, gap: spacing.xs },
-  modalTitle: { ...typography.title, color: colors.text },
-  modalSubtitle: { ...typography.caption, color: colors.textMuted },
   areaOptions: { gap: spacing.sm, padding: spacing.lg, paddingBottom: spacing.xl },
   sectionLabel: { ...typography.heading, color: colors.text },
   areaOption: {

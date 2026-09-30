@@ -30,10 +30,18 @@ export function CatalogActionSheet({
     <ActionSheet<'edit' | 'toggle'>
       title={`Opciones de ${name}`}
       actions={[
-        { id: 'edit', label: 'Editar', icon: 'pencil-outline' },
+        {
+          id: 'edit',
+          label: 'Editar',
+          description: 'Cambiar sus datos',
+          icon: 'pencil-outline',
+        },
         {
           id: 'toggle',
           label: active ? 'Desactivar' : 'Activar',
+          description: active
+            ? 'No se podrá seleccionar en nuevos registros'
+            : 'Volverá a estar disponible para nuevos registros',
           icon: active ? 'close-circle-outline' : 'checkmark-circle-outline',
           destructive: active,
         },

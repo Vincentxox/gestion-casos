@@ -17,14 +17,13 @@ import { feedback } from '@/services/feedback'
 import { colors, elevation, phaseColors, radius, spacing, typography } from '@/theme/tokens'
 
 type DialogTone = 'info' | 'warning' | 'danger'
+type ToastTone = 'success' | 'info'
 
-interface ConfirmOptions {
+type ConfirmOptions = {
   title: string
-  message?: string
   confirmLabel?: string
   cancelLabel?: string
-  tone?: DialogTone
-}
+} & ({ tone: 'danger'; message: string } | { tone?: 'info' | 'warning'; message?: string })
 
 interface AlertOptions {
   title: string
@@ -35,7 +34,7 @@ interface AlertOptions {
 interface FeedbackApi {
   confirm: (options: ConfirmOptions) => Promise<boolean>
   alert: (options: AlertOptions) => Promise<void>
-  toast: (message: string) => void
+  toast: (message: string, options?: { tone?: ToastTone }) => void
 }
 
 interface FeedbackAction {
@@ -70,21 +69,23 @@ export const AppFeedback = {
       void activeFeedback.alert({ title, message }).then(() => affirmative.onPress?.())
       return
     }
-    void activeFeedback
-      .confirm({
-        title,
-        message,
-        confirmLabel: affirmative.text,
-        cancelLabel: cancel.text,
-        tone: affirmative.style === 'destructive' ? 'danger' : 'info',
-      })
-      .then((confirmed) => {
-        if (confirmed) affirmative.onPress?.()
-        else cancel.onPress?.()
-      })
+    const options: ConfirmOptions =
+      affirmative.style === 'destructive'
+        ? {
+            title,
+            message: message ?? '¿Deseas continuar?',
+            confirmLabel: affirmative.text,
+            cancelLabel: cancel.text,
+            tone: 'danger',
+          }
+        : { title, message, confirmLabel: affirmative.text, cancelLabel: cancel.text, tone: 'info' }
+    void activeFeedback.confirm(options).then((confirmed) => {
+      if (confirmed) affirmative.onPress?.()
+      else cancel.onPress?.()
+    })
   },
-  toast(message: string) {
-    activeFeedback?.toast(message)
+  toast(message: string, options?: { tone?: ToastTone }) {
+    activeFeedback?.toast(message, options)
   },
 }
 
@@ -125,6 +126,10 @@ function AppDialog({
 }) {
   const tone = dialog?.tone ?? 'info'
   const meta = toneMeta[tone]
+  const stacked =
+    dialog?.kind === 'confirm' &&
+    ((dialog.cancelLabel ?? 'Cancelar').length > 14 ||
+      (dialog.confirmLabel ?? 'Confirmar').length > 14)
 
   return (
     <Modal
@@ -143,29 +148,45 @@ function AppDialog({
         {dialog ? (
           <View accessibilityViewIsModal style={styles.dialogCard}>
             <View style={[styles.dialogIcon, { backgroundColor: meta.background }]}>
-              <Icon name={meta.icon} color={meta.color} size="base" />
+              <Icon name={meta.icon} color={meta.color} size={28} />
             </View>
             <Text accessibilityRole="header" style={styles.dialogTitle}>
               {dialog.title}
             </Text>
             {dialog.message ? <Text style={styles.dialogMessage}>{dialog.message}</Text> : null}
-            <View style={styles.dialogActions}>
+            <View
+              style={[
+                styles.dialogActions,
+                stacked ? styles.dialogActionsStacked : styles.dialogActionsRow,
+              ]}
+              testID="app-dialog-actions"
+            >
+              {stacked ? (
+                <Button
+                  label={dialog.confirmLabel ?? 'Confirmar'}
+                  onPress={() => onClose(true)}
+                  containerStyle={styles.dialogActionFullWidth}
+                  variant={tone === 'danger' ? 'destructive' : 'primary'}
+                />
+              ) : null}
               {dialog.kind === 'confirm' ? (
                 <Button
                   label={dialog.cancelLabel ?? 'Cancelar'}
                   onPress={() => onClose(false)}
-                  style={styles.dialogAction}
+                  containerStyle={stacked ? styles.dialogActionFullWidth : styles.dialogAction}
                   variant="secondary"
                 />
               ) : null}
-              <Button
-                label={
-                  dialog.kind === 'confirm' ? (dialog.confirmLabel ?? 'Confirmar') : 'Entendido'
-                }
-                onPress={() => onClose(true)}
-                style={styles.dialogAction}
-                variant={tone === 'danger' ? 'danger' : 'primary'}
-              />
+              {!stacked ? (
+                <Button
+                  label={
+                    dialog.kind === 'confirm' ? (dialog.confirmLabel ?? 'Confirmar') : 'Entendido'
+                  }
+                  onPress={() => onClose(true)}
+                  containerStyle={styles.dialogAction}
+                  variant={tone === 'danger' ? 'destructive' : 'primary'}
+                />
+              ) : null}
             </View>
           </View>
         ) : null}
@@ -174,26 +195,46 @@ function AppDialog({
   )
 }
 
-function AppToast({ message }: { message: string | null }) {
+function AppToast({
+  value,
+  onClose,
+}: {
+  value: { message: string; tone: ToastTone } | null
+  onClose: () => void
+}) {
   const insets = useSafeAreaInsets()
-  if (!message) return null
+  if (!value) return null
 
   return (
     <View
       accessibilityLiveRegion="polite"
-      pointerEvents="none"
-      style={[styles.toast, { bottom: insets.bottom + spacing.md + 56 }]}
+      style={[styles.toast, { top: insets.top + spacing.xl * 4 }]}
       testID="app-toast"
     >
-      <Icon name="checkmark-circle" color={colors.white} size="inline" />
-      <Text style={styles.toastText}>{message}</Text>
+      <View style={styles.toastIcon}>
+        <Icon
+          name={value.tone === 'success' ? 'checkmark' : 'information-circle-outline'}
+          color={value.tone === 'success' ? '#6EE7A0' : '#93C5FD'}
+          size="base"
+        />
+      </View>
+      <Text style={styles.toastText}>{value.message}</Text>
+      <Pressable
+        accessibilityLabel="Cerrar aviso"
+        accessibilityRole="button"
+        hitSlop={0}
+        onPress={onClose}
+        style={styles.toastClose}
+      >
+        <Icon name="close" color={colors.white} size="base" />
+      </Pressable>
     </View>
   )
 }
 
 export function AppFeedbackProvider({ children }: { children: ReactNode }) {
   const [dialog, setDialog] = useState<DialogState | null>(null)
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [toastValue, setToastValue] = useState<{ message: string; tone: ToastTone } | null>(null)
   const resolveDialog = useRef<((confirmed: boolean) => void) | null>(null)
 
   const close = useCallback((confirmed: boolean) => {
@@ -220,16 +261,19 @@ export function AppFeedbackProvider({ children }: { children: ReactNode }) {
     },
     [open],
   )
-  const toast = useCallback((message: string) => {
-    setToastMessage(message)
+  const toast = useCallback((message: string, options?: { tone?: ToastTone }) => {
+    setToastValue({ message, tone: options?.tone ?? 'success' })
     void feedback.success()
   }, [])
 
   useEffect(() => {
-    if (!toastMessage) return
-    const timeout = setTimeout(() => setToastMessage(null), 3000)
+    if (!toastValue) return
+    const timeout = setTimeout(
+      () => setToastValue(null),
+      toastValue.message.length > 40 ? 4000 : 3000,
+    )
     return () => clearTimeout(timeout)
-  }, [toastMessage])
+  }, [toastValue])
 
   useEffect(
     () => () => {
@@ -251,7 +295,7 @@ export function AppFeedbackProvider({ children }: { children: ReactNode }) {
     <FeedbackContext.Provider value={api}>
       <View style={styles.root}>
         {children}
-        <AppToast message={toastMessage} />
+        <AppToast value={toastValue} onClose={() => setToastValue(null)} />
         <AppDialog dialog={dialog} onClose={close} />
       </View>
     </FeedbackContext.Provider>
@@ -264,26 +308,41 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     padding: spacing.lg,
-    backgroundColor: colors.backdrop,
+    backgroundColor: colors.modalBackdrop,
   },
   dialogCard: {
+    width: '100%',
+    maxWidth: 342,
+    alignSelf: 'center',
+    alignItems: 'center',
     gap: spacing.md,
-    padding: spacing.lg,
-    borderRadius: radius.lg,
+    paddingTop: spacing.roomy,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+    borderRadius: radius.xl,
     backgroundColor: colors.surface,
     ...elevation.md,
   },
   dialogIcon: {
-    width: 44,
-    height: 44,
+    width: 56,
+    height: 56,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dialogTitle: { ...typography.heading, color: colors.text },
-  dialogMessage: { ...typography.body, color: colors.textMuted },
-  dialogActions: { flexDirection: 'row', gap: spacing.sm },
+  dialogTitle: {
+    fontFamily: typography.title.fontFamily,
+    fontSize: 19,
+    lineHeight: 25,
+    color: colors.text,
+    textAlign: 'center',
+  },
+  dialogMessage: { ...typography.body, color: colors.textMuted, textAlign: 'center' },
+  dialogActions: { alignSelf: 'stretch', gap: spacing.sm },
+  dialogActionsRow: { flexDirection: 'row' },
+  dialogActionsStacked: { flexDirection: 'column', alignSelf: 'stretch' },
   dialogAction: { flex: 1 },
+  dialogActionFullWidth: { alignSelf: 'stretch' },
   toast: {
     position: 'absolute',
     left: spacing.lg,
@@ -294,8 +353,22 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     borderRadius: radius.md,
     padding: spacing.md,
-    backgroundColor: `${colors.text}EB`,
+    backgroundColor: colors.text,
     ...elevation.md,
+  },
+  toastIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toastClose: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   toastText: { ...typography.body, color: colors.white, flex: 1 },
 })

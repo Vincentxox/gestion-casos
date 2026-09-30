@@ -1,8 +1,7 @@
 import { useState } from 'react'
-import { Modal, StyleSheet, Text, TextInput, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { StyleSheet, Text, TextInput, View } from 'react-native'
 
-import { Button } from '@/components/ui/Button'
+import { BottomSheet } from '@/components/sheets/BottomSheet'
 import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 import { returnReportSchema } from '../schemas'
@@ -11,12 +10,14 @@ export function ReturnSheet({
   visible,
   loading,
   label,
+  nextVersion,
   onClose,
   onReturn,
 }: {
   visible: boolean
   loading: boolean
   label: string
+  nextVersion: number
   onClose: () => void
   onReturn: (reason: string) => Promise<void>
 }) {
@@ -38,42 +39,34 @@ export function ReturnSheet({
   }
 
   return (
-    <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <SafeAreaView edges={['bottom']} style={styles.sheet}>
-          <Text accessibilityRole="header" style={styles.title}>
-            Devolver reporte
-          </Text>
-          <Text style={styles.copy}>Motivo de la devolución</Text>
-          <TextInput
-            accessibilityLabel="Motivo de la devolución"
-            multiline
-            maxLength={500}
-            placeholder="Falta la foto del tablero reparado"
-            value={reason}
-            onChangeText={setReason}
-            style={styles.input}
-          />
-          <Text style={styles.counter}>{reason.length} / 500</Text>
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-          <Button label={label} variant="danger" loading={loading} onPress={() => void submit()} />
-          <Button label="Cancelar" variant="secondary" disabled={loading} onPress={onClose} />
-        </SafeAreaView>
+    <BottomSheet
+      title="Devolver reporte"
+      visible={visible}
+      onClose={onClose}
+      form
+      height="65%"
+      footerAction={{ label, onPress: () => void submit(), loading, variant: 'destructive' }}
+    >
+      <Text style={styles.copy}>Motivo de la devolución *</Text>
+      <TextInput
+        accessibilityLabel="Motivo de la devolución, obligatorio"
+        multiline
+        maxLength={500}
+        placeholder="Falta la foto del tablero reparado"
+        value={reason}
+        onChangeText={setReason}
+        style={styles.input}
+      />
+      <View style={styles.helpRow}>
+        <Text style={styles.help}>El técnico lo verá en la versión {nextVersion} del reporte.</Text>
+        <Text style={styles.counter}>{reason.length} / 500</Text>
       </View>
-    </Modal>
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+    </BottomSheet>
   )
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.backdrop },
-  sheet: {
-    gap: spacing.md,
-    padding: spacing.lg,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    backgroundColor: colors.surface,
-  },
-  title: { ...typography.title, color: colors.text },
   copy: { ...typography.body, color: colors.text },
   input: {
     minHeight: 100,
@@ -84,6 +77,8 @@ const styles = StyleSheet.create({
     color: colors.text,
     backgroundColor: colors.white,
   },
-  counter: { ...typography.caption, color: colors.textMuted, textAlign: 'right' },
+  helpRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  help: { ...typography.caption, color: colors.textMuted, flex: 1 },
+  counter: { ...typography.caption, color: colors.textMuted },
   error: { ...typography.caption, color: colors.error },
 })

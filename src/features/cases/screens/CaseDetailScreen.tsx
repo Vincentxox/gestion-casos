@@ -23,12 +23,12 @@ import { useAreaChiefs } from '@/features/reports/useReports'
 import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
 import { colors, spacing, typography } from '@/theme/tokens'
-import { actionMeta } from '@/theme/statusMeta'
+import { statusMeta } from '@/theme/statusMeta'
 
 import { useCaseDetail, useCaseHistory } from '../useCases'
 import { refreshCaseDetail } from '../refreshCaseDetail'
 import { canEditCase, getAvailableCaseActions } from '../casePermissions'
-import { getSecondaryActionPresentation } from '../caseActionPresentation'
+import { getCaseActionMeta, getSecondaryActionPresentation } from '../caseActionPresentation'
 import type { CaseAction } from '../types'
 
 type Props = NativeStackScreenProps<MainStackParamList, 'CaseDetail'>
@@ -112,6 +112,7 @@ export function CaseDetailScreen({ navigation, route }: Props) {
   const primaryAction = actions.find((action) => !['rechazar', 'cancelar'].includes(action))
   const otherActions = actions.filter((action) => action !== primaryAction)
   const secondaryPresentation = getSecondaryActionPresentation(otherActions)
+  const actionMetaForCase = (action: CaseAction) => getCaseActionMeta(action, item.assignedTo)
   function navigateAction(action: CaseAction) {
     if (action === 'asignar') navigation.navigate('AssignCase', { caseId })
     else navigation.navigate('ChangeCaseStatus', { caseId, action })
@@ -222,8 +223,8 @@ export function CaseDetailScreen({ navigation, route }: Props) {
             />
           ) : primaryAction ? (
             <Button
-              label={actionMeta[primaryAction].label}
-              icon={actionMeta[primaryAction].icon}
+              label={actionMetaForCase(primaryAction).label}
+              icon={actionMetaForCase(primaryAction).icon}
               onPress={() => navigateAction(primaryAction)}
             />
           ) : null}
@@ -232,8 +233,8 @@ export function CaseDetailScreen({ navigation, route }: Props) {
               {reportPrimary && primaryAction ? (
                 <View style={styles.secondaryAction}>
                   <Button
-                    label={actionMeta[primaryAction].label}
-                    icon={actionMeta[primaryAction].icon}
+                    label={actionMetaForCase(primaryAction).label}
+                    icon={actionMetaForCase(primaryAction).icon}
                     variant="text"
                     onPress={() => navigateAction(primaryAction)}
                   />
@@ -251,8 +252,8 @@ export function CaseDetailScreen({ navigation, route }: Props) {
               {secondaryPresentation.kind === 'direct' ? (
                 <View style={styles.secondaryAction}>
                   <Button
-                    label={actionMeta[secondaryPresentation.action].label}
-                    icon={actionMeta[secondaryPresentation.action].icon}
+                    label={actionMetaForCase(secondaryPresentation.action).label}
+                    icon={actionMetaForCase(secondaryPresentation.action).icon}
                     variant={
                       secondaryPresentation.variant === 'secondary'
                         ? 'text'
@@ -277,12 +278,13 @@ export function CaseDetailScreen({ navigation, route }: Props) {
         </View>
       ) : null}
       <ActionSheet<CaseAction>
-        title="Acciones disponibles"
+        title="Más acciones"
+        subtitle={`${detail.data.caseNumber} · ${statusMeta[detail.data.status].label}`}
         actions={otherActions.map((action) => ({
           id: action,
-          label: actionMeta[action].label,
-          description: actionMeta[action].description,
-          icon: actionMeta[action].icon,
+          label: actionMetaForCase(action).label,
+          description: actionMetaForCase(action).description,
+          icon: actionMetaForCase(action).icon,
           destructive: ['rechazar', 'cancelar'].includes(action),
         }))}
         visible={actionsVisible}

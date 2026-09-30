@@ -1,10 +1,9 @@
 import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { Ionicons } from '@expo/vector-icons'
-import { useMemo, useState } from 'react'
-import { FlatList, Modal, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { useMemo, useRef, useState } from 'react'
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
 
-import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
+import { BottomSheet } from '@/components/sheets/BottomSheet'
 import { CatalogActionSheet } from '@/components/actions/CatalogActionSheet'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -15,7 +14,7 @@ import { EmptyState } from '@/components/feedback/EmptyState'
 import { RequestState } from '@/components/feedback/RequestState'
 import { SkeletonList } from '@/components/ui/SkeletonList'
 import { useAreas } from '@/features/areas/useAreas'
-import { colors, radius, spacing, typography } from '@/theme/tokens'
+import { colors, spacing, typography } from '@/theme/tokens'
 
 import { CategoryForm } from '../components/CategoryForm'
 import type { CategoryInput, CategoryRecord } from '../types'
@@ -36,6 +35,7 @@ export function CategoriesScreen() {
   const [editing, setEditing] = useState<CategoryRecord | null>(null)
   const [actionCategory, setActionCategory] = useState<CategoryRecord | null>(null)
   const [formVisible, setFormVisible] = useState(false)
+  const formSubmit = useRef<(() => void) | null>(null)
 
   const filteredCategories = useMemo(
     () =>
@@ -189,39 +189,27 @@ export function CategoriesScreen() {
         onToggle={() => actionCategory && confirmStatus(actionCategory)}
       />
 
-      <Modal
-        animationType="fade"
-        onRequestClose={() => setFormVisible(false)}
-        transparent
+      <BottomSheet
+        title={editing ? 'Editar tipo de servicio' : 'Nuevo tipo de servicio'}
         visible={formVisible}
+        onClose={() => setFormVisible(false)}
+        form
+        height="78%"
+        footerAction={{
+          label: 'Guardar categoría',
+          loading: createMutation.isPending || updateMutation.isPending,
+          onPress: () => formSubmit.current?.(),
+        }}
       >
-        <View style={styles.modalBackdrop}>
-          <SafeAreaView edges={['bottom']} style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {editing ? 'Editar tipo de servicio' : 'Nuevo tipo de servicio'}
-              </Text>
-              <Pressable
-                accessibilityLabel="Cerrar formulario"
-                accessibilityRole="button"
-                onPress={() => setFormVisible(false)}
-                style={styles.iconButton}
-              >
-                <Ionicons color={colors.text} name="close" size={24} />
-              </Pressable>
-            </View>
-            <KeyboardFormScrollView contentContainerStyle={styles.modalContent}>
-              <CategoryForm
-                key={editing?.id ?? 'new'}
-                areas={areas.data ?? []}
-                category={editing ?? undefined}
-                loading={createMutation.isPending || updateMutation.isPending}
-                onSubmit={(input) => void submit(input)}
-              />
-            </KeyboardFormScrollView>
-          </SafeAreaView>
-        </View>
-      </Modal>
+        <CategoryForm
+          key={editing?.id ?? 'new'}
+          areas={areas.data ?? []}
+          category={editing ?? undefined}
+          loading={createMutation.isPending || updateMutation.isPending}
+          onSubmit={(input) => void submit(input)}
+          submitRef={formSubmit}
+        />
+      </BottomSheet>
     </ScreenContainer>
   )
 }
@@ -246,22 +234,4 @@ const styles = StyleSheet.create({
   areaName: { ...typography.caption, color: colors.textMuted },
   description: { ...typography.caption, color: colors.textMuted },
   iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.backdrop },
-  modalCard: {
-    height: '78%',
-    maxHeight: '90%',
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    backgroundColor: colors.background,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    padding: spacing.lg,
-  },
-  modalTitle: { ...typography.title, color: colors.text },
-  modalContent: { flexGrow: 1, padding: spacing.lg },
 })

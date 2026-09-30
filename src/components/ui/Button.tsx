@@ -1,4 +1,12 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, type PressableProps } from 'react-native'
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  type PressableProps,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native'
 import Animated, {
   useAnimatedStyle,
   useReducedMotion,
@@ -9,7 +17,7 @@ import Animated, {
 import { Icon, type IconName } from '@/components/ui/Icon'
 import { colors, fonts, radius, spacing } from '@/theme/tokens'
 
-type Variant = 'primary' | 'secondary' | 'danger' | 'text'
+type Variant = 'primary' | 'secondary' | 'danger' | 'destructive' | 'text'
 
 export function Button({
   label,
@@ -19,6 +27,7 @@ export function Button({
   disabled,
   icon,
   destructive = false,
+  containerStyle,
   style,
   onPressIn,
   onPressOut,
@@ -30,6 +39,7 @@ export function Button({
   showLabelWhileLoading?: boolean
   icon?: IconName
   destructive?: boolean
+  containerStyle?: StyleProp<ViewStyle>
 }) {
   const inactive = disabled || loading
   const pressedScale = useSharedValue(1)
@@ -41,12 +51,14 @@ export function Button({
       ? colors.white
       : variant === 'danger'
         ? colors.dangerText
-        : variant === 'secondary'
-          ? colors.text
-          : colors.primary
+        : variant === 'destructive'
+          ? colors.white
+          : variant === 'secondary'
+            ? colors.text
+            : colors.primary
 
   return (
-    <Animated.View style={animatedStyle}>
+    <Animated.View style={[containerStyle, animatedStyle]}>
       <Pressable
         {...props}
         accessibilityLabel={props.accessibilityLabel ?? label}
@@ -92,6 +104,7 @@ const styles = StyleSheet.create({
   primary: { backgroundColor: colors.primary },
   secondary: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 },
   danger: { backgroundColor: colors.dangerBadge },
+  destructive: { backgroundColor: colors.error },
   text: { backgroundColor: 'transparent' },
   disabled: { opacity: 0.55 },
   pressed: { opacity: 0.9 },

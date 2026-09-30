@@ -1,4 +1,12 @@
-import { getSecondaryActionPresentation } from '../caseActionPresentation'
+import { getCaseActionMeta, getSecondaryActionPresentation } from '../caseActionPresentation'
+
+test('distingue asignación inicial y reasignación en el detalle', () => {
+  expect(getCaseActionMeta('asignar', null).label).toBe('Asignar personal')
+  expect(getCaseActionMeta('asignar', 'responsable-actual').label).toBe('Reasignar personal')
+  expect(getCaseActionMeta('asignar', 'responsable-actual').description).toBe(
+    'Cambia la persona responsable',
+  )
+})
 
 test('muestra una única acción de cancelar o rechazar como botón de peligro', () => {
   expect(getSecondaryActionPresentation(['cancelar'])).toEqual({
