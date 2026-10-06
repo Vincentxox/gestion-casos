@@ -26,7 +26,9 @@
 -- Ayudantes
 -- ---------------------------------------------------------------------------
 
--- Firmó la persona la versión vigente del reporte de esta solicitud.
+-- Firmó la persona la versión vigente del reporte de esta solicitud. Solo la usan otras
+-- funciones del servidor (como su propietario), así que nadie más puede ejecutarla, y
+-- siempre se limita a la empresa del usuario autenticado.
 create or replace function private.signed_current_report(
   target_case_id uuid,
   target_profile_id uuid
@@ -43,12 +45,13 @@ as $$
     join public.case_report_versions
       on case_report_versions.id = case_signatures.version_id
     where case_report_versions.case_id = target_case_id
+      and case_report_versions.organization_id = (select private.current_organization_id())
       and case_report_versions.status = 'vigente'
       and case_signatures.signer_id = target_profile_id
   );
 $$;
-revoke all on function private.signed_current_report(uuid, uuid) from public, anon;
-grant execute on function private.signed_current_report(uuid, uuid) to authenticated;
+revoke all on function private.signed_current_report(uuid, uuid)
+  from public, anon, authenticated;
 
 -- Hay un jefe del área solicitante que todavía puede firmar la conformidad.
 create or replace function private.conformity_chief_available(target_case public.cases)

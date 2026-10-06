@@ -9,15 +9,17 @@ export type ReportAction =
 /**
  * `currentSigners`: personas que ya firmaron la versión vigente. Nadie firma dos veces la
  * misma versión; si el jefe solicitante ya firmó, la conformidad la suple un administrador
- * que no haya firmado (`docs/BUSINESS_RULES.md`, 5.6).
+ * que no haya firmado (`docs/BUSINESS_RULES.md`, 5.6). `null` = todavía no se conocen:
+ * no se ofrece aprobar ni devolver.
  */
 export function getReportActions(
   item: CaseRecord,
   profile: Profile | null,
   chiefs: AreaChief[],
-  currentSigners: readonly string[] = [],
+  signers: readonly string[] | null = [],
 ): ReportAction[] {
   if (!profile || profile.organizationId === null) return []
+  const currentSigners = signers ?? []
   const isAssigned = item.assignedTo === profile.id
   const hasSigned = currentSigners.includes(profile.id)
   const isTechnicalChief = profile.role === 'jefe_area' && profile.areaId === item.targetAreaId
@@ -30,6 +32,7 @@ export function getReportActions(
   )
   const technicalSubstitute = profile.role === 'administrador' && !anotherTechnicalChief
   const canGiveConformity =
+    signers !== null &&
     !hasSigned &&
     (isRequestingChief || (profile.role === 'administrador' && !requestingChiefAvailable))
 

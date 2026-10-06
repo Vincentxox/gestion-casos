@@ -106,7 +106,7 @@ export function CaseDetailScreen({ navigation, route }: Props) {
     item,
     profile,
     chiefs.data ?? [],
-    currentSigners.data ?? [],
+    currentSigners.data ?? null,
   )
   const reportPrimary = reportActions.includes('submit')
     ? 'Completar reporte'

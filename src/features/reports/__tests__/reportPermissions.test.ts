@@ -118,3 +118,15 @@ test('el administrador que ya validó como suplente no da también la conformida
   expect(getReportActions(validated, admin, [], ['chief', 'admin'])).toEqual(['view'])
   expect(getReportActions(validated, otherAdmin, [], ['chief', 'admin'])).toContain('approve')
 })
+
+test('mientras no se conocen los firmantes no ofrece aprobar ni devolver', () => {
+  const validated = { ...item, status: 'validado' as const }
+  const chief = {
+    ...base,
+    id: 'requesting-chief',
+    role: 'jefe_area' as const,
+    areaId: 'requesting',
+  }
+  expect(getReportActions(validated, chief, [], null)).toEqual(['view'])
+  expect(getReportActions(validated, chief, [], [])).toEqual(['view', 'approve', 'return'])
+})
