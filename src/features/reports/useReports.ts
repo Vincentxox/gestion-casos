@@ -8,6 +8,7 @@ import { caseUsagesQueryKey } from '@/features/resources/useResources'
 import {
   getReportDraft,
   listAreaChiefs,
+  listCurrentReportSigners,
   listReportSignatures,
   listReportVersions,
   returnReport,
@@ -37,6 +38,13 @@ export function useReportSignatures(caseId: string) {
   return useQuery({
     queryKey: [...reportsQueryKey, caseId, 'signatures'],
     queryFn: () => listReportSignatures(caseId),
+  })
+}
+
+export function useCurrentReportSigners(caseId: string) {
+  return useQuery({
+    queryKey: [...reportsQueryKey, caseId, 'current-signers'],
+    queryFn: () => listCurrentReportSigners(caseId),
   })
 }
 

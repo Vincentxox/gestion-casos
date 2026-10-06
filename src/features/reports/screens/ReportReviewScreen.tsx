@@ -133,8 +133,13 @@ export function ReportReviewScreen({ navigation, route }: Props) {
   }
 
   const item = detail.data
-  const actions = getReportActions(item, profile, chiefs.data ?? [])
   const current = versions.data?.find((version) => version.status === 'vigente')
+  const currentSigners = current
+    ? (signatures.data ?? [])
+        .filter((entry) => entry.versionId === current.id)
+        .map((entry) => entry.signerId)
+    : []
+  const actions = getReportActions(item, profile, chiefs.data ?? [], currentSigners)
   const isSubmitting = item.status === 'en_ejecucion' && actions.includes('submit')
   const missing = getReportRequirements(
     draft.data?.diagnosis ?? '',
