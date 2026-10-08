@@ -93,3 +93,40 @@ test('jefe solicitante aprueba; administrador solo si falta ese jefe', () => {
   ])
   expect(getReportActions({ ...item, status: 'aprobado' }, base, [])).toEqual(['view', 'pdf'])
 })
+
+test('quien ya firmó la versión vigente no da la conformidad; la suple un administrador', () => {
+  const validated = { ...item, status: 'validado' as const, requestingAreaId: 'technical' }
+  const chief = { ...base, id: 'chief', role: 'jefe_area' as const }
+  const admin = { ...base, id: 'admin', role: 'administrador' as const, areaId: null }
+  const chiefs = [{ id: 'chief', areaId: 'technical' }]
+
+  // El jefe técnico validó una solicitud de su propia área.
+  expect(getReportActions(validated, chief, chiefs, ['tech', 'chief'])).toEqual(['view'])
+  expect(getReportActions(validated, admin, chiefs, ['tech', 'chief'])).toEqual([
+    'view',
+    'approve',
+    'return',
+  ])
+  // Sin firmas previas del jefe, el administrador no suple.
+  expect(getReportActions(validated, admin, chiefs, ['tech'])).toEqual(['view'])
+})
+
+test('el administrador que ya validó como suplente no da también la conformidad', () => {
+  const validated = { ...item, status: 'validado' as const }
+  const admin = { ...base, id: 'admin', role: 'administrador' as const, areaId: null }
+  const otherAdmin = { ...admin, id: 'admin-2' }
+  expect(getReportActions(validated, admin, [], ['chief', 'admin'])).toEqual(['view'])
+  expect(getReportActions(validated, otherAdmin, [], ['chief', 'admin'])).toContain('approve')
+})
+
+test('mientras no se conocen los firmantes no ofrece aprobar ni devolver', () => {
+  const validated = { ...item, status: 'validado' as const }
+  const chief = {
+    ...base,
+    id: 'requesting-chief',
+    role: 'jefe_area' as const,
+    areaId: 'requesting',
+  }
+  expect(getReportActions(validated, chief, [], null)).toEqual(['view'])
+  expect(getReportActions(validated, chief, [], [])).toEqual(['view', 'approve', 'return'])
+})

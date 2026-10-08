@@ -4,6 +4,7 @@ import {
   generateReportPdf,
   getReportDraft,
   listAreaChiefs,
+  listCurrentReportSigners,
   listReportSignatures,
   listReportVersions,
   returnReport,
@@ -123,6 +124,17 @@ test('lee versiones congeladas, firmas y jefes de área', async () => {
     error: null,
   })
   await expect(listAreaChiefs()).resolves.toEqual([{ id: 'u1', areaId: 'a1' }])
+})
+
+test('lista quiénes firmaron la versión vigente', async () => {
+  query.eq.mockReturnValueOnce(query).mockResolvedValueOnce({
+    data: [{ signer_id: 'u1' }, { signer_id: 'u2' }],
+    error: null,
+  })
+  await expect(listCurrentReportSigners('case-1')).resolves.toEqual(['u1', 'u2'])
+  expect(from).toHaveBeenCalledWith('case_signatures')
+  expect(query.eq).toHaveBeenCalledWith('case_id', 'case-1')
+  expect(query.eq).toHaveBeenCalledWith('case_report_versions.status', 'vigente')
 })
 
 test('firma y devuelve solo mediante las RPC contratadas', async () => {

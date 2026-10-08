@@ -19,7 +19,7 @@ import { Icon, type IconName } from '@/components/ui/Icon'
 import { IconTile } from '@/components/ui/IconTile'
 import { ReportSummary } from '@/features/reports/components/ReportSummary'
 import { getReportActions } from '@/features/reports/reportPermissions'
-import { useAreaChiefs } from '@/features/reports/useReports'
+import { useAreaChiefs, useCurrentReportSigners } from '@/features/reports/useReports'
 import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
 import { colors, spacing, typography } from '@/theme/tokens'
@@ -71,6 +71,7 @@ export function CaseDetailScreen({ navigation, route }: Props) {
   const detail = useCaseDetail(caseId)
   const history = useCaseHistory(caseId)
   const chiefs = useAreaChiefs()
+  const currentSigners = useCurrentReportSigners(caseId)
   const [actionsVisible, setActionsVisible] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const reduceMotion = useReducedMotion()
@@ -101,7 +102,12 @@ export function CaseDetailScreen({ navigation, route }: Props) {
   const item = detail.data
   const canUpdate = canEditCase(item, profile)
   const actions = getAvailableCaseActions(item, profile)
-  const reportActions = getReportActions(item, profile, chiefs.data ?? [])
+  const reportActions = getReportActions(
+    item,
+    profile,
+    chiefs.data ?? [],
+    currentSigners.data ?? null,
+  )
   const reportPrimary = reportActions.includes('submit')
     ? 'Completar reporte'
     : reportActions.includes('validate')

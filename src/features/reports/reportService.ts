@@ -129,6 +129,16 @@ export async function listReportSignatures(caseId: string): Promise<ReportSignat
   }))
 }
 
+export async function listCurrentReportSigners(caseId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('case_signatures')
+    .select('signer_id, case_report_versions!inner(status)')
+    .eq('case_id', caseId)
+    .eq('case_report_versions.status', 'vigente')
+  if (error) throw error
+  return (data as { signer_id: string }[]).map((row) => row.signer_id)
+}
+
 export async function listAreaChiefs(): Promise<AreaChief[]> {
   const { data, error } = await supabase
     .from('profiles')

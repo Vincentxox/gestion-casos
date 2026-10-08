@@ -143,9 +143,7 @@ Reglas comunes:
 - Toda transición registra en el historial: estado anterior y nuevo, usuario, rol,
   comentario y fecha del servidor.
 - El administrador **no** puede forzar transiciones que requieren firma. Solo firma como
-  suplente en dos casos, que quedan registrados: la validación técnica cuando el único
-  jefe técnico ejecutó el trabajo y la conformidad cuando el área solicitante no tiene
-  jefe.
+  suplente en los casos de la sección 5.6, que quedan registrados.
 - Si el área solicitante no tiene jefe asignado, la conformidad la da el administrador.
   Esta excepción queda registrada.
 
@@ -165,14 +163,16 @@ Precisadas al implementar la base de datos y confirmadas por el responsable el
 
 1. El **administrador** puede suplir **siempre** al jefe del área técnica en aceptar,
    rechazar y asignar, y al jefe del área solicitante en cancelar. La acción queda en el
-   historial con su rol. Nunca puede firmar.
+   historial con su rol. Solo firma como suplente (sección 5.6).
 2. Se puede asignar a un **técnico o a un jefe** del área destino.
 3. La **reasignación** solo se permite mientras la solicitud está en `asignado`. Para
    reasignar un trabajo en ejecución habría que ampliar la regla.
 4. **Edición de datos**: el creador edita título, descripción, ubicación, prioridad y
    tipo de servicio solo mientras la solicitud está en `solicitado`. El jefe del área
-   destino y el administrador pueden editarlos mientras no esté cerrada. El tipo de
-   servicio solo cambia en `solicitado`.
+   destino y el administrador pueden editarlos hasta que se envía el reporte. Mientras
+   está en `reporte_enviado` o `validado` nadie los edita, para que coincidan con lo
+   firmado; si el reporte se devuelve, se pueden editar de nuevo (precisado el
+   06/10/2026). El tipo de servicio solo cambia en `solicitado`.
 5. El **auditor** no crea solicitudes. Para crear una solicitud, el usuario necesita un
    área asignada.
 6. **Visibilidad**: además de lo indicado en 5.4, cada persona ve siempre las solicitudes
@@ -185,6 +185,28 @@ Precisadas al implementar la base de datos y confirmadas por el responsable el
    - no se revela si el correo ya pertenece a otra empresa.
 9. **Alta de empresas**: la hace el operador de la plataforma con
    `private.create_organization(nombre, correo_del_administrador)` desde el SQL editor.
+
+### 5.6 Suplencias de firma
+
+Aprobado por el responsable el 06/10/2026.
+
+Una persona no firma dos veces la misma versión (sección 8). Si el firmante designado ya
+firmó esa versión, firma el siguiente suplente que no la haya firmado:
+
+- **Validación técnica**: un jefe del área técnica que no haya ejecutado el trabajo. Si no
+  hay ninguno, un administrador.
+- **Conformidad**: un jefe del área solicitante que no haya firmado la versión. Si no hay
+  ninguno (porque el área no tiene jefe o porque su jefe ya firmó como ejecutor o como
+  validador), firma un administrador que no la haya firmado.
+- La devolución en `validado` la decide quien puede dar la conformidad.
+- Si nadie puede firmar, el caso queda en espera. Por ejemplo: el único administrador ya
+  validó y el área solicitante no tiene jefe. La app explica el motivo y el Inicio del
+  administrador lo muestra para que asigne un jefe al área solicitante o agregue otro
+  administrador.
+- Cada suplencia queda registrada en el historial con su motivo.
+
+Esto ocurre cuando un área técnica se pide un trabajo a sí misma o cuando el único jefe
+técnico ejecuta el trabajo.
 
 ## 6. Recursos
 
@@ -289,10 +311,11 @@ Reglas:
   avisos se ven en la app (campana del Inicio) y se envían como notificación push a los
   teléfonos registrados. Destinatarios: nueva solicitud → jefes del área técnica;
   reporte enviado → jefes del área técnica que no lo ejecutaron (si no hay, los
-  administradores); aceptada, rechazada y aprobada → creador; asignada, reasignada y
-  devuelta → técnico asignado; reporte validado → jefes del área solicitante (o
-  administradores si no hay jefe); pausa → jefes del área técnica; cancelada → jefes del
-  área técnica.
+  administradores); aceptada, rechazada e iniciada → creador; aprobada → creador y técnico
+  asignado; asignada, reasignada y devuelta → técnico asignado; reasignada → también la
+  persona que deja el trabajo; reporte validado → quienes pueden dar la conformidad
+  (sección 5.6); pausa → jefes del área técnica; cancelada → jefes del área técnica.
+  Precisado el 06/10/2026 para que coincida con el código.
 - **Indicador del reporte**: tiempo entre el envío del reporte y la aprobación final.
 - **Tiempos por prioridad**: la empresa configura, por prioridad, el tiempo máximo para
   aceptar y para resolver. El caso muestra si está vencido.
@@ -304,7 +327,8 @@ Reglas:
 Aprobado por el responsable el 23/09/2026. Cada rol ve en su Inicio su trabajo pendiente
 (ver `docs/UX_REDESIGN.md`, sección 3). El administrador recibe alertas de configuración:
 áreas técnicas sin jefe o sin técnicos, usuarios sin área o sin nombre, solicitudes de
-acceso pendientes y catálogos vacíos. Los conteos respetan la visibilidad de cada rol.
+acceso pendientes, catálogos vacíos y reportes validados que nadie puede aprobar (5.6).
+Los conteos respetan la visibilidad de cada rol.
 
 ## 10. Estado del código antes del nuevo modelo
 
