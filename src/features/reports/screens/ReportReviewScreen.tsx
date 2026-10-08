@@ -113,7 +113,7 @@ export function ReportReviewScreen({ navigation, route }: Props) {
   const [returnVisible, setReturnVisible] = useState(false)
   const [pdfLoading, setPdfLoading] = useState(false)
   const [shareLoading, setShareLoading] = useState(false)
-  const [showPast, setShowPast] = useState(false)
+  const [expandedPast, setExpandedPast] = useState<string | null>(null)
 
   if (detail.isLoading || draft.isLoading || versions.isLoading || signatures.isLoading) {
     return <RequestState kind="loading" title="Cargando reporte…" />
@@ -226,9 +226,6 @@ export function ReportReviewScreen({ navigation, route }: Props) {
   return (
     <SafeAreaView edges={['bottom']} style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text accessibilityRole="header" style={styles.title}>
-          {item.caseNumber}
-        </Text>
         {action ? (
           <Card contentStyle={styles.notice}>
             <Text style={styles.text}>
@@ -244,6 +241,9 @@ export function ReportReviewScreen({ navigation, route }: Props) {
         {content ? (
           <ReportContent
             content={content}
+            caseStatus={item.status}
+            currentAction={action}
+            verificationHash={current?.contentHash}
             signatures={
               current ? signatures.data?.filter((entry) => entry.versionId === current.id) : []
             }
@@ -252,36 +252,29 @@ export function ReportReviewScreen({ navigation, route }: Props) {
         {!content && !isSubmitting ? (
           <RequestState kind="empty" title="No hay una versión vigente del reporte" />
         ) : null}
-        {(versions.data?.filter((version) => version.status === 'devuelta').length ?? 0) > 0 ? (
-          <Card contentStyle={styles.notice}>
-            <Button
-              label={`${showPast ? 'Ocultar' : 'Ver'} versiones devueltas`}
-              variant="secondary"
-              onPress={() => setShowPast(!showPast)}
-            />
-            {showPast
-              ? versions.data
-                  ?.filter((version) => version.status === 'devuelta')
-                  .map((version) => (
-                    <View key={version.id} style={styles.past}>
-                      <Text style={styles.text}>
-                        Versión {version.versionNumber} · {version.returnedByName ?? 'Sin nombre'} ·{' '}
-                        {version.returnedAt
-                          ? new Date(version.returnedAt).toLocaleString('es-GT')
-                          : ''}
-                      </Text>
-                      <Text style={styles.muted}>{version.returnReason}</Text>
-                      <ReportContent
-                        content={version.content}
-                        signatures={signatures.data?.filter(
-                          (entry) => entry.versionId === version.id,
-                        )}
-                      />
-                    </View>
-                  ))
-              : null}
-          </Card>
-        ) : null}
+        {versions.data
+          ?.filter((version) => version.status === 'devuelta')
+          .map((version) => (
+            <Card key={version.id} contentStyle={styles.notice}>
+              <Button
+                label={`Versión ${version.versionNumber} · ${expandedPast === version.id ? 'Ocultar' : 'Ver'} reporte devuelto`}
+                variant="secondary"
+                onPress={() => setExpandedPast(expandedPast === version.id ? null : version.id)}
+              />
+              <Text style={styles.muted}>
+                Devuelta por {version.returnedByName ?? 'Sin nombre'} ·{' '}
+                {version.returnedAt ? new Date(version.returnedAt).toLocaleString('es-GT') : ''}
+              </Text>
+              <Text style={styles.text}>{version.returnReason}</Text>
+              {expandedPast === version.id ? (
+                <ReportContent
+                  content={version.content}
+                  verificationHash={version.contentHash}
+                  signatures={signatures.data?.filter((entry) => entry.versionId === version.id)}
+                />
+              ) : null}
+            </Card>
+          ))}
       </ScrollView>
       {action && content ? (
         <View style={styles.sticky}>
@@ -293,6 +286,11 @@ export function ReportReviewScreen({ navigation, route }: Props) {
               ))
             : null}
           <View style={styles.actionRow}>
+            {actions.includes('return') ? (
+              <View style={styles.returnCell}>
+                <Button label="Devolver" variant="danger" onPress={() => setReturnVisible(true)} />
+              </View>
+            ) : null}
             <View style={styles.actionCell}>
               <Button
                 label={actionLabel}
@@ -300,11 +298,6 @@ export function ReportReviewScreen({ navigation, route }: Props) {
                 onPress={() => setSignatureAction(action)}
               />
             </View>
-            {actions.includes('return') ? (
-              <View style={styles.actionCell}>
-                <Button label="Devolver" variant="danger" onPress={() => setReturnVisible(true)} />
-              </View>
-            ) : null}
           </View>
         </View>
       ) : item.status === 'aprobado' ? (
@@ -363,11 +356,9 @@ export function ReportReviewScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { gap: spacing.md, padding: spacing.lg, paddingBottom: spacing.xl },
-  title: { ...typography.caption, color: colors.textMuted },
   notice: { gap: spacing.sm },
   text: { ...typography.body, color: colors.text },
   muted: { ...typography.body, color: colors.textMuted },
-  past: { gap: spacing.sm, paddingTop: spacing.md },
   sticky: {
     gap: spacing.sm,
     padding: spacing.md,
@@ -377,4 +368,5 @@ const styles = StyleSheet.create({
   },
   actionRow: { flexDirection: 'row', gap: spacing.sm },
   actionCell: { flex: 1 },
+  returnCell: { flex: 0.5 },
 })

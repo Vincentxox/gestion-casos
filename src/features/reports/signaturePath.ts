@@ -137,3 +137,25 @@ export function signaturePath(strokes: Point[][], width: number, height: number)
   if (path.length < 10) throw new Error('Dibuja tu firma antes de continuar')
   return path
 }
+
+// The stored path uses absolute M/L points in the uniform 0–1000 coordinate system.
+// Fit its actual ink bounds instead of treating it as a square canvas.
+export function signatureViewBox(path: string, padding = 24) {
+  const points = [...path.matchAll(/[ML]\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)/gi)]
+    .map((match) => ({ x: Number(match[1]), y: Number(match[2]) }))
+    .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y))
+  if (points.length === 0) return { x: 0, y: 0, width: 1000, height: 1000 }
+  const xs = points.map((point) => point.x)
+  const ys = points.map((point) => point.y)
+  const safePadding = Math.max(0, padding)
+  const minX = Math.min(...xs)
+  const maxX = Math.max(...xs)
+  const minY = Math.min(...ys)
+  const maxY = Math.max(...ys)
+  return {
+    x: minX - safePadding,
+    y: minY - safePadding,
+    width: Math.max(maxX - minX, 1) + safePadding * 2,
+    height: Math.max(maxY - minY, 1) + safePadding * 2,
+  }
+}

@@ -339,6 +339,14 @@ export function getHomeTiles(profile: Profile, summary: HomeSummary): HomeTile[]
 
 export function getAdminAlerts(admin: NonNullable<HomeSummary['admin']>) {
   return [
+    ...(admin.conformidades_sin_firmante > 0
+      ? [
+          {
+            label: `${admin.conformidades_sin_firmante} ${plural(admin.conformidades_sin_firmante, 'reporte', 'reportes')} sin firmante de conformidad`,
+            screen: 'Users' as const,
+          },
+        ]
+      : []),
     ...admin.areas_tecnicas_sin_jefe.map((name) => ({
       label: `${name} no tiene jefe de área`,
       screen: 'Users' as const,

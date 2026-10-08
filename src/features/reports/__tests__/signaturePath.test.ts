@@ -1,6 +1,11 @@
 import { svgPathBounds } from '../../../../supabase/functions/_shared/pdfText'
 
-import { appendSignatureSegment, clampSignaturePoint, signaturePath } from '../signaturePath'
+import {
+  appendSignatureSegment,
+  clampSignaturePoint,
+  signaturePath,
+  signatureViewBox,
+} from '../signaturePath'
 
 test('mantiene el trazo dentro del área visible aunque el dedo salga del recuadro', () => {
   expect(clampSignaturePoint({ x: -12, y: 120 }, 100, 100, 8)).toEqual({ x: 8, y: 92 })
@@ -90,4 +95,23 @@ test('simplifica un trazo largo y rechaza firma vacía', () => {
   expect(result.split(' L ').length).toBeLessThan(points.length)
   expect(() => signaturePath([], 200, 100)).toThrow('Dibuja tu firma')
   expect(() => signaturePath([[{ x: 2, y: 2 }]], 200, 100)).toThrow('Dibuja tu firma')
+})
+
+test('recorta el lienzo de una firma ancha a los límites de su trazo', () => {
+  expect(signatureViewBox('M 100 250 L 900 250 L 950 550', 20)).toEqual({
+    x: 80,
+    y: 230,
+    width: 890,
+    height: 340,
+  })
+})
+
+test('recorta un solo trazo y conserva un lienzo válido si falta el trazo', () => {
+  expect(signatureViewBox('M 500 500 L 500 800', 20)).toEqual({
+    x: 480,
+    y: 480,
+    width: 41,
+    height: 340,
+  })
+  expect(signatureViewBox('')).toEqual({ x: 0, y: 0, width: 1000, height: 1000 })
 })
