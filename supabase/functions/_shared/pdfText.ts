@@ -240,3 +240,62 @@ export function describeUsage(usage: {
   }
   return parts.join(' · ') || '—'
 }
+
+export const RESOURCE_KIND_LABELS: Record<string, string> = {
+  material: 'Material',
+  herramienta: 'Herramienta',
+  equipo: 'Equipo',
+  mano_de_obra: 'Mano de obra',
+}
+
+// Tipo legible de un registro de recursos: la clase del recurso o «Mano de obra».
+export function usageKindLabel(usage: { tipo?: string | null; clase?: string | null }): string {
+  const kind = usage.tipo === 'mano_de_obra' ? 'mano_de_obra' : (usage.clase ?? '')
+  return RESOURCE_KIND_LABELS[kind] ?? '—'
+}
+
+// Costo de un material: cantidad por costo unitario. Las herramientas, los equipos y la
+// mano de obra no tienen costo en el reporte; sin ambos datos tampoco hay costo.
+export function usageCost(usage: {
+  tipo?: string | null
+  clase?: string | null
+  cantidad?: number | string | null
+  costo_unitario?: number | string | null
+}): number | null {
+  if (usage.tipo === 'mano_de_obra' || usage.clase !== 'material') return null
+  if (usage.cantidad === null || usage.cantidad === undefined || usage.cantidad === '') return null
+  if (usage.costo_unitario === null || usage.costo_unitario === undefined) return null
+  if (usage.costo_unitario === '') return null
+  const value = Number(usage.cantidad) * Number(usage.costo_unitario)
+  return Number.isFinite(value) ? Math.round(value * 100) / 100 : null
+}
+
+export function formatAmount(value: number): string {
+  return value.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+// Tiempo entre la creación de la solicitud y el envío del reporte («1 d 4 h»).
+export function elapsedLabel(
+  from: string | null | undefined,
+  to: string | null | undefined,
+): string | null {
+  if (!from || !to) return null
+  const elapsed = Date.parse(to) - Date.parse(from)
+  if (!Number.isFinite(elapsed) || elapsed < 0) return null
+  const totalHours = Math.floor(elapsed / 3_600_000)
+  const days = Math.floor(totalHours / 24)
+  const hours = totalHours % 24
+  if (days > 0) return `${days} d ${hours} h`
+  if (totalHours > 0) return `${totalHours} h`
+  return `${Math.max(1, Math.floor(elapsed / 60_000))} min`
+}
+
+// Limita un bloque de texto a `max` líneas; la última termina en «…» si se cortó.
+export function clampLines(lines: string[], max: number): string[] {
+  if (max < 1) return []
+  if (lines.length <= max) return lines
+  const kept = lines.slice(0, max)
+  const last = kept[max - 1] ?? ''
+  kept[max - 1] = `${last.length > 2 ? last.slice(0, -2).trimEnd() : last}…`
+  return kept
+}
