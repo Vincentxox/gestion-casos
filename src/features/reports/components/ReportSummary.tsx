@@ -7,26 +7,19 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Chip } from '@/components/ui/Chip'
 import { Icon } from '@/components/ui/Icon'
-import { ROLE_LABELS, type AppRole } from '@/features/auth/types'
 import type { CaseRecord } from '@/features/cases/types'
 import { PhotoGrid } from '@/features/photos/components/PhotoGrid'
 import { useCasePhotos } from '@/features/photos/usePhotos'
 import { colors, spacing, typography } from '@/theme/tokens'
 
 import { generateReportPdf, shareReportPdf } from '../reportService'
-import { photoRequirementLabel } from '../reportPresentation'
+import {
+  photoRequirementLabel,
+  reportSignatureSteps,
+  reportVerificationCode,
+} from '../reportPresentation'
 import { getReportRequirements } from '../schemas'
 import { useReportDraft, useReportSignatures, useReportVersions } from '../useReports'
-
-function verificationCode(hash: string) {
-  return (
-    hash
-      .slice(0, 12)
-      .toUpperCase()
-      .match(/.{1,4}/g)
-      ?.join('-') ?? ''
-  )
-}
 
 export function ReportSummary({
   item,
@@ -154,16 +147,26 @@ export function ReportSummary({
         </View>
       ) : (
         <View style={styles.requirements}>
-          {signatures.data
-            ?.filter((entry) => entry.versionId === current.id)
-            .map((entry) => (
-              <Text key={entry.id} style={styles.text}>
-                {entry.signerName} · {ROLE_LABELS[entry.signerRole as AppRole] ?? entry.signerRole}{' '}
-                · {new Date(entry.signedAt).toLocaleString('es-GT')}
+          {reportSignatureSteps(
+            signatures.data?.filter((entry) => entry.versionId === current.id) ?? [],
+            null,
+          ).map((step) => (
+            <View key={step.type} style={styles.requirementRow}>
+              <Icon
+                name={step.signature ? 'checkmark-circle' : 'ellipse-outline'}
+                size="inline"
+                color={step.signature ? colors.success : colors.primary}
+              />
+              <Text style={styles.text}>
+                {step.label}:{' '}
+                {step.signature
+                  ? `${step.signature.signerName}${step.isSubstitute ? ' (suplente)' : ''}`
+                  : 'pendiente'}
               </Text>
-            ))}
+            </View>
+          ))}
           <Text style={styles.muted}>
-            Código de verificación: {verificationCode(current.contentHash)}
+            Código de verificación: {reportVerificationCode(current.contentHash)}
           </Text>
         </View>
       )}

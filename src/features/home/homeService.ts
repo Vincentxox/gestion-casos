@@ -36,6 +36,7 @@ export interface HomeSummary {
     recursos_activos: number
     areas_tecnicas_sin_jefe: string[]
     areas_tecnicas_sin_tecnico: string[]
+    conformidades_sin_firmante: number
   }
 }
 

@@ -194,6 +194,7 @@ test('el administrador ve problemas configurables', () => {
     recursos_activos: 2,
     areas_tecnicas_sin_jefe: ['Mantenimiento'],
     areas_tecnicas_sin_tecnico: [],
+    conformidades_sin_firmante: 0,
   })
   expect(alerts.map((alert) => alert.screen)).toEqual([
     'Users',
@@ -201,6 +202,21 @@ test('el administrador ve problemas configurables', () => {
     'AccessRequests',
     'Categories',
   ])
+})
+
+test('el administrador ve la alerta de conformidades sin firmante de C-010', () => {
+  const alerts = getAdminAlerts({
+    usuarios_sin_area: 0,
+    usuarios_sin_nombre: 0,
+    solicitudes_acceso_pendientes: 0,
+    invitaciones_pendientes: 0,
+    tipos_servicio_activos: 1,
+    recursos_activos: 1,
+    areas_tecnicas_sin_jefe: [],
+    areas_tecnicas_sin_tecnico: [],
+    conformidades_sin_firmante: 2,
+  })
+  expect(alerts).toEqual([{ label: '2 reportes sin firmante de conformidad', screen: 'Users' }])
 })
 
 test('cada contador lleva a su filtro de solicitudes', () => {
@@ -262,6 +278,7 @@ test('el Inicio usa singulares y omite los componentes en cero', () => {
       recursos_activos: 1,
       areas_tecnicas_sin_jefe: [],
       areas_tecnicas_sin_tecnico: [],
+      conformidades_sin_firmante: 0,
     })[0]?.label,
   ).toBe('1 usuario sin área')
 })
