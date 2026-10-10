@@ -701,7 +701,7 @@ function drawResources(c: Canvas, content: FrozenContent) {
     ] as (typeof rows)[number])
   }
   drawTable(c, columns, rows)
-  c.y -= 12
+  c.y -= 8
 }
 
 async function drawPhotos(
@@ -713,7 +713,7 @@ async function drawPhotos(
   const gap = 22
   const columnWidth = (CONTENT_WIDTH - gap) / 2
   const cellGap = 6
-  const cell = Math.min((columnWidth - cellGap * 2) / 3, 58)
+  const cell = Math.min((columnWidth - cellGap * 2) / 3, 52)
   c.ensure(22 + 14 + cell + 10)
   c.y -= c.section('Fotos')
   const top = c.y
@@ -756,7 +756,7 @@ async function drawPhotos(
       }
     }
   }
-  c.y = top - 12 - cell - 12
+  c.y = top - 12 - cell - 8
 }
 
 // Dibuja la imagen cubriendo un cuadrado de `size` y recorta lo que sobra, como en la app.
@@ -790,7 +790,7 @@ function drawSignatures(c: Canvas, input: PdfInput) {
   const { fonts } = c
   const gap = 20
   const width = (CONTENT_WIDTH - gap * 2) / 3
-  const strokeHeight = 42
+  const strokeHeight = 34
   const nameStyle = { size: 9, font: fonts.bold }
   const stepStyle = { size: 7.5 }
   // Nombres y pasos completos: el bloque crece con el texto más largo de las tres firmas.
@@ -919,8 +919,8 @@ function drawEvidence(c: Canvas, input: PdfInput, code: string) {
       { title: 'Paso', width: CONTENT_WIDTH * 0.16 },
       { title: 'Firmante', width: CONTENT_WIDTH * 0.22 },
       { title: 'Fecha y hora', width: CONTENT_WIDTH * 0.17 },
-      { title: 'IP', width: CONTENT_WIDTH * 0.13 },
-      { title: 'Dispositivo', width: CONTENT_WIDTH * 0.32, maxLines: 3 },
+      { title: 'IP', width: CONTENT_WIDTH * 0.17 },
+      { title: 'Dispositivo', width: CONTENT_WIDTH * 0.28, maxLines: 3 },
     ],
     ordered.map((signature) => {
       const substitute =
