@@ -318,9 +318,9 @@ Reglas:
   Precisado el 06/10/2026 para que coincida con el código.
 - **Indicador del reporte**: tiempo entre el envío del reporte y la aprobación final.
 - **Tiempos por prioridad**: la empresa configura, por prioridad, el tiempo máximo para
-  aceptar y para resolver. El caso muestra si está vencido.
+  aceptar y para resolver. El caso muestra si está vencido (ver 9.2).
 - **Panel**: casos por estado, por área y por prioridad; tiempo promedio de aceptación y
-  de resolución; casos vencidos y costo de recursos por área.
+  de resolución; casos vencidos y costo de recursos por área (ver 9.2).
 
 ### 9.1 Inicio por rol
 
@@ -329,6 +329,41 @@ Aprobado por el responsable el 23/09/2026. Cada rol ve en su Inicio su trabajo p
 áreas técnicas sin jefe o sin técnicos, usuarios sin área o sin nombre, solicitudes de
 acceso pendientes, catálogos vacíos y reportes validados que nadie puede aprobar (5.6).
 Los conteos respetan la visibilidad de cada rol.
+
+### 9.2 Tiempos por prioridad e indicadores
+
+Valores por defecto aprobados por el responsable el 14/10/2026 (decisión 11.2). Cada
+empresa nueva los recibe y el administrador los cambia por prioridad:
+
+| Prioridad | Aceptar | Resolver |
+| --------- | ------- | -------- |
+| Alta      | 4 h     | 24 h     |
+| Media     | 8 h     | 72 h     |
+| Baja      | 24 h    | 7 días   |
+
+Límites: aceptar entre 1 y 720 h, resolver entre 1 y 2160 h, y resolver nunca menor que
+aceptar. Se cumple en la base (`priority_targets` y `set_priority_target`).
+
+Cómo se cuenta (aprobado por el responsable el 14/10/2026):
+
+- Los dos plazos corren **desde que se crea la solicitud**, en horas corridas (incluye
+  noches, fines de semana y pausas).
+- **Aceptación vencida**: sigue en `solicitado` después del plazo para aceptar.
+- **Resolución vencida**: sigue abierta (`aceptado`, `asignado`, `en_ejecucion` o
+  `en_espera`) después del plazo para resolver. Se considera resuelta cuando se envía el
+  reporte; si el reporte se devuelve, vuelve a contar.
+- Una solicitud cerrada, rechazada o cancelada no vence.
+- Cada solicitud guarda los tiempos vigentes al crearse. Si el administrador cambia los
+  tiempos, el cambio solo afecta a las solicitudes nuevas; las anteriores y sus
+  indicadores no se recalculan. Si se cambia la prioridad de una solicitud, toma los
+  tiempos vigentes de la nueva prioridad.
+
+Panel (administrador, jefes de área y auditor; cada uno cuenta solo lo que puede ver):
+casos por estado, por prioridad, por área destino y por área solicitante; tiempos
+promedio de aceptación, de resolución (creación → último envío del reporte) y de envío a
+aprobación; casos resueltos fuera de plazo; vencidos de hoy; y costo de recursos por área
+solicitante (cantidad × costo unitario; la mano de obra se informa en horas). Se puede
+filtrar por fecha de creación.
 
 ## 10. Estado del código antes del nuevo modelo
 
@@ -359,7 +394,8 @@ Tratamiento de los datos existentes (confirmado por el responsable el 22/09/2026
 ## 11. Decisiones pendientes
 
 1. Confirmar con un abogado la validez de la firma simple.
-2. Definir los tiempos por prioridad por defecto de una empresa nueva.
+2. ~~Definir los tiempos por prioridad por defecto de una empresa nueva.~~ Resuelta el
+   14/10/2026: ver 9.2.
 3. Definir si el solicitante puede adjuntar fotos al crear la solicitud en el MVP o
    después (hoy solo las suben el técnico asignado y el jefe técnico).
 4. Entornos: el proyecto de Supabase actual sirve como desarrollo y pruebas. Antes de la
