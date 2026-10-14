@@ -128,7 +128,7 @@ export async function listCaseUsages(caseId: string): Promise<CaseUsageRecord[]>
     .eq('case_id', caseId)
     .order('created_at', { ascending: false })
   if (error) throw error
-  return (data as unknown as UsageRow[]).map(mapUsage)
+  return data.map(mapUsage)
 }
 
 export async function addCaseUsage(caseId: string, input: UsageInput): Promise<void> {

@@ -78,7 +78,7 @@ export async function listCases(): Promise<CaseRecord[]> {
     .order('created_at', { ascending: false })
     .limit(100)
   if (error) throw error
-  return (data as unknown as CaseRow[]).map(mapCase)
+  return data.map(mapCase)
 }
 
 export async function getCase(caseId: string): Promise<CaseRecord> {
@@ -88,7 +88,7 @@ export async function getCase(caseId: string): Promise<CaseRecord> {
     .eq('id', caseId)
     .single()
   if (error) throw error
-  return mapCase(data as unknown as CaseRow)
+  return mapCase(data)
 }
 
 export async function createCase(input: CreateCaseInput): Promise<CaseRecord> {
@@ -104,7 +104,7 @@ export async function createCase(input: CreateCaseInput): Promise<CaseRecord> {
     .select(caseSelection)
     .single()
   if (error) throw error
-  return mapCase(data as unknown as CaseRow)
+  return mapCase(data)
 }
 
 export async function updateCase(caseId: string, input: UpdateCaseInput): Promise<CaseRecord> {
@@ -124,7 +124,7 @@ export async function updateCase(caseId: string, input: UpdateCaseInput): Promis
     throw new Error('La solicitud ya no se puede editar; actualiza la pantalla')
   }
   if (error) throw error
-  return mapCase(data as unknown as CaseRow)
+  return mapCase(data)
 }
 
 export async function changeCaseStatus(
@@ -188,18 +188,7 @@ export async function listCaseHistory(caseId: string): Promise<CaseStatusHistory
     .eq('case_id', caseId)
     .order('created_at', { ascending: false })
   if (error) throw error
-  return (
-    data as unknown as {
-      id: number
-      action: string
-      from_status: CaseStatus | null
-      to_status: CaseStatus
-      comment: string | null
-      created_at: string
-      actor: { full_name: string } | null
-      assignee: { full_name: string } | null
-    }[]
-  ).map((row) => ({
+  return data.map((row) => ({
     id: row.id,
     action: row.action,
     previousStatus: row.from_status,
