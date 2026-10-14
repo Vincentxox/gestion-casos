@@ -500,6 +500,7 @@ export type Database = {
       }
       cases: {
         Row: {
+          accept_target_hours: number
           accepted_at: string | null
           assigned_at: string | null
           assigned_to: string | null
@@ -514,6 +515,7 @@ export type Database = {
           organization_id: string
           priority: Database['public']['Enums']['case_priority']
           requesting_area_id: string
+          resolve_target_hours: number
           started_at: string | null
           status: Database['public']['Enums']['case_status']
           status_changed_at: string
@@ -522,6 +524,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          accept_target_hours: number
           accepted_at?: string | null
           assigned_at?: string | null
           assigned_to?: string | null
@@ -536,6 +539,7 @@ export type Database = {
           organization_id: string
           priority?: Database['public']['Enums']['case_priority']
           requesting_area_id: string
+          resolve_target_hours: number
           started_at?: string | null
           status?: Database['public']['Enums']['case_status']
           status_changed_at?: string
@@ -544,6 +548,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          accept_target_hours?: number
           accepted_at?: string | null
           assigned_at?: string | null
           assigned_to?: string | null
@@ -558,6 +563,7 @@ export type Database = {
           organization_id?: string
           priority?: Database['public']['Enums']['case_priority']
           requesting_area_id?: string
+          resolve_target_hours?: number
           started_at?: string | null
           status?: Database['public']['Enums']['case_status']
           status_changed_at?: string
@@ -913,6 +919,48 @@ export type Database = {
         }
         Relationships: []
       }
+      priority_targets: {
+        Row: {
+          accept_hours: number
+          organization_id: string
+          priority: Database['public']['Enums']['case_priority']
+          resolve_hours: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          accept_hours: number
+          organization_id: string
+          priority: Database['public']['Enums']['case_priority']
+          resolve_hours: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          accept_hours?: number
+          organization_id?: string
+          priority?: Database['public']['Enums']['case_priority']
+          resolve_hours?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'priority_targets_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'priority_targets_updated_by_fkey'
+            columns: ['updated_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       profiles: {
         Row: {
           area_id: string | null
@@ -1132,6 +1180,14 @@ export type Database = {
         Args: { target_photo_id: string }
         Returns: undefined
       }
+      due_at: {
+        Args: { target: Database['public']['Tables']['cases']['Row'] }
+        Returns: string
+      }
+      get_case_indicators: {
+        Args: { period_end?: string; period_start?: string }
+        Returns: Json
+      }
       get_home_summary: { Args: never; Returns: Json }
       get_my_access_request: {
         Args: never
@@ -1148,6 +1204,10 @@ export type Database = {
       mark_notifications_read: {
         Args: { notification_ids?: number[] }
         Returns: number
+      }
+      overdue_stage: {
+        Args: { target: Database['public']['Tables']['cases']['Row'] }
+        Returns: string
       }
       regenerate_organization_join_code: { Args: never; Returns: string }
       register_push_token: {
@@ -1176,6 +1236,7 @@ export type Database = {
       return_case_report: {
         Args: { return_reason: string; target_case_id: string }
         Returns: {
+          accept_target_hours: number
           accepted_at: string | null
           assigned_at: string | null
           assigned_to: string | null
@@ -1190,6 +1251,7 @@ export type Database = {
           organization_id: string
           priority: Database['public']['Enums']['case_priority']
           requesting_area_id: string
+          resolve_target_hours: number
           started_at: string | null
           status: Database['public']['Enums']['case_status']
           status_changed_at: string
@@ -1211,6 +1273,27 @@ export type Database = {
           target_user_id: string
         }
         Returns: undefined
+      }
+      set_priority_target: {
+        Args: {
+          new_accept_hours: number
+          new_resolve_hours: number
+          target_priority: Database['public']['Enums']['case_priority']
+        }
+        Returns: {
+          accept_hours: number
+          organization_id: string
+          priority: Database['public']['Enums']['case_priority']
+          resolve_hours: number
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'priority_targets'
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       submit_case_report: {
         Args: {
@@ -1251,6 +1334,7 @@ export type Database = {
           target_case_id: string
         }
         Returns: {
+          accept_target_hours: number
           accepted_at: string | null
           assigned_at: string | null
           assigned_to: string | null
@@ -1265,6 +1349,7 @@ export type Database = {
           organization_id: string
           priority: Database['public']['Enums']['case_priority']
           requesting_area_id: string
+          resolve_target_hours: number
           started_at: string | null
           status: Database['public']['Enums']['case_status']
           status_changed_at: string
