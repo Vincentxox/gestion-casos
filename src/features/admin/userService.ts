@@ -2,14 +2,6 @@ import { supabase } from '@/services/supabase/client'
 
 import type { ManagedProfile } from './types'
 
-interface ManagedProfileRow {
-  id: string
-  full_name: string
-  role: ManagedProfile['role']
-  area_id: string | null
-  area: { name: string } | null
-}
-
 export async function listManagedProfiles(): Promise<ManagedProfile[]> {
   const { data, error } = await supabase
     .from('profiles')
@@ -18,7 +10,7 @@ export async function listManagedProfiles(): Promise<ManagedProfile[]> {
 
   if (error) throw error
 
-  return (data as unknown as ManagedProfileRow[]).map((row) => ({
+  return data.map((row) => ({
     id: row.id,
     fullName: row.full_name.trim() || 'Usuario sin nombre',
     role: row.role,

@@ -43,5 +43,5 @@ export interface HomeSummary {
 export async function getHomeSummary(): Promise<HomeSummary> {
   const { data, error } = await supabase.rpc('get_home_summary')
   if (error) throw error
-  return data as HomeSummary
+  return data as unknown as HomeSummary
 }
