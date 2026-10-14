@@ -651,11 +651,11 @@ funciona cuando se programe `send-push`.
 - `approve_case_report`: firma un jefe del área solicitante que no haya firmado la versión
   vigente. Si no hay ninguno, firma un administrador que no la haya firmado. Errores nuevos:
   - `Ya firmaste esta versión del reporte; la conformidad la da otra persona`;
-  - `Ya firmaste esta versión del reporte y nadie más puede dar la conformidad: asigna
-    un jefe al área solicitante o agrega otro administrador`.
+  - `Ya firmaste esta versión del reporte y nadie más puede dar la conformidad: asigna un jefe al área solicitante o agrega otro administrador`.
 
   El historial registra el motivo de la suplencia: «el jefe del área solicitante ya firmó
   esta versión» o «el área solicitante no tiene jefe».
+
 - `return_case_report` en `validado`: la regla de `approve`.
 - `get_home_summary()`:
   - `inbox.reportes_por_aprobar` cuenta a cualquier jefe del área solicitante, aunque su
@@ -1043,6 +1043,7 @@ a una columna en `drawWorkAndTimes` y el recorte de fotos en `drawCropped`.
   La muestra normal sigue en 2 páginas. Los scripts de muestra están fuera del
   repositorio (scratchpad), porque necesitan `pdf-lib` y un rasterizador que el
   proyecto no tiene.
+
 - **Validaciones:**
   - pruebas de funciones en verde (12, 6 y 7);
   - Prettier y `git diff --check` en verde;
@@ -1078,6 +1079,7 @@ Para Codex: revisión focalizada de `drawSummary`, `drawSignatures`, `drawTable`
   Regional», el final del motivo de 500 y las 120 repeticiones del nombre. La fila de ese
   nombre se reparte en las páginas 5 a 7, con el encabezado repetido. La muestra normal
   sigue en 2 páginas.
+
 - **Validaciones.**
   - pruebas de funciones en verde (12, 6 y 7);
   - Prettier y `git diff --check` en verde;
@@ -1132,7 +1134,7 @@ Hallazgos:
   Mantener completos los datos identificativos mediante altura flexible, otra
   disposición o continuación, y cubrir el límite válido con una prueba.
 - **[importante] El historial corta motivos válidos.** `drawTable` aplica cuatro líneas
-  máximas al texto secundario de *todas* las celdas (`pdf.ts:565-567`), incluida la
+  máximas al texto secundario de _todas_ las celdas (`pdf.ts:565-567`), incluida la
   observación de cada evento (`pdf.ts:914-923`). `case_events.comment` permite hasta
   500 caracteres; una observación de ese tamaño ocupa más de cuatro líneas y el PDF
   omite el final. Al ser parte de la hoja de evidencia, el motivo debe conservarse
@@ -1681,6 +1683,7 @@ Especificación V9 (`AppFeedback.tsx` y `Button.tsx`, sin dependencias nuevas):
    - `CategorySelectField` y la hoja de fuente de foto usan el mismo
      `BottomSheet` con filas del menú.
    - El aviso nativo de permisos se mantiene (tiene «Abrir ajustes»).
+
 6. Pruebas de `BottomSheet`: cierre con X, fondo y atrás; pie presente u
    omitido; orden de acciones destructivas en el menú.
 
@@ -1731,14 +1734,16 @@ Verificado en GitHub:
   - `develop` agregado a los disparadores de CI.
 
   Aprobado.
+
 - **PR #3 (`release-config`, `f7e33db`):**
   - `com.nexocasos.app` en Android e iOS;
   - `appVersionSource: "remote"`;
   - perfil `production` con `app-bundle`, `autoIncrement` y `environment:
-    production`;
+production`;
   - `scheme`, `slug`, `projectId` y `preview` sin cambios.
 
   Aprobado.
+
 - **Vulnerabilidades:** las 16 que reporta `npm ci` (15 moderadas y 1 alta) ya
   estaban en el lockfile. Se revisan aparte con `npm audit` y se corrigen con
   actualizaciones compatibles de Expo, nunca con `--force`.
