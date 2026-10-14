@@ -150,6 +150,14 @@ from public.priority_targets as targets
 where targets.organization_id = cases.organization_id
   and targets.priority = cases.priority;
 
+alter table public.cases
+  alter column accept_target_hours set not null,
+  alter column resolve_target_hours set not null,
+  add constraint cases_accept_target_hours_check check (accept_target_hours between 1 and 720),
+  add constraint cases_resolve_target_hours_check check (
+    resolve_target_hours between 1 and 2160 and resolve_target_hours >= accept_target_hours
+  );
+
 -- Corre después de `cases_prepare_new` (orden alfabético), que fija la empresa.
 create or replace function private.set_case_priority_targets()
 returns trigger
