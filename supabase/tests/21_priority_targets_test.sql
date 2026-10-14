@@ -81,6 +81,56 @@ select test.ok(
 );
 
 -- ---------------------------------------------------------------------------
+-- 2b. Cada solicitud guarda sus tiempos
+-- ---------------------------------------------------------------------------
+
+select test.ok(
+  (select bool_and(accept_target_hours is not null and resolve_target_hours is not null)
+   from public.cases),
+  'las solicitudes existentes reciben los tiempos de su prioridad'
+);
+
+select test.login('sol1');
+set role authenticated;
+insert into public.cases (title, description, location, priority, category_id)
+values ('Lámpara antigua', 'Una lámpara del pasillo parpadea', 'Pasillo 1', 'media', test.get('cat_elec')::uuid);
+select test.set('case_old', (select id::text from public.cases where title = 'Lámpara antigua'));
+reset role;
+
+select test.login('admin');
+set role authenticated;
+select public.set_priority_target('media', 10, 80);
+reset role;
+
+select test.login('sol1');
+set role authenticated;
+insert into public.cases (title, description, location, priority, category_id)
+values ('Lámpara nueva', 'Otra lámpara del pasillo parpadea', 'Pasillo 2', 'media', test.get('cat_elec')::uuid);
+select test.set('case_new', (select id::text from public.cases where title = 'Lámpara nueva'));
+select test.ok(
+  (select accept_target_hours = 8 and resolve_target_hours = 72
+   from public.cases where id = test.get('case_old')::uuid),
+  'cambiar los tiempos no afecta a una solicitud ya creada'
+);
+select test.ok(
+  (select accept_target_hours = 10 and resolve_target_hours = 80
+   from public.cases where id = test.get('case_new')::uuid),
+  'una solicitud nueva toma los tiempos vigentes'
+);
+update public.cases set priority = 'alta' where id = test.get('case_old')::uuid;
+select test.ok(
+  (select accept_target_hours = 4 and resolve_target_hours = 24
+   from public.cases where id = test.get('case_old')::uuid),
+  'al cambiar la prioridad, la solicitud toma los tiempos de la nueva prioridad'
+);
+select test.throws(
+  format($$update public.cases set accept_target_hours = 999 where id = %L$$, test.get('case_new')),
+  'permission denied',
+  'el cliente no cambia los tiempos guardados de una solicitud'
+);
+reset role;
+
+-- ---------------------------------------------------------------------------
 -- 3. Vencimiento
 -- ---------------------------------------------------------------------------
 
@@ -129,6 +179,19 @@ select test.ok(
   'pasadas 24 horas sin enviar el reporte, vence la resolución'
 );
 reset role;
+
+-- Con el reporte enviado deja de contar; si se devuelve, vuelve a contar. El estado se
+-- fija directamente: aquí se prueba el cálculo, no el flujo de firmas (pruebas 12 y 20).
+update public.cases set status = 'reporte_enviado' where id = test.get('case_sla')::uuid;
+select test.ok(
+  (select public.overdue_stage(cases) is null from public.cases where id = test.get('case_sla')::uuid),
+  'con el reporte enviado, la solicitud no está vencida'
+);
+update public.cases set status = 'en_ejecucion' where id = test.get('case_sla')::uuid;
+select test.ok(
+  (select public.overdue_stage(cases) = 'resolucion' from public.cases where id = test.get('case_sla')::uuid),
+  'si el reporte se devuelve, la resolución vuelve a estar vencida'
+);
 
 select test.ok(
   (select public.due_at(cases) is null and public.overdue_stage(cases) is null
@@ -191,6 +254,20 @@ select test.ok(
   (test.get('indicators_recent')::jsonb ->> 'total')::int
     < (test.get('indicators_a')::jsonb ->> 'total')::int,
   'el periodo filtra por fecha de creación'
+);
+
+select test.login('jefe_tec');
+set role authenticated;
+select test.set('indicators_jefe', public.get_case_indicators()::text);
+select test.ok(
+  (test.get('indicators_jefe')::jsonb ->> 'total')::int = (select count(*) from public.cases),
+  'el jefe de área cuenta solo las solicitudes que puede ver'
+);
+reset role;
+select test.ok(
+  (test.get('indicators_jefe')::jsonb ->> 'total')::int
+    < (test.get('indicators_a')::jsonb ->> 'total')::int,
+  'y son menos que las de toda la empresa'
 );
 
 select test.login('auditor');

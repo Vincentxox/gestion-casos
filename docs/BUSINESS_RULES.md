@@ -344,7 +344,7 @@ empresa nueva los recibe y el administrador los cambia por prioridad:
 Límites: aceptar entre 1 y 720 h, resolver entre 1 y 2160 h, y resolver nunca menor que
 aceptar. Se cumple en la base (`priority_targets` y `set_priority_target`).
 
-Cómo se cuenta (propuesto por Claude el 14/10/2026; el responsable puede ajustarlo):
+Cómo se cuenta (aprobado por el responsable el 14/10/2026):
 
 - Los dos plazos corren **desde que se crea la solicitud**, en horas corridas (incluye
   noches, fines de semana y pausas).
@@ -353,6 +353,10 @@ Cómo se cuenta (propuesto por Claude el 14/10/2026; el responsable puede ajusta
   `en_espera`) después del plazo para resolver. Se considera resuelta cuando se envía el
   reporte; si el reporte se devuelve, vuelve a contar.
 - Una solicitud cerrada, rechazada o cancelada no vence.
+- Cada solicitud guarda los tiempos vigentes al crearse. Si el administrador cambia los
+  tiempos, el cambio solo afecta a las solicitudes nuevas; las anteriores y sus
+  indicadores no se recalculan. Si se cambia la prioridad de una solicitud, toma los
+  tiempos vigentes de la nueva prioridad.
 
 Panel (administrador, jefes de área y auditor; cada uno cuenta solo lo que puede ver):
 casos por estado, por prioridad, por área destino y por área solicitante; tiempos

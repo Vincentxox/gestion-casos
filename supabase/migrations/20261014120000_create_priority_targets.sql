@@ -3,6 +3,9 @@
 --
 -- - `priority_targets`: por empresa y prioridad, horas máximas para aceptar y para resolver.
 --   Cada empresa nueva recibe los valores por defecto aprobados el 14/10/2026 (decisión 11.2).
+-- - Cada solicitud guarda los tiempos vigentes al crearla (`accept_target_hours` y
+--   `resolve_target_hours`): cambiar los tiempos de la empresa solo afecta a las nuevas.
+--   Si se cambia la prioridad de la solicitud, toma los tiempos de la nueva prioridad.
 -- - `overdue_stage(cases)` y `due_at(cases)`: campos calculados que el cliente pide en el
 --   `select` de la solicitud (`select=*,overdue_stage,due_at`).
 -- - `get_case_indicators`: panel para administrador, jefes de área y auditor. Es SECURITY
@@ -131,10 +134,47 @@ grant execute on function public.set_priority_target(public.case_priority, integ
 -- ---------------------------------------------------------------------------
 -- 2. Vencimiento de una solicitud
 -- ---------------------------------------------------------------------------
--- Los plazos corren desde que se crea la solicitud, en horas corridas (incluye pausas,
--- noches y fines de semana). Aceptar vence mientras está `solicitado`; resolver vence
--- mientras el trabajo sigue abierto, hasta que se envía el reporte. Si el reporte se
--- devuelve, la solicitud vuelve a contar como abierta.
+-- Aprobado por el responsable el 14/10/2026 (BUSINESS_RULES 9.2): los plazos corren desde
+-- que se crea la solicitud, en horas corridas (incluye pausas, noches y fines de semana).
+-- Aceptar vence mientras está `solicitado`; resolver vence mientras el trabajo sigue
+-- abierto, hasta que se envía el reporte. Si el reporte se devuelve, vuelve a contar.
+
+alter table public.cases
+  add column accept_target_hours integer,
+  add column resolve_target_hours integer;
+
+update public.cases
+set accept_target_hours = targets.accept_hours,
+    resolve_target_hours = targets.resolve_hours
+from public.priority_targets as targets
+where targets.organization_id = cases.organization_id
+  and targets.priority = cases.priority;
+
+-- Corre después de `cases_prepare_new` (orden alfabético), que fija la empresa.
+create or replace function private.set_case_priority_targets()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if tg_op = 'INSERT' or new.priority is distinct from old.priority then
+    select targets.accept_hours, targets.resolve_hours
+    into new.accept_target_hours, new.resolve_target_hours
+    from public.priority_targets as targets
+    where targets.organization_id = new.organization_id
+      and targets.priority = new.priority;
+  end if;
+
+  return new;
+end;
+$$;
+
+revoke all on function private.set_case_priority_targets() from public, anon, authenticated;
+
+create trigger cases_set_priority_targets
+before insert or update of priority on public.cases
+for each row execute procedure private.set_case_priority_targets();
 
 create or replace function public.due_at(target public.cases)
 returns timestamptz
@@ -145,13 +185,10 @@ set search_path = ''
 as $$
   select case
     when target.status = 'solicitado'
-      then target.created_at + make_interval(hours => targets.accept_hours)
+      then target.created_at + make_interval(hours => target.accept_target_hours)
     when target.status in ('aceptado', 'asignado', 'en_ejecucion', 'en_espera')
-      then target.created_at + make_interval(hours => targets.resolve_hours)
-  end
-  from public.priority_targets as targets
-  where targets.organization_id = target.organization_id
-    and targets.priority = target.priority;
+      then target.created_at + make_interval(hours => target.resolve_target_hours)
+  end;
 $$;
 
 -- `aceptacion`, `resolucion` o null si no está vencida.
@@ -163,10 +200,11 @@ security invoker
 set search_path = ''
 as $$
   select case
-    when public.due_at(target) is null or public.due_at(target) > now() then null
+    when deadline.due is null or deadline.due > now() then null
     when target.status = 'solicitado' then 'aceptacion'
     else 'resolucion'
-  end;
+  end
+  from (select public.due_at(target) as due) as deadline;
 $$;
 
 revoke all on function public.due_at(public.cases) from public, anon;
@@ -179,6 +217,7 @@ grant execute on function public.overdue_stage(public.cases) to authenticated;
 -- ---------------------------------------------------------------------------
 -- Cuenta las solicitudes creadas en el periodo [period_start, period_end); sin fechas,
 -- todas. Los vencidos son siempre los de hoy, sin importar el periodo.
+-- «Fuera de plazo» usa los tiempos que la solicitud guardó al crearse.
 -- Tiempos en horas con un decimal:
 -- - aceptación: creación → aceptación;
 -- - resolución: creación → último envío del reporte (solicitudes con reporte enviado);
@@ -234,13 +273,10 @@ begin
       case when period_cases.status = 'aprobado'
         then extract(epoch from period_cases.closed_at - report_sent.sent_at) / 3600
       end as approval_hours,
-      targets.accept_hours as accept_target,
-      targets.resolve_hours as resolve_target
+      period_cases.accept_target_hours as accept_target,
+      period_cases.resolve_target_hours as resolve_target
     from period_cases
     left join report_sent on report_sent.case_id = period_cases.id
-    left join public.priority_targets as targets
-      on targets.organization_id = period_cases.organization_id
-      and targets.priority = period_cases.priority
   ),
   costs as (
     select
@@ -290,14 +326,17 @@ begin
     ),
     'vencidas_hoy', (
       select jsonb_build_object(
-        'aceptacion', count(*) filter (where public.overdue_stage(cases) = 'aceptacion'),
-        'resolucion', count(*) filter (where public.overdue_stage(cases) = 'resolucion'),
-        'alta', count(*) filter (where cases.priority = 'alta' and public.overdue_stage(cases) is not null),
-        'media', count(*) filter (where cases.priority = 'media' and public.overdue_stage(cases) is not null),
-        'baja', count(*) filter (where cases.priority = 'baja' and public.overdue_stage(cases) is not null)
+        'aceptacion', count(*) filter (where stage = 'aceptacion'),
+        'resolucion', count(*) filter (where stage = 'resolucion'),
+        'alta', count(*) filter (where priority = 'alta' and stage is not null),
+        'media', count(*) filter (where priority = 'media' and stage is not null),
+        'baja', count(*) filter (where priority = 'baja' and stage is not null)
       )
-      from public.cases
-      where cases.status in ('solicitado', 'aceptado', 'asignado', 'en_ejecucion', 'en_espera')
+      from (
+        select cases.priority, public.overdue_stage(cases) as stage
+        from public.cases
+        where cases.status in ('solicitado', 'aceptado', 'asignado', 'en_ejecucion', 'en_espera')
+      ) as open_cases
     ),
     'costo_recursos_por_area', coalesce(
       (select jsonb_agg(jsonb_build_object(
