@@ -135,6 +135,10 @@ grant execute on function public.count_cases_by_status(
 -- segundo en contar los suyos. Esta función devuelve una sola vez los casos en los que la
 -- persona participó, y la política los compara con `id in (…)`. El resultado es el mismo
 -- (BUSINESS_RULES 5.4).
+--
+-- Es SECURITY DEFINER para leer historial y firmas sin pasar por la política de cases que la
+-- llama. Por eso solo devuelve casos de la empresa actual: quien se fue de una empresa no
+-- obtiene ni los identificadores de los casos en los que participó allí.
 create or replace function private.participated_case_ids()
 returns setof uuid
 language sql
@@ -142,15 +146,25 @@ stable
 security definer
 set search_path = ''
 as $$
-  select id from public.cases where assigned_to = (select auth.uid())
+  select id from public.cases
+  where organization_id = (select private.current_organization_id())
+    and assigned_to = (select auth.uid())
   union
-  select case_id from public.case_events where assignee_id = (select auth.uid())
+  select case_id from public.case_events
+  where organization_id = (select private.current_organization_id())
+    and assignee_id = (select auth.uid())
   union
-  select case_id from public.case_signatures where signer_id = (select auth.uid());
+  select case_id from public.case_signatures
+  where organization_id = (select private.current_organization_id())
+    and signer_id = (select auth.uid());
 $$;
 
 revoke all on function private.participated_case_ids() from public, anon;
 grant execute on function private.participated_case_ids() to authenticated;
+
+-- La política ya no usa `participated_in_case(uuid)`, que responde por cualquier caso sin
+-- mirar la empresa. Se retira el permiso (sin borrarla, para mantener la migración aditiva).
+revoke execute on function private.participated_in_case(uuid) from authenticated;
 
 drop policy "Members can read visible cases" on public.cases;
 create policy "Members can read visible cases"

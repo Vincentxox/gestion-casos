@@ -139,6 +139,43 @@ reset role;
 select test.ok(:'no_cross_org'::boolean, 'otra empresa no recibe casos de A en la búsqueda ni en los totales');
 
 -- ---------------------------------------------------------------------------
+-- 1b. La participación solo cuenta dentro de la empresa actual
+-- ---------------------------------------------------------------------------
+
+select test.set('case9', (select id::text from public.cases
+  where organization_id = test.get('org_a')::uuid and case_number = 'CAS-2026-00009'));
+
+select test.login('tec3');
+set role authenticated;
+select test.get('case9')::uuid in (select private.participated_case_ids()) as sees_own_participation \gset
+reset role;
+select test.ok(:'sees_own_participation'::boolean,
+  'participated_case_ids devuelve los casos en los que la persona participó en su empresa');
+
+begin;
+update public.profiles
+set organization_id = test.get('org_b')::uuid, area_id = null, role = 'solicitante'
+where id = test.uid('tec3');
+select test.login('tec3');
+set local role authenticated;
+select coalesce(array_agg(x)::text, '{}') as ids_in_b from private.participated_case_ids() x \gset
+reset role;
+select test.ok(
+  not exists (
+    select 1 from public.cases
+    where id = any (:'ids_in_b'::uuid[]) and organization_id = test.get('org_a')::uuid
+  ),
+  'en otra empresa, participated_case_ids no devuelve los casos de la empresa anterior'
+);
+rollback;
+
+select test.ok(
+  not has_function_privilege('authenticated', 'private.participated_in_case(uuid)', 'execute')
+  and has_function_privilege('authenticated', 'private.participated_case_ids()', 'execute'),
+  'la función anterior, que no mira la empresa, ya no se puede ejecutar'
+);
+
+-- ---------------------------------------------------------------------------
 -- 2. Filtros de estado, prioridad, fecha y texto
 -- ---------------------------------------------------------------------------
 
