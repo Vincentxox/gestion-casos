@@ -110,6 +110,11 @@ describe('servicio de autenticación', () => {
         queryParams: { prompt: 'select_account' },
       },
     })
+    expect(webBrowser.openAuthSessionAsync).toHaveBeenCalledWith(
+      'https://example.supabase.co/auth/v1/authorize',
+      'gestion-casos://auth/callback',
+      { createTask: false },
+    )
     expect(auth.setSession).toHaveBeenCalledWith({
       access_token: 'access',
       refresh_token: 'refresh',
@@ -124,6 +129,11 @@ describe('servicio de autenticación', () => {
     webBrowser.openAuthSessionAsync.mockResolvedValue({ type: 'cancel' })
 
     await expect(signInWithGoogle()).resolves.toBeNull()
+    expect(webBrowser.openAuthSessionAsync).toHaveBeenCalledWith(
+      'https://example.supabase.co/auth/v1/authorize',
+      'gestion-casos://auth/callback',
+      { createTask: false },
+    )
     expect(auth.setSession).not.toHaveBeenCalled()
   })
 

@@ -123,7 +123,9 @@ export async function signInWithGoogle() {
     throw new Error('No fue posible iniciar la autorización con Google')
   }
 
-  const result = await WebBrowser.openAuthSessionAsync(data.url, googleAuthRedirectUrl)
+  const result = await WebBrowser.openAuthSessionAsync(data.url, googleAuthRedirectUrl, {
+    createTask: false,
+  })
 
   if (result.type !== 'success') {
     return null
