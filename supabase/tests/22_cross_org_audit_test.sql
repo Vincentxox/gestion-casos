@@ -279,27 +279,47 @@ select test.ok(
 -- encontrado» o de permiso, no con otro error que oculte si la empresa se comprobó.
 
 -- Si aparece una función nueva ejecutable por los usuarios, esta prueba falla hasta que
--- se agregue a una de las dos listas: probada abajo con datos de otra empresa, o revisada
+-- se agregue a una de las listas: probada abajo con datos de otra empresa, o revisada
 -- porque no recibe identificadores de otra empresa (usa la del usuario o filtra por RLS).
+-- Se compara la firma completa: una sobrecarga nueva con el mismo nombre también falla.
 select test.set('unreviewed_functions', (
-  select coalesce(string_agg(p.proname, ', ' order by p.proname), '')
-  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-  where n.nspname = 'public' and has_function_privilege('authenticated', p.oid, 'execute')
-    and p.proname not in (
-      -- Probadas en esta sección con identificadores de A.
-      'approve_access_request', 'approve_case_report', 'confirm_case_photo',
-      'delete_case_photo', 'get_case_indicators', 'mark_notifications_read',
-      'reject_access_request', 'reserve_case_photo', 'return_case_report',
-      'set_member_access', 'submit_case_report', 'transition_case',
-      'validate_case_report', 'verify_report_code',
-      -- Sin identificadores de otra empresa: actúan sobre el propio usuario o su empresa.
-      'accept_pending_invitation', 'cancel_my_access_request', 'get_home_summary',
-      'get_my_access_request', 'get_organization_join_code',
-      'regenerate_organization_join_code', 'register_push_token',
-      'request_organization_access', 'set_priority_target', 'unregister_push_token',
-      -- SECURITY INVOKER: calculan sobre una fila de cases que RLS ya filtró.
-      'due_at', 'overdue_stage'
-    )));
+  select coalesce(string_agg(signature, ', ' order by signature), '')
+  from (
+    select p.proname || '(' || oidvectortypes(p.proargtypes) || ')' as signature
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and has_function_privilege('authenticated', p.oid, 'execute')
+  ) functions
+  where signature not in (
+    -- Probadas en esta sección con identificadores de A.
+    'approve_access_request(uuid, app_role, uuid)',
+    'approve_case_report(uuid, text, boolean)',
+    'confirm_case_photo(uuid)',
+    'delete_case_photo(uuid)',
+    'get_case_indicators(timestamp with time zone, timestamp with time zone)',
+    'mark_notifications_read(bigint[])',
+    'reject_access_request(uuid, text)',
+    'reserve_case_photo(uuid, photo_kind)',
+    'return_case_report(uuid, text)',
+    'set_member_access(uuid, app_role, uuid)',
+    'submit_case_report(uuid, text, boolean)',
+    'transition_case(uuid, case_action, text, uuid)',
+    'validate_case_report(uuid, text, boolean)',
+    'verify_report_code(text)',
+    -- Sin identificadores de otra empresa: actúan sobre el propio usuario o su empresa.
+    'accept_pending_invitation()',
+    'cancel_my_access_request()',
+    'get_home_summary()',
+    'get_my_access_request()',
+    'get_organization_join_code()',
+    'regenerate_organization_join_code()',
+    'register_push_token(text, text)',
+    'request_organization_access(text)',
+    'set_priority_target(case_priority, integer, integer)',
+    'unregister_push_token(text)',
+    -- SECURITY INVOKER: calculan sobre una fila de cases que RLS ya filtró.
+    'due_at(cases)',
+    'overdue_stage(cases)'
+  )));
 select test.ok(
   test.get('unreviewed_functions') = '',
   'toda función ejecutable por los usuarios está revisada en la auditoría'
