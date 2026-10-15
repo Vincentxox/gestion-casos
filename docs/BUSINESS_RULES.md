@@ -50,6 +50,25 @@ Aprobado por el responsable el 23/09/2026.
 - Si la persona acepta una invitación, su solicitud pendiente se cancela.
 - Toda persona debe tener nombre; la app lo pide si está vacío.
 
+### 2.2 Baja de miembros
+
+Aprobado por el responsable el 15/10/2026 (hallazgo D-1).
+
+- Solo un administrador da de baja a un miembro de su empresa, y nunca a sí mismo. Se
+  hace con la RPC `deactivate_member`.
+- La baja se bloquea si la persona tiene trabajos asignados en `asignado`,
+  `en_ejecucion` o `en_espera`. El error dice cuáles son, para reasignarlos primero
+  (5.5.3).
+- Quien se da de baja queda como una persona sin empresa: no ve casos, avisos ni datos de
+  la empresa, no recibe avisos nuevos y se borran sus dispositivos para notificaciones.
+  Su rol vuelve a `solicitante` y su área queda vacía.
+- Su historial, sus firmas, sus recursos y las solicitudes que creó se conservan. La
+  empresa sigue viendo su nombre en los casos. Se registra quién hizo la baja y cuándo.
+- Para volver, la persona pide acceso con el código de la empresa (2.1) y un
+  administrador la aprueba eligiendo de nuevo rol y área.
+- Se aplica en la base de datos (`profiles.former_organization_id`, `deactivated_at` y
+  `deactivated_by`).
+
 ## 3. Áreas
 
 - Cada área pertenece a una empresa y tiene un tipo:
@@ -126,6 +145,8 @@ que no esté en esta lista se rechaza.
   destino.
 - `asignado → asignado` (reasignación): jefe técnico o administrador. Queda en el
   historial.
+- `en_ejecucion → en_ejecucion` y `en_espera → en_espera` (reasignación): jefe técnico o
+  administrador, con motivo obligatorio (ver 5.5.3).
 - `asignado → en_ejecucion`: técnico asignado.
 - `en_ejecucion → en_espera` y `en_espera → en_ejecucion`: técnico asignado o jefe
   técnico. Motivo obligatorio al pausar.
@@ -153,6 +174,10 @@ Reglas comunes:
 - Técnico: casos de su área técnica, sin importar a quién estén asignados.
 - Jefe de área: casos donde su área es la solicitante o la destino.
 - Administrador y auditor: todos los casos de su empresa.
+- Además, cada persona sigue viendo los casos de su empresa en los que fue técnico
+  asignado (aunque después se reasignaran) o en los que firmó, aunque cambie de área o
+  de rol. Así nadie pierde acceso a lo que ejecutó o firmó (aprobado el 15/10/2026,
+  hallazgo D-3). Quien se da de baja pierde este acceso (2.2).
 - Todos pueden ver los nombres del creador, el técnico y los firmantes de los casos que
   pueden leer, mediante una vista o RPC que expone solo `id`, nombre y área.
 
@@ -165,8 +190,12 @@ Precisadas al implementar la base de datos y confirmadas por el responsable el
    rechazar y asignar, y al jefe del área solicitante en cancelar. La acción queda en el
    historial con su rol. Solo firma como suplente (sección 5.6).
 2. Se puede asignar a un **técnico o a un jefe** del área destino.
-3. La **reasignación** solo se permite mientras la solicitud está en `asignado`. Para
-   reasignar un trabajo en ejecución habría que ampliar la regla.
+3. La **reasignación** se permite en `asignado`, `en_ejecucion` y `en_espera` (ampliada
+   el 15/10/2026, hallazgo D-2). En ejecución o en espera el motivo es obligatorio y el
+   estado no cambia: el nuevo técnico continúa con los recursos registrados y el
+   borrador del reporte. El nuevo técnico y quien deja el trabajo reciben aviso. Desde
+   `reporte_enviado` no se reasigna: si el reporte se devuelve, vuelve a ejecución y ahí
+   se puede reasignar.
 4. **Edición de datos**: el creador edita título, descripción, ubicación, prioridad y
    tipo de servicio solo mientras la solicitud está en `solicitado`. El jefe del área
    destino y el administrador pueden editarlos hasta que se envía el reporte. Mientras
@@ -407,3 +436,5 @@ Tratamiento de los datos existentes (confirmado por el responsable el 22/09/2026
    23/09/2026).
 7. ~~Jefe técnico que ejecuta el trabajo.~~ Resuelta el 23/09/2026: valida el
    administrador, dejando constancia (5.3 y 8).
+8. ~~Baja de miembros, reasignación en ejecución y visibilidad por participación.~~
+   Resueltas el 15/10/2026: ver 2.2, 5.4 y 5.5.3.

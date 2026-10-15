@@ -123,6 +123,23 @@ select test.ok(
   'ningún bucket de Storage es público'
 );
 
+-- No es de aislamiento, pero se revisa con el mismo catálogo: sin índice, borrar o cambiar
+-- la fila referenciada obliga a recorrer toda la tabla que la referencia.
+select test.ok(
+  not exists (
+    select 1 from pg_constraint c join pg_class t on t.oid = c.conrelid
+    join pg_namespace n on n.oid = t.relnamespace
+    where n.nspname = 'public' and c.contype = 'f'
+      and not exists (
+        select 1 from pg_index i
+        where i.indrelid = c.conrelid
+          and (i.indkey::smallint[])[0:cardinality(c.conkey) - 1] @> c.conkey
+          and (i.indkey::smallint[])[0:cardinality(c.conkey) - 1] <@ c.conkey
+      )
+  ),
+  'toda clave foránea de public tiene un índice que empieza por sus columnas'
+);
+
 -- ---------------------------------------------------------------------------
 -- 2. Lectura: nadie ve filas de otra empresa
 -- ---------------------------------------------------------------------------
@@ -155,7 +172,12 @@ begin
       execute format(
         'select count(*) from public.%I as row where row.organization_id is distinct from $1 %s',
         target.relname,
-        case when target.relname = 'organization_access_requests' then 'and row.user_id <> $2' else '' end
+        case target.relname
+          when 'organization_access_requests' then 'and row.user_id <> $2'
+          -- Quien se dio de baja sigue visible, con su nombre, para su empresa anterior.
+          when 'profiles' then 'and row.former_organization_id is distinct from $1'
+          else ''
+        end
       ) into found_rows using member.organization_id, member.id;
       if found_rows > 0 then
         insert into test.leaks values (member.name, target.relname, found_rows);
@@ -294,6 +316,7 @@ select test.set('unreviewed_functions', (
     'approve_access_request(uuid, app_role, uuid)',
     'approve_case_report(uuid, text, boolean)',
     'confirm_case_photo(uuid)',
+    'deactivate_member(uuid)',
     'delete_case_photo(uuid)',
     'get_case_indicators(timestamp with time zone, timestamp with time zone)',
     'mark_notifications_read(bigint[])',
@@ -474,6 +497,10 @@ select test.throws(
 select test.throws(
   format($$select public.set_member_access(%L, 'administrador', null)$$, test.uid('tec1')),
   'Usuario no encontrado', 'un administrador de C no cambia el rol de un miembro de A'
+);
+select test.throws(
+  format($$select public.deactivate_member(%L)$$, test.uid('tec1')),
+  'Usuario no encontrado', 'un administrador de C no da de baja a un miembro de A'
 );
 select test.throws(
   format($$select public.set_member_access(%L, 'tecnico', %L)$$, test.uid('tec_c'), test.get('area_mant')),
