@@ -172,12 +172,7 @@ begin
       execute format(
         'select count(*) from public.%I as row where row.organization_id is distinct from $1 %s',
         target.relname,
-        case target.relname
-          when 'organization_access_requests' then 'and row.user_id <> $2'
-          -- Quien se dio de baja sigue visible, con su nombre, para su empresa anterior.
-          when 'profiles' then 'and row.former_organization_id is distinct from $1'
-          else ''
-        end
+        case when target.relname = 'organization_access_requests' then 'and row.user_id <> $2' else '' end
       ) into found_rows using member.organization_id, member.id;
       if found_rows > 0 then
         insert into test.leaks values (member.name, target.relname, found_rows);

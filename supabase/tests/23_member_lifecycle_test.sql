@@ -207,10 +207,12 @@ reset role;
 
 select test.ok(
   (select organization_id is null and area_id is null and role = 'solicitante'
-     and former_organization_id = test.get('org_a')::uuid
-     and deactivated_at is not null and deactivated_by = test.uid('admin')
-   from public.profiles where id = test.uid('tec3')),
-  'la baja deja a la persona sin empresa y registra quién y cuándo'
+   from public.profiles where id = test.uid('tec3'))
+  and (select full_name = (select full_name from public.profiles where id = test.uid('tec3'))
+         and deactivated_by = test.uid('admin')
+       from public.former_members
+       where organization_id = test.get('org_a')::uuid and user_id = test.uid('tec3')),
+  'la baja deja a la persona sin empresa y registra su nombre, quién y cuándo'
 );
 select test.ok(
   not exists (select 1 from public.push_tokens where user_id = test.uid('tec3')),
@@ -249,8 +251,9 @@ reset role;
 select test.login('jefe_tec');
 set role authenticated;
 select test.ok(
-  (select full_name from public.profiles where id = test.uid('tec3')) is not null,
-  'sus compañeros siguen viendo su nombre en el historial'
+  (select full_name from public.former_members where user_id = test.uid('tec3')) is not null
+  and not exists (select 1 from public.profiles where id = test.uid('tec3')),
+  'sus compañeros siguen viendo su nombre en el historial, pero no su perfil'
 );
 select test.throws(
   format($$select public.transition_case(%L, 'asignar', null, %L)$$, test.get('case11'), test.uid('tec3')),
@@ -269,15 +272,56 @@ select test.ok(
 select test.login('admin_c');
 set role authenticated;
 select test.ok(
-  not exists (select 1 from public.profiles where id = test.uid('tec3')),
-  'otra empresa no ve a la persona dada de baja'
+  not exists (select 1 from public.profiles where id = test.uid('tec3'))
+  and not exists (select 1 from public.former_members),
+  'otra empresa no ve a la persona dada de baja ni las bajas de A'
 );
 reset role;
 
--- Vuelve a entrar como cualquier persona sin empresa: con el código y la aprobación de un
--- administrador.
+-- Entra en otra empresa como cualquier persona sin empresa: con el código y la aprobación
+-- de un administrador. A no ve sus datos nuevos.
 select test.set('join_code_a', (select join_code from public.organizations
   where id = test.get('org_a')::uuid));
+select test.set('join_code_b', (select join_code from public.organizations
+  where id = test.get('org_b')::uuid));
+select test.set('area_oper_b', (select id::text from public.areas
+  where organization_id = test.get('org_b')::uuid and name = 'Operaciones'));
+
+select test.login('tec3');
+set role authenticated;
+select public.request_organization_access(test.get('join_code_b'));
+reset role;
+
+select test.login('admin_b');
+set role authenticated;
+select public.approve_access_request(
+  (select id from public.organization_access_requests
+   where user_id = test.uid('tec3') and status = 'pendiente'),
+  'solicitante', test.get('area_oper_b')::uuid);
+reset role;
+
+select test.login('jefe_tec');
+set role authenticated;
+select test.ok(
+  (select organization_id = test.get('org_b')::uuid from public.profiles where id = test.uid('tec3'))
+    is null
+  and exists (select 1 from public.former_members where user_id = test.uid('tec3')),
+  'si entra en otra empresa, A no ve su perfil nuevo y conserva su nombre'
+);
+reset role;
+
+-- Una segunda baja, ahora en B, no borra el registro de A.
+select test.login('admin_b');
+set role authenticated;
+select public.deactivate_member(test.uid('tec3'));
+reset role;
+
+select test.ok(
+  (select count(*) from public.former_members where user_id = test.uid('tec3')) = 2,
+  'cada empresa conserva su propio registro de la baja'
+);
+
+-- Vuelve a A.
 select test.login('tec3');
 set role authenticated;
 select public.request_organization_access(test.get('join_code_a'));

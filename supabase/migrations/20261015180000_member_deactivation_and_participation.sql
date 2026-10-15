@@ -4,8 +4,9 @@
 -- 1. Baja de miembros (D-1). Una persona dada de baja queda igual que alguien sin empresa:
 --    `organization_id`, `area_id` y el rol vuelven a su estado inicial, de modo que todas
 --    las políticas y funciones que ya exigen empresa la dejan sin acceso. Su historial,
---    sus firmas y sus recursos no se tocan. `former_organization_id` permite que la
---    empresa siga viendo su nombre en los casos.
+--    sus firmas y sus recursos no se tocan. `former_members` guarda, por empresa, su
+--    nombre y quién hizo la baja: la empresa sigue viendo el nombre en los casos sin
+--    acceder a su perfil, que puede pasar a ser de otra empresa.
 -- 2. Reasignación en ejecución y en espera (D-2), con motivo obligatorio.
 -- 3. Visibilidad por participación (D-3): quien fue técnico asignado o firmó un caso lo
 --    sigue viendo dentro de su empresa aunque cambie de área o de rol.
@@ -14,34 +15,27 @@
 -- 1. Baja de miembros
 -- ---------------------------------------------------------------------------
 
-alter table public.profiles
-  add column former_organization_id uuid references public.organizations (id) on delete set null,
-  add column deactivated_at timestamptz,
-  add column deactivated_by uuid references public.profiles (id) on delete set null;
+create table public.former_members (
+  organization_id uuid not null references public.organizations (id) on delete cascade,
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  full_name text not null,
+  deactivated_at timestamptz not null default now(),
+  deactivated_by uuid references public.profiles (id) on delete set null,
+  primary key (organization_id, user_id)
+);
 
-create index profiles_former_organization_id_idx on public.profiles (former_organization_id);
-create index profiles_deactivated_by_idx on public.profiles (deactivated_by);
+create index former_members_user_id_idx on public.former_members (user_id);
+create index former_members_deactivated_by_idx on public.former_members (deactivated_by);
 
-grant select (former_organization_id, deactivated_at, deactivated_by)
-  on public.profiles to authenticated;
+alter table public.former_members enable row level security;
+revoke all on public.former_members from anon, authenticated;
+grant select on public.former_members to authenticated;
 
--- Los compañeros de la empresa siguen viendo el nombre de quien se dio de baja.
-drop policy "Members can read profiles of their organization" on public.profiles;
-create policy "Members can read profiles of their organization"
-on public.profiles
+create policy "Members can read former members of their organization"
+on public.former_members
 for select
 to authenticated
-using (
-  id = (select auth.uid())
-  or (
-    organization_id is not null
-    and organization_id = (select private.current_organization_id())
-  )
-  or (
-    former_organization_id is not null
-    and former_organization_id = (select private.current_organization_id())
-  )
-);
+using (organization_id = (select private.current_organization_id()));
 
 create or replace function public.deactivate_member(target_user_id uuid)
 returns void
@@ -52,6 +46,7 @@ as $$
 declare
   current_user_id uuid := (select auth.uid());
   organization uuid := (select private.current_organization_id());
+  target_name text;
   open_cases text;
 begin
   if current_user_id is null or not (select private.is_admin()) then
@@ -62,7 +57,9 @@ begin
     raise exception 'No puedes darte de baja a ti mismo';
   end if;
 
-  perform 1
+  -- El bloqueo hace esperar a una asignación simultánea a esta persona (transition_case
+  -- lee al técnico con `for share`), así que la búsqueda de trabajos abiertos la ve.
+  select full_name into target_name
   from public.profiles
   where id = target_user_id
     and organization_id = organization
@@ -82,13 +79,17 @@ begin
     raise exception 'Reasigna primero sus trabajos abiertos: %', open_cases;
   end if;
 
-  update public.profiles
-  set former_organization_id = organization_id,
-      organization_id = null,
-      area_id = null,
-      role = 'solicitante',
+  insert into public.former_members (organization_id, user_id, full_name, deactivated_by)
+  values (organization, target_user_id, target_name, current_user_id)
+  on conflict (organization_id, user_id) do update
+  set full_name = excluded.full_name,
       deactivated_at = now(),
-      deactivated_by = current_user_id
+      deactivated_by = excluded.deactivated_by;
+
+  update public.profiles
+  set organization_id = null,
+      area_id = null,
+      role = 'solicitante'
   where id = target_user_id;
 
   delete from public.push_tokens where user_id = target_user_id;
@@ -236,12 +237,15 @@ begin
         raise exception 'Indica el motivo de la reasignación';
       end if;
 
+      -- `for share` espera a una baja simultánea de esa persona (deactivate_member la
+      -- bloquea con `for update`) y vuelve a comprobar la fila ya dada de baja.
       select * into assignee
       from public.profiles
       where id = new_assignee_id
         and organization_id = member.organization_id
         and area_id = target_case.target_area_id
-        and role in ('tecnico', 'jefe_area');
+        and role in ('tecnico', 'jefe_area')
+      for share;
 
       if not found then
         raise exception 'El técnico debe pertenecer al área técnica de la solicitud';

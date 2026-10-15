@@ -63,11 +63,13 @@ Aprobado por el responsable el 15/10/2026 (hallazgo D-1).
   la empresa, no recibe avisos nuevos y se borran sus dispositivos para notificaciones.
   Su rol vuelve a `solicitante` y su área queda vacía.
 - Su historial, sus firmas, sus recursos y las solicitudes que creó se conservan. La
-  empresa sigue viendo su nombre en los casos. Se registra quién hizo la baja y cuándo.
+  empresa sigue viendo su nombre en los casos.
 - Para volver, la persona pide acceso con el código de la empresa (2.1) y un
   administrador la aprueba eligiendo de nuevo rol y área.
-- Se aplica en la base de datos (`profiles.former_organization_id`, `deactivated_at` y
-  `deactivated_by`).
+- La empresa conserva, en `former_members`, el nombre de la persona, cuándo se dio de
+  baja y quién la dio. No vuelve a ver su perfil, que puede pasar a ser de otra empresa.
+- Una baja y una asignación simultáneas a la misma persona no pueden dejarle un trabajo
+  abierto: la base de datos las hace esperar una a la otra.
 
 ## 3. Áreas
 
