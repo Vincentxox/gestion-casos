@@ -8,8 +8,33 @@
 select test.ok(
   not (select prosecdef from pg_proc where oid = 'public.search_cases(text, public.case_status[], public.case_priority, timestamptz, text)'::regprocedure)
   and not (select prosecdef from pg_proc where oid = 'public.count_cases_by_status(text, public.case_priority, timestamptz, text)'::regprocedure)
-  and not (select prosecdef from pg_proc where oid = 'private.case_matches_filters(public.cases, text, public.case_priority, timestamptz, text)'::regprocedure),
+  and (select provolatile = 'i' from pg_proc where oid = 'private.check_case_search(text, text)'::regprocedure),
   'la búsqueda es SECURITY INVOKER: respeta la política de cases'
+);
+
+-- PostgreSQL debe incorporar las funciones a la consulta (sin «Function Scan»): así el
+-- orden y la página del cliente usan índices y no se producen antes todos los casos.
+create or replace function pg_temp.plan_text(query text)
+returns text
+language plpgsql
+as $$
+declare
+  plan_line text;
+  plan text := '';
+begin
+  for plan_line in execute 'explain ' || query loop
+    plan := plan || plan_line || E'\n';
+  end loop;
+  return plan;
+end;
+$$;
+
+select test.ok(
+  pg_temp.plan_text($q$select id from public.search_cases('mis_trabajos', array['asignado']::public.case_status[], 'alta', now(), 'x') order by created_at desc limit 30$q$)
+    not like '%Function Scan%'
+  and pg_temp.plan_text($q$select * from public.count_cases_by_status('mi_area', 'alta', now(), 'x')$q$)
+    not like '%Function Scan%',
+  'search_cases y count_cases_by_status se incorporan a la consulta del cliente'
 );
 select test.ok(
   not has_function_privilege('anon', 'public.search_cases(text, public.case_status[], public.case_priority, timestamptz, text)', 'execute')
@@ -104,10 +129,14 @@ select test.ok(:'same_as_rls'::boolean, 'sin filtros, la búsqueda devuelve lo m
 
 select test.login('admin_b');
 set role authenticated;
-select count(*) = 0 as no_cross_org from public.search_cases()
+select count(*) = 0
+  and (select coalesce(sum(total), 0) from public.count_cases_by_status())
+    = (select count(*) from public.cases where organization_id <> test.get('org_a')::uuid)
+  as no_cross_org
+from public.search_cases()
 where organization_id = test.get('org_a')::uuid \gset
 reset role;
-select test.ok(:'no_cross_org'::boolean, 'otra empresa no recibe casos de A en la búsqueda');
+select test.ok(:'no_cross_org'::boolean, 'otra empresa no recibe casos de A en la búsqueda ni en los totales');
 
 -- ---------------------------------------------------------------------------
 -- 2. Filtros de estado, prioridad, fecha y texto
@@ -147,7 +176,12 @@ select
   (select array_agg(case_number) from public.search_cases('todas', null, null, null, '  ' || lower(test.get('search_number')) || ' '))
     = array[test.get('search_number')] as by_number,
   test.get('search_case')::uuid in (select id from public.search_cases('todas', null, null, null, test.get('search_category'))) as by_category,
-  (select count(*) from public.search_cases('todas', null, null, null, '%')) = 0 as no_wildcards,
+  (select count(*) from public.search_cases('todas', null, null, null, '%')) = 0
+    and (select count(*) from public.search_cases('todas', null, null, null, '_')) = 0 as no_wildcards,
+  test.get('search_case')::uuid in (
+    select id from public.search_cases('todas', null, null, null,
+      (select upper(substr(title, 3, 6)) from public.cases where id = test.get('search_case')::uuid))
+  ) as by_title,
   (select bool_and(priority = 'alta') and count(*) = (select count(*) from public.cases where priority = 'alta')
    from public.search_cases('todas', null, 'alta')) as by_priority,
   (select count(*) from public.search_cases('todas', null, null, now() + interval '1 day')) = 0 as future_date,
@@ -161,6 +195,7 @@ select
 reset role;
 
 select test.ok(:'by_number'::boolean, 'busca por número de caso sin distinguir mayúsculas ni espacios');
+select test.ok(:'by_title'::boolean, 'busca por el título');
 select test.ok(:'by_category'::boolean, 'busca por el nombre del tipo de caso');
 select test.ok(:'by_location'::boolean, 'busca por la ubicación');
 select test.ok(:'no_wildcards'::boolean, 'los comodines de LIKE se buscan como texto');
