@@ -56,6 +56,19 @@ select test.ok(
   'anon no tiene ningún permiso sobre tablas ni secuencias de public'
 );
 
+-- has_table_privilege no revisa USAGE, que basta para llamar a nextval().
+select test.ok(
+  not exists (
+    select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public'
+      and case when c.relkind = 'S'
+        then has_sequence_privilege('anon', c.oid, 'usage, select, update')
+        else false
+      end
+  ),
+  'anon no puede usar, leer ni reiniciar las secuencias de public'
+);
+
 select test.ok(
   not exists (
     select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
@@ -262,10 +275,91 @@ select test.ok(
 -- 4. Referencias cruzadas y RPC con identificadores de otra empresa
 -- ---------------------------------------------------------------------------
 -- Los usuarios de la empresa C intentan usar solicitudes, áreas, recursos, fotos, avisos y
--- solicitudes de acceso de la empresa A.
+-- solicitudes de acceso de la empresa A. Cada intento debe fallar con el error de «no
+-- encontrado» o de permiso, no con otro error que oculte si la empresa se comprobó.
+
+-- Si aparece una función nueva ejecutable por los usuarios, esta prueba falla hasta que
+-- se agregue a una de las listas: probada abajo con datos de otra empresa, o revisada
+-- porque no recibe identificadores de otra empresa (usa la del usuario o filtra por RLS).
+-- Se compara la firma completa: una sobrecarga nueva con el mismo nombre también falla.
+select test.set('unreviewed_functions', (
+  select coalesce(string_agg(signature, ', ' order by signature), '')
+  from (
+    select p.proname || '(' || oidvectortypes(p.proargtypes) || ')' as signature
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and has_function_privilege('authenticated', p.oid, 'execute')
+  ) functions
+  where signature not in (
+    -- Probadas en esta sección con identificadores de A.
+    'approve_access_request(uuid, app_role, uuid)',
+    'approve_case_report(uuid, text, boolean)',
+    'confirm_case_photo(uuid)',
+    'delete_case_photo(uuid)',
+    'get_case_indicators(timestamp with time zone, timestamp with time zone)',
+    'mark_notifications_read(bigint[])',
+    'reject_access_request(uuid, text)',
+    'reserve_case_photo(uuid, photo_kind)',
+    'return_case_report(uuid, text)',
+    'set_member_access(uuid, app_role, uuid)',
+    'submit_case_report(uuid, text, boolean)',
+    'transition_case(uuid, case_action, text, uuid)',
+    'validate_case_report(uuid, text, boolean)',
+    'verify_report_code(text)',
+    -- Sin identificadores de otra empresa: actúan sobre el propio usuario o su empresa.
+    'accept_pending_invitation()',
+    'cancel_my_access_request()',
+    'get_home_summary()',
+    'get_my_access_request()',
+    'get_organization_join_code()',
+    'regenerate_organization_join_code()',
+    'register_push_token(text, text)',
+    'request_organization_access(text)',
+    'set_priority_target(case_priority, integer, integer)',
+    'unregister_push_token(text)',
+    -- SECURITY INVOKER: calculan sobre una fila de cases que RLS ya filtró.
+    'due_at(cases)',
+    'overdue_stage(cases)'
+  )));
+select test.ok(
+  test.get('unreviewed_functions') = '',
+  'toda función ejecutable por los usuarios está revisada en la auditoría'
+    || coalesce(nullif('; faltan: ' || test.get('unreviewed_functions'), '; faltan: '), '')
+);
+
+select test.ok(
+  not exists (
+    select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname in ('due_at', 'overdue_stage', 'verify_report_code')
+      and p.prosecdef
+  ),
+  'due_at, overdue_stage y verify_report_code siguen filtradas por RLS (SECURITY INVOKER)'
+);
+
+-- Las funciones de reportes revisan la empresa antes que el estado. Igual se prueban con
+-- una solicitud en el estado que cada una espera, para que un cambio de orden no deje la
+-- prueba pasando por el motivo equivocado.
+-- Se usa el trabajo en ejecución sin técnico asignado; el que tiene técnico queda para
+-- las pruebas de fotos.
+update public.cases set status = 'reporte_enviado'
+where id = (select id from public.cases
+            where organization_id = test.get('org_a')::uuid and status = 'en_ejecucion'
+              and assigned_to is null
+            order by id limit 1);
 
 select test.set('a_case_open', (select id::text from public.cases
-  where organization_id = test.get('org_a')::uuid and status = 'en_ejecucion' limit 1));
+  where organization_id = test.get('org_a')::uuid and status = 'en_ejecucion'
+    and assigned_to is not null
+  order by id limit 1));
+select test.set('a_open_technician', (select users.name from public.cases
+  join test.users users on users.id = cases.assigned_to
+  where cases.id = test.get('a_case_open')::uuid));
+select test.set('a_case_sent', (select id::text from public.cases
+  where organization_id = test.get('org_a')::uuid and status = 'reporte_enviado' limit 1));
+select test.set('a_report_code', (select left(versions.content_hash, 16)
+  from public.case_report_versions versions join public.cases on cases.id = versions.case_id
+  where cases.organization_id = test.get('org_a')::uuid limit 1));
+select test.set('c_case_assigned', (select id::text from public.cases
+  where organization_id = test.get('org_c')::uuid and status = 'asignado' limit 1));
 select test.set('a_case_validated', (select id::text from public.cases
   where organization_id = test.get('org_a')::uuid and status = 'validado' limit 1));
 select test.set('a_case_new', (select id::text from public.cases
@@ -280,6 +374,8 @@ select test.set('a_notifications', (select array_agg(id)::text from public.notif
   where organization_id = test.get('org_a')::uuid and read_at is null));
 select test.ok(
   test.get('a_case_open') is not null and test.get('a_case_validated') is not null
+  and test.get('a_case_sent') is not null and test.get('a_report_code') is not null
+  and test.get('c_case_assigned') is not null and test.get('a_open_technician') is not null
   and test.get('a_case_new') is not null and test.get('a_photo') is not null
   and test.get('a_request') is not null and test.get('a_resource') is not null
   and test.get('a_notifications') is not null,
@@ -292,11 +388,7 @@ set role authenticated;
 select test.throws(
   format($$insert into public.cases (title, description, location, category_id)
            values ('Cruce', 'Tipo de servicio de otra empresa', 'Planta', %L)$$, test.get('cat_elec')),
-  '', 'C no crea solicitudes con un tipo de servicio de A'
-);
-select test.throws(
-  format($$select public.reserve_case_photo(%L, 'antes')$$, test.get('a_case_new')),
-  '', 'C no sube fotos a una solicitud de A'
+  'Selecciona un tipo de servicio disponible', 'C no crea solicitudes con un tipo de servicio de A'
 );
 reset role;
 
@@ -304,44 +396,60 @@ select test.login('tec_c');
 set role authenticated;
 select test.throws(
   format($$insert into public.case_reports (case_id, diagnosis) values (%L, 'Cruce')$$, test.get('a_case_open')),
-  '', 'C no crea el reporte de una solicitud de A'
+  'row-level security', 'C no crea el reporte de una solicitud de A'
 );
 select test.throws(
   format($$insert into public.case_resource_usages (case_id, kind, resource_id, quantity)
            values (%L, 'recurso', %L, 1)$$, test.get('a_case_open'), test.get('a_resource')),
-  '', 'C no registra recursos en una solicitud de A'
+  'Solicitud no encontrada', 'C no registra recursos en una solicitud de A'
 );
 select test.throws(
   format($$select public.confirm_case_photo(%L)$$, test.get('a_photo')),
-  '', 'C no confirma fotos de A'
+  'Foto no encontrada', 'C no confirma fotos de A'
 );
 select test.throws(
   format($$select public.delete_case_photo(%L)$$, test.get('a_photo')),
-  '', 'C no borra fotos de A'
+  'Foto no encontrada', 'C no borra fotos de A'
 );
 select test.throws(
   format($$select public.submit_case_report(%L, 'M0,0 L1,1', true)$$, test.get('a_case_open')),
-  '', 'C no envía el reporte de una solicitud de A'
+  'Solicitud no encontrada', 'C no envía el reporte de una solicitud de A'
 );
 select test.throws(
   format($$select public.transition_case(%L, 'pausar')$$, test.get('a_case_open')),
-  '', 'un técnico de C no cambia el estado de una solicitud de A'
+  'Solicitud no encontrada', 'un técnico de C no cambia el estado de una solicitud de A'
 );
 reset role;
 
 select test.login('jefe_c');
 set role authenticated;
+-- Un jefe del área técnica puede agregar fotos de antes a un trabajo en ejecución de su
+-- empresa; aquí solo lo impide que la solicitud sea de A.
+select test.throws(
+  format($$select public.reserve_case_photo(%L, 'antes')$$, test.get('a_case_open')),
+  'No puedes agregar fotos de antes a esta solicitud', 'un jefe de C no sube fotos a una solicitud de A'
+);
 select test.throws(
   format($$select public.transition_case(%L, 'aceptar')$$, test.get('a_case_new')),
-  '', 'un jefe de C no acepta solicitudes de A'
+  'Solicitud no encontrada', 'un jefe de C no acepta solicitudes de A'
 );
 select test.throws(
-  format($$select public.validate_case_report(%L, 'M0,0 L1,1', true)$$, test.get('a_case_validated')),
-  '', 'un jefe de C no valida reportes de A'
+  format($$select public.validate_case_report(%L, 'M0,0 L1,1', true)$$, test.get('a_case_sent')),
+  'Solicitud no encontrada', 'un jefe de C no valida reportes de A'
 );
 select test.throws(
-  format($$select public.return_case_report(%L, 'Devolución cruzada')$$, test.get('a_case_validated')),
-  '', 'un jefe de C no devuelve reportes de A'
+  format($$select public.return_case_report(%L, 'Devolución cruzada')$$, test.get('a_case_sent')),
+  'Solicitud no encontrada', 'un jefe de C no devuelve reportes de A'
+);
+select test.throws(
+  format($$select public.transition_case(%L, 'asignar', 'Asignación cruzada', %L)$$,
+         test.get('c_case_assigned'), test.uid('tec1')),
+  'El técnico debe pertenecer al área técnica de la solicitud',
+  'un jefe de C no asigna su solicitud a un técnico de A'
+);
+select test.ok(
+  (select count(*) from public.verify_report_code(test.get('a_report_code'))) = 0,
+  'C no verifica códigos de reportes de A'
 );
 reset role;
 
@@ -349,36 +457,36 @@ select test.login('admin_c');
 set role authenticated;
 select test.throws(
   format($$select public.approve_case_report(%L, 'M0,0 L1,1', true)$$, test.get('a_case_validated')),
-  '', 'un administrador de C no aprueba reportes de A'
+  'Solicitud no encontrada', 'un administrador de C no aprueba reportes de A'
 );
 select test.throws(
   format($$select public.transition_case(%L, 'cancelar', 'Cancelación cruzada')$$, test.get('a_case_new')),
-  '', 'un administrador de C no cancela solicitudes de A'
+  'Solicitud no encontrada', 'un administrador de C no cancela solicitudes de A'
 );
 select test.throws(
   format($$select public.approve_access_request(%L, 'tecnico', %L)$$, test.get('a_request'), test.get('area_mant_c')),
-  '', 'un administrador de C no aprueba solicitudes de acceso a A'
+  'Solicitud de acceso no encontrada', 'un administrador de C no aprueba solicitudes de acceso a A'
 );
 select test.throws(
   format($$select public.reject_access_request(%L, 'Rechazo cruzado')$$, test.get('a_request')),
-  '', 'un administrador de C no rechaza solicitudes de acceso a A'
+  'Solicitud de acceso no encontrada o ya resuelta', 'un administrador de C no rechaza solicitudes de acceso a A'
 );
 select test.throws(
   format($$select public.set_member_access(%L, 'administrador', null)$$, test.uid('tec1')),
-  '', 'un administrador de C no cambia el rol de un miembro de A'
+  'Usuario no encontrado', 'un administrador de C no cambia el rol de un miembro de A'
 );
 select test.throws(
   format($$select public.set_member_access(%L, 'tecnico', %L)$$, test.uid('tec_c'), test.get('area_mant')),
-  '', 'un administrador de C no asigna a su técnico un área de A'
+  'Área no disponible', 'un administrador de C no asigna a su técnico un área de A'
 );
 select test.throws(
   format($$insert into public.categories (area_id, name) values (%L, 'Cruce')$$, test.get('area_mant')),
-  '', 'un administrador de C no crea tipos de servicio en un área de A'
+  'Área no disponible', 'un administrador de C no crea tipos de servicio en un área de A'
 );
 select test.throws(
   format($$insert into public.organization_invitations (email, role, area_id)
            values ('cruce@c.test', 'tecnico', %L)$$, test.get('area_mant')),
-  '', 'un administrador de C no invita personas a un área de A'
+  'Área no disponible', 'un administrador de C no invita personas a un área de A'
 );
 select test.ok(
   public.mark_notifications_read(test.get('a_notifications')::bigint[]) = 0,
@@ -398,8 +506,117 @@ select test.ok(
   and (select status from public.cases where id = test.get('a_case_new')::uuid) = 'solicitado'
   and (select status from public.cases where id = test.get('a_case_open')::uuid) = 'en_ejecucion'
   and (select status from public.cases where id = test.get('a_case_validated')::uuid) = 'validado'
+  and (select status from public.cases where id = test.get('a_case_sent')::uuid) = 'reporte_enviado'
+  and (select assigned_to from public.cases where id = test.get('c_case_assigned')::uuid)
+    is distinct from test.uid('tec1')
   and (select status from public.organization_access_requests where id = test.get('a_request')::uuid) = 'pendiente',
   'los datos de A siguen intactos después de los intentos desde C'
+);
+
+-- ---------------------------------------------------------------------------
+-- 5. Storage: nadie sube, cambia ni borra archivos de otra empresa
+-- ---------------------------------------------------------------------------
+-- El técnico asignado a un trabajo de A reserva una foto. Él puede subir el archivo
+-- (control positivo) y nadie más puede subirlo, ni de su empresa ni de otra. Además, cada usuario
+-- intenta cambiar y borrar los archivos de las demás empresas. Todo se deshace al final.
+
+truncate test.leaks;
+select test.set('a_open_pending', (select count(*)::text from public.case_photos
+  where case_id = test.get('a_case_open')::uuid and confirmed_at is null));
+select test.set('objects_before', (select count(*)::text from storage.objects));
+
+do $$
+declare
+  member record;
+  reservation jsonb;
+  uploaded boolean;
+  touched bigint;
+  attempt text;
+  found_leaks text[] := '{}';
+begin
+  begin
+    perform test.login(test.get('a_open_technician'));
+    set local role authenticated;
+    reservation := public.reserve_case_photo(test.get('a_case_open')::uuid, 'antes');
+    reset role;
+
+    for member in
+      select users.name, users.id, profiles.organization_id
+      from test.users users left join public.profiles on profiles.id = users.id
+      order by users.name
+    loop
+      perform test.login(member.name);
+      set local role authenticated;
+
+      -- Cada subida se deshace enseguida para que la siguiente no choque con el archivo.
+      uploaded := false;
+      begin
+        insert into storage.objects (bucket_id, name, owner)
+        values (reservation ->> 'bucket', reservation ->> 'image_path', member.id);
+        uploaded := true;
+        raise exception using errcode = 'P0001', message = 'deshacer subida';
+      exception
+        when insufficient_privilege then null;
+        when raise_exception then
+          if sqlerrm <> 'deshacer subida' then
+            raise;
+          end if;
+      end;
+      if uploaded and member.name <> test.get('a_open_technician') then
+        found_leaks := found_leaks || format('%s subió a una reserva ajena', member.name);
+      elsif not uploaded and member.name = test.get('a_open_technician') then
+        found_leaks := found_leaks || format('%s no pudo subir su propia reserva', member.name);
+      end if;
+
+      foreach attempt in array array['update', 'delete'] loop
+        touched := 0;
+        begin
+          execute format(
+            case attempt
+              when 'update' then 'update storage.objects set metadata = metadata where %s'
+              else 'delete from storage.objects where %s'
+            end,
+            '(string_to_array(name, ''/''))[1] is distinct from $1::text'
+          ) using member.organization_id;
+          get diagnostics touched = row_count;
+        exception when insufficient_privilege then
+          null;
+        end;
+        if touched > 0 then
+          found_leaks := found_leaks || format('%s: %s de %s archivos de otra empresa',
+                                               member.name, attempt, touched);
+        end if;
+      end loop;
+
+      reset role;
+    end loop;
+
+    raise exception using errcode = 'P0001', message = 'deshacer',
+      detail = array_to_string(found_leaks, '; ');
+  exception when raise_exception then
+    reset role;
+    if sqlerrm <> 'deshacer' then
+      raise;
+    end if;
+    get stacked diagnostics attempt = pg_exception_detail;
+    if attempt <> '' then
+      insert into test.leaks values ('storage', attempt, 0);
+    end if;
+  end;
+end $$;
+
+select test.ok(
+  not exists (select 1 from test.leaks),
+  'en Storage solo quien reservó sube su foto y nadie cambia ni borra archivos de otra empresa: '
+    || coalesce((select string_agg(object_name, '; ') from test.leaks), 'sin filtraciones')
+);
+
+select test.ok(
+  (select count(*) from public.case_photos
+   where case_id = test.get('a_case_open')::uuid and confirmed_at is null)
+    = test.get('a_open_pending')::bigint
+  and (select count(*) from storage.objects) = test.get('objects_before')::bigint,
+  'la reserva y los archivos de prueba se deshicieron'
 );
 
 drop table test.leaks;
