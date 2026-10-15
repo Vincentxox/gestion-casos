@@ -81,6 +81,7 @@ export async function listReportVersions(caseId: string): Promise<ReportVersion[
     .eq('case_id', caseId)
     .order('version_number', { ascending: false })
   if (error) throw error
+  // `content` es jsonb: el generador lo tipa como Json y aquí se usa su forma congelada.
   return (data as unknown as VersionRow[]).map((row) => ({
     id: row.id,
     caseId: row.case_id,
@@ -95,18 +96,6 @@ export async function listReportVersions(caseId: string): Promise<ReportVersion[
   }))
 }
 
-interface SignatureRow {
-  id: string
-  version_id: string
-  signature_type: ReportSignature['type']
-  signer_id: string
-  signer_role: string
-  signed_at: string
-  consent_text: string
-  stroke_path: string
-  signer: { full_name: string } | null
-}
-
 export async function listReportSignatures(caseId: string): Promise<ReportSignature[]> {
   const { data, error } = await supabase
     .from('case_signatures')
@@ -116,7 +105,7 @@ export async function listReportSignatures(caseId: string): Promise<ReportSignat
     .eq('case_id', caseId)
     .order('signed_at')
   if (error) throw error
-  return (data as unknown as SignatureRow[]).map((row) => ({
+  return data.map((row) => ({
     id: row.id,
     versionId: row.version_id,
     type: row.signature_type,

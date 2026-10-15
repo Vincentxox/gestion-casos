@@ -33,7 +33,7 @@ const categorySelection = '*, area:areas(name)'
 export async function listCategories(): Promise<CategoryRecord[]> {
   const { data, error } = await supabase.from('categories').select(categorySelection).order('name')
   if (error) throw error
-  return (data as unknown as CategoryRow[]).map(mapCategory)
+  return data.map(mapCategory)
 }
 
 export async function createCategory(input: CategoryInput): Promise<CategoryRecord> {
@@ -48,7 +48,7 @@ export async function createCategory(input: CategoryInput): Promise<CategoryReco
     .select(categorySelection)
     .single()
   if (error) throw error
-  return mapCategory(data as unknown as CategoryRow)
+  return mapCategory(data)
 }
 
 export async function updateCategory(
@@ -67,7 +67,7 @@ export async function updateCategory(
     .select(categorySelection)
     .single()
   if (error) throw error
-  return mapCategory(data as unknown as CategoryRow)
+  return mapCategory(data)
 }
 
 export async function setCategoryActive(
@@ -81,5 +81,5 @@ export async function setCategoryActive(
     .select(categorySelection)
     .single()
   if (error) throw error
-  return mapCategory(data as unknown as CategoryRow)
+  return mapCategory(data)
 }

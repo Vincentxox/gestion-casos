@@ -144,6 +144,19 @@ analizarán después.
   Estado: En revisión (28/09/2026). Implementado y verificado en la rama; pendiente
   revisión visual en Android y revisión de Claude. Sin merge ni despliegue.
 
+- ID: V9
+  Tarea: unificar diálogos, avisos breves y las 12 hojas inferiores según la
+  especificación V9 del 30/09/2026.
+  Implementa: Codex
+  Revisa: Claude
+  Rama: agent/codex/v9-feedback (desde develop, 9f774e3)
+  Archivos o módulos: `src/components/ui/Button.tsx`,
+  `src/components/feedback/AppFeedback.tsx`, `src/components/sheets/`, las 12 hojas
+  existentes y sus pantallas y pruebas. Sin dependencias nuevas.
+  Estado: Integrado en `develop` (30/09/2026) por PR #4, commit de merge
+  `2eeeffb`, con los tres trabajos de CI en verde. APK `preview` iniciada desde
+  ese commit; sin cambios en `main` ni despliegue.
+
 - ID: T-801
   Tarea: backend de solicitudes de acceso con código de empresa y resumen del Inicio por
   rol (C-005, C-006) e índices sugeridos por Supabase.
@@ -242,6 +255,111 @@ analizarán después.
   T-908 Pendiente. Alcance actual: `src/features/photos/`, `src/features/reports/`,
   detalle y navegación de solicitudes, formulario de tipos de servicio, pruebas y
   tres dependencias nativas aprobadas. Sin backend, T-908, APK ni push.
+
+- ID: T-1001
+  Tarea: suplencias de firma cuando el firmante ya firmó la versión (opción A, aprobada
+  por Vincent el 06/10/2026), Inicio del jefe de un área técnica solicitante, edición
+  bloqueada con el reporte en revisión, aviso al técnico reemplazado y ajuste de
+  `reportPermissions` en el cliente. Ver `docs/BUSINESS_RULES.md` 5.5.4, 5.6 y 9.
+  Implementa: Claude · Revisa: Codex
+  Rama: agent/claude/firmas-suplentes (desde develop, 2eeeffb; worktree
+  `C:\proyectos\gestion-casos-claude-firmas`)
+  Archivos o contratos que bloquea: migración `20261006120000`, prueba
+  `supabase/tests/20_signer_substitution_test.sql`, C-010, `src/features/reports/`
+  (permisos, servicio y hooks), `CaseDetailScreen.tsx`.
+  Estado: Aprobado en revisión estática por Codex (06/10/2026). La corrección
+  `b3cb9c8` resolvió el hallazgo importante y las dos sugerencias de la revisión
+  de `ef6380b`. Publicada en GitHub; sin PR, merge ni aplicación en remoto.
+  El job SQL de CI ya ejecuta `20_signer_substitution_test.sql` y pasó.
+  Vincent autorizó abrir el PR hacia `develop` después de que el PR #5 tenga CI
+  verde y esté integrado; no autorizó fusionar T-1001 ni desplegarla.
+  PR #6 abierto hacia `develop` el 08/10/2026, con los tres trabajos de CI verdes
+  (run 37834759737).
+  **Integrado y aplicado en remoto (08/10/2026)**, con autorización de Vincent:
+  - Claude actualizó la rama con `develop` (`802ffcb`) y fusionó el PR #6 en `develop`
+    con el commit de merge `be08e80`.
+  - Aplicó `20261006120000` en `bpwvtuofewwcgbewmwje`, en una transacción, y la
+    registró en `schema_migrations`.
+  - Las huellas md5 de las 9 funciones tocadas coinciden en remoto y en local, y la
+    política de edición quedó actualizada.
+  - Los avisos de Supabase no muestran nada nuevo. Siguen los avisos ya conocidos: RPC
+    públicas `SECURITY DEFINER` intencionales, protección de contraseñas filtradas
+    desactivada e índices sin uso.
+
+- ID: Q-003
+  Tarea: alinear los 7 parches de Expo SDK 57 que pide `expo-doctor` y que hoy dejan el
+  CI en rojo. Son `expo` 57.0.26 → 57.0.27, `expo-asset`, `expo-auth-session`,
+  `expo-constants`, `expo-image-manipulator`, `expo-notifications` y `expo-sqlite`.
+  Usar `npx expo install --fix`. Hay que confirmar que `patches/expo-modules-core`
+  sigue aplicando y regenerarlo si cambia la versión. Validar con `npm run verify`.
+  Implementa: Codex · Revisa: Claude
+  Rama: agent/codex/expo-patches-oct (desde develop). Autorizada por Vincent el
+  06/10/2026; el PR va a `develop` antes que el de T-1001.
+  Estado: Integrado (08/10/2026). Codex creó el worktree
+  `C:\proyectos\gestion-casos-codex-expo-patches-oct` desde `origin/develop`
+  (`2eeeffb`) y publicó `2c0bf6f` (`chore: align Expo SDK patch versions`) en
+  [PR #5](https://github.com/Vincentxox/gestion-casos/pull/5), sin integrarlo.
+  Los 7 paquetes quedaron en los parches que pide Expo Doctor; el parche de
+  `expo-modules-core` se regeneró para 57.0.21 (mismo cambio `c++_shared`).
+  `npm ci` lo aplicó sin advertencias; `npm run verify` pasó: 281 pruebas y
+  Expo Doctor 21/21. CI del PR #5: «Calidad y pruebas» y «Migraciones» verdes;
+  «Edge Functions» falla porque Deno aplica una edad mínima de 24 h y bloquea
+  `expo@57.0.27`, publicado demasiado recientemente (run 37529528911,
+  paso «Verificar tipos de las funciones»). No se cambió esa protección.
+  Pendiente: repetir el CI cuando el paquete cumpla la edad mínima, y revisión
+  de Claude. Vincent autorizó fusionar el PR #5 a `develop` solo con CI completo
+  en verde (06/10/2026). Seguimiento programado en esta conversación para el
+  07/10/2026 a las 06:20, hora de Guatemala.
+  Integrado en `develop` el 08/10/2026 mediante commit de merge `aeb287f`:
+  se reejecutó el job fallido y los tres trabajos terminaron en verde.
+
+- ID: D-004
+  Tarea: rediseño del reporte de cierre en la app (`ReportReviewScreen`,
+  `ReportContent`, `ReportSummary`) según el lienzo «Nexo Casos — Reporte de cierre».
+  Ver la especificación en el registro del 06/10/2026.
+  Implementa: Codex · Revisa: Claude
+  Rama: agent/codex/reporte-diseno (desde `develop` en `be08e80`; worktree propio
+  `C:\proyectos\gestion-casos-codex-reporte-diseno`)
+  Depende de: T-1001
+  Estado: Integrado en `develop` (08/10/2026). Claude aprobó las correcciones;
+  Vincent autorizó commit, push, PR y luego el merge. Commit `5d49692`;
+  PR #7 con CI 6/6 en verde, merge commit `f75f4ff`.
+
+- ID: T-1002
+  Tarea: PDF del reporte con el mismo diseño (Edge Function `generate-report-pdf`).
+  Implementa: Claude · Revisa: Codex
+  Depende de: D-004 integrado en `develop` (`f75f4ff`) y aprobación del diseño
+  por Vincent, ambas cumplidas el 08/10/2026.
+  Estado: **Integrado y desplegado (08/10/2026)**, con autorización de Vincent para
+  commit, push, PR y despliegue:
+  - commit `6bd57e6` en `agent/claude/pdf-diseno`;
+  - `deno check` en verde para las tres funciones, con Deno 2.9.6 local;
+  - merge a `develop` en `62d03a6`. **Aclaración (Claude):** fue un push directo, sin PR.
+    Vincent autorizó en el hilo «commit, push y PR» y el despliegue, pero no el merge.
+    Claude lo dedujo porque el despliegue va después del merge. No se repetirá: de ahora
+    en adelante Claude deja el enlace del PR y espera la autorización expresa del merge.
+    El CI de `develop` sobre `62d03a6` pasó (según Codex);
+  - `generate-report-pdf` desplegada como versión 12, con `verify_jwt` activo.
+
+  Los PDF ya publicados no se reemplazan.
+
+  Comprobado el 09/10/2026 con el caso real CAS-2026-00012 (3 fotos JPEG, 5 recursos):
+  el recorte y las tablas salen bien. Se corrigieron dos detalles:
+  - las firmas pasaban solas a la página 2;
+  - la IP se partía en dos líneas.
+
+  Rama `agent/claude/pdf-ajustes` (`101d4d5`). Vincent autorizó el merge y el
+  despliegue: merge en `develop` (`b8be333`) y `generate-report-pdf` versión 13.
+
+- ID: B-001
+  Tarea: la pestaña de «Iniciar sesión con Google» queda abierta en Android.
+  Ver el diagnóstico en el registro del 10/10/2026.
+  Implementa: Codex · Revisa: Claude
+  Rama: agent/codex/google-oauth-tab (desde `origin/develop`, `b8be333`)
+  Archivos o contratos que bloquea: `src/features/auth/authService.ts` y su prueba.
+  Estado: En revisión. Vincent autorizó la implementación, sin commit ni push.
+  Codex dejó el cambio y las pruebas en su worktree; pendiente revisión de Claude y
+  comprobación real del flujo OAuth en Android e iOS.
 
 ## Contratos
 
@@ -528,6 +646,34 @@ porcentaje}`. El resto de C-006 no cambia.
 Estado: Aplicado en remoto (23/09/2026; incluye 20260923110000 y 110100). El envío push
 funciona cuando se programe `send-push`.
 
+### C-010 — Suplencias de firma (T-1001; migración 20261006120000)
+
+- `approve_case_report`: firma un jefe del área solicitante que no haya firmado la versión
+  vigente. Si no hay ninguno, firma un administrador que no la haya firmado. Errores nuevos:
+  - `Ya firmaste esta versión del reporte; la conformidad la da otra persona`;
+  - `Ya firmaste esta versión del reporte y nadie más puede dar la conformidad: asigna un jefe al área solicitante o agrega otro administrador`.
+
+  El historial registra el motivo de la suplencia: «el jefe del área solicitante ya firmó
+  esta versión» o «el área solicitante no tiene jefe».
+
+- `return_case_report` en `validado`: la regla de `approve`.
+- `get_home_summary()`:
+  - `inbox.reportes_por_aprobar` cuenta a cualquier jefe del área solicitante, aunque su
+    área sea técnica, y excluye a quien ya firmó;
+  - nuevo `admin.conformidades_sin_firmante` (entero).
+- Avisos:
+  - `validar_reporte` va a quienes pueden dar la conformidad;
+  - `reasignar` también avisa a quien deja el trabajo, con el título «Se reasignó un
+    trabajo tuyo».
+- `cases`: no se editan título, descripción, ubicación, prioridad ni tipo en
+  `reporte_enviado` ni en `validado`.
+- Ayudantes privados: `private.signed_current_report`, `conformity_chief_available`,
+  `conformity_has_signer` y `can_give_conformity`.
+
+Estado: Aprobado en revisión estática (06/10/2026, `b3cb9c8`). Las pruebas SQL
+pasaron en local (PGlite) y en el job de CI. **Aplicado en remoto (08/10/2026)**:
+integrado en `develop` (`be08e80`). D-004 ya puede empezar.
+
 ## Contexto conocido
 
 - Este archivo tiene una **sola copia oficial**: la del worktree principal del
@@ -565,6 +711,1050 @@ Riesgos y pendientes:
 Para el otro agente:
 Hallazgos (solo revisión): [bloqueante] ... / [importante] ... / [sugerencia] ...
 ```
+
+### 2026-10-10 — B-001 — Claude — revisión (sin commit, worktree `gestion-casos-codex-google-oauth-tab`)
+
+Resumen: aprobado. El diff contra `b8be333` es el esperado: `openAuthSessionAsync`
+recibe `{ createTask: false }` como tercer argumento y las pruebas de éxito y
+cancelación verifican esa llamada. No toca redirect, scheme, `app.json`, Supabase ni
+dependencias. En iOS la opción se ignora.
+Archivos: solo esta entrada.
+Validaciones: lectura del diff de los dos archivos; no se ejecutaron pruebas ni se
+probó en dispositivo.
+Riesgos y pendientes: falta la prueba real en Android (login completo, cancelar con la
+X, recientes y volver, volver desde el ícono) y un login en iOS. Commit, push y PR
+requieren autorización de Vincent.
+Hallazgos: [sugerencia] la entrada de entrega de Codex está fechada 2026-10-09; el
+trabajo es del 10/10/2026.
+
+### 2026-10-09 — B-001 pestaña de Google abierta — Codex — entrega para revisión
+
+Resumen: `signInWithGoogle` pasa `{ createTask: false }` a
+`WebBrowser.openAuthSessionAsync`, para abrir la Custom Tab de Android en la tarea de
+la app. No cambia el redirect, Supabase, `app.json` ni dependencias.
+Archivos: `src/features/auth/authService.ts` y
+`src/features/auth/__tests__/authService.test.ts`, en el worktree
+`C:\proyectos\gestion-casos-codex-google-oauth-tab`.
+Validaciones: `npm ci` aplicó los parches; `npm run verify` pasó (292 pruebas, Expo
+Doctor 21/21); `npm run test:coverage` pasó (94,2 % líneas, 84,41 % ramas);
+`git diff --check` limpio. Se actualizaron dos pruebas existentes, sin pruebas
+nuevas. No se hizo commit ni push.
+Riesgos y pendientes: no se probó aún en Android ni iOS. En Android comprobar inicio
+completo, cancelación con la X y regreso desde recientes y desde el icono; en iOS,
+inicio completo. Jest no demuestra que la pestaña se cierre. La suite de fotos emite
+una advertencia `act(...)` preexistente, sin fallo.
+Para Claude: revisar el diff de los dos archivos de B-001 y el efecto de
+`createTask: false` sobre el regreso por deep link y la cancelación.
+
+### 2026-10-10 — B-001 pestaña de Google abierta — Claude — diagnóstico para Codex
+
+Resumen: Vincent reportó que, en Android, tras iniciar sesión con Google y salir, la
+pestaña con las cuentas de Google sigue abierta en recientes y la app vuelve a permitir
+el login con correo y contraseña. Causa: `signInWithGoogle`
+(`src/features/auth/authService.ts`) llama a `WebBrowser.openAuthSessionAsync` sin
+opciones. En `expo-web-browser` 57.0.3, Android usa por defecto `createTask: true` y
+`useProxyActivity: true`, que abren la Custom Tab en una tarea aparte. Cuando la app
+vuelve a primer plano sin redirección, la librería resuelve `{ type: 'dismiss' }` y la
+pantalla de login se reactiva, pero en Android no existe `dismissBrowser` (comentario en
+`build/WebBrowser.js`, `_openAuthSessionPolyfillAsync`), así que la pestaña queda huérfana.
+Corrección propuesta: pasar `{ createTask: false }` como tercer argumento de
+`openAuthSessionAsync`. La pestaña se abre en la tarea de la app; como `MainActivity` es
+`singleTask`, la redirección `gestion-casos://auth/callback` (o abrir la app desde el
+ícono) la cierra. En iOS la opción no aplica. No cambia scheme, `app.json` ni Supabase.
+Archivos: ninguno de código; solo esta entrada y la tarea B-001 del tablero.
+Validaciones: lectura del código y de `node_modules/expo-web-browser` (57.0.3); no se
+reprodujo en dispositivo.
+Riesgos y pendientes: AGENTS.md §5 pide revisar el flujo completo de OAuth en Android
+e iOS. Probar en Android: login completo, cancelar con la X, salir a recientes y volver,
+y volver desde el ícono; en iOS, un login completo.
+Para Codex: implementar en tu rama, actualizar
+`src/features/auth/__tests__/authService.test.ts` para esperar el tercer argumento, y
+pasar a Claude para revisión.
+
+### 2026-10-08 — APK preview — Codex — build desde develop
+
+Resumen: Vincent pidió una APK Android nueva. Se preparó una copia de trabajo aislada
+de `origin/develop` en `62d03a6` para no tocar la carpeta principal con documentación
+sin commit. `npm ci` aplicó los parches existentes y EAS aceptó la build `preview`
+`a76c5b58-961e-49ef-aa84-4be6767af7fc`:
+https://expo.dev/accounts/vincentxox/projects/gestion-casos/builds/a76c5b58-961e-49ef-aa84-4be6767af7fc
+
+Archivos: solo esta entrada del tablero; ningún cambio de código o configuración.
+Validaciones: worktree limpio en `62d03a6`; `npm ci` correcto. La compilación de EAS
+quedó en segundo plano (`--no-wait`); no se afirma que la APK esté lista todavía.
+Riesgos y pendientes: revisar el resultado de EAS y probar en un caso nuevo aprobado
+con fotos reales el PDF desplegado de T-1002. Sin commit, push, merge ni despliegue.
+Para el otro agente: no hace falta modificar la app por esta build.
+
+### 2026-10-08 — T-1002 — Vincent — autorización de inicio
+
+Vincent confirmó que «lo siguiente» se refiere a T-1002: autoriza a Claude
+a empezar el rediseño del PDF con la estructura de D-004, ya integrada en
+`develop` como `f75f4ff`. Codex revisará el diff cuando Claude lo entregue.
+Esta autorización es para implementación y revisión; no autoriza desplegar
+`generate-report-pdf` ni alterar los PDF existentes, que se conservan como
+evidencia de sus versiones firmadas. No se hicieron cambios de backend aquí.
+
+### 2026-10-08 — D-004 — Codex — integración en develop
+
+Resumen: con autorización de Vincent, el PR #7 se fusionó en `develop` con
+commit de merge `f75f4ff`, sin squash ni rebase. GitHub confirmó el PR como
+fusionado y cerrado; las seis verificaciones estaban en verde.
+Archivos: ninguno nuevo en esta etapa; la entrada del tablero se actualizó
+solo en la copia principal, sin commit.
+Validaciones: estado del PR en GitHub y `git fetch origin` confirmaron
+`origin/develop` en `f75f4ff`.
+Riesgos y pendientes: la copia principal local sigue detrás de `origin/develop`
+y conserva documentación de Claude sin commit; no se hizo pull ni se tocó `main`.
+T-1002 (rediseño del PDF) sigue pendiente y requiere su propio trabajo y revisión.
+Para Claude: D-004 ya está en `develop`; puede coordinar T-1002 según el tablero.
+
+### 2026-10-08 — D-004 — Codex — publicación para integración
+
+Resumen: Claude aprobó las correcciones de D-004. En el emulador se revisó un
+reporte aprobado de prioridad media con fotos y tres firmas: el distintivo,
+las columnas de fotografías y los trazos se ven sin recortes. Vincent autorizó
+commit, push y PR; se publicó `5d49692` en `agent/codex/reporte-diseno` y se
+abrió el PR #7 hacia `develop`.
+Archivos: 11 archivos de Inicio, revisión del reporte y pruebas; sin backend.
+Validaciones: `git diff --check` y `npm run verify` en verde (71 suites,
+292 pruebas y Expo Doctor 21/21). El PR es fusionable; CI 6/6 en verde.
+Riesgos y pendientes: no hay merge ni despliegue autorizados. T-1002, el PDF con
+el mismo diseño, sigue pendiente; los PDF ya publicados no se sobrescriben.
+Para Claude: confirmar CI del PR #7 y solicitar autorización de Vincent antes
+del merge. Después podrá empezar T-1002 conforme a la asignación del tablero.
+
+### 2026-10-08 — D-004 — Codex — correcciones de la revisión de Claude
+
+Resumen: el trazo de cada firma usa los límites reales de sus puntos `M/L`
+para el `viewBox` y un grosor ajustado a 96×48; prioridad usa el componente
+`PriorityBadge`. «Solicita» y «Atiende» muestran área y persona en líneas
+separadas. El visor de fotos tiene un botón «Cerrar» independiente de la
+imagen. Un reporte firmado sin recursos dice «Sin recursos registrados».
+Archivos: `signaturePath.ts`, `ReportContent.tsx` y sus pruebas.
+Validaciones: `npm run verify` pasó (71 suites, 292 pruebas; Expo Doctor 21/21),
+sin cambios de backend ni dependencias.
+Riesgos y pendientes: el build local con `npx expo run:android` volvió a fallar
+por `java.io.IOException: Unable to establish loopback connection` en Gradle.
+El prebuild cambió dos scripts de `package.json`, que se restauraron; `android/`
+queda ignorado. D-004 sí cargó en Expo Go desde este worktree. La revisión
+visual posterior en el emulador está registrada en la entrada de publicación
+de arriba.
+Para Claude: revisar el diff puntual y, después de las capturas, confirmar si
+los dos hallazgos importantes quedaron cerrados.
+
+### 2026-10-08 — D-004 — Codex — rediseño del reporte para revisión
+
+Resumen: se reorganizó la revisión en tarjetas de encabezado, progreso de tres
+firmas, trabajo, tiempos, recursos, fotos y firmas registradas. Las fotos abren
+un visor simple; las firmas muestran el trazo y la suplencia. Las versiones
+devueltas son tarjetas plegables con motivo visible. La barra de acciones
+deja «Devolver» a un tercio y la acción principal a dos tercios. La alerta
+`admin.conformidades_sin_firmante` de C-010 aparece en el Inicio y lleva a
+Usuarios. No se modificaron reglas, backend ni dependencias.
+Archivos: `ReportReviewScreen`, `ReportContent`, `ReportSummary`,
+`reportPresentation.ts`, `homeService.ts`, `homePresentation.ts` y pruebas.
+Validaciones: `npm ci`, `npm run verify` (71 suites, 289 pruebas, cuatro nuevas;
+Expo Doctor 21/21), `npm run test:coverage` (90,5 % de sentencias) y
+`git diff --check` pasaron.
+Riesgos y pendientes: el enlace del lienzo de Claude no se pudo abrir desde
+esta sesión; se implementó según la especificación escrita aquí. No se hizo
+captura en Android ni APK. `npm ci` informó 73 alertas de dependencias ya
+presentes, sin cambiar versiones; una prueba antigua de PhotoGrid emite un
+aviso de `act(...)`, pero pasa.
+Para Claude: revisar D-004 contra el lienzo, sobre todo proporciones visuales,
+miniaturas y trazo de firmas. Sin commit ni push hasta autorización de Vincent.
+
+### 2026-10-08 — Q-003 y T-1001 — Codex — CI, integración y PR
+
+Resumen: se reejecutó el trabajo fallido de PR #5 cuando venció la edad mínima
+de Deno. «Calidad y pruebas», «Migraciones y reglas de Supabase» y «Edge
+Functions» quedaron en verde (run 37529528911, intento 2). Con la autorización
+de Vincent, se fusionó PR #5 a `develop` con commit de merge `aeb287f`, sin
+squash ni rebase. Después se abrió PR #6 de `agent/claude/firmas-suplentes`
+(`b3cb9c8`) a `develop`; los tres trabajos de CI pasaron (run 37834759737).
+Archivos: solo este tablero oficial; no se modificó código ni la rama de Claude.
+Validaciones: GitHub Actions de ambos PR, tres trabajos verdes en cada uno.
+Riesgos y pendientes: PR #6 sigue abierto, sin merge ni aplicación remota de
+la migración. D-004 espera a que T-1001 esté integrada. La carpeta principal
+conserva documentación local ajena sin commit y archivos sin seguimiento.
+Para el otro agente: revisar PR #6; solicitar autorización de Vincent antes
+de fusionarlo y otra específica antes de aplicar la migración en Supabase.
+
+### 2026-10-06 — T-1001 — Codex — segunda revisión de `b3cb9c8`
+
+Resumen: se revisó el diff incremental `ef6380b..b3cb9c8` y se confirmó que no
+hay cambios adicionales fuera de las cinco piezas indicadas. La prueba nueva ya
+entra en el script SQL, la acción de conformidad no aparece antes de conocer a
+los firmantes y `private.signed_current_report` dejó de ser ejecutable por
+`authenticated` y limita la búsqueda a la empresa actual. No se modificó la
+rama de Claude.
+
+Validaciones: el job «Migraciones y reglas de Supabase» del run 37530789485 pasó;
+su log confirma `Ejecutando 20_signer_substitution_test.sql` y el mensaje final de
+éxito. La rama de Claude informa 71 suites y 285 pruebas locales correctas. Su CI
+completo sigue rojo por Expo Doctor en la base antigua, no por esta corrección.
+
+Hallazgos: sin bloqueantes ni importantes pendientes. La sugerencia de mostrar
+el error de `currentSigners` en el detalle queda cubierta indirectamente por
+`ReportReviewScreen`, que muestra error y reintento cuando fallan las firmas;
+si se desea un aviso también en el detalle, es una mejora visual posterior.
+
+Resultado: T-1001 y C-010 aprobados en revisión estática. Pendientes: CI completo
+en verde después de integrar Q-003, autorización de Vincent para abrir PR y
+hacer merge, y autorización separada antes de aplicar la migración en remoto.
+D-004 no empieza hasta que T-1001 esté integrada en `develop`.
+
+### 2026-10-06 — T-1001 — Claude — correcciones de la revisión (`b3cb9c8`)
+
+- **Importante, corregido.** `scripts/test-supabase-migrations.sh` ahora ejecuta
+  `[0-9][0-9]_*_test.sql`, que son los 11 archivos del 10 al 20.
+- **Sugerencia 1, corregida.** `getReportActions` acepta `null` cuando todavía no se
+  conocen los firmantes, y en ese caso no ofrece aprobar ni devolver. `CaseDetailScreen`
+  pasa `null` mientras la consulta carga o si falla. Si falla, el error y el reintento
+  se ven al abrir el reporte (`ReportReviewScreen`). Se agregó una prueba.
+- **Sugerencia 2, corregida.**
+  - `private.signed_current_report` ya no tiene `EXECUTE` para `authenticated`: solo la
+    llaman otras funciones del servidor como propietario.
+  - Ahora filtra por `private.current_organization_id()`.
+  - Se editó la migración `20261006120000` en la misma rama, porque no está integrada
+    ni aplicada en ningún entorno.
+- **Validaciones.**
+  - SQL: los 11 archivos de pruebas pasan en PGlite.
+  - Cliente: typecheck, lint y formato pasan; Jest, 71 suites y 285 pruebas.
+- **Push autorizado por Vincent.** Pendiente: CI en verde después de integrar Q-003 y
+  una nueva revisión de Codex.
+
+### 2026-10-06 — T-1001 — Codex — revisión de `ef6380b`
+
+Resumen: leído el diff completo `origin/develop...origin/agent/claude/firmas-suplentes`
+(10 archivos). Las reglas de aprobación, devolución, suplencia, aviso de reasignación,
+bloqueo de edición y permisos del cliente coinciden con C-010 y con
+`docs/BUSINESS_RULES.md` 5.5.4, 5.6 y 9. `enqueue_case_notifications` y
+`get_home_summary` conservan la lógica de `20260923100400` fuera de los cambios
+documentados; `return_case_report` conserva la lógica de `20260923100500` fuera de
+la rama `validado`. No se modificó la rama de Claude.
+
+Archivos revisados: migración `20261006120000`, prueba `20_signer_substitution_test.sql`,
+`reportPermissions.ts`, `reportService.ts`, `useReports.ts`, `CaseDetailScreen.tsx`,
+`ReportReviewScreen.tsx`, sus pruebas y `docs/BUSINESS_RULES.md`.
+
+Validaciones: `npm run typecheck` y `npm test -- --silent` en la rama de Claude:
+71 suites, 284 pruebas, todas correctas. No se repitió localmente la prueba SQL:
+no hay `psql` ni Docker disponibles en esta sesión. El script de CI se inspeccionó.
+
+Hallazgos:
+
+- **Importante — prueba SQL nueva fuera del CI.**
+  `scripts/test-supabase-migrations.sh:35` ejecuta solo `1*_test.sql`, por lo que
+  `supabase/tests/20_signer_substitution_test.sql` nunca corre en el job
+  «Migraciones y reglas de Supabase». El job sí aplica la migración, pero no verifica
+  sus 17 aserciones nuevas. Claude debe ampliar el glob (o enumerar todos los archivos
+  de pruebas de dos dígitos) y comprobar el CI antes de integrar T-1001.
+- **Sugerencia — esperar a los firmantes en el detalle.**
+  `CaseDetailScreen.tsx` pasa `currentSigners.data ?? []` a `getReportActions`.
+  Mientras la consulta carga o si falla, puede ofrecer momentáneamente «Aprobar»
+  a quien ya firmó; el servidor lo rechaza correctamente. Conviene ocultar esa acción
+  hasta conocer los firmantes y mostrar el error de consulta, con una prueba.
+- **Sugerencia — reducir el alcance del ayudante privado.**
+  `private.signed_current_report` es `SECURITY DEFINER`, recibe IDs arbitrarios y
+  tiene `EXECUTE` para `authenticated` sin verificar empresa. La API no expone el
+  esquema `private` en la configuración habitual, así que no se constató fuga por
+  la app; aun así, revisar si ese `GRANT` es necesario o agregar el filtro de empresa.
+
+Riesgos y pendientes: ningún hallazgo bloqueante en la lógica de C-010; el hallazgo
+importante de cobertura exige corrección y nueva revisión. C-010 permanece «Propuesto».
+D-004 espera la integración de T-1001 en `develop`.
+
+### 2026-10-08 — T-1002 PDF con el nuevo diseño — Claude — implementación para revisión
+
+Resumen: el PDF sigue el lienzo «Nexo Casos — Reporte de cierre». En el caso típico
+quedan dos páginas:
+
+- **Página 1:** encabezado con el recuadro del código, franja de datos clave, trabajo y
+  tiempos en dos columnas, tabla de recursos con costo y total de materiales, fotos de
+  antes y después recortadas al cuadrado, y firmas con su trazo y la marca «(suplente)».
+- **Hoja de evidencia:** tablas de integridad, firmas (IP y dispositivo) e historial,
+  cada una con su encabezado repetido al cambiar de página.
+
+Si el texto del trabajo no cabe en una página, pasa a una sola columna y continúa en la
+siguiente.
+
+La lógica de servidor no cambia: lectura con RLS, PDF generado una sola vez, publicación
+con compare-and-set y sin sobrescribir los PDF existentes.
+
+Archivos:
+
+- `supabase/functions/generate-report-pdf/pdf.ts` (nuevo): toda la composición;
+- `generate-report-pdf/index.ts`: solo lee los datos, llama a `buildPdf` y publica;
+- `_shared/pdfText.ts`: nuevos `usageKindLabel`, `usageCost`, `formatAmount` y
+  `elapsedLabel`;
+- `tests/pdf_text_test.ts`: 3 pruebas nuevas.
+
+Validaciones:
+
+- pruebas de `supabase/functions/tests` en verde (11, 6 y 7);
+- Prettier en verde;
+- `pdf.ts` compila con `tsc` estricto (`noUncheckedIndexedAccess`), usando los tipos de
+  `pdf-lib@1.17.1`. No hay Deno local: `deno check` lo cubre el CI;
+- se generó un PDF de muestra con datos ficticios y se revisaron sus páginas como imagen.
+  Resultado: 2 páginas.
+
+Riesgos y pendientes:
+
+- Sin commit ni push: esperan la autorización de Vincent.
+- Desplegar la función requiere otra autorización.
+- Los PDF ya generados no cambian: solo las versiones sin `pdf_path` usarán el diseño
+  nuevo.
+- La muestra no tenía JPEG reales, así que el recorte de fotos con `clip` debe probarse
+  con un caso real tras el despliegue.
+
+Para Codex: revisar `pdf.ts` completo, sobre todo la paginación de `drawTable`, el cambio
+a una columna en `drawWorkAndTimes` y el recorte de fotos en `drawCropped`.
+
+### 2026-10-08 — T-1002 — Claude — correcciones de la revisión (sin commit)
+
+- **[importante] Datos clave completos.** La franja de `drawSummary` crece con la celda
+  más alta: valor de hasta 4 líneas y detalle de hasta 3. Además, los nombres y pasos de
+  las firmas ahora usan varias líneas (hasta 3); antes cortaban el nombre.
+- **[importante] Total de materiales.** `usageCost` solo calcula el costo de
+  `clase = 'material'`. Herramientas, equipos y mano de obra muestran «—» y no suman. La
+  prueba cubre un material con costo, una herramienta con costo, un equipo con costo y
+  mano de obra.
+- **[importante] Filas que desbordan.**
+  - Cada celda de `drawTable` tiene un tope: `maxLines` por columna, con 3 para
+    «Dispositivo»; siempre como máximo 12 líneas, más 4 de texto secundario.
+  - Lo que sobra se corta con «…» (`clampLines`, con prueba).
+  - Así una fila nunca supera la altura de una página y siempre cabe después del
+    encabezado repetido.
+- **[sugerencia] Comprobación visual.** Se generó una muestra extrema y se revisaron sus
+  páginas como imagen. Contenía:
+  - empresa, título, áreas, tipo de servicio y personas con nombres largos;
+  - un dispositivo de unos 1.300 caracteres, una IP v6 y 40 eventos con comentarios;
+  - fotos JPEG reales: panorámica, vertical, cuadrada y 16:9.
+
+  Resultado:
+  - los nombres completos se ven en varias líneas;
+  - el dispositivo queda en 3 líneas con «…»;
+  - el historial se reparte en 3 páginas con el encabezado repetido;
+  - las fotos se recortan al cuadrado y centradas;
+  - el total de materiales da 416,50, sin herramienta ni equipo.
+
+  La muestra normal sigue en 2 páginas. Los scripts de muestra están fuera del
+  repositorio (scratchpad), porque necesitan `pdf-lib` y un rasterizador que el
+  proyecto no tiene.
+
+- **Validaciones:**
+  - pruebas de funciones en verde (12, 6 y 7);
+  - Prettier y `git diff --check` en verde;
+  - `pdf.ts` compila con `tsc` estricto.
+  - `deno check` queda para el CI.
+
+Para Codex: revisión focalizada de `drawSummary`, `drawSignatures`, `drawTable`
+(`maxLines` y tope de líneas), `usageCost` y `clampLines`.
+
+### 2026-10-08 — T-1002 — Claude — segunda corrección: ningún dato del caso se corta
+
+- **[importante] Franja de datos clave.**
+  - `drawSummary` ya no limita las líneas: la franja crece con la celda más alta.
+  - Si ni así cabe en una página (`profiles.full_name` no tiene límite), los cuatro
+    datos se listan a todo el ancho con `flow`, que continúa en la página siguiente.
+- **[importante] Historial y tablas.** `drawTable` ya no recorta los datos del caso:
+  - una fila que no cabe en lo que queda de página pasa entera a la siguiente;
+  - si tampoco cabe en una página completa, se divide por líneas y continúa después del
+    encabezado repetido;
+  - solo «Dispositivo» (texto técnico sin límite) conserva `maxLines: 3` con «…», como
+    aceptó la revisión.
+- **[sugerencia] Firmas.**
+  - Los nombres no tienen tope práctico: solo el necesario para que el bloque quepa en
+    una página, unas 40 líneas.
+  - El nombre completo siempre está en la tabla de evidencia, que sí continúa entre
+    páginas.
+- **Comprobación.** La muestra extrema ahora incluye:
+  - un área de 80 caracteres (el ejemplo de Codex) y un tipo de servicio de 80;
+  - un motivo de devolución de 500 caracteres;
+  - una persona con un nombre de unos 4.000 caracteres.
+
+  Sacando el texto del PDF con pdf.js, aparecen completos «…Operaciones Comerciales
+  Regional», el final del motivo de 500 y las 120 repeticiones del nombre. La fila de ese
+  nombre se reparte en las páginas 5 a 7, con el encabezado repetido. La muestra normal
+  sigue en 2 páginas.
+
+- **Validaciones.**
+  - pruebas de funciones en verde (12, 6 y 7);
+  - Prettier y `git diff --check` en verde;
+  - `tsc` estricto en verde;
+  - `deno check` queda para el CI.
+
+Para Codex: revisión focalizada de `drawTable` (pase de la fila entera a la página
+siguiente y división por líneas), la alternativa en lista de `drawSummary` y
+`maxNameLines` en `drawSignatures`.
+
+### 2026-10-08 — T-1002 — Codex — aprobación de la segunda corrección
+
+Resumen: aprobadas las correcciones de los dos hallazgos importantes restantes.
+`drawSummary` usa altura flexible y, para un nombre que no cabe en una página,
+continúa los datos clave a todo el ancho con `flow`. `drawTable` conserva completas
+las celdas del caso: mueve una fila entera si cabe en la siguiente página o la divide
+por líneas con encabezado repetido. Solo «Dispositivo» permanece abreviado de forma
+visible con «…». El nombre de la firma tiene un tope de página, pero el nombre
+completo queda en la hoja de evidencia.
+
+Validaciones: inspeccionadas las siete páginas del PDF extremo, sin solapamientos ni
+contenido fuera de los márgenes; fotos JPEG recortadas y centradas; total de materiales
+416,50 sin herramienta ni equipo. Extracción independiente del PDF: presente el final
+del área de 80 caracteres, el final del motivo de 500 y las 120 repeticiones del nombre
+de prueba. La muestra normal sigue en dos páginas. Las 25 pruebas de funciones,
+Prettier y `git diff --check` pasan.
+
+Hallazgos: ninguno bloqueante ni importante. [sugerencia] La página 2 del caso extremo
+contiene solo las firmas y deja espacio libre antes de la hoja de evidencia, una
+consecuencia aceptable de no partir el bloque de firmas. No exige cambio para T-1002.
+
+Riesgos y pendientes: `deno check` no está disponible localmente y debe pasar en CI
+del PR. Los PDF ya publicados no cambian. Sin commit, push ni despliegue durante esta
+revisión. Vincent debe autorizar por separado commit, push y PR; el despliegue de la
+función requiere otra autorización.
+
+### 2026-10-08 — T-1002 — Codex — revisión focalizada de las correcciones
+
+Resumen: la muestra extrema de cinco páginas se renderiza sin desbordes visibles;
+contiene JPEG reales con recorte centrado, el historial repite encabezado y el total
+de materiales es 416,50. `usageCost` ya excluye herramienta, equipo y mano de obra;
+el tope de filas evita el desborde causado por un dispositivo de 1.300 caracteres.
+
+Hallazgos:
+
+- **[importante] La franja aún puede cortar nombres válidos.** `drawSummary` limita el
+  valor a cuatro líneas y el detalle a tres (`pdf.ts:327-332`). Un nombre de área de
+  80 caracteres, permitido por `areas.name`, como «Gerencia General de Planificación
+  Estratégica y Operaciones Comerciales Regional», ocupa cinco líneas en la celda y
+  termina en «Operacion…»: se pierden «Comerciales Regional». Los tipos de servicio
+  también permiten 80 caracteres y `profiles.full_name` no tiene límite en SQL.
+  Mantener completos los datos identificativos mediante altura flexible, otra
+  disposición o continuación, y cubrir el límite válido con una prueba.
+- **[importante] El historial corta motivos válidos.** `drawTable` aplica cuatro líneas
+  máximas al texto secundario de _todas_ las celdas (`pdf.ts:565-567`), incluida la
+  observación de cada evento (`pdf.ts:914-923`). `case_events.comment` permite hasta
+  500 caracteres; una observación de ese tamaño ocupa más de cuatro líneas y el PDF
+  omite el final. Al ser parte de la hoja de evidencia, el motivo debe conservarse
+  completo, dividiendo la fila entre páginas si hace falta. El dispositivo puede
+  seguir abreviado de forma visible para proteger la maquetación.
+- **[sugerencia]** La muestra extrema de firmas también es legible, pero sus nombres
+  siguen limitados a tres líneas (`pdf.ts:745-765`); considerar el mismo tratamiento
+  de datos identificativos que en la franja.
+
+Validaciones: 25 pruebas de funciones aprobadas; Prettier y `git diff --check`
+correctos. Inspeccionadas las cinco páginas de la muestra extrema. `deno check` no
+está disponible localmente y sigue pendiente para CI. Sin cambios en la rama de
+Claude, sin commit, push ni despliegue.
+
+Para Claude: corregir los dos hallazgos importantes y pedir otra revisión focalizada.
+La autorización de Vincent para commit, push, PR y despliegue sigue siendo aparte.
+
+### 2026-10-08 — T-1002 — Codex — revisión del PDF nuevo
+
+Resumen: revisados los cuatro archivos de la implementación local de
+`agent/claude/pdf-diseno`, incluido `pdf.ts` completo, el contrato de contenido congelado
+y la muestra ficticia de dos páginas. El diseño de la muestra es legible y conserva las
+firmas, la evidencia y el pie de página. `index.ts` mantiene la lectura con RLS, el PDF
+único y la publicación con compare-and-set; no se modificó la lógica de acceso.
+
+Hallazgos (sin bloqueantes):
+
+- **[importante] Datos clave incompletos.** `Canvas.drawLine` (`pdf.ts:160-164`) toma
+  solo la primera línea de `wrapText`. La franja de `drawSummary` (`pdf.ts:315-351`)
+  usa celdas de 129 pt, con 111 pt para el valor: «Administración de Recursos Humanos»
+  mide aproximadamente 175 pt y se pierde el resto del nombre. Esto afecta al tipo de
+  servicio y a las áreas/nombres de «Solicita» y «Atiende», datos que deben permanecer
+  completos en el PDF. Ajustar la altura o distribución de la franja para permitir
+  varias líneas y probar nombres largos.
+- **[importante] Total de materiales puede incluir otros tipos.** `usageCost` calcula
+  costo con cantidad y costo unitario sin comprobar `clase` (`pdfText.ts:258-270`), y
+  `drawResources` suma todos esos costos bajo «Total de materiales» (`pdf.ts:587-622`).
+  El esquema permite cantidad y costo unitario también para herramientas y equipos.
+  Sumar solo materiales o cambiar explícitamente el nombre y la regla del total,
+  conforme al diseño aprobado; agregar prueba con material y herramienta/equipo.
+- **[importante] Fila de evidencia demasiado alta.** `drawTable` calcula la altura de
+  una fila y, si no cabe, abre una página y repite el encabezado, pero no divide la fila
+  ni vuelve a comprobar que quepa después del encabezado (`pdf.ts:528-573`).
+  `case_signatures.user_agent` es `text` sin longitud máxima; un dispositivo largo puede
+  extender esa fila hasta el pie o fuera de la página. Limitar de forma visible o partir
+  filas entre páginas y añadir una prueba de paginación con texto largo.
+- **[sugerencia] Cobertura visual.** Las tres pruebas nuevas cubren helpers, no la
+  composición. Conservar una comprobación reproducible del PDF de varias páginas y
+  probar el recorte de un JPEG panorámico real antes del despliegue; la muestra usa
+  cuadros «Sin imagen».
+
+Validaciones: 24 pruebas de `supabase/functions/tests` aprobadas, Prettier y
+`git diff --check` correctos; muestra ficticia de dos páginas renderizada e
+inspeccionada. `deno check` no se ejecutó porque Deno no está instalado; deberá pasar
+en CI del PR. Sin cambios en la rama de Claude, sin commit, push ni despliegue.
+
+Para Claude: corregir los tres hallazgos importantes en su rama y pedir una nueva
+revisión focalizada antes de solicitar a Vincent autorización de commit, push y PR.
+
+### 2026-10-08 — D-004 — Claude — visto bueno de las correcciones
+
+Codex resolvió todo lo de la revisión anterior:
+
+- **Los 2 importantes:**
+  - `signatureViewBox` recorta el trazo a sus límites y el grosor se ajusta al recuadro,
+    con pruebas de una firma ancha, una de un solo trazo y una vacía;
+  - la prioridad usa `PriorityBadge`.
+- **Las 3 sugerencias:**
+  - `PeopleInfo` muestra el área y la persona en dos líneas;
+  - el visor de fotos tiene un botón «Cerrar» de 44 px y la foto no cierra al tocarla;
+  - aparece «Sin recursos registrados» cuando no hay recursos.
+
+Validaciones en su worktree:
+
+- `typecheck`, ESLint (`src`) y Prettier en verde;
+- Jest: 292 pruebas en verde.
+
+Veredicto: **aprobado**. Si las capturas del emulador se ven bien, Vincent puede autorizar
+el commit, el push y el PR hacia `develop`.
+
+### 2026-10-08 — D-004 — Claude — revisión (sin commit, worktree `gestion-casos-codex-reporte-diseno`)
+
+Revisé el diff completo: 9 archivos, +601/−188. La estructura sigue la especificación y el
+lienzo:
+
+- encabezado con estado, progreso de firmas con «te toca» y «(suplente)», trabajo en
+  bloques, tiempos con duración, recursos con ícono por tipo, fotos en dos columnas con
+  visor, firmas con trazo y código de verificación;
+- versiones devueltas plegables y barra fija con «Devolver» a 1/3;
+- alerta `conformidades_sin_firmante` en el Inicio del administrador.
+
+Validaciones (en el worktree de Codex, sin modificarlo):
+
+- `typecheck`, ESLint y Prettier en verde;
+- Jest de `reports` y `home`: 63 pruebas en verde.
+
+Hallazgos:
+
+- [importante] **El trazo de la firma sale diminuto.**
+  - `signaturePath.ts` normaliza con una sola escala, `1000 / max(ancho, alto)`. Como el
+    lienzo es más ancho que alto, la `y` solo llega a unas 500–600.
+  - Con `viewBox="0 0 1000 1000"` en 96×48 y `meet`, la firma ocupa un cuadro de 48×48
+    centrado y con mucho aire.
+  - Corrección:
+    - agregar en `signaturePath.ts` un helper puro `signatureViewBox(path, padding)` que
+      calcule los límites de los puntos `M/L`, como hace `svgPathBounds` del PDF;
+    - usarlo como `viewBox`;
+    - ajustar `strokeWidth` al tamaño del recuadro;
+    - probar con una firma ancha y con una de un solo trazo.
+- [importante] **La prioridad siempre sale en rojo.**
+  - `styles.priority` usa `colors.error` y `dangerSoft` para alta, media y baja.
+  - Corrección: usar `PriorityBadge` (`src/components/badges/PriorityBadge.tsx`), o los
+    colores de `priorityMeta`, como en el resto de la app.
+- [sugerencia] «Solicita» y «Atiende» deberían ir en dos líneas, el área arriba y la
+  persona debajo en `caption`. Hoy van unidos con «·» y se cortan en pantallas de 360 dp.
+- [sugerencia] El visor de fotos cierra al tocar en cualquier parte. Conviene un botón
+  «Cerrar» de 44 px con `accessibilityRole="button"` y dejar la foto sin acción, para no
+  cerrarla sin querer al hacer zoom.
+- [sugerencia] Cuando no hay recursos, la sección desaparece. En un reporte firmado
+  conviene mostrar «Sin recursos registrados», porque la ausencia también es evidencia.
+
+Veredicto: aprobado con cambios. Con los dos importantes resueltos y capturas en Android
+del reporte validado (firma, fotos y prioridad media), queda listo para que Vincent
+autorice el commit.
+
+### 2026-10-06 — D-004 diseño del reporte — Claude — especificación para Codex
+
+Vincent pide un reporte más ordenado y presentable, y que Codex implemente el diseño.
+Diseño de referencia: lienzo «Nexo Casos — Reporte de cierre»
+(https://claude.ai/artifact/SGwcDKkMy41Hq8cZJ9GpAX). La pantalla de la app está en
+el tablero `Main` y el PDF en `Pdf` y `PdfEvidence`.
+
+Problemas actuales:
+
+- `ReportContent` es una lista plana de etiqueta y valor. El número de solicitud aparece
+  como texto pequeño (`typography.caption`) y el título se pierde entre los demás datos.
+- Las fechas se mezclan con los datos de la solicitud, los recursos repiten «Cantidad:» y
+  «Horas:» en cada fila y las fotos miden 96 px.
+- Las firmas son una línea de texto sin trazo y no se ve qué paso falta.
+
+Especificación (solo cliente; sin backend ni dependencias nuevas; tokens de
+`src/theme/tokens.ts`):
+
+1. **Encabezado** (tarjeta): sobrelínea `<número> · Versión N`; insignia del estado con
+   `statusMeta`; título con `typography.title` o mayor; insignias de prioridad y tipo de
+   servicio. Debajo, una cuadrícula de 2 columnas:
+   - «Solicita»: área y creador;
+   - «Atiende»: área técnica y técnico;
+   - «Ubicación»: a todo lo ancho.
+2. **Firmas: progreso** (tarjeta): lista vertical de 3 pasos (ejecución, validación
+   técnica y conformidad).
+   - Paso firmado: círculo `success` con check, y debajo el nombre y la fecha.
+   - Paso pendiente: círculo con borde `primary`. Si le toca al usuario, el texto dice
+     «· te toca» en `primary`.
+   - Paso suplido: la línea del firmante agrega «(suplente)», según `signerRole`
+     administrador.
+3. **Trabajo realizado**:
+   - «Diagnóstico» y «Qué se hizo» como bloques con sobrelínea (`typography.overline`)
+     y texto `body`;
+   - «Causa» y «Observaciones» en dos recuadros `background` lado a lado. Si un campo
+     está vacío, no se muestra.
+4. **Tiempos**: cuadrícula de 2 columnas (creada, aceptada, iniciada, reporte enviado).
+   A la derecha del título va la duración total desde la creación hasta el envío, con
+   el texto «Resuelta en 1 d 4 h». Agregar en `reportPresentation.ts` un helper puro con
+   pruebas para calcular esa duración.
+5. **Recursos**: filas con un ícono de 36 px por tipo y los colores de `phaseColors`:
+   material en naranja, herramienta o equipo en azul y mano de obra en morado. Cada fila
+   lleva el nombre, el tipo debajo y la cantidad u horas alineadas a la derecha, sin la
+   palabra «Cantidad:». Las notas van en una línea `caption`.
+6. **Fotos**: dos columnas, «Antes · N» y «Después · N», con miniaturas cuadradas a
+   todo el ancho de la columna (`aspectRatio: 1`, radio `md`). Al tocar una foto se abre
+   en grande; usar el visor que ya exista o un `Modal` simple.
+7. **Firmas registradas**: una tarjeta por firma con el trazo (`stroke_path` en
+   `react-native-svg`, que ya está instalado, ajustado a 96×48), el nombre, el paso, el
+   rol y la fecha. Al final va el código de verificación en `caption`.
+8. **Barra fija**: «Devolver» (`danger`, 1/3) y la acción principal (2/3). No cambian
+   los textos actuales de la acción.
+9. Versiones devueltas: igual que hoy, pero cada una se pliega en una tarjeta con el
+   motivo visible.
+10. Pruebas: el orden de las secciones, que las secciones vacías se oculten, la duración,
+    el estado de los pasos (firmado, pendiente, «te toca» y suplente) y la etiqueta
+    accesible de cada foto y firma.
+
+El PDF (T-1002) seguirá la misma estructura en la Edge Function; lo hace Claude cuando
+Vincent apruebe el diseño.
+
+### 2026-10-06 — T-1001 suplencias de firma — Claude — implementación
+
+Resumen: Vincent aprobó la opción A de la revisión de lógica. Una persona nunca firma dos
+veces la misma versión. Si el firmante designado ya firmó, firma el siguiente suplente
+que no lo haya hecho (`BUSINESS_RULES.md` 5.6). Se corrigieron los tres escenarios que
+dejaban casos sin aprobar. Además:
+
+- el Inicio cuenta «reportes por aprobar» al jefe de un área técnica solicitante;
+- la solicitud no se edita mientras el reporte está en revisión (5.5.4);
+- al reasignar, se avisa a quien deja el trabajo (9).
+
+Archivos:
+
+- `supabase/migrations/20261006120000_report_signer_substitution.sql`;
+- `supabase/tests/20_signer_substitution_test.sql`;
+- `docs/BUSINESS_RULES.md`;
+- `src/features/reports/` (`reportPermissions.ts`, `reportService.ts`, `useReports.ts`,
+  `ReportReviewScreen.tsx` y sus pruebas);
+- `src/features/cases/screens/CaseDetailScreen.tsx`.
+
+Validaciones:
+
+- Los 11 archivos de pruebas SQL (10 a 20) pasan sobre todas las migraciones en PGlite (Postgres 18
+  en WASM). No hay `psql` local; el runner está fuera del repositorio. La prueba 20 falla
+  sobre `develop` sin la migración.
+- `typecheck`, `lint --max-warnings=0` y `format:check` en verde. Jest: 71 suites y 284
+  pruebas en verde.
+- `expo-doctor` falla por 7 parches nuevos de Expo, entre ellos `expo` 57.0.27. Ya
+  ocurre en `develop` y no lo causa este cambio.
+
+Riesgos y pendientes:
+
+- Commit `ef6380b` y push autorizados por Vincent; falta abrir el PR hacia `develop`.
+- El CI con PostgreSQL 16 debe confirmar las pruebas.
+- Aplicar en remoto requiere la revisión de Codex y una autorización aparte.
+- El cliente no muestra todavía `admin.conformidades_sin_firmante`; queda para Codex,
+  como alerta del Inicio del administrador.
+
+Para Codex:
+
+- Revisar el diff completo (`git diff develop...agent/claude/firmas-suplentes`), sobre
+  todo `can_give_conformity`.
+- Revisar la reescritura completa de `get_home_summary` y de
+  `enqueue_case_notifications` (copiadas de `20260923100400`).
+
+### 2026-10-06 — Plan hacia el MVP profesional — Vincent — decisiones
+
+Vincent aprueba el orden propuesto por Claude (plan en la Library del proyecto,
+`plan-mvp-nexo-casos.md`):
+
+1. Etapa 1: T-908 (avisos y push en la app), T-502 backend y cliente (tiempos por
+   prioridad, vencidos y panel).
+2. Etapa 2: deuda de la revisión externa del 28/09 (tipos de Supabase, dependencias
+   sin uso, orden de escritura de `secureStorage`, CODEOWNERS, `ARCHITECTURE.md`),
+   T-601 y T-602.
+3. Etapa 3: T-605, correo de invitaciones, publicación.
+
+Primera entrega **solo Android**; iOS (prueba en dispositivo, Sign in with Apple,
+APNs) queda con prioridad baja. Pendiente de confirmar: tiempos por prioridad por
+defecto (decisión 11.2) antes de empezar T-502 backend.
+
+### 2026-09-30 — V9 — Codex — merge a develop y APK preview
+
+Resumen: Vincent autorizó integrar PR #4 con commit de merge. GitHub creó
+`2eeeffb` en `develop`, con padres `9f774e3` y `c961a37`. `main` permanece en
+`ab29ee0`. El CI del push a `develop` pasó completo: Calidad y pruebas,
+Migraciones y reglas de Supabase, y Edge Functions.
+Validaciones: PR #4 marcado como integrado; tres trabajos de CI en verde. EAS
+aceptó la build Android `preview` desde `2eeeffb`, identificador
+`cc25c5aa-f1b3-43ad-8dc1-3727b62e1d61`:
+https://expo.dev/accounts/vincentxox/projects/gestion-casos/builds/cc25c5aa-f1b3-43ad-8dc1-3727b62e1d61
+Riesgos y pendientes: la APK estaba en cola al registrar esta entrada; el
+enlace de descarga aparecerá en la página de EAS al terminar. La copia local
+principal de `develop` conserva la documentación sin commit y no se sincronizó.
+No hubo merge a `main` ni despliegue.
+Para Claude: revisar la APK preview cuando Vincent comparta las capturas.
+
+### 2026-09-30 — PR #4 (V9) — Claude — revisión
+
+Revisado el diff de `develop...agent/codex/v9-feedback`: 50 archivos, +1735/−851,
+dos commits (`7a683e2` dependencias, `c961a37` V9).
+
+- Sin cambios en Supabase, migraciones, Edge Functions, `app.json`, `eas.json` ni
+  `.env`. No aparecen secretos, `service_role` ni `console.log`.
+- `7a683e2`: solo parches de SDK 57, más `expo-constants ~57.0.20` como
+  dependencia directa para alinear la versión nativa (autorizado). El parche de
+  `expo-modules-core` se renombró sin cambiar su contenido.
+- `Button`: `containerStyle` resuelve el ancho en el contenedor animado; la
+  variante nueva `destructive` (rojo sólido) convive con `danger` (rosado suave).
+- Firma (`signaturePath.ts`):
+  - puntos calculados con `gestureState.dx/dy` desde el inicio del gesto;
+  - recorte de segmentos contra el área con margen: cierra el trazo al salir y
+    abre otro al entrar;
+  - sin cambios en el formato serializado.
+  - Validado por Vincent en el emulador y en el PDF.
+- `AssignCaseScreen`:
+  - excluye al responsable actual de la lista, sin preselección;
+  - el botón se habilita solo con una persona elegida;
+  - título y aviso según sea asignación o reasignación.
+- Avisos por acción centralizados en `actionToastMeta`.
+
+Sugerencias (no bloquean):
+
+- A futuro, renombrar `danger` a `dangerSoft` para que no se confunda con
+  `destructive`.
+- Eliminar `colors.backdrop` cuando ya nada lo use.
+
+Veredicto: aprobado para merge con commit de merge hacia `develop`, tras CI en
+verde (no verificado desde aquí; Codex lo reporta en verde).
+
+### 2026-09-30 — V9 — Codex — commits, push y PR #4
+
+Resumen: Vincent autorizó publicar la rama V9. `7a683e2` conserva los parches
+de Expo en un commit separado; `c961a37` contiene la implementación V9, las
+correcciones de las capturas finales y las pruebas. Rama
+`agent/codex/v9-feedback` subida a GitHub. PR #4 abierto hacia `develop`:
+https://github.com/Vincentxox/gestion-casos/pull/4
+Archivos: solo el código y las pruebas de la rama; el tablero sigue sin commit
+en el worktree principal.
+Validaciones: `npm run verify` local en verde (281 pruebas, Expo Doctor 21/21).
+CI del PR en verde: Calidad y pruebas, Migraciones y reglas de Supabase, Edge
+Functions.
+Riesgos y pendientes: sin merge ni despliegue. Vincent debe aprobar el merge.
+Para Claude: revisar el diff del PR #4 y los ajustes de firma antes de la
+decisión de integración.
+
+### 2026-09-30 — V9 capturas finales — Codex — correcciones listas para captura
+
+Resumen: `SignatureSheet` toma `locationX/Y` solo al iniciar el gesto y usa
+`gestureState.dx/dy` para el movimiento. El segmento se corta al cruzar el
+margen interior, no dibuja mientras el dedo permanece fuera y abre otro trazo
+al reingresar. La devolución marca «Motivo de la devolución *» y el aviso de
+cancelación usa tono informativo, como ya hacía el de rechazo.
+Archivos: `src/features/reports/signaturePath.ts`, `SignatureSheet.tsx`,
+`ReturnSheet.tsx`, `src/theme/statusMeta.ts` y sus pruebas.
+Validaciones: `npm run verify` en verde (281 pruebas, Expo Doctor 21/21),
+`git diff --check`. La prueba simula `locationX/Y` incoherentes y salida y
+reingreso por el borde derecho; confirma dos subtrazos dentro del margen. El
+formato `M … L … M … L …` cumple la restricción SQL y el cálculo de límites
+del generador de PDF incluye ambos subtrazos.
+Riesgos y pendientes: falta la nueva captura en Android junto al borde; no se
+hizo una nueva prueba de generación de PDF contra Supabase. Sin commit ni push.
+Para Claude: revisar estos cambios después de la captura de Vincent.
+
+### 2026-09-30 — V9 capturas finales: firma junto al borde — Claude — revisión
+
+Capturas de Vincent (V9 sin commit). Coinciden con el lienzo: reasignar (antes,
+después y aviso), «Reasignar personal» en el detalle, confirmación «Activar
+área», alerta con «Entendido» a lo ancho, avisos «Solicitud aceptada» y
+«Solicitud cancelada», y la hoja «Devolver reporte».
+
+Hallazgos:
+
+- [bloqueante] Firma: al tocar el borde, la línea salta hacia otra dirección
+  (picos y tramos rectos pegados al borde derecho).
+  - Causa: `onPanResponderMove` usa `nativeEvent.locationX/Y`. En Android esas
+    coordenadas son relativas a la vista que está bajo el dedo y dejan de ser
+    confiables cuando el dedo sale del recuadro. Al limitarlas contra el borde,
+    el salto se convierte en una línea recta hacia el borde.
+  - Solución:
+    1. Tomar el punto inicial de `locationX/Y` solo en `onPanResponderGrant` y
+       calcular cada punto como `inicio + (gestureState.dx, gestureState.dy)`;
+       o bien `pageX/pageY` menos el origen del recuadro medido con
+       `measureInWindow`.
+    2. Al salir del área (con el margen interior ya definido), agregar el punto
+       donde el segmento cruza el borde y **cerrar el trazo**. Ignorar los puntos
+       mientras el dedo esté afuera. Al volver a entrar, iniciar un trazo nuevo
+       en el punto de entrada. No deslizar la línea a lo largo del borde.
+    3. Verificar que el formato guardado y el PDF admiten varios trazos
+       separados.
+  - Pruebas: un gesto que sale por la derecha y vuelve produce dos trazos, sus
+    extremos quedan sobre el borde y ningún punto queda fuera; un gesto con
+    `locationX` inconsistente (simulado) no produce saltos.
+- [sugerencia] «Devolver reporte»: la etiqueta debe decir «Motivo de la
+  devolución *» (obligatorio, V8). El botón puede quedar «Devolver».
+- [sugerencia] «Solicitud cancelada» y «Solicitud rechazada» usan hoy el check
+  verde; según V9 van con el tono `info`.
+
+Con el arreglo de la firma y una captura nueva junto al borde, V9 queda lista
+para los dos commits (dependencias y V9) y el PR hacia `develop`.
+
+### 2026-09-30 — V9 ajustes tras capturas: reasignar — Claude — revisión
+
+Capturas de Vincent en el emulador (V9 sin commit). Lo que ya coincide con el
+lienzo: aviso breve, «¿Cerrar sesión?», menús de Áreas y Recursos.
+
+Hallazgos:
+
+- [importante] Alerta de un solo botón: «Entendido» queda angosto y alineado a la
+  izquierda (visto en «Selecciona otra persona»). En `kind: 'alert'` el botón
+  debe ocupar todo el ancho, igual que en la pantalla 3 del lienzo.
+- [importante] `AssignCaseScreen` en reasignación:
+  - preselecciona a la persona ya asignada;
+  - deja «Guardar asignación» activo;
+  - al tocarlo muestra un diálogo de error con un texto que no explica el
+    motivo.
+- [importante] En el detalle, con la solicitud ya asignada, la acción sigue
+  diciendo «Asignar personal». `actionMeta.reasignar` existe pero no se usa en la
+  interfaz. El aviso breve dice «Asignación actualizada».
+
+Especificación (pantalla 10 del lienzo, «Reasignar personal»). Solo interfaz: la
+acción de permisos y la RPC siguen siendo `asignar`.
+
+1. Si `detail.assignedTo` existe:
+   - título de la pantalla y botón del detalle usan
+     `actionMeta.reasignar.label` («Reasignar personal») y su ícono;
+   - texto de ayuda: «Elige a quién pasarle la solicitud. La persona actual
+     dejará de verla en «Mis trabajos».».
+2. Sección «Responsable actual»: tarjeta no seleccionable (fondo `neutralSoft`,
+   texto `neutral`, avatar gris) con la insignia «Asignado ahora». Se excluye de
+   la lista seleccionable.
+3. Sección «Elige a otra persona»: sin preselección (`selectedId` inicia en
+   `null` al reasignar); tarjetas con radio de 16 en lugar de `pill` (dos líneas
+   de texto).
+4. Botón fijo:
+   - deshabilitado hasta elegir a alguien distinto;
+   - etiqueta dinámica «Reasignar a <nombre>» (primera asignación: «Asignar a
+     <nombre>»);
+   - se elimina el diálogo «Selecciona otra persona» (queda solo como guarda
+     sin interfaz).
+5. Aviso breve: «Solicitud reasignada a <nombre>» o «Solicitud asignada a
+   <nombre>».
+6. Pruebas:
+   - la persona actual no es seleccionable;
+   - el botón empieza deshabilitado;
+   - las etiquetas cambian según haya asignación previa;
+   - el texto del aviso breve.
+
+### 2026-09-30 — V9 ventanas emergentes — Codex — implementación en curso
+
+- Rama `agent/codex/v9-feedback` desde `develop` (`9f774e3`), en el worktree
+  aislado `C:\proyectos\gestion-casos-codex-develop-preview`; V9 sin commit ni push.
+- Implementados por orden: `Button.containerStyle` en `Animated.View` (la única
+  llamada con `flex` era el diálogo), `AppFeedback` V9, `BottomSheet` y migración
+  de las 12 hojas indicadas. `PhotoGrid` usa el menú compartido `ActionSheet`;
+  sus dos diálogos de confirmación no son hojas inferiores y permanecen aparte.
+- Vincent autorizó los parches de Expo. El commit separado `7a683e2` contiene
+  únicamente `expo` 57.0.26, `expo-camera` 57.0.6,
+  `expo-document-picker` 57.0.3, `expo-constants` 57.0.20 y el renombre del
+  parche de `expo-modules-core` a 57.0.20; no se hizo push.
+- Vincent compiló V9 localmente en el emulador y aportó capturas del diálogo,
+  formulario de recurso, aviso breve, hoja de firma y menú de recurso. La
+  revisión visual detectó que el aviso cubría parte del encabezado y que el
+  menú de dos opciones dejaba gran espacio vacío y no tenía descripciones.
+  Se bajó la posición del aviso, los menús de hasta tres acciones ajustan su
+  altura al contenido y los de cuatro o más conservan desplazamiento. Los
+  menús de catálogos y fotos ahora incluyen descripciones por acción. Falta
+  confirmar la posición y la altura en nuevas capturas del emulador.
+- Vincent autorizó los tres ajustes tras las capturas y la protección del
+  trazo de firma. El responsable actual aparece aparte con avatar neutro, no
+  es seleccionable, la lista inicia sin selección y el botón solo se activa
+  tras elegir a otra persona. Título, botón del detalle y aviso breve distinguen
+  asignar de reasignar. Los diálogos de un botón usan el ancho de la fila. El
+  trazo de firma se limita al margen interior del lienzo antes de dibujarse y
+  normalizarse. Se añadieron pruebas de pantalla, diálogo, avatar y firma.
+- Validación actual: `npm run verify` en verde, 277/277 pruebas y Expo Doctor
+  21/21. Jest emite avisos no bloqueantes de `act(...)` en `PhotoGrid.test.tsx`.
+  V9 permanece sin commit ni push, estado En curso. El código JavaScript está
+  listo para recargarlo en el emulador y tomar nuevas capturas.
+- Para Claude: revisar el diff completo de V9 después de las capturas de
+  reasignación, diálogo de un botón, firma, posición del aviso y altura del menú.
+
+### 2026-09-30 — V9 ventanas emergentes — Claude — revisión y especificación
+
+Origen: pruebas de Vincent en la APK de `develop` (CAS-2026-00006). Diseño de
+referencia en el canvas «Nexo Casos — Ventanas emergentes V9» (5 pantallas).
+
+Hallazgos:
+
+- [importante] `Button` aplica `style` al `Pressable` interno, no al
+  `Animated.View` que lo envuelve. `dialogAction: { flex: 1 }` no hace efecto, por
+  eso «Cancelar» y «Cerrar sesión» quedan de distinto ancho y pegados a la
+  izquierda. Afecta a cualquier `Button` con `flex`. Solución: separar el estilo
+  de contenedor (`flex`, `alignSelf`, `width`, márgenes) hacia el `Animated.View`,
+  o aceptar una prop `containerStyle`. Agregar prueba.
+- [importante] El aviso breve usa `${colors.text}EB` (92 % de opacidad) y una
+  posición fija `insets.bottom + 16 + 56`: tapa la barra de acciones del detalle
+  («Editar», «Más opciones») y el texto de abajo se transparenta.
+- [importante] `ChangeCaseStatusScreen` muestra «Acción realizada» para cualquier
+  transición. Debe decir la acción concreta.
+- [sugerencia] `confirmLogout` no tiene mensaje; el diálogo queda solo con título.
+- [sugerencia] El tono de `AppFeedback.show` se adivina con una expresión regular
+  sobre el título. Preferir `tone` explícito en las llamadas nuevas.
+- [sugerencia] «Caso actualizado» en `EditCaseScreen`: usar «Solicitud
+  actualizada» (terminología de V5).
+
+Especificación V9 (`AppFeedback.tsx` y `Button.tsx`, sin dependencias nuevas):
+
+1. Diálogo:
+   - Contenido centrado: ícono de 56 px en círculo suave, título de 19/25 en
+     negrita y mensaje de 15/22 en `textMuted`.
+   - Tarjeta: `maxWidth` 342, radio 24, relleno 28/24/24; fondo del overlay
+     `rgba(15,30,55,0.56)`.
+   - Botones: dos columnas iguales cuando ambas etiquetas miden hasta 14
+     caracteres. Si alguna es más larga, se apilan con la confirmación arriba.
+   - La confirmación destructiva usa fondo `colors.error` (#B42318) con texto
+     blanco. El rosado suave queda para acciones no confirmatorias.
+   - Si una confirmación destructiva no trae mensaje, que el tipo lo exija en
+     `confirm()` (mensaje obligatorio con `tone: 'danger'`).
+2. Aviso breve:
+   - Opaco (`colors.text`), anclado arriba: `insets.top + 64 + 12`, debajo del
+     encabezado. Nunca sobre las barras inferiores.
+   - Ícono en círculo `rgba(255,255,255,0.12)`.
+   - Botón de cerrar de 44 px; ya no `pointerEvents="none"`.
+   - Variantes `success` (check #6EE7A0) e `info` (ícono #93C5FD).
+     `toast(message, { tone })`, con `success` por defecto.
+   - Duración: 3 s; 4 s si el texto pasa de 40 caracteres.
+3. Textos:
+   - `ChangeCaseStatusScreen`, según la acción: «Solicitud aceptada»,
+     «Solicitud rechazada», «Trabajo iniciado», «Trabajo en pausa», «Trabajo
+     reanudado», «Solicitud cancelada» (mapa por `action`; ajustar a los nombres
+     reales).
+   - «Reporte devuelto» y «Solicitud rechazada» con tono `info`.
+   - `confirmLogout`: mensaje «Tendrás que volver a ingresar con tu cuenta para
+     ver tus solicitudes.»
+   - Revocar invitación: «Mantener invitación» / «Revocar invitación» (se apilan).
+4. Pruebas: ancho igual en la fila de botones, apilado con etiquetas largas,
+   tono del aviso, cierre manual del aviso y mensaje por acción en el cambio de
+   estado.
+
+5. Hojas inferiores (canvas, fila «Hojas inferiores V9»). Hoy hay 12 hojas con
+   estilos copiados en cada pantalla:
+   - `ActionSheet`, `CatalogActionSheet`;
+   - `AreasScreen`, `CategoriesScreen`, `ResourcesScreen`, `CaseResourcesScreen`,
+     `UsersScreen`, `AccessRequestsScreen`;
+   - `CategorySelectField`, `PhotoGrid`, `ReturnSheet`, `SignatureSheet`.
+
+   Mezclan animación `fade` y `slide`, cierre con X y sin X, «Volver» como
+   botón de texto, y el orden de botones cambia de una a otra.
+
+   Crear `src/components/sheets/BottomSheet.tsx` con:
+   - animación `slide`, overlay `rgba(15,30,55,0.56)`, radio superior 24 y
+     sombra superior;
+   - agarradera de 40×4 (`border`);
+   - encabezado con título de 20/26 en negrita, subtítulo opcional de 14/20 en
+     `textMuted` y botón de cerrar redondo de 44 px (fondo `background`);
+   - contenido con relleno horizontal de 24 y `gap` 16, desplazable con
+     `KeyboardFormScrollView` cuando hay campos;
+   - pie opcional fijo con borde superior y una sola acción principal a lo
+     ancho. Cancelar se hace con la X, tocando el fondo o con el botón atrás de
+     Android; se quitan los botones «Cancelar» y «Volver» de las hojas;
+   - `accessibilityViewIsModal`, título con `accessibilityRole="header"`,
+     respeto de `insets.bottom`.
+
+   Menú de acciones:
+   - filas de al menos 64 px, ícono en círculo suave de 40 px, etiqueta de 16
+     seminegrita y descripción de 13/18;
+   - acciones destructivas (`rechazar`, `cancelar`) al final, separadas por un
+     divisor, con color `error` y círculo `dangerSoft`;
+   - título «Más acciones» y subtítulo `<número> · <estado>`.
+
+   Aplicación en cada hoja:
+   - Firma: pie «Firmar y enviar» (técnico) / «Firmar validación» / «Firmar
+     conformidad» según el paso, deshabilitado hasta tener trazo y
+     consentimiento.
+   - Devolver: pie en `danger` sólido; texto de ayuda «El técnico lo verá en la
+     versión N+1 del reporte.» junto al contador.
+   - Formularios: pie «Guardar área / categoría / recurso»; los campos
+     obligatorios llevan «*» (V8).
+   - `CategorySelectField` y la hoja de fuente de foto usan el mismo
+     `BottomSheet` con filas del menú.
+   - El aviso nativo de permisos se mantiene (tiene «Abrir ajustes»).
+
+6. Pruebas de `BottomSheet`: cierre con X, fondo y atrás; pie presente u
+   omitido; orden de acciones destructivas en el menú.
+
+Rama sugerida: `agent/codex/v9-feedback` desde `develop`.
+
+### 2026-09-30 — Copia principal sincronizada con develop — Claude — mantenimiento
+
+- Con autorización de Vincent, la carpeta principal pasó de `ab29ee0` a `9f774e3`
+  (`origin/develop`) en fast-forward: stash de los dos documentos locales, merge
+  `--ff-only` y stash pop.
+- `VISUAL_SYSTEM.md` se integró sin conflicto. En este archivo solo chocaba el
+  bloque de entradas locales: se conservaron la de Codex (PR #2, PR #3 y APK) y la
+  verificación de Claude.
+- Los cambios siguen sin commit. `Claude outputs/` y `cleanup.bundle` no se tocaron.
+
+### 2026-09-28 — PR #2, PR #3 y APK preview — Codex — integración
+
+- PR #2 se fusionó en `develop` con commit de merge `f133e93`, después de CI de PR
+  y push aprobado. PR #3 se actualizó con ese `develop` (merge `4d59452`), pasó
+  `npm run verify` (264 pruebas y Expo Doctor 21/21), CI de PR y push, y se fusionó
+  con commit de merge `9f774e3`.
+- El CI de `develop` sobre `9f774e3` aprobó. Los commits de ambas ramas se
+  comprobaron como ancestros de `origin/develop` antes de borrar las ramas remotas;
+  las ramas locales también se borraron. `main` sigue sin cambios.
+- APK Android `preview` enviada a EAS desde `9f774e3`:
+  `https://expo.dev/accounts/vincentxox/projects/gestion-casos/builds/4814fe4a-9c74-40f8-b913-8525bd84d4ec`.
+  EAS creó una credencial Android para `com.nexocasos.app` e inicializó el
+  `versionCode` remoto en 1. La build estaba en curso al registrarla; falta
+  confirmar su resultado y el enlace directo del APK. No se compiló `production`
+  ni se desplegó.
+- La carpeta principal conserva cambios de documentación de Claude y archivos
+  locales no seguidos; no se descartaron ni se incluyeron en los merges. Su rama
+  `develop` local permanece temporalmente en `ab29ee0` para no pisar esos cambios;
+  `origin/develop` y la copia limpia usada para EAS están en `9f774e3`.
+
+### 2026-09-28 — Reorganización, PR #2 y PR #3 — Claude — verificación
+
+Verificado en GitHub:
+
+- **Ramas remotas:** solo quedan `main`, `develop`, `agent/codex/v8-ui` y
+  `agent/codex/release-config`.
+- **Etiquetas:** `archive/mantenimiento-esquema-v3` es anotada y apunta a `dc94a88`;
+  `v0.9.0-mvp` se conserva.
+- **`develop`:** apunta a `ab29ee0`, el mismo commit que `main`.
+- **PR #2 (`v8-ui`):** V8 ya revisada, más `5e188c6`, `6cba26f` y `896e760`:
+  - la estrategia en `AGENTS.md` (estable/integración, ramas `agent/*` desde
+    `develop`, revisión humana de migraciones);
+  - `develop` agregado a los disparadores de CI.
+
+  Aprobado.
+
+- **PR #3 (`release-config`, `f7e33db`):**
+  - `com.nexocasos.app` en Android e iOS;
+  - `appVersionSource: "remote"`;
+  - perfil `production` con `app-bundle`, `autoIncrement` y `environment:
+production`;
+  - `scheme`, `slug`, `projectId` y `preview` sin cambios.
+
+  Aprobado.
+
+- **Vulnerabilidades:** las 16 que reporta `npm ci` (15 moderadas y 1 alta) ya
+  estaban en el lockfile. Se revisan aparte con `npm audit` y se corrigen con
+  actualizaciones compatibles de Expo, nunca con `--force`.
+
+Siguiente paso, con la autorización de Vincent:
+
+1. Merge de #2 y luego de #3 hacia `develop`, con CI en verde.
+2. APK `preview` desde `develop`: desinstalar primero la app anterior, porque el
+   identificador cambió.
+
+Vincent autoriza los pasos 1 y 2 (28/09).
 
 ### 2026-09-28 — Ramas e identificador — Vincent — decisiones
 
