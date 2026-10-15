@@ -1,4 +1,5 @@
 import { supabase } from '@/services/supabase/client'
+import { listFormerMemberNames } from '@/services/supabase/formerMembers'
 
 import {
   assignCase,
@@ -13,6 +14,10 @@ import {
 } from '../caseService'
 
 jest.mock('@/services/supabase/client', () => ({ supabase: { from: jest.fn(), rpc: jest.fn() } }))
+jest.mock('@/services/supabase/formerMembers', () => ({
+  listFormerMemberNames: jest.fn(),
+  memberDisplayName: jest.requireActual('@/services/supabase/formerMembers').memberDisplayName,
+}))
 
 const from = supabase.from as jest.Mock
 const rpc = supabase.rpc as jest.Mock
@@ -50,6 +55,7 @@ const row = {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  ;(listFormerMemberNames as jest.Mock).mockResolvedValue(new Map())
   from.mockReturnValue(query)
   for (const method of ['select', 'eq', 'order', 'insert', 'update', 'in'] as const)
     query[method].mockReturnValue(query)
@@ -108,6 +114,14 @@ test('transiciona mediante RPC sin actualizar status directamente', async () => 
     target_case_id: 'case-1',
     requested_action: 'asignar',
     new_assignee_id: 'tech-1',
+    action_comment: null,
+  })
+  await assignCase('case-1', 'tech-2', '  Cambio de turno  ')
+  expect(rpc).toHaveBeenCalledWith('transition_case', {
+    target_case_id: 'case-1',
+    requested_action: 'asignar',
+    new_assignee_id: 'tech-2',
+    action_comment: 'Cambio de turno',
   })
   expect(query.update).not.toHaveBeenCalled()
 })
@@ -142,6 +156,8 @@ test('lee eventos inmutables con nombre de actor y asignado', async () => {
         to_status: 'asignado',
         comment: null,
         created_at: '2026-01-01',
+        actor_id: 'jefe-1',
+        assignee_id: 'tech-1',
         actor: { full_name: 'Jefe' },
         assignee: { full_name: 'Tomás' },
       },
@@ -152,6 +168,38 @@ test('lee eventos inmutables con nombre de actor y asignado', async () => {
     { action: 'asignar', actorName: 'Jefe', assigneeName: 'Tomás' },
   ])
   expect(from).toHaveBeenCalledWith('case_events')
+})
+
+test('recupera del historial los nombres de personas dadas de baja', async () => {
+  ;(listFormerMemberNames as jest.Mock).mockResolvedValue(
+    new Map([
+      ['jefe-1', 'Jefa anterior'],
+      ['tech-1', 'Técnico anterior'],
+    ]),
+  )
+  query.order.mockResolvedValue({
+    data: [
+      {
+        id: 2,
+        action: 'reasignar',
+        from_status: 'en_ejecucion',
+        to_status: 'en_ejecucion',
+        comment: 'Cambio de turno',
+        created_at: '2026-10-15',
+        actor_id: 'jefe-1',
+        assignee_id: 'tech-1',
+        actor: null,
+        assignee: null,
+      },
+    ],
+    error: null,
+  })
+  await expect(listCaseHistory('case-1')).resolves.toMatchObject([
+    {
+      actorName: 'Jefa anterior (dado de baja)',
+      assigneeName: 'Técnico anterior (dado de baja)',
+    },
+  ])
 })
 
 test('traduce los diez estados', () => {
@@ -215,6 +263,15 @@ test('usa nombres de reserva cuando faltan relaciones visibles', async () => {
     category: 'Tipo no disponible',
     requestingAreaName: 'Área no disponible',
   })
+})
+
+test('muestra el nombre histórico sin leer el perfil de otra empresa', async () => {
+  ;(listFormerMemberNames as jest.Mock).mockResolvedValue(new Map([['u1', 'Ana histórica']]))
+  query.single.mockResolvedValue({ data: { ...row, creator: null }, error: null })
+  await expect(getCase('case-1')).resolves.toMatchObject({
+    creatorName: 'Ana histórica (dado de baja)',
+  })
+  expect(listFormerMemberNames).toHaveBeenCalledWith(['u1', null])
 })
 
 test('propaga errores de personal e historial', async () => {

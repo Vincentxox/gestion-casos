@@ -1,4 +1,5 @@
 import { supabase } from '@/services/supabase/client'
+import { listFormerMemberNames, memberDisplayName } from '@/services/supabase/formerMembers'
 
 import type {
   CaseUsageRecord,
@@ -52,7 +53,7 @@ function mapResource(row: ResourceRow): ResourceRecord {
   }
 }
 
-function mapUsage(row: UsageRow): CaseUsageRecord {
+function mapUsage(row: UsageRow, formerNames: ReadonlyMap<string, string>): CaseUsageRecord {
   return {
     id: row.id,
     caseId: row.case_id,
@@ -65,7 +66,14 @@ function mapUsage(row: UsageRow): CaseUsageRecord {
     quantity: row.quantity,
     hours: row.hours,
     technicianId: row.technician_id,
-    technicianName: row.technician?.full_name ?? null,
+    technicianName: row.technician_id
+      ? memberDisplayName(
+          row.technician_id,
+          row.technician?.full_name,
+          formerNames,
+          'Técnico no disponible',
+        )
+      : null,
     notes: row.notes,
     createdAt: row.created_at,
   }
@@ -128,7 +136,10 @@ export async function listCaseUsages(caseId: string): Promise<CaseUsageRecord[]>
     .eq('case_id', caseId)
     .order('created_at', { ascending: false })
   if (error) throw error
-  return data.map(mapUsage)
+  const formerNames = await listFormerMemberNames(
+    data.map((row) => (!row.technician ? row.technician_id : null)),
+  )
+  return data.map((row) => mapUsage(row, formerNames))
 }
 
 export async function addCaseUsage(caseId: string, input: UsageInput): Promise<void> {

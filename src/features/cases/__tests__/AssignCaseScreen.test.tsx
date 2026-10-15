@@ -103,7 +103,7 @@ test('separa al responsable actual y exige elegir a otra persona antes de reasig
   expect(screen.getByLabelText('Reasignar a Luis').props.accessibilityState.disabled).toBe(false)
   await fireEvent.press(screen.getByLabelText('Reasignar a Luis'))
 
-  await waitFor(() => expect(mutateAsync).toHaveBeenCalledWith('luis'))
+  await waitFor(() => expect(mutateAsync).toHaveBeenCalledWith({ assignedTo: 'luis', comment: '' }))
   expect(AppFeedback.toast).toHaveBeenCalledWith('Solicitud reasignada a Luis')
   expect(navigation.goBack).toHaveBeenCalledTimes(1)
 })
@@ -125,6 +125,28 @@ test('mantiene la asignación inicial sin selección ni responsable actual', asy
   await fireEvent.press(screen.getByLabelText('Elegir a Luis'))
   await fireEvent.press(screen.getByLabelText('Asignar a Luis'))
 
-  await waitFor(() => expect(mutateAsync).toHaveBeenCalledWith('luis'))
+  await waitFor(() => expect(mutateAsync).toHaveBeenCalledWith({ assignedTo: 'luis', comment: '' }))
   expect(AppFeedback.toast).toHaveBeenCalledWith('Solicitud asignada a Luis')
+})
+
+test('exige motivo de 3 a 500 caracteres al reasignar un trabajo en ejecución', async () => {
+  const { screen, mutateAsync } = await setup({ ...baseCase, status: 'en_ejecucion' })
+
+  await fireEvent.press(screen.getByLabelText('Elegir a Luis'))
+  const button = screen.getByLabelText('Reasignar a Luis')
+  expect(button.props.accessibilityState.disabled).toBe(true)
+
+  await fireEvent.changeText(screen.getByLabelText('Motivo de la reasignación (obligatorio)'), 'ok')
+  expect(screen.getByLabelText('Reasignar a Luis').props.accessibilityState.disabled).toBe(true)
+  await fireEvent.changeText(
+    screen.getByLabelText('Motivo de la reasignación (obligatorio)'),
+    '  Cambio de turno  ',
+  )
+  await fireEvent.press(screen.getByLabelText('Reasignar a Luis'))
+  await waitFor(() =>
+    expect(mutateAsync).toHaveBeenCalledWith({
+      assignedTo: 'luis',
+      comment: '  Cambio de turno  ',
+    }),
+  )
 })

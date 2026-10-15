@@ -36,9 +36,15 @@ export function getAvailableCaseActions(item: CaseRecord, profile: Profile | nul
       return actions
     }
     case 'en_ejecucion':
-      return isAssignee || managesTarget ? ['pausar'] : []
+      return [
+        ...(managesTarget || isAdmin ? (['asignar'] as const) : []),
+        ...(isAssignee || managesTarget ? (['pausar'] as const) : []),
+      ]
     case 'en_espera':
-      return isAssignee || managesTarget ? ['reanudar'] : []
+      return [
+        ...(managesTarget || isAdmin ? (['asignar'] as const) : []),
+        ...(isAssignee || managesTarget ? (['reanudar'] as const) : []),
+      ]
     default:
       return []
   }

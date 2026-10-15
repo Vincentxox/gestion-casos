@@ -58,7 +58,7 @@ test('el administrador solo cancela una solicitud que creó', () => {
   ])
   expect(
     getAvailableCaseActions({ ...item, status: 'en_ejecucion', assignedTo: 'tech' }, admin),
-  ).toEqual([])
+  ).toEqual(['asignar'])
 })
 
 test('solo el asignado inicia y los estados finales no ofrecen acciones', () => {
@@ -78,7 +78,10 @@ test('el asignado y el jefe técnico pueden pausar o reanudar', () => {
   ).toEqual(['pausar'])
   expect(
     getAvailableCaseActions({ ...item, status: 'en_espera', assignedTo: 'tech' }, chief),
-  ).toEqual(['reanudar'])
+  ).toEqual(['asignar', 'reanudar'])
+  expect(
+    getAvailableCaseActions({ ...item, status: 'en_ejecucion', assignedTo: 'tech' }, chief),
+  ).toEqual(['asignar', 'pausar'])
   expect(getAvailableCaseActions({ ...item, status: 'reporte_enviado' }, chief)).toEqual([])
   expect(getAvailableCaseActions(item, null)).toEqual([])
   expect(canEditCase(item, null)).toBe(false)
