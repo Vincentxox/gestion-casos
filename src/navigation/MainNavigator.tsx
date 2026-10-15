@@ -9,6 +9,9 @@ import { ChangeCaseStatusScreen } from '@/features/cases/screens/ChangeCaseStatu
 import { CreateCaseScreen } from '@/features/cases/screens/CreateCaseScreen'
 import { EditCaseScreen } from '@/features/cases/screens/EditCaseScreen'
 import { HomeScreen } from '@/features/home/HomeScreen'
+import { NotificationsScreen } from '@/features/notifications/NotificationsScreen'
+import { IndicatorsScreen } from '@/features/home/IndicatorsScreen'
+import { PriorityTargetsScreen } from '@/features/admin/screens/PriorityTargetsScreen'
 import { useHomeSummary } from '@/features/home/useHomeSummary'
 import { AdministrationHomeScreen } from '@/features/admin/screens/AdministrationHomeScreen'
 import { AccessRequestsScreen } from '@/features/admin/screens/AccessRequestsScreen'
@@ -78,6 +81,16 @@ function CasesNavigator() {
         name="ReportReview"
         options={{ title: 'Revisar reporte' }}
       />
+      <Stack.Screen
+        component={NotificationsScreen}
+        name="Notifications"
+        options={{ title: 'Avisos' }}
+      />
+      <Stack.Screen
+        component={IndicatorsScreen}
+        name="Indicators"
+        options={{ title: 'Indicadores' }}
+      />
     </Stack.Navigator>
   )
 }
@@ -130,6 +143,11 @@ function AdministrationNavigator() {
         component={AccessRequestsScreen}
         name="AccessRequests"
         options={{ title: 'Solicitudes de acceso' }}
+      />
+      <AdministrationStack.Screen
+        component={PriorityTargetsScreen}
+        name="PriorityTargets"
+        options={{ title: 'Plazos por prioridad' }}
       />
     </AdministrationStack.Navigator>
   )

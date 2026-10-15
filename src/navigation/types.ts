@@ -26,6 +26,8 @@ export type MainStackParamList = {
   CaseResources: { caseId: string }
   CaseReport: { caseId: string }
   ReportReview: { caseId: string }
+  Notifications: undefined
+  Indicators: undefined
 }
 
 export type AdministrationStackParamList = {
@@ -37,6 +39,7 @@ export type AdministrationStackParamList = {
   Organization: undefined
   Resources: undefined
   AccessRequests: undefined
+  PriorityTargets: undefined
 }
 
 export type MainTabParamList = {

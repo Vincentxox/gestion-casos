@@ -67,6 +67,9 @@ jest.mock('../useHomeSummary', () => ({
     refetch: jest.fn(),
   }),
 }))
+jest.mock('../useIndicators', () => ({
+  useCaseIndicators: () => ({ data: null, isError: false, refetch: jest.fn() }),
+}))
 jest.mock('@/features/cases/useCases', () => ({
   useCases: () => ({
     data: mockCases,
@@ -83,6 +86,7 @@ beforeEach(() => {
   mockSummary.inbox.reportes_por_validar = 1
   mockSummary.inbox.reportes_por_aprobar = 0
   mockSummary.inbox.por_aceptar = 1
+  mockSummary.notificaciones_sin_leer = 0
 })
 
 test('una solicitud reciente abre el detalle con regreso a la lista', async () => {
@@ -159,4 +163,16 @@ test('el aviso por aprobar abre solicitudes validadas', async () => {
     screen: 'Cases',
     params: { scope: 'todas', exactStatus: 'validado' },
   })
+})
+
+test('la campana abre la bandeja con el número de avisos sin leer', async () => {
+  mockSummary.notificaciones_sin_leer = 3
+  const props = {
+    navigation: { navigate: mockNavigate },
+    route: { key: 'Home', name: 'Home' },
+  } as unknown as Parameters<typeof HomeScreen>[0]
+  const screen = await render(<HomeScreen {...props} />)
+  fireEvent.press(screen.getByRole('button', { name: 'Avisos, 3 sin leer' }))
+  expect(mockNavigate).toHaveBeenCalledWith('CasesTab', { screen: 'Notifications' })
+  mockSummary.notificaciones_sin_leer = 0
 })

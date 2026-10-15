@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native'
 
 import { PriorityBadge } from '@/components/badges/PriorityBadge'
+import { Chip } from '@/components/ui/Chip'
 import { StatusBadge } from '@/components/badges/StatusBadge'
 import { Avatar } from '@/components/ui/Avatar'
 import { Card } from '@/components/ui/Card'
@@ -15,7 +16,7 @@ export function CaseCard({ item, onPress }: { item: CaseRecord; onPress: () => v
   const status = statusMeta[item.status]
   return (
     <Card
-      accessibilityLabel={`${item.caseNumber}, ${item.title}, ${status.label}, prioridad ${priorityMeta[item.priority].label.toLowerCase()}`}
+      accessibilityLabel={`${item.caseNumber}, ${item.title}, ${status.label}, prioridad ${priorityMeta[item.priority].label.toLowerCase()}${item.overdueStage ? `, vencida por ${item.overdueStage}` : ''}`}
       onPress={onPress}
     >
       <View style={styles.content}>
@@ -44,6 +45,14 @@ export function CaseCard({ item, onPress }: { item: CaseRecord; onPress: () => v
         <View style={styles.badges}>
           <StatusBadge status={item.status} />
           <PriorityBadge priority={item.priority} />
+          {item.overdueStage ? (
+            <Chip
+              label={
+                item.overdueStage === 'aceptacion' ? 'Vencida · aceptación' : 'Vencida · resolución'
+              }
+              tone="warning"
+            />
+          ) : null}
         </View>
       </View>
     </Card>
