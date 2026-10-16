@@ -1222,6 +1222,18 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      count_cases_by_status: {
+        Args: {
+          priority_filter?: Database['public']['Enums']['case_priority']
+          scope?: string
+          search_text?: string
+          updated_since?: string
+        }
+        Returns: {
+          status: Database['public']['Enums']['case_status']
+          total: number
+        }[]
+      }
       deactivate_member: {
         Args: { target_user_id: string }
         Returns: undefined
@@ -1314,6 +1326,45 @@ export type Database = {
           to: 'cases'
           isOneToOne: true
           isSetofReturn: false
+        }
+      }
+      search_cases: {
+        Args: {
+          priority_filter?: Database['public']['Enums']['case_priority']
+          scope?: string
+          search_text?: string
+          statuses?: Database['public']['Enums']['case_status'][]
+          updated_since?: string
+        }
+        Returns: {
+          accept_target_hours: number
+          accepted_at: string | null
+          assigned_at: string | null
+          assigned_to: string | null
+          case_number: string
+          category_id: string
+          closed_at: string | null
+          created_at: string
+          created_by: string
+          description: string
+          id: string
+          location: string
+          organization_id: string
+          priority: Database['public']['Enums']['case_priority']
+          requesting_area_id: string
+          resolve_target_hours: number
+          started_at: string | null
+          status: Database['public']['Enums']['case_status']
+          status_changed_at: string
+          target_area_id: string
+          title: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: '*'
+          to: 'cases'
+          isOneToOne: false
+          isSetofReturn: true
         }
       }
       set_member_access: {

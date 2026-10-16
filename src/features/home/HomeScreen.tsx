@@ -15,6 +15,7 @@ import { OfflineBanner } from '@/components/feedback/OfflineBanner'
 import { hasPermission } from '@/features/auth/permissions'
 import { ROLE_LABELS } from '@/features/auth/types'
 import { useCases } from '@/features/cases/useCases'
+import { ACTIVE_CASE_STATUSES } from '@/features/cases/caseSearch'
 import { CaseCard } from '@/features/cases/components/CaseCard'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { SkeletonList } from '@/components/ui/SkeletonList'
@@ -43,7 +44,24 @@ export function HomeScreen({ navigation }: Props) {
   )
   const indicators = useCaseIndicators(canSeeIndicators)
   const showRecent = Boolean(profile?.organizationId)
-  const cases = useCases(showRecent)
+  const cases = useCases(
+    {
+      scope:
+        profile?.role === 'tecnico'
+          ? 'mis_trabajos'
+          : profile?.role === 'solicitante'
+            ? 'mias'
+            : profile?.role === 'jefe_area'
+              ? 'mi_area'
+              : 'todas',
+      statuses: ACTIVE_CASE_STATUSES,
+      priority: null,
+      updatedSince: null,
+      searchText: null,
+      sortPending: false,
+    },
+    showRecent,
+  )
   const [today] = useState(() => new Date())
   const refetchSummary = summary.refetch
   const refetchCases = cases.refetch
@@ -69,7 +87,11 @@ export function HomeScreen({ navigation }: Props) {
     month: 'long',
   }).format(today)
   const dateLabel = rawDateLabel.charAt(0).toLocaleUpperCase('es-GT') + rawDateLabel.slice(1)
-  const recentCases = getHomeRecentCases(profile, summary.data?.area_kind ?? null, cases.data ?? [])
+  const recentCases = getHomeRecentCases(
+    profile,
+    summary.data?.area_kind ?? null,
+    cases.data?.pages.flat() ?? [],
+  )
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>

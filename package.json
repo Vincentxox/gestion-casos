@@ -102,6 +102,7 @@
       "src/features/cases/casePermissions.ts",
       "src/features/cases/caseService.ts",
       "src/features/cases/caseListPresentation.ts",
+      "src/features/cases/caseSearch.ts",
       "src/features/cases/caseDateGroups.ts",
       "src/features/cases/refreshCaseDetail.ts",
       "src/features/cases/schemas.ts",

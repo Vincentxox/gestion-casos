@@ -1,23 +1,48 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
   assignCase,
   changeCaseStatus,
+  countCasesByStatus,
   createCase,
   getCase,
   listAssignableProfiles,
   listCaseHistory,
   listCases,
+  CASE_PAGE_SIZE,
   updateCase,
 } from './caseService'
 import type { ChangeCaseStatusInput, CreateCaseInput, UpdateCaseInput } from './types'
 import { homeSummaryQueryKey } from '@/features/home/useHomeSummary'
 import { feedback } from '@/services/feedback'
+import type { CaseSearchFilters } from './caseSearch'
 
 export const casesQueryKey = ['cases'] as const
 
-export function useCases(enabled = true) {
-  return useQuery({ queryKey: casesQueryKey, queryFn: listCases, enabled })
+export function useCases(filters: CaseSearchFilters, enabled = true) {
+  return useInfiniteQuery({
+    queryKey: [...casesQueryKey, 'search', filters],
+    queryFn: ({ pageParam }) => listCases(filters, pageParam),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, pages) =>
+      lastPage.length === CASE_PAGE_SIZE ? pages.length : undefined,
+    enabled,
+  })
+}
+
+export function useCaseCounts(filters: CaseSearchFilters, enabled = true) {
+  return useQuery({
+    queryKey: [
+      ...casesQueryKey,
+      'counts',
+      filters.scope,
+      filters.priority,
+      filters.updatedSince,
+      filters.searchText,
+    ],
+    queryFn: () => countCasesByStatus(filters),
+    enabled,
+  })
 }
 
 export function useCreateCase() {

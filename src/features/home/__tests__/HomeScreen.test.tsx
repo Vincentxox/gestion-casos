@@ -72,7 +72,7 @@ jest.mock('../useIndicators', () => ({
 }))
 jest.mock('@/features/cases/useCases', () => ({
   useCases: () => ({
-    data: mockCases,
+    data: { pages: [mockCases], pageParams: [0] },
     isLoading: false,
     isError: false,
     refetch: jest.fn(),
