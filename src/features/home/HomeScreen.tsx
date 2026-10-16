@@ -1,4 +1,5 @@
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs'
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useFocusEffect } from '@react-navigation/native'
 import { useCallback, useState } from 'react'
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
@@ -19,7 +20,7 @@ import { ACTIVE_CASE_STATUSES } from '@/features/cases/caseSearch'
 import { CaseCard } from '@/features/cases/components/CaseCard'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { SkeletonList } from '@/components/ui/SkeletonList'
-import type { MainTabParamList } from '@/navigation/types'
+import type { MainTabParamList, RootStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
 import { colors, fonts, phaseColors, radius, spacing, typography } from '@/theme/tokens'
 
@@ -122,7 +123,11 @@ export function HomeScreen({ navigation }: Props) {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`Avisos, ${summary.data?.notificaciones_sin_leer ?? 0} sin leer`}
-              onPress={() => navigation.navigate('CasesTab', { screen: 'Notifications' })}
+              onPress={() =>
+                navigation
+                  .getParent<NativeStackNavigationProp<RootStackParamList>>()
+                  ?.navigate('NotificationsFlow')
+              }
               style={styles.bell}
             >
               <Icon name="notifications-outline" color={colors.primary} />

@@ -24,7 +24,7 @@ import { getAuthenticatedRoute } from '@/features/auth/authRoute'
 import { useOrganizationLifecycle } from '@/features/auth/useOrganizationLifecycle'
 import { CompleteNameScreen } from '@/features/settings/CompleteNameScreen'
 import { AuthNavigator } from '@/navigation/AuthNavigator'
-import { MainNavigator } from '@/navigation/MainNavigator'
+import { MainRootNavigator } from '@/navigation/MainNavigator'
 import { registerAuthAutoRefresh, supabase } from '@/services/supabase/client'
 import { useAuthStore } from '@/store/authStore'
 import { colors } from '@/theme/tokens'
@@ -99,7 +99,7 @@ function RootContent({ fontsReady }: { fontsReady: boolean }) {
         ) : route === 'completeName' ? (
           <CompleteNameScreen />
         ) : route === 'main' ? (
-          <MainNavigator />
+          <MainRootNavigator />
         ) : (
           <PendingInvitationScreen />
         )

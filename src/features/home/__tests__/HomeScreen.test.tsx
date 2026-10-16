@@ -6,6 +6,7 @@ import type { HomeSummary } from '../homeService'
 import { HomeScreen } from '../HomeScreen'
 
 const mockNavigate = jest.fn()
+const mockRootNavigate = jest.fn()
 const mockCases: CaseRecord[] = []
 const mockProfile: Profile = {
   id: 'chief',
@@ -169,11 +170,11 @@ test('el aviso por aprobar abre solicitudes validadas', async () => {
 test('la campana abre la bandeja con el número de avisos sin leer', async () => {
   mockSummary.notificaciones_sin_leer = 3
   const props = {
-    navigation: { navigate: mockNavigate },
+    navigation: { navigate: mockNavigate, getParent: () => ({ navigate: mockRootNavigate }) },
     route: { key: 'Home', name: 'Home' },
   } as unknown as Parameters<typeof HomeScreen>[0]
   const screen = await render(<HomeScreen {...props} />)
   fireEvent.press(screen.getByRole('button', { name: 'Avisos, 3 sin leer' }))
-  expect(mockNavigate).toHaveBeenCalledWith('CasesTab', { screen: 'Notifications' })
+  expect(mockRootNavigate).toHaveBeenCalledWith('NotificationsFlow')
   mockSummary.notificaciones_sin_leer = 0
 })
