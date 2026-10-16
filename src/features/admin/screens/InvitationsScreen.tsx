@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@/utils/errorMessage'
 import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { useState } from 'react'
 import { Share, StyleSheet, Text, View } from 'react-native'
@@ -91,10 +92,7 @@ export function InvitationsScreen() {
         ],
       )
     } catch (error) {
-      AppFeedback.show(
-        'No fue posible invitar',
-        error instanceof Error ? error.message : 'Inténtalo de nuevo.',
-      )
+      AppFeedback.show('No fue posible invitar', getErrorMessage(error, 'Inténtalo de nuevo.'))
     }
   }
 

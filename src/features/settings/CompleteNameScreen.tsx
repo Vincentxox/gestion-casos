@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@/utils/errorMessage'
 import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { useState } from 'react'
 import { StyleSheet, Text } from 'react-native'
@@ -25,10 +26,7 @@ export function CompleteNameScreen() {
     try {
       applyOwnName(await updateOwnName(profile.id, name))
     } catch (error) {
-      AppFeedback.show(
-        'No fue posible guardar',
-        error instanceof Error ? error.message : 'Inténtalo de nuevo.',
-      )
+      AppFeedback.show('No fue posible guardar', getErrorMessage(error, 'Inténtalo de nuevo.'))
     } finally {
       setSaving(false)
     }

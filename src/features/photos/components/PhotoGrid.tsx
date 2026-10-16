@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@/utils/errorMessage'
 import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNetInfo } from '@react-native-community/netinfo'
@@ -210,7 +211,7 @@ export function PhotoGrid({
     } catch (error) {
       AppFeedback.show(
         'No fue posible preparar la foto',
-        error instanceof Error ? error.message : 'Inténtalo de nuevo.',
+        getErrorMessage(error, 'Inténtalo de nuevo.'),
       )
     } finally {
       setBusy(false)
@@ -225,7 +226,7 @@ export function PhotoGrid({
     } catch (error) {
       AppFeedback.show(
         'No fue posible eliminar la foto',
-        error instanceof Error ? error.message : 'Inténtalo de nuevo.',
+        getErrorMessage(error, 'Inténtalo de nuevo.'),
       )
     }
   }
@@ -239,7 +240,7 @@ export function PhotoGrid({
       setDiscardPhoto(null)
       setDiscardError(null)
     } catch (error) {
-      setDiscardError(error instanceof Error ? error.message : 'No fue posible descartar la foto.')
+      setDiscardError(getErrorMessage(error, 'No fue posible descartar la foto.'))
     } finally {
       setDiscardBusy(false)
     }

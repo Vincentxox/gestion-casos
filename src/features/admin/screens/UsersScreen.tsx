@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@/utils/errorMessage'
 import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { Ionicons } from '@expo/vector-icons'
 import { useState } from 'react'
@@ -70,7 +71,7 @@ export function UsersScreen() {
     } catch (error) {
       AppFeedback.show(
         'No fue posible guardar el acceso',
-        error instanceof Error ? error.message : 'Comprueba tus permisos y la conexión.',
+        getErrorMessage(error, 'Comprueba tus permisos y la conexión.'),
       )
     }
   }
@@ -83,7 +84,7 @@ export function UsersScreen() {
     } catch (error) {
       AppFeedback.show(
         'No fue posible dar de baja',
-        error instanceof Error ? error.message : 'Comprueba tus permisos y la conexión.',
+        getErrorMessage(error, 'Comprueba tus permisos y la conexión.'),
       )
     }
   }

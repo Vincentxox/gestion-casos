@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@/utils/errorMessage'
 import { AppFeedback } from '@/components/feedback/AppFeedback'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { StyleSheet } from 'react-native'
@@ -52,7 +53,7 @@ export function EditCaseScreen({ navigation, route }: Props) {
     } catch (error) {
       AppFeedback.show(
         'No fue posible actualizar',
-        error instanceof Error ? error.message : 'Comprueba tus permisos y la conexión.',
+        getErrorMessage(error, 'Comprueba tus permisos y la conexión.'),
       )
     }
   }

@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@/utils/errorMessage'
 import { AppFeedback } from '@/components/feedback/AppFeedback'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { useState } from 'react'
@@ -76,7 +77,7 @@ export function ChangeCaseStatusScreen({ navigation, route }: Props) {
     } catch (error) {
       AppFeedback.show(
         'No fue posible completar la acción',
-        error instanceof Error ? error.message : 'Comprueba tus permisos y la conexión.',
+        getErrorMessage(error, 'Comprueba tus permisos y la conexión.'),
       )
     }
   }

@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@/utils/errorMessage'
 import { useMemo, useRef, useState } from 'react'
 import { PanResponder, Pressable, StyleSheet, Text, View } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
@@ -92,9 +93,7 @@ export function SignatureSheet({
       setError(null)
       await onSign(path)
     } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : 'No fue posible firmar. Inténtalo de nuevo.',
-      )
+      setError(getErrorMessage(cause, 'No fue posible firmar. Inténtalo de nuevo.'))
     }
   }
 

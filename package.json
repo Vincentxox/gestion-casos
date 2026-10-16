@@ -129,7 +129,8 @@
       "src/components/forms/FormField.tsx",
       "src/services/supabase/secureStorage.ts",
       "src/services/supabase/formerMembers.ts",
-      "src/store/authStore.ts"
+      "src/store/authStore.ts",
+      "src/utils/errorMessage.ts"
     ],
     "coverageThreshold": {
       "global": {

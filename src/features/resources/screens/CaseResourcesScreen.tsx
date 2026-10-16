@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@/utils/errorMessage'
 import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { Ionicons } from '@expo/vector-icons'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
@@ -64,9 +65,7 @@ export function CaseResourcesScreen({ route }: Props) {
     } catch (error) {
       AppFeedback.show(
         'No fue posible guardar el registro',
-        error instanceof Error
-          ? error.message
-          : 'Comprueba la conexión y el estado de la solicitud.',
+        getErrorMessage(error, 'Comprueba la conexión y el estado de la solicitud.'),
       )
     }
   }
@@ -83,7 +82,7 @@ export function CaseResourcesScreen({ route }: Props) {
             .catch((error) =>
               AppFeedback.show(
                 'No fue posible eliminar',
-                error instanceof Error ? error.message : 'Comprueba la conexión.',
+                getErrorMessage(error, 'Comprueba la conexión.'),
               ),
             ),
       },

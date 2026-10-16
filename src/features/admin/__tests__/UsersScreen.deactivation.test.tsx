@@ -75,9 +75,9 @@ test('pide confirmación antes de dar de baja y no ofrece la acción sobre sí m
 })
 
 test('muestra los números de casos que deben reasignarse antes de la baja', async () => {
-  const message = 'Reasigna primero sus trabajos abiertos: CAS-2026-00009'
+  const message = 'Reasigna primero sus trabajos abiertos: CAS-2026-00006'
   ;(useDeactivateMember as jest.Mock).mockReturnValue({
-    mutateAsync: jest.fn().mockRejectedValue(new Error(message)),
+    mutateAsync: jest.fn().mockRejectedValue({ code: 'P0001', message }),
     isPending: false,
   })
   const screen = await render(<UsersScreen />)

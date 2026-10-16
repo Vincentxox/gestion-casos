@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@/utils/errorMessage'
 import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { useState } from 'react'
 import {
@@ -59,10 +60,7 @@ export function AccessRequestsScreen() {
       setSelected(null)
       AppFeedback.toast('Acceso aprobado')
     } catch (error) {
-      AppFeedback.show(
-        'No fue posible aprobar',
-        error instanceof Error ? error.message : 'Inténtalo de nuevo.',
-      )
+      AppFeedback.show('No fue posible aprobar', getErrorMessage(error, 'Inténtalo de nuevo.'))
     }
   }
 
@@ -77,10 +75,7 @@ export function AccessRequestsScreen() {
       setSelected(null)
       AppFeedback.toast('Solicitud rechazada', { tone: 'info' })
     } catch (error) {
-      AppFeedback.show(
-        'No fue posible rechazar',
-        error instanceof Error ? error.message : 'Inténtalo de nuevo.',
-      )
+      AppFeedback.show('No fue posible rechazar', getErrorMessage(error, 'Inténtalo de nuevo.'))
     }
   }
 

@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@/utils/errorMessage'
 import { AppFeedback, useFeedback } from '@/components/feedback/AppFeedback'
 import { useState } from 'react'
 import { Share, StyleSheet, Text } from 'react-native'
@@ -61,10 +62,7 @@ export function OrganizationScreen() {
       await regenerate.mutateAsync()
       AppFeedback.toast('Código regenerado')
     } catch (error) {
-      AppFeedback.show(
-        'No fue posible regenerar',
-        error instanceof Error ? error.message : 'Inténtalo de nuevo.',
-      )
+      AppFeedback.show('No fue posible regenerar', getErrorMessage(error, 'Inténtalo de nuevo.'))
     }
   }
 

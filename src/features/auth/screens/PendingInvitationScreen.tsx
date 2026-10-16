@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@/utils/errorMessage'
 import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { useEffect, useState } from 'react'
 import { AppState, Pressable, ScrollView, StyleSheet, Text, TextInput } from 'react-native'
@@ -83,7 +84,7 @@ export function PendingInvitationScreen() {
     } catch (error) {
       AppFeedback.show(
         'No fue posible enviar la solicitud',
-        error instanceof Error ? error.message : 'Comprueba tu conexión.',
+        getErrorMessage(error, 'Comprueba tu conexión.'),
       )
     }
   }
@@ -93,10 +94,7 @@ export function PendingInvitationScreen() {
       await cancel.mutateAsync()
       AppFeedback.toast('Solicitud cancelada', { tone: 'info' })
     } catch (error) {
-      AppFeedback.show(
-        'No fue posible cancelar',
-        error instanceof Error ? error.message : 'Inténtalo de nuevo.',
-      )
+      AppFeedback.show('No fue posible cancelar', getErrorMessage(error, 'Inténtalo de nuevo.'))
     }
   }
 
