@@ -10,6 +10,11 @@ export const createCaseSchema = z.object({
 
 export const updateCaseSchema = createCaseSchema
 
+export const caseSearchTextSchema = z
+  .string()
+  .trim()
+  .max(100, 'La búsqueda no puede exceder 100 caracteres')
+
 export const reassignmentReasonSchema = z
   .string()
   .trim()

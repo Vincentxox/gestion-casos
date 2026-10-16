@@ -11,6 +11,8 @@ import type {
   CreateCaseInput,
   UpdateCaseInput,
 } from './types'
+import type { CaseSearchFilters, CaseStatusCount } from './caseSearch'
+import { caseSearchTextSchema } from './schemas'
 
 // Incluye campos calculados de PostgREST que no aparecen como columnas en database.types.ts.
 interface CaseRow {
@@ -99,14 +101,41 @@ async function mapCases(values: unknown[]): Promise<CaseRecord[]> {
   return rows.map((row) => mapCase(row, formerNames))
 }
 
-export async function listCases(): Promise<CaseRecord[]> {
-  const { data, error } = await supabase
-    .from('cases')
-    .select(caseSelection)
+export const CASE_PAGE_SIZE = 30
+
+function searchArgs(filters: CaseSearchFilters) {
+  return {
+    scope: filters.scope,
+    statuses: filters.statuses,
+    priority_filter: filters.priority,
+    updated_since: filters.updatedSince,
+    search_text:
+      filters.searchText === null ? null : caseSearchTextSchema.parse(filters.searchText),
+  }
+}
+
+export async function listCases(filters: CaseSearchFilters, page: number): Promise<CaseRecord[]> {
+  const from = page * CASE_PAGE_SIZE
+  let query = supabase.rpc('search_cases', searchArgs(filters)).select(caseSelection)
+  if (filters.sortPending) query = query.order('priority', { ascending: true })
+  const { data, error } = await query
     .order('created_at', { ascending: false })
-    .limit(100)
+    .order('id', { ascending: false })
+    .range(from, from + CASE_PAGE_SIZE - 1)
   if (error) throw error
   return mapCases(data)
+}
+
+export async function countCasesByStatus(filters: CaseSearchFilters): Promise<CaseStatusCount[]> {
+  const { data, error } = await supabase.rpc('count_cases_by_status', {
+    scope: filters.scope,
+    priority_filter: filters.priority,
+    updated_since: filters.updatedSince,
+    search_text:
+      filters.searchText === null ? null : caseSearchTextSchema.parse(filters.searchText),
+  })
+  if (error) throw error
+  return data
 }
 
 export async function getCase(caseId: string): Promise<CaseRecord> {

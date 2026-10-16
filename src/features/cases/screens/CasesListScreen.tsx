@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import Animated, { FadeInDown, useReducedMotion } from 'react-native-reanimated'
 import {
   SectionList,
+  ActivityIndicator,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -28,13 +29,9 @@ import { colors, radius, spacing, typography } from '@/theme/tokens'
 import type { CaseRecord } from '../types'
 import { groupCasesByDay } from '../caseDateGroups'
 import { CaseCard } from '../components/CaseCard'
-import { useCases } from '../useCases'
-import {
-  getScopeOptions,
-  matchesCaseScope,
-  type ScopeFilter,
-  type StatusFilter,
-} from '../caseListPresentation'
+import { useCaseCounts, useCases } from '../useCases'
+import { getScopeOptions, type ScopeFilter, type StatusFilter } from '../caseListPresentation'
+import { buildCaseSearchFilters, getCaseSegments } from '../caseSearch'
 
 type Props = NativeStackScreenProps<MainStackParamList, 'Cases'>
 
@@ -43,12 +40,6 @@ const STATUS_LABELS: Record<StatusFilter, string> = {
   pendientes: 'Pendientes',
   en_curso: 'En curso',
   cerradas: 'Cerradas',
-}
-
-const STATUS_GROUPS: Record<Exclude<StatusFilter, 'todos'>, CaseRecord['status'][]> = {
-  pendientes: ['solicitado', 'aceptado'],
-  en_curso: ['asignado', 'en_ejecucion', 'en_espera', 'reporte_enviado', 'validado'],
-  cerradas: ['rechazado', 'cancelado', 'aprobado'],
 }
 
 const SCOPE_LABELS: Record<ScopeFilter, string> = {
@@ -63,9 +54,13 @@ const SCOPE_LABELS: Record<ScopeFilter, string> = {
 }
 export function CasesListScreen({ navigation, route }: Props) {
   const profile = useAuthStore((state) => state.profile)
-  const { data = [], error, isLoading, isRefetching, refetch } = useCases()
   const home = useHomeSummary(Boolean(profile?.organizationId))
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(timeout)
+  }, [search])
   const [floatingActionHeight, setFloatingActionHeight] = useState(48)
   const [animateInitialList, setAnimateInitialList] = useState(true)
   const reduceMotion = useReducedMotion()
@@ -84,15 +79,15 @@ export function CasesListScreen({ navigation, route }: Props) {
     sinceDays?: number | null
     activeOnly?: boolean
   } | null>(null)
-  const filters = selection?.key === routeKey ? selection : route.params
-  const status = filters?.status ?? 'todos'
-  const scope = filters?.scope ?? null
-  const exactStatus = filters?.exactStatus ?? null
-  const priority = filters?.priority ?? null
-  const sinceDays = filters?.sinceDays ?? null
-  const activeOnly = filters?.activeOnly ?? false
+  const routeFilters = selection?.key === routeKey ? selection : route.params
+  const status = routeFilters?.status ?? 'todos'
+  const scope = routeFilters?.scope ?? null
+  const exactStatus = routeFilters?.exactStatus ?? null
+  const priority = routeFilters?.priority ?? null
+  const sinceDays = routeFilters?.sinceDays ?? null
+  const activeOnly = routeFilters?.activeOnly ?? false
   function changeFilters(patch: Partial<NonNullable<typeof selection>>) {
-    setSelection({ key: routeKey, ...filters, ...patch })
+    setSelection({ key: routeKey, ...routeFilters, ...patch })
   }
   const canCreate = hasPermission(profile?.role, 'cases.create') && Boolean(profile?.areaId)
   const scopes = profile ? getScopeOptions(profile, home.data?.area_kind ?? null) : []
@@ -102,55 +97,41 @@ export function CasesListScreen({ navigation, route }: Props) {
     : scope && (scopes.includes(scope) || scope === 'mias')
       ? scope
       : (scopes[0] ?? 'todas')
-
-  const filteredCases = (() => {
-    const term = search.trim().toLocaleLowerCase('es')
-    return data
-      .filter((item) => {
-        const matchesStatus = exactStatus
-          ? item.status === exactStatus
-          : status === 'todos' || STATUS_GROUPS[status].includes(item.status)
-        const matchesScope = profile ? matchesCaseScope(item, effectiveScope, profile) : false
-        const matchesPriority = !priority || item.priority === priority
-        const matchesActive =
-          !activeOnly || !['rechazado', 'cancelado', 'aprobado'].includes(item.status)
-        const matchesDate =
-          !sinceDays || new Date(item.updatedAt).getTime() >= filterNow - sinceDays * 86_400_000
-        const haystack = [item.caseNumber, item.title, item.category, item.location]
-          .join(' ')
-          .toLocaleLowerCase('es')
-        return (
-          matchesStatus &&
-          matchesScope &&
-          matchesPriority &&
-          matchesActive &&
-          matchesDate &&
-          (!term || haystack.includes(term))
-        )
-      })
-      .sort((a, b) =>
-        status === 'pendientes'
-          ? { alta: 0, media: 1, baja: 2 }[a.priority] -
-              { alta: 0, media: 1, baja: 2 }[b.priority] || b.createdAt.localeCompare(a.createdAt)
-          : b.createdAt.localeCompare(a.createdAt),
-      )
-  })()
+  const filters = buildCaseSearchFilters({
+    status,
+    scope: specialScope ?? effectiveScope,
+    exactStatus,
+    priority,
+    sinceDays,
+    activeOnly,
+    searchText: debouncedSearch,
+    now: filterNow,
+  })
+  const {
+    data,
+    error,
+    isLoading,
+    isRefetching,
+    refetch,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+    isFetchNextPageError,
+  } = useCases(filters, Boolean(profile?.organizationId))
+  const requestNextPage = () => void fetchNextPage()
+  const counts = useCaseCounts(filters, Boolean(profile?.organizationId))
+  const filteredCases = data?.pages.flat() ?? []
   const firstEntryOrder = new Map(filteredCases.slice(0, 8).map((item, index) => [item.id, index]))
   useEffect(() => {
     if (!animateInitialList || isLoading || error) return
     const timeout = setTimeout(() => setAnimateInitialList(false), filteredCases.length ? 600 : 0)
     return () => clearTimeout(timeout)
   }, [animateInitialList, isLoading, error, filteredCases.length])
-  const scopedCases = profile
-    ? data.filter((item) => matchesCaseScope(item, effectiveScope, profile))
-    : []
+  const segmentCounts = counts.data ? getCaseSegments(counts.data) : null
   const segments = (Object.keys(STATUS_LABELS) as StatusFilter[]).map((value) => ({
     value,
     label: STATUS_LABELS[value],
-    count:
-      value === 'todos'
-        ? scopedCases.length
-        : scopedCases.filter((item) => STATUS_GROUPS[value].includes(item.status)).length,
+    count: segmentCounts?.[value],
   }))
   const hasFilters = Boolean(
     search ||
@@ -172,6 +153,7 @@ export function CasesListScreen({ navigation, route }: Props) {
         <View style={styles.toolbar}>
           <TextInput
             accessibilityLabel="Buscar casos"
+            maxLength={100}
             onChangeText={setSearch}
             placeholder="Buscar número, título o ubicación"
             placeholderTextColor={colors.textMuted}
@@ -203,6 +185,9 @@ export function CasesListScreen({ navigation, route }: Props) {
           selected={status}
           onChange={(value) => changeFilters({ status: value, exactStatus: null })}
         />
+        {counts.isError ? (
+          <Button label="Reintentar conteos" variant="text" onPress={() => void counts.refetch()} />
+        ) : null}
         {exactStatus ? (
           <Chip
             label={`Estado: ${statusMeta[exactStatus].label} ×`}
@@ -264,8 +249,26 @@ export function CasesListScreen({ navigation, route }: Props) {
                   ]
                 : styles.emptyList
             }
-            sections={groupCasesByDay(filteredCases)}
+            sections={
+              filters.sortPending && filteredCases.length
+                ? [{ title: 'Pendientes', data: filteredCases }]
+                : groupCasesByDay(filteredCases)
+            }
             keyExtractor={(item) => item.id}
+            onEndReached={() => {
+              if (hasNextPage && !isFetchingNextPage) requestNextPage()
+            }}
+            onEndReachedThreshold={0.4}
+            ListFooterComponent={
+              isFetchingNextPage ? (
+                <ActivityIndicator
+                  accessibilityLabel="Cargando más solicitudes"
+                  color={colors.primary}
+                />
+              ) : isFetchNextPageError ? (
+                <Button label="Reintentar carga" onPress={requestNextPage} />
+              ) : null
+            }
             renderSectionHeader={({ section }) => (
               <Text style={styles.sectionTitle}>{section.title}</Text>
             )}
@@ -300,7 +303,10 @@ export function CasesListScreen({ navigation, route }: Props) {
             }
             refreshControl={
               <RefreshControl
-                onRefresh={() => void refetch()}
+                onRefresh={() => {
+                  void refetch()
+                  void counts.refetch()
+                }}
                 refreshing={isRefetching}
                 tintColor={colors.primary}
               />

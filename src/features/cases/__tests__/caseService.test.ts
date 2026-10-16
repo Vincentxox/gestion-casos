@@ -4,6 +4,7 @@ import { listFormerMemberNames } from '@/services/supabase/formerMembers'
 import {
   assignCase,
   changeCaseStatus,
+  countCasesByStatus,
   createCase,
   getCase,
   getStatusLabel,
@@ -25,6 +26,7 @@ const query = {
   select: jest.fn(),
   eq: jest.fn(),
   order: jest.fn(),
+  range: jest.fn(),
   limit: jest.fn(),
   single: jest.fn(),
   insert: jest.fn(),
@@ -54,19 +56,29 @@ const row = {
   due_at: '2026-01-01T08:00:00Z',
   overdue_stage: 'aceptacion',
 }
+const filters = {
+  scope: 'mi_area' as const,
+  statuses: ['solicitado' as const],
+  priority: 'alta' as const,
+  updatedSince: '2026-10-10T00:00:00.000Z',
+  searchText: '  energía  ',
+  sortPending: true,
+}
 
 beforeEach(() => {
   jest.clearAllMocks()
   ;(listFormerMemberNames as jest.Mock).mockResolvedValue(new Map())
   from.mockReturnValue(query)
+  rpc.mockReturnValue(query)
   for (const method of ['select', 'eq', 'order', 'insert', 'update', 'in'] as const)
     query[method].mockReturnValue(query)
   query.single.mockResolvedValue({ data: row, error: null })
   query.limit.mockResolvedValue({ data: [row], error: null })
+  query.range.mockResolvedValue({ data: [row], error: null })
 })
 
-test('lista y mapea solicitudes con nombres de relaciones', async () => {
-  await expect(listCases()).resolves.toMatchObject([
+test('pagina y ordena solicitudes en el servidor y conserva los nombres de relaciones', async () => {
+  await expect(listCases(filters, 2)).resolves.toMatchObject([
     {
       category: 'Equipos',
       creatorName: 'Ana',
@@ -75,8 +87,42 @@ test('lista y mapea solicitudes con nombres de relaciones', async () => {
       overdueStage: 'aceptacion',
     },
   ])
-  expect(query.limit).toHaveBeenCalledWith(100)
+  expect(rpc).toHaveBeenCalledWith('search_cases', {
+    scope: 'mi_area',
+    statuses: ['solicitado'],
+    priority_filter: 'alta',
+    updated_since: '2026-10-10T00:00:00.000Z',
+    search_text: 'energía',
+  })
+  expect(query.range).toHaveBeenCalledWith(60, 89)
+  expect(query.order.mock.calls).toEqual([
+    ['priority', { ascending: true }],
+    ['created_at', { ascending: false }],
+    ['id', { ascending: false }],
+  ])
   expect(query.select.mock.calls[0]?.[0]).toContain('due_at, overdue_stage')
+})
+
+test('sin pendientes ordena por fecha e id y cuenta sin restringir estados', async () => {
+  await listCases({ ...filters, sortPending: false }, 0)
+  expect(query.order.mock.calls.map(([field]) => field)).toEqual(['created_at', 'id'])
+  rpc.mockResolvedValue({ data: [{ status: 'solicitado', total: 4 }], error: null })
+  await expect(countCasesByStatus(filters)).resolves.toEqual([{ status: 'solicitado', total: 4 }])
+  expect(rpc).toHaveBeenLastCalledWith('count_cases_by_status', {
+    scope: 'mi_area',
+    priority_filter: 'alta',
+    updated_since: '2026-10-10T00:00:00.000Z',
+    search_text: 'energía',
+  })
+})
+
+test('una página conserva los nombres históricos de integrantes dados de baja', async () => {
+  ;(listFormerMemberNames as jest.Mock).mockResolvedValue(new Map([['u1', 'Ana anterior']]))
+  query.range.mockResolvedValue({ data: [{ ...row, creator: null }], error: null })
+  await expect(listCases(filters, 0)).resolves.toMatchObject([
+    { creatorName: 'Ana anterior (dado de baja)' },
+  ])
+  expect(listFormerMemberNames).toHaveBeenCalledWith(['u1', null])
 })
 
 test('lee una solicitud por id', async () => {
@@ -218,10 +264,19 @@ test('traduce los diez estados', () => {
 
 test('propaga errores del listado y del detalle', async () => {
   const error = new Error('sin conexión')
-  query.limit.mockResolvedValue({ data: null, error })
-  await expect(listCases()).rejects.toBe(error)
+  query.range.mockResolvedValue({ data: null, error })
+  await expect(listCases(filters, 0)).rejects.toBe(error)
   query.single.mockResolvedValue({ data: null, error })
   await expect(getCase('case-1')).rejects.toBe(error)
+})
+
+test('propaga errores de conteo y no envía búsquedas de más de 100 caracteres', async () => {
+  const error = new Error('sin conexión')
+  rpc.mockResolvedValue({ data: null, error })
+  await expect(countCasesByStatus(filters)).rejects.toBe(error)
+  await expect(listCases({ ...filters, searchText: 'x'.repeat(101) }, 0)).rejects.toThrow(
+    'La búsqueda no puede exceder 100 caracteres',
+  )
 })
 
 test('propaga errores de escritura y de transición', async () => {

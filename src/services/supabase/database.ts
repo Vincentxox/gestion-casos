@@ -33,7 +33,9 @@ type ServerFilledColumns = {
 
 type NullableRpcArgs = {
   approve_access_request: 'new_area_id'
+  count_cases_by_status: 'priority_filter' | 'updated_since' | 'search_text'
   reject_access_request: 'note'
+  search_cases: 'statuses' | 'priority_filter' | 'updated_since' | 'search_text'
   set_member_access: 'new_area_id'
   transition_case: 'action_comment'
 }
