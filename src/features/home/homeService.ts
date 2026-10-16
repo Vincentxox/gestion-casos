@@ -4,6 +4,7 @@ export interface HomeSummary {
   role: string
   has_area: boolean
   area_kind: 'solicitante' | 'tecnica' | null
+  notificaciones_sin_leer?: number
   cases: {
     activas: number
     solicitado: number

@@ -11,6 +11,7 @@ import type {
   UpdateCaseInput,
 } from './types'
 
+// Incluye campos calculados de PostgREST que no aparecen como columnas en database.types.ts.
 interface CaseRow {
   id: string
   case_number: string
@@ -34,6 +35,8 @@ interface CaseRow {
   assigned_at: string | null
   started_at: string | null
   updated_at: string
+  due_at: string | null
+  overdue_stage: 'aceptacion' | 'resolucion' | null
 }
 
 const caseSelection = `id, case_number, title, description, category_id,
@@ -41,9 +44,10 @@ const caseSelection = `id, case_number, title, description, category_id,
   requesting_area_id, requesting_area:areas!cases_requesting_area_id_fkey(name),
   target_area_id, target_area:areas!cases_target_area_id_fkey(name),
   location, priority, status, created_by, creator:profiles!cases_created_by_fkey(full_name),
-  assigned_to, assignee:profiles!cases_assigned_to_fkey(full_name), created_at, accepted_at, assigned_at, started_at, updated_at`
+  assigned_to, assignee:profiles!cases_assigned_to_fkey(full_name), created_at, accepted_at, assigned_at, started_at, updated_at, due_at, overdue_stage`
 
-function mapCase(row: CaseRow): CaseRecord {
+function mapCase(value: unknown): CaseRecord {
+  const row = value as CaseRow
   return {
     id: row.id,
     caseNumber: row.case_number,
@@ -68,6 +72,8 @@ function mapCase(row: CaseRow): CaseRecord {
     assignedAt: row.assigned_at,
     startedAt: row.started_at,
     updatedAt: row.updated_at,
+    dueAt: row.due_at,
+    overdueStage: row.overdue_stage,
   }
 }
 
