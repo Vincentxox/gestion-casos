@@ -19,6 +19,7 @@ export interface Profile {
   areaName: string | null
   organizationId: string | null
   organizationName: string | null
+  organizationActive: boolean | null
 }
 
 export const ROLE_LABELS: Record<AppRole, string> = {

@@ -12,6 +12,7 @@ const profile: Profile = {
   areaName: 'Administración',
   organizationId: 'org',
   organizationName: 'Empresa',
+  organizationActive: true,
 }
 
 const item: CaseRecord = {

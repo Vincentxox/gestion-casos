@@ -21,7 +21,7 @@ interface ProfileRow {
   area_id: string | null
   area: { name: string } | null
   organization_id: string | null
-  organization: { name: string } | null
+  organization: { name: string; is_active: boolean } | null
 }
 
 function isAppRole(value: string): value is AppRole {
@@ -42,6 +42,7 @@ function mapProfile(row: ProfileRow): Profile {
     areaName: row.area?.name ?? null,
     organizationId: row.organization_id,
     organizationName: row.organization?.name ?? null,
+    organizationActive: row.organization?.is_active ?? null,
   }
 }
 
@@ -59,7 +60,7 @@ export async function getProfile(userId: string) {
   const { data, error } = await supabase
     .from('profiles')
     .select(
-      'id, full_name, avatar_url, role, area_id, area:areas(name), organization_id, organization:organizations!profiles_organization_id_fkey(name)',
+      'id, full_name, avatar_url, role, area_id, area:areas(name), organization_id, organization:organizations!profiles_organization_id_fkey(name, is_active)',
     )
     .eq('id', userId)
     .single<ProfileRow>()

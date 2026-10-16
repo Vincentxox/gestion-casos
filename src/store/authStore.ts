@@ -28,6 +28,7 @@ interface AuthStore {
   register: (input: RegistrationInput) => Promise<boolean>
   logout: () => Promise<void>
   applySession: (session: Session | null) => Promise<void>
+  refreshProfile: () => Promise<Profile | null>
   applyOwnAccess: (
     userId: string,
     role: AppRole,
@@ -56,7 +57,8 @@ async function getAuthValues(
 
   if (
     session?.user.id !== previousSession?.user.id ||
-    profile?.organizationId !== previousProfile?.organizationId
+    profile?.organizationId !== previousProfile?.organizationId ||
+    profile?.organizationActive !== previousProfile?.organizationActive
   ) {
     queryClient.clear()
     await clearImageCaches()
@@ -179,6 +181,15 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         initializationError: 'No fue posible cargar el perfil del usuario.',
       })
     }
+  },
+
+  async refreshProfile() {
+    const session = get().session
+    if (!session) return null
+    const values = await getAuthValues(session, session, get().profile)
+    if (get().session?.user.id !== session.user.id) return null
+    set({ ...values, initializationError: null })
+    return values.profile
   },
 
   applyOwnAccess(userId, role, areaId, areaName) {

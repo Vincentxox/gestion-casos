@@ -190,7 +190,7 @@ describe('servicio de autenticación', () => {
         area_id: 'area-1',
         area: { name: 'Tecnología' },
         organization_id: 'org-1',
-        organization: { name: 'Empresa' },
+        organization: { name: 'Empresa', is_active: true },
       },
       error: null,
     })
@@ -207,10 +207,35 @@ describe('servicio de autenticación', () => {
       areaName: 'Tecnología',
       organizationId: 'org-1',
       organizationName: 'Empresa',
+      organizationActive: true,
     })
     expect(select).toHaveBeenCalledWith(
-      'id, full_name, avatar_url, role, area_id, area:areas(name), organization_id, organization:organizations!profiles_organization_id_fkey(name)',
+      'id, full_name, avatar_url, role, area_id, area:areas(name), organization_id, organization:organizations!profiles_organization_id_fkey(name, is_active)',
     )
+  })
+
+  test('mapea una empresa inactiva', async () => {
+    const single = jest.fn().mockResolvedValue({
+      data: {
+        id: 'user-1',
+        full_name: '',
+        avatar_url: null,
+        role: 'solicitante',
+        area_id: null,
+        area: null,
+        organization_id: 'org-1',
+        organization: { name: 'Empresa', is_active: false },
+      },
+      error: null,
+    })
+    from.mockReturnValue({
+      select: jest.fn().mockReturnValue({ eq: jest.fn().mockReturnValue({ single }) }),
+    })
+
+    await expect(getProfile('user-1')).resolves.toMatchObject({
+      organizationId: 'org-1',
+      organizationActive: false,
+    })
   })
 
   test('rechaza roles desconocidos', async () => {
@@ -265,7 +290,10 @@ describe('servicio de autenticación', () => {
     })
     rpc.mockResolvedValue({ data: false, error: null })
 
-    await expect(resolveSessionProfile(session)).resolves.toMatchObject({ organizationId: null })
+    await expect(resolveSessionProfile(session)).resolves.toMatchObject({
+      organizationId: null,
+      organizationActive: null,
+    })
     expect(rpc).toHaveBeenCalledWith('accept_pending_invitation')
   })
 

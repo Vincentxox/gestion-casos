@@ -7,7 +7,6 @@ import {
   useFonts,
 } from '@expo-google-fonts/plus-jakarta-sans'
 import { QueryClientProvider } from '@tanstack/react-query'
-import NetInfo from '@react-native-community/netinfo'
 import { NavigationContainer } from '@react-navigation/native'
 import { StatusBar } from 'expo-status-bar'
 import { useCallback, useEffect, useState } from 'react'
@@ -19,10 +18,11 @@ import { AppFeedbackProvider } from '@/components/feedback/AppFeedback'
 import { queryClient } from '@/config/queryClient'
 import { registerQueryLifecycle } from '@/config/queryLifecycle'
 import { AuthLoadingScreen } from '@/features/auth/screens/AuthLoadingScreen'
+import { InactiveOrganizationScreen } from '@/features/auth/screens/InactiveOrganizationScreen'
 import { PendingInvitationScreen } from '@/features/auth/screens/PendingInvitationScreen'
+import { getAuthenticatedRoute } from '@/features/auth/authRoute'
+import { useOrganizationLifecycle } from '@/features/auth/useOrganizationLifecycle'
 import { CompleteNameScreen } from '@/features/settings/CompleteNameScreen'
-import { resumePendingPhotos } from '@/features/photos/uploadQueue'
-import { photosQueryKey } from '@/features/photos/usePhotos'
 import { AuthNavigator } from '@/navigation/AuthNavigator'
 import { MainNavigator } from '@/navigation/MainNavigator'
 import { registerAuthAutoRefresh, supabase } from '@/services/supabase/client'
@@ -32,11 +32,13 @@ import { colors } from '@/theme/tokens'
 function RootContent({ fontsReady }: { fontsReady: boolean }) {
   const [showIntro, setShowIntro] = useState(true)
   const status = useAuthStore((state) => state.status)
-  const organizationId = useAuthStore((state) => state.profile?.organizationId)
-  const userId = useAuthStore((state) => state.profile?.id)
-  const fullName = useAuthStore((state) => state.profile?.fullName)
+  const profile = useAuthStore((state) => state.profile)
+  const organizationId = profile?.organizationId
+  const organizationActive = profile?.organizationActive
+  const userId = profile?.id
   const initialize = useAuthStore((state) => state.initialize)
   const applySession = useAuthStore((state) => state.applySession)
+  const refreshProfile = useAuthStore((state) => state.refreshProfile)
 
   useEffect(() => {
     const unregisterAutoRefresh = registerAuthAutoRefresh()
@@ -61,24 +63,13 @@ function RootContent({ fontsReady }: { fontsReady: boolean }) {
     }
   }, [applySession, initialize])
 
-  useEffect(() => {
-    if (!userId || !organizationId) return
-    const resume = (mode: 'startup' | 'reconnect') =>
-      void resumePendingPhotos(
-        userId,
-        (caseId) => {
-          void queryClient.invalidateQueries({ queryKey: [...photosQueryKey, caseId] })
-        },
-        mode,
-      )
-    resume('startup')
-    let wasConnected: boolean | null = null
-    const subscription = NetInfo.addEventListener((network) => {
-      if (network.isConnected && wasConnected === false) resume('reconnect')
-      wasConnected = network.isConnected
-    })
-    return () => subscription()
-  }, [userId, organizationId])
+  useOrganizationLifecycle({
+    userId,
+    organizationId,
+    organizationActive,
+    authenticated: status === 'authenticated',
+    refreshProfile,
+  })
 
   const finishIntro = useCallback(() => setShowIntro(false), [])
 
@@ -94,12 +85,20 @@ function RootContent({ fontsReady }: { fontsReady: boolean }) {
     return <AuthLoadingScreen />
   }
 
+  const route = getAuthenticatedRoute({
+    organizationId: organizationId ?? null,
+    organizationActive: organizationActive ?? null,
+    fullName: profile?.fullName ?? '',
+  })
+
   return (
     <NavigationContainer>
       {status === 'authenticated' ? (
-        !fullName?.trim() ? (
+        route === 'inactive' ? (
+          <InactiveOrganizationScreen />
+        ) : route === 'completeName' ? (
           <CompleteNameScreen />
-        ) : organizationId ? (
+        ) : route === 'main' ? (
           <MainNavigator />
         ) : (
           <PendingInvitationScreen />
