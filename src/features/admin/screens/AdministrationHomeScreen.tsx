@@ -56,6 +56,12 @@ const OPTIONS = [
     title: 'Mi empresa',
     description: 'Consulta y actualiza el nombre de tu empresa.',
   },
+  {
+    route: 'PriorityTargets' as const,
+    icon: 'time-outline' as const,
+    title: 'Plazos por prioridad',
+    description: 'Define el tiempo para aceptar y resolver solicitudes nuevas.',
+  },
 ]
 
 export function AdministrationHomeScreen({ navigation }: Props) {

@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import Animated, { LinearTransition, useReducedMotion } from 'react-native-reanimated'
 
 import { PriorityBadge } from '@/components/badges/PriorityBadge'
+import { Chip } from '@/components/ui/Chip'
 import { StatusBadge } from '@/components/badges/StatusBadge'
 import { ActionSheet } from '@/components/actions/ActionSheet'
 import { Timeline } from '@/components/timeline/Timeline'
@@ -139,6 +140,16 @@ export function CaseDetailScreen({ navigation, route }: Props) {
           <View style={styles.headingRow}>
             <StatusBadge status={item.status} />
             <PriorityBadge priority={item.priority} />
+            {item.overdueStage ? (
+              <Chip
+                label={
+                  item.overdueStage === 'aceptacion'
+                    ? 'Vencida · aceptación'
+                    : 'Vencida · resolución'
+                }
+                tone="warning"
+              />
+            ) : null}
           </View>
           <Text accessibilityRole="header" style={styles.title}>
             {item.title}

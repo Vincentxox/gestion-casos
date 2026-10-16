@@ -49,6 +49,8 @@ export interface CaseRecord {
   assignedAt?: string | null
   startedAt?: string | null
   updatedAt: string
+  dueAt?: string | null
+  overdueStage?: 'aceptacion' | 'resolucion' | null
 }
 
 export interface CreateCaseInput {

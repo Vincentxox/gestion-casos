@@ -31,22 +31,29 @@ import {
   getHomeTiles,
 } from './homePresentation'
 import { useHomeSummary } from './useHomeSummary'
+import { useCaseIndicators } from './useIndicators'
 
 type Props = BottomTabScreenProps<MainTabParamList, 'Home'>
 
 export function HomeScreen({ navigation }: Props) {
   const profile = useAuthStore((state) => state.profile)
   const summary = useHomeSummary(Boolean(profile?.organizationId))
+  const canSeeIndicators = Boolean(
+    profile?.organizationId && ['administrador', 'jefe_area', 'auditor'].includes(profile.role),
+  )
+  const indicators = useCaseIndicators(canSeeIndicators)
   const showRecent = Boolean(profile?.organizationId)
   const cases = useCases(showRecent)
   const [today] = useState(() => new Date())
   const refetchSummary = summary.refetch
   const refetchCases = cases.refetch
+  const refetchIndicators = indicators.refetch
   useFocusEffect(
     useCallback(() => {
       void refetchSummary()
       if (showRecent) void refetchCases()
-    }, [refetchSummary, refetchCases, showRecent]),
+      if (canSeeIndicators) void refetchIndicators()
+    }, [refetchSummary, refetchCases, refetchIndicators, canSeeIndicators, showRecent]),
   )
   if (!profile) return null
 
@@ -74,6 +81,7 @@ export function HomeScreen({ navigation }: Props) {
             onRefresh={() => {
               void summary.refetch()
               if (showRecent) void cases.refetch()
+              if (canSeeIndicators) void indicators.refetch()
             }}
           />
         }
@@ -89,6 +97,21 @@ export function HomeScreen({ navigation }: Props) {
                 {ROLE_LABELS[profile.role]} · {profile.areaName || 'Sin área asignada'}
               </Text>
             </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Avisos, ${summary.data?.notificaciones_sin_leer ?? 0} sin leer`}
+              onPress={() => navigation.navigate('CasesTab', { screen: 'Notifications' })}
+              style={styles.bell}
+            >
+              <Icon name="notifications-outline" color={colors.primary} />
+              {(summary.data?.notificaciones_sin_leer ?? 0) > 0 ? (
+                <Text style={styles.bellCount}>
+                  {(summary.data?.notificaciones_sin_leer ?? 0) > 99
+                    ? '99+'
+                    : summary.data?.notificaciones_sin_leer}
+                </Text>
+              ) : null}
+            </Pressable>
             <Avatar name={profile.fullName} id={profile.id} size={44} />
           </View>
         </View>
@@ -208,6 +231,48 @@ export function HomeScreen({ navigation }: Props) {
           </View>
         ) : null}
 
+        {canSeeIndicators ? (
+          <View style={styles.section}>
+            <SectionHeader title="Indicadores" />
+            {indicators.isLoading ? <SkeletonList count={1} /> : null}
+            {indicators.isError ? (
+              <Pressable accessibilityRole="button" onPress={() => void indicators.refetch()}>
+                <Text style={styles.linkText}>
+                  No fue posible cargar los indicadores. Reintentar
+                </Text>
+              </Pressable>
+            ) : null}
+            {indicators.data ? (
+              <Card contentStyle={styles.indicatorCard}>
+                <Text style={styles.indicatorTitle}>{indicators.data.total} solicitudes</Text>
+                <Text style={styles.message}>
+                  Vencidas ahora: {indicators.data.vencidas_hoy.aceptacion} por aceptación ·{' '}
+                  {indicators.data.vencidas_hoy.resolucion} por resolución
+                </Text>
+                <Text style={styles.message}>
+                  Fuera de plazo: {indicators.data.fuera_de_plazo.aceptacion} aceptadas ·{' '}
+                  {indicators.data.fuera_de_plazo.resolucion} resueltas
+                </Text>
+                <Text style={styles.message}>
+                  Prioridad: {indicators.data.por_prioridad.alta ?? 0} alta ·{' '}
+                  {indicators.data.por_prioridad.media ?? 0} media ·{' '}
+                  {indicators.data.por_prioridad.baja ?? 0} baja
+                </Text>
+                <Text style={styles.message}>
+                  Promedios: {indicators.data.tiempos_promedio_horas.aceptacion ?? '—'} h para
+                  aceptar · {indicators.data.tiempos_promedio_horas.resolucion ?? '—'} h para
+                  resolver
+                </Text>
+                <Button
+                  label="Ver todos los indicadores"
+                  variant="text"
+                  onPress={() => navigation.navigate('CasesTab', { screen: 'Indicators' })}
+                />
+              </Card>
+            ) : null}
+          </View>
+        ) : null}
+
         {!profile.areaId && profile.role !== 'administrador' && profile.role !== 'auditor' ? (
           <View style={styles.notice}>
             <Text style={styles.noticeTitle}>Área pendiente de asignación</Text>
@@ -273,6 +338,18 @@ const styles = StyleSheet.create({
   content: { gap: spacing.lg, padding: spacing.lg, paddingBottom: spacing.xl },
   header: { gap: spacing.sm },
   headerTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.base },
+  bell: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  bellCount: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    minWidth: 18,
+    textAlign: 'center',
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+    color: colors.white,
+    ...typography.caption,
+  },
   identity: { flex: 1, gap: spacing.xs },
   eyebrow: { color: colors.primary, ...typography.overline },
   title: { color: colors.text, ...typography.display },
@@ -301,6 +378,8 @@ const styles = StyleSheet.create({
   heroSupport: { ...typography.body, color: colors.white },
   heroButton: { width: '100%' },
   section: { gap: spacing.md },
+  indicatorCard: { gap: spacing.sm },
+  indicatorTitle: { ...typography.heading, color: colors.text },
   tileGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   recentHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   notice: {
