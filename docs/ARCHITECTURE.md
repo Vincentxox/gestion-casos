@@ -256,6 +256,14 @@ stateDiagram-v2
 
 Solo el creador o el jefe del área solicitante cancelan, y solo desde `solicitado`.
 
+**Qué puede hacer cada persona en un caso.** `private.case_action_denial(caso, acción)`
+reúne las comprobaciones de estado y permiso de cada acción: devuelve `null` si la persona
+autenticada puede hacerla o el mensaje de error de la RPC. La usan `transition_case` y las
+RPC del reporte, y `get_case_actions(case_id)` la expone a la app con una fila por acción
+del estado actual (`action`, `allowed`, `reason`). Para cambiar una regla de permiso se
+cambia esa función; la prueba SQL 27 compara cada acción de `get_case_actions` con el
+intento real, también en fotos, recursos y edición, que deciden sus propias políticas.
+
 ### 5.5 Reporte, firmas y PDF
 
 1. Al enviar el reporte, `build_report_content` congela el contenido (datos, recursos,

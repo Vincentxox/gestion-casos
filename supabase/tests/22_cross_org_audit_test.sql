@@ -313,6 +313,7 @@ select test.set('unreviewed_functions', (
     'confirm_case_photo(uuid)',
     'deactivate_member(uuid)',
     'delete_case_photo(uuid)',
+    'get_case_actions(uuid)',
     'get_case_indicators(timestamp with time zone, timestamp with time zone)',
     'mark_notifications_read(bigint[])',
     'reject_access_request(uuid, text)',
@@ -476,6 +477,11 @@ reset role;
 
 select test.login('admin_c');
 set role authenticated;
+select test.ok(
+  (select count(*) from public.get_case_actions(test.get('a_case_new')::uuid)) = 0
+    and (select count(*) from public.get_case_actions(test.get('a_case_validated')::uuid)) = 0,
+  'un administrador de C no ve las acciones de solicitudes de A'
+);
 select test.throws(
   format($$select public.approve_case_report(%L, 'M0,0 L1,1', true)$$, test.get('a_case_validated')),
   'Solicitud no encontrada', 'un administrador de C no aprueba reportes de A'
