@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@/utils/errorMessage'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm } from 'react-hook-form'
 import { StyleSheet, Text } from 'react-native'
@@ -41,10 +42,7 @@ function TargetEditor({ target }: { target: PriorityTarget }) {
         `Plazos de prioridad ${priorityMeta[target.priority].label.toLowerCase()} actualizados`,
       )
     } catch (error) {
-      AppFeedback.show(
-        'No fue posible guardar',
-        error instanceof Error ? error.message : 'Inténtalo de nuevo.',
-      )
+      AppFeedback.show('No fue posible guardar', getErrorMessage(error, 'Inténtalo de nuevo.'))
     }
   }
 

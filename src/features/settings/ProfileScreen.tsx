@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@/utils/errorMessage'
 import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useState } from 'react'
@@ -32,10 +33,7 @@ export function ProfileScreen() {
       setName(null)
       AppFeedback.toast('Nombre actualizado')
     } catch (error) {
-      AppFeedback.show(
-        'No fue posible guardar',
-        error instanceof Error ? error.message : 'Inténtalo de nuevo.',
-      )
+      AppFeedback.show('No fue posible guardar', getErrorMessage(error, 'Inténtalo de nuevo.'))
     } finally {
       setSaving(false)
     }

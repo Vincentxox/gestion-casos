@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@/utils/errorMessage'
 import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
@@ -85,7 +86,7 @@ export function ReportSummary({
     } catch (error) {
       AppFeedback.show(
         'No fue posible descargar el PDF',
-        error instanceof Error ? error.message : 'Inténtalo de nuevo.',
+        getErrorMessage(error, 'Inténtalo de nuevo.'),
       )
     } finally {
       setPdfLoading(false)
@@ -100,7 +101,7 @@ export function ReportSummary({
     } catch (error) {
       AppFeedback.show(
         'No fue posible compartir el PDF',
-        error instanceof Error ? error.message : 'Inténtalo de nuevo.',
+        getErrorMessage(error, 'Inténtalo de nuevo.'),
       )
     } finally {
       setShareLoading(false)

@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@/utils/errorMessage'
 import { AppFeedback } from '@/components/feedback/AppFeedback'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import * as WebBrowser from 'expo-web-browser'
@@ -180,7 +181,7 @@ export function ReportReviewScreen({ navigation, route }: Props) {
     } catch (error) {
       AppFeedback.show(
         'No fue posible descargar el PDF',
-        error instanceof Error ? error.message : 'Inténtalo de nuevo.',
+        getErrorMessage(error, 'Inténtalo de nuevo.'),
       )
     } finally {
       setPdfLoading(false)
@@ -195,7 +196,7 @@ export function ReportReviewScreen({ navigation, route }: Props) {
     } catch (error) {
       AppFeedback.show(
         'No fue posible compartir el PDF',
-        error instanceof Error ? error.message : 'Inténtalo de nuevo.',
+        getErrorMessage(error, 'Inténtalo de nuevo.'),
       )
     } finally {
       setShareLoading(false)

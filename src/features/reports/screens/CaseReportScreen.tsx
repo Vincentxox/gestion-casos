@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@/utils/errorMessage'
 import { AppFeedback } from '@/components/feedback/AppFeedback'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -89,7 +90,7 @@ export function CaseReportScreen({ navigation, route }: Props) {
             if (JSON.stringify(getValues()) === JSON.stringify(input)) reset(input)
             return true
           } catch (error) {
-            setSaveError(error instanceof Error ? error.message : 'No se guardó. Reintentar')
+            setSaveError(getErrorMessage(error, 'No se guardó. Reintentar'))
             return false
           }
         })

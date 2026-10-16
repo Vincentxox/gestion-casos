@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@/utils/errorMessage'
 import { AppFeedback } from '@/components/feedback/AppFeedback'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs'
@@ -79,7 +80,7 @@ export function AssignCaseScreen({ navigation, route }: Props) {
     } catch (error) {
       AppFeedback.show(
         isReassignment ? 'No fue posible reasignar' : 'No fue posible asignar',
-        error instanceof Error ? error.message : 'Comprueba tus permisos y la conexión.',
+        getErrorMessage(error, 'Comprueba tus permisos y la conexión.'),
       )
     }
   }

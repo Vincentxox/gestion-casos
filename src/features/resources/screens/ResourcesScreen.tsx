@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@/utils/errorMessage'
 import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { Ionicons } from '@expo/vector-icons'
 import { useRef, useState } from 'react'
@@ -49,7 +50,7 @@ export function ResourcesScreen() {
     } catch (error) {
       AppFeedback.show(
         'No fue posible guardar el recurso',
-        error instanceof Error ? error.message : 'Comprueba la conexión y los datos.',
+        getErrorMessage(error, 'Comprueba la conexión y los datos.'),
       )
     }
   }
@@ -68,7 +69,7 @@ export function ResourcesScreen() {
               .catch((error) =>
                 AppFeedback.show(
                   'No fue posible actualizar el recurso',
-                  error instanceof Error ? error.message : 'Comprueba la conexión.',
+                  getErrorMessage(error, 'Comprueba la conexión.'),
                 ),
               ),
         },

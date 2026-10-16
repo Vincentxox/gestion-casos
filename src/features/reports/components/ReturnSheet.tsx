@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@/utils/errorMessage'
 import { useState } from 'react'
 import { StyleSheet, Text, TextInput, View } from 'react-native'
 
@@ -34,7 +35,7 @@ export function ReturnSheet({
       setError(null)
       await onReturn(result.data.reason)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'No fue posible devolver el reporte.')
+      setError(getErrorMessage(cause, 'No fue posible devolver el reporte.'))
     }
   }
 
