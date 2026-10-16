@@ -210,8 +210,8 @@ Precisadas al implementar la base de datos y confirmadas por el responsable el
 22/09/2026:
 
 1. El **administrador** puede suplir **siempre** al jefe del área técnica en aceptar,
-   rechazar y asignar, y al jefe del área solicitante en cancelar. La acción queda en el
-   historial con su rol. Solo firma como suplente (sección 5.6).
+   rechazar y asignar. La acción queda en el historial con su rol. No cancela solicitudes
+   ajenas (5.3, decisión del 24/09/2026). Solo firma como suplente (sección 5.6).
 2. Se puede asignar a un **técnico o a un jefe** del área destino.
 3. La **reasignación** se permite en `asignado`, `en_ejecucion` y `en_espera` (ampliada
    el 15/10/2026, hallazgo D-2). En ejecución o en espera el motivo es obligatorio y el
