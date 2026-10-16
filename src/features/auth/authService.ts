@@ -59,7 +59,7 @@ export async function getProfile(userId: string) {
   const { data, error } = await supabase
     .from('profiles')
     .select(
-      'id, full_name, avatar_url, role, area_id, area:areas(name), organization_id, organization:organizations(name)',
+      'id, full_name, avatar_url, role, area_id, area:areas(name), organization_id, organization:organizations!profiles_organization_id_fkey(name)',
     )
     .eq('id', userId)
     .single<ProfileRow>()
