@@ -50,4 +50,12 @@ describe('CaseCard', () => {
 
     expect(screen.getByText('Sin asignar')).toBeTruthy()
   })
+
+  test('distingue una solicitud con aceptación vencida', async () => {
+    const screen = await render(
+      <CaseCard item={{ ...item, overdueStage: 'aceptacion' }} onPress={jest.fn()} />,
+    )
+    expect(screen.getByText('Vencida · aceptación')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /vencida por aceptacion/ })).toBeTruthy()
+  })
 })

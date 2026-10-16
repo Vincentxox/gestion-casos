@@ -51,6 +51,8 @@ const row = {
   assignee: null,
   created_at: '2026-01-01',
   updated_at: '2026-01-01',
+  due_at: '2026-01-01T08:00:00Z',
+  overdue_stage: 'aceptacion',
 }
 
 beforeEach(() => {
@@ -65,9 +67,16 @@ beforeEach(() => {
 
 test('lista y mapea solicitudes con nombres de relaciones', async () => {
   await expect(listCases()).resolves.toMatchObject([
-    { category: 'Equipos', creatorName: 'Ana', targetAreaName: 'Tecnología' },
+    {
+      category: 'Equipos',
+      creatorName: 'Ana',
+      targetAreaName: 'Tecnología',
+      dueAt: '2026-01-01T08:00:00Z',
+      overdueStage: 'aceptacion',
+    },
   ])
   expect(query.limit).toHaveBeenCalledWith(100)
+  expect(query.select.mock.calls[0]?.[0]).toContain('due_at, overdue_stage')
 })
 
 test('lee una solicitud por id', async () => {
