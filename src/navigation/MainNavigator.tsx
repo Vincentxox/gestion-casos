@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
+import { Pressable } from 'react-native'
+import { Icon } from '@/components/ui/Icon'
 
 import { CasesListScreen } from '@/features/cases/screens/CasesListScreen'
 import { CaseDetailScreen } from '@/features/cases/screens/CaseDetailScreen'
@@ -29,9 +31,15 @@ import { ReportReviewScreen } from '@/features/reports/screens/ReportReviewScree
 import { useAuthStore } from '@/store/authStore'
 import { colors, typography } from '@/theme/tokens'
 
-import type { AdministrationStackParamList, MainStackParamList, MainTabParamList } from './types'
+import type {
+  AdministrationStackParamList,
+  MainStackParamList,
+  MainTabParamList,
+  RootStackParamList,
+} from './types'
 
 const Stack = createNativeStackNavigator<MainStackParamList>()
+const RootStack = createNativeStackNavigator<RootStackParamList>()
 const AdministrationStack = createNativeStackNavigator<AdministrationStackParamList>()
 const Tab = createBottomTabNavigator<MainTabParamList>()
 
@@ -82,16 +90,82 @@ function CasesNavigator() {
         options={{ title: 'Revisar reporte' }}
       />
       <Stack.Screen
-        component={NotificationsScreen}
-        name="Notifications"
-        options={{ title: 'Avisos' }}
-      />
-      <Stack.Screen
         component={IndicatorsScreen}
         name="Indicators"
         options={{ title: 'Indicadores' }}
       />
     </Stack.Navigator>
+  )
+}
+
+function NotificationsNavigator() {
+  return (
+    <Stack.Navigator
+      initialRouteName="Notifications"
+      screenOptions={{
+        contentStyle: { backgroundColor: colors.background },
+        headerShadowVisible: false,
+        headerTintColor: colors.primary,
+      }}
+    >
+      <Stack.Screen
+        component={NotificationsScreen}
+        name="Notifications"
+        options={({ navigation }) => ({
+          title: 'Avisos',
+          headerLeft: () => (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Volver a Inicio"
+              onPress={() => navigation.getParent()?.goBack()}
+              style={{ minHeight: 44, minWidth: 44, justifyContent: 'center' }}
+            >
+              <Icon name="arrow-back" color={colors.primary} />
+            </Pressable>
+          ),
+        })}
+      />
+      <Stack.Screen
+        component={CaseDetailScreen}
+        name="CaseDetail"
+        options={{ title: 'Detalle de solicitud' }}
+      />
+      <Stack.Screen
+        component={EditCaseScreen}
+        name="EditCase"
+        options={{ title: 'Editar solicitud' }}
+      />
+      <Stack.Screen
+        component={ChangeCaseStatusScreen}
+        name="ChangeCaseStatus"
+        options={{ title: 'Acciones' }}
+      />
+      <Stack.Screen
+        component={AssignCaseScreen}
+        name="AssignCase"
+        options={{ title: 'Asignar personal' }}
+      />
+      <Stack.Screen
+        component={CaseResourcesScreen}
+        name="CaseResources"
+        options={{ title: 'Recursos utilizados' }}
+      />
+      <Stack.Screen component={CaseReportScreen} name="CaseReport" options={{ title: 'Reporte' }} />
+      <Stack.Screen
+        component={ReportReviewScreen}
+        name="ReportReview"
+        options={{ title: 'Revisar reporte' }}
+      />
+    </Stack.Navigator>
+  )
+}
+
+export function MainRootNavigator() {
+  return (
+    <RootStack.Navigator screenOptions={{ headerShown: false }}>
+      <RootStack.Screen component={MainNavigator} name="MainTabs" />
+      <RootStack.Screen component={NotificationsNavigator} name="NotificationsFlow" />
+    </RootStack.Navigator>
   )
 }
 

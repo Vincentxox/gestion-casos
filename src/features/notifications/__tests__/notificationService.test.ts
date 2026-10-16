@@ -2,6 +2,10 @@ import { supabase } from '@/services/supabase/client'
 import { listNotifications, markNotificationsRead } from '../notificationService'
 
 jest.mock('@/services/supabase/client', () => ({ supabase: { from: jest.fn(), rpc: jest.fn() } }))
+jest.mock('@/services/supabase/formerMembers', () => ({
+  listFormerMemberNames: jest.fn().mockResolvedValue(new Map([['former', 'Marta Díaz']])),
+  memberDisplayName: jest.requireActual('@/services/supabase/formerMembers').memberDisplayName,
+}))
 
 test('lee solo los campos necesarios de los avisos visibles por RLS', async () => {
   const limit = jest.fn().mockResolvedValue({
@@ -11,6 +15,9 @@ test('lee solo los campos necesarios de los avisos visibles por RLS', async () =
         case_id: 'case-1',
         title: 'Aviso',
         body: 'Texto',
+        action: 'reasignar',
+        case: { case_number: 'CAS-2026-00001', title: 'Fuga' },
+        event: { actor_id: 'former', actor: null },
         created_at: '2026-10-14',
         read_at: null,
       },
@@ -21,9 +28,18 @@ test('lee solo los campos necesarios de los avisos visibles por RLS', async () =
   const select = jest.fn().mockReturnValue({ order })
   ;(supabase.from as jest.Mock).mockReturnValue({ select })
   await expect(listNotifications()).resolves.toMatchObject([
-    { id: 1, caseId: 'case-1', readAt: null },
+    {
+      id: 1,
+      caseId: 'case-1',
+      readAt: null,
+      action: 'reasignar',
+      caseNumber: 'CAS-2026-00001',
+      actorName: 'Marta Díaz (dado de baja)',
+    },
   ])
-  expect(select).toHaveBeenCalledWith('id,case_id,title,body,created_at,read_at')
+  expect(select).toHaveBeenCalledWith(
+    'id,case_id,title,body,action,created_at,read_at,case:cases!notifications_case_id_fkey(case_number,title),event:case_events!notifications_event_id_fkey(actor_id,actor:profiles!case_events_actor_id_fkey(full_name))',
+  )
 })
 
 test('marca un aviso o todos mediante la función autorizada', async () => {

@@ -123,6 +123,7 @@
       "src/features/home/indicatorsService.ts",
       "src/features/home/schemas.ts",
       "src/features/notifications/notificationService.ts",
+      "src/features/notifications/notificationPresentation.ts",
       "src/features/home/homePresentation.ts",
       "src/features/settings/profileService.ts",
       "src/theme/formatters.ts",

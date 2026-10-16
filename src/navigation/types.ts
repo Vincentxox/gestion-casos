@@ -30,6 +30,11 @@ export type MainStackParamList = {
   Indicators: undefined
 }
 
+export type RootStackParamList = {
+  MainTabs: NavigatorScreenParams<MainTabParamList> | undefined
+  NotificationsFlow: undefined
+}
+
 export type AdministrationStackParamList = {
   AdministrationHome: undefined
   Users: undefined

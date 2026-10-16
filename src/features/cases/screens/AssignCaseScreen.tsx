@@ -1,7 +1,7 @@
 import { getErrorMessage } from '@/utils/errorMessage'
 import { AppFeedback } from '@/components/feedback/AppFeedback'
+import { CommonActions } from '@react-navigation/native'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
-import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs'
 import { useEffect, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -13,7 +13,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { RequestState } from '@/components/feedback/RequestState'
 import { ROLE_LABELS } from '@/features/auth/types'
-import type { MainStackParamList, MainTabParamList } from '@/navigation/types'
+import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
 import { colors, radius, spacing, typography } from '@/theme/tokens'
 
@@ -137,9 +137,12 @@ export function AssignCaseScreen({ navigation, route }: Props) {
             onAction={
               profile?.role === 'administrador'
                 ? () =>
-                    navigation
-                      .getParent<BottomTabNavigationProp<MainTabParamList>>()
-                      ?.navigate('Administration', { screen: 'Users' })
+                    navigation.dispatch(
+                      CommonActions.navigate('MainTabs', {
+                        screen: 'Administration',
+                        params: { screen: 'Users' },
+                      }),
+                    )
                 : undefined
             }
           />
