@@ -1,4 +1,11 @@
-import { changeCaseStatusSchema, createCaseSchema } from '../schemas'
+import { changeCaseStatusSchema, createCaseSchema, reassignmentReasonSchema } from '../schemas'
+
+test('el motivo de reasignación usa los límites de PostgreSQL', () => {
+  expect(reassignmentReasonSchema.safeParse(' ok ').success).toBe(false)
+  expect(reassignmentReasonSchema.parse('  Cambio de turno  ')).toBe('Cambio de turno')
+  expect(reassignmentReasonSchema.safeParse('a'.repeat(500)).success).toBe(true)
+  expect(reassignmentReasonSchema.safeParse('a'.repeat(501)).success).toBe(false)
+})
 
 describe('createCaseSchema', () => {
   const validCase = {

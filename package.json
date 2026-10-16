@@ -127,6 +127,7 @@
       "src/services/feedback.ts",
       "src/components/forms/FormField.tsx",
       "src/services/supabase/secureStorage.ts",
+      "src/services/supabase/formerMembers.ts",
       "src/store/authStore.ts"
     ],
     "coverageThreshold": {

@@ -2,6 +2,7 @@ import { File, Paths } from 'expo-file-system'
 import * as Sharing from 'expo-sharing'
 
 import { supabase } from '@/services/supabase/client'
+import { listFormerMemberNames, memberDisplayName } from '@/services/supabase/formerMembers'
 
 import type {
   AreaChief,
@@ -70,19 +71,24 @@ interface VersionRow {
   returned_at: string | null
   return_reason: string | null
   returned_by: { full_name: string } | null
+  returned_by_id: string | null
 }
 
 export async function listReportVersions(caseId: string): Promise<ReportVersion[]> {
   const { data, error } = await supabase
     .from('case_report_versions')
     .select(
-      'id, case_id, version_number, status, content, content_hash, created_at, returned_at, return_reason, returned_by:profiles!case_report_versions_returned_by_fkey(full_name)',
+      'id, case_id, version_number, status, content, content_hash, created_at, returned_at, return_reason, returned_by_id:returned_by, returned_by:profiles!case_report_versions_returned_by_fkey(full_name)',
     )
     .eq('case_id', caseId)
     .order('version_number', { ascending: false })
   if (error) throw error
+  const rows = data as unknown as VersionRow[]
+  const formerNames = await listFormerMemberNames(
+    rows.map((row) => (!row.returned_by ? row.returned_by_id : null)),
+  )
   // `content` es jsonb: el generador lo tipa como Json y aquí se usa su forma congelada.
-  return (data as unknown as VersionRow[]).map((row) => ({
+  return rows.map((row) => ({
     id: row.id,
     caseId: row.case_id,
     versionNumber: row.version_number,
@@ -91,7 +97,14 @@ export async function listReportVersions(caseId: string): Promise<ReportVersion[
     contentHash: row.content_hash,
     createdAt: row.created_at,
     returnedAt: row.returned_at,
-    returnedByName: row.returned_by?.full_name ?? null,
+    returnedByName: row.returned_by_id
+      ? memberDisplayName(
+          row.returned_by_id,
+          row.returned_by?.full_name,
+          formerNames,
+          'Usuario sin nombre',
+        )
+      : null,
     returnReason: row.return_reason,
   }))
 }
@@ -105,12 +118,20 @@ export async function listReportSignatures(caseId: string): Promise<ReportSignat
     .eq('case_id', caseId)
     .order('signed_at')
   if (error) throw error
+  const formerNames = await listFormerMemberNames(
+    data.map((row) => (!row.signer ? row.signer_id : null)),
+  )
   return data.map((row) => ({
     id: row.id,
     versionId: row.version_id,
     type: row.signature_type,
     signerId: row.signer_id,
-    signerName: row.signer?.full_name || 'Usuario sin nombre',
+    signerName: memberDisplayName(
+      row.signer_id,
+      row.signer?.full_name,
+      formerNames,
+      'Usuario sin nombre',
+    ),
     signerRole: row.signer_role,
     signedAt: row.signed_at,
     consentText: row.consent_text,

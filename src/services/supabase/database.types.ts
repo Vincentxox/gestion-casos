@@ -667,6 +667,52 @@ export type Database = {
           },
         ]
       }
+      former_members: {
+        Row: {
+          deactivated_at: string
+          deactivated_by: string | null
+          full_name: string
+          organization_id: string
+          user_id: string
+        }
+        Insert: {
+          deactivated_at?: string
+          deactivated_by?: string | null
+          full_name: string
+          organization_id: string
+          user_id: string
+        }
+        Update: {
+          deactivated_at?: string
+          deactivated_by?: string | null
+          full_name?: string
+          organization_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'former_members_deactivated_by_fkey'
+            columns: ['deactivated_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'former_members_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'former_members_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       notifications: {
         Row: {
           action: Database['public']['Enums']['case_action']
@@ -1175,6 +1221,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      deactivate_member: {
+        Args: { target_user_id: string }
+        Returns: undefined
       }
       delete_case_photo: {
         Args: { target_photo_id: string }

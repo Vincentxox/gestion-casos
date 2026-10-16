@@ -35,8 +35,8 @@ const item: CaseRecord = {
   updatedAt: '',
 }
 
-test('el técnico solo tiene filtros de trabajo y área', () => {
-  expect(getScopeOptions(profile, 'tecnica')).toEqual(['mis_trabajos', 'mi_area'])
+test('el técnico puede consultar también todos los casos que RLS le permite ver', () => {
+  expect(getScopeOptions(profile, 'tecnica')).toEqual(['mis_trabajos', 'mi_area', 'todas'])
   expect(matchesCaseScope(item, 'mis_trabajos', profile)).toBe(false)
   expect(matchesCaseScope(item, 'mi_area', profile)).toBe(true)
 })
@@ -53,10 +53,12 @@ test('ofrece los alcances adecuados a cada rol', () => {
   expect(getScopeOptions({ ...profile, role: 'jefe_area' }, 'tecnica')).toEqual([
     'bandeja',
     'mi_area',
+    'todas',
   ])
   expect(getScopeOptions({ ...profile, role: 'jefe_area' }, 'solicitante')).toEqual([
     'mi_area',
     'mias',
+    'todas',
   ])
   expect(getScopeOptions({ ...profile, role: 'administrador' }, null)).toEqual(['todas', 'bandeja'])
   expect(getScopeOptions({ ...profile, role: 'auditor' }, null)).toEqual(['todas'])

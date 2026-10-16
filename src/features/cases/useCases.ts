@@ -83,7 +83,8 @@ export function useAssignCase(caseId: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (assignedTo: string) => assignCase(caseId, assignedTo),
+    mutationFn: ({ assignedTo, comment }: { assignedTo: string; comment?: string }) =>
+      assignCase(caseId, assignedTo, comment),
     onSuccess: async () => {
       void feedback.success()
       await queryClient.invalidateQueries({ queryKey: casesQueryKey })

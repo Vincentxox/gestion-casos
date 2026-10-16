@@ -18,6 +18,7 @@ import { EmptyState } from '@/components/feedback/EmptyState'
 import { RequestState } from '@/components/feedback/RequestState'
 import { SkeletonList } from '@/components/ui/SkeletonList'
 import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
 import { Chip } from '@/components/ui/Chip'
 import { ScreenContainer } from '@/components/ui/ScreenContainer'
 import { useAreas } from '@/features/areas/useAreas'
@@ -26,12 +27,14 @@ import { useAuthStore } from '@/store/authStore'
 import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 import type { ManagedProfile } from '../types'
-import { useManagedProfiles, useSetMemberAccess } from '../useManagedProfiles'
+import { useDeactivateMember, useManagedProfiles, useSetMemberAccess } from '../useManagedProfiles'
 
 export function UsersScreen() {
   const profiles = useManagedProfiles()
   const areas = useAreas()
   const mutation = useSetMemberAccess()
+  const deactivation = useDeactivateMember()
+  const ownUserId = useAuthStore((state) => state.profile?.id)
   const applyOwnAccess = useAuthStore((state) => state.applyOwnAccess)
   const [selectedProfile, setSelectedProfile] = useState<ManagedProfile | null>(null)
   const [role, setRole] = useState<AppRole>('solicitante')
@@ -70,6 +73,30 @@ export function UsersScreen() {
         error instanceof Error ? error.message : 'Comprueba tus permisos y la conexión.',
       )
     }
+  }
+
+  async function deactivate(profile: ManagedProfile) {
+    try {
+      await deactivation.mutateAsync(profile.id)
+      setSelectedProfile(null)
+      AppFeedback.toast(`Se dio de baja a ${profile.fullName}`)
+    } catch (error) {
+      AppFeedback.show(
+        'No fue posible dar de baja',
+        error instanceof Error ? error.message : 'Comprueba tus permisos y la conexión.',
+      )
+    }
+  }
+
+  function confirmDeactivation(profile: ManagedProfile) {
+    AppFeedback.show(
+      `¿Dar de baja a ${profile.fullName}?`,
+      'Perderá el acceso a la empresa. Sus solicitudes, firmas e historial se conservarán.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Dar de baja', style: 'destructive', onPress: () => void deactivate(profile) },
+      ],
+    )
   }
 
   function refresh() {
@@ -179,7 +206,7 @@ export function UsersScreen() {
         scrollable={false}
         footerAction={{
           label: 'Guardar acceso',
-          loading: mutation.isPending,
+          loading: mutation.isPending || deactivation.isPending,
           onPress: () => void saveAccess(),
         }}
       >
@@ -198,7 +225,7 @@ export function UsersScreen() {
                 <AreaOption
                   key={option}
                   label={ROLE_LABELS[option]}
-                  loading={mutation.isPending}
+                  loading={mutation.isPending || deactivation.isPending}
                   onPress={() => setRole(option)}
                   selected={role === option}
                 />
@@ -206,7 +233,7 @@ export function UsersScreen() {
               <Text style={styles.sectionLabel}>Área</Text>
               <AreaOption
                 label="Sin área asignada"
-                loading={mutation.isPending}
+                loading={mutation.isPending || deactivation.isPending}
                 onPress={() => setAreaId(null)}
                 selected={areaId === null}
               />
@@ -215,11 +242,23 @@ export function UsersScreen() {
           renderItem={({ item }) => (
             <AreaOption
               label={`${item.name} · ${item.kind === 'tecnica' ? 'Técnica' : 'Solicitante'}`}
-              loading={mutation.isPending}
+              loading={mutation.isPending || deactivation.isPending}
               onPress={() => setAreaId(item.id)}
               selected={areaId === item.id}
             />
           )}
+          ListFooterComponent={
+            selectedProfile && selectedProfile.id !== ownUserId ? (
+              <View style={styles.deactivationAction}>
+                <Button
+                  label={`Dar de baja a ${selectedProfile.fullName}`}
+                  variant="destructive"
+                  loading={deactivation.isPending || mutation.isPending}
+                  onPress={() => confirmDeactivation(selectedProfile)}
+                />
+              </View>
+            ) : null
+          }
         />
       </BottomSheet>
     </ScreenContainer>
@@ -279,6 +318,7 @@ const styles = StyleSheet.create({
   areaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   areaName: { ...typography.caption, color: colors.textMuted },
   areaOptions: { gap: spacing.sm, padding: spacing.lg, paddingBottom: spacing.xl },
+  deactivationAction: { marginTop: spacing.lg },
   sectionLabel: { ...typography.heading, color: colors.text },
   areaOption: {
     minHeight: 54,

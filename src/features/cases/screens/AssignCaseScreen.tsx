@@ -2,10 +2,12 @@ import { AppFeedback } from '@/components/feedback/AppFeedback'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs'
 import { useEffect, useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Button } from '@/components/ui/Button'
+import { FormField } from '@/components/forms/FormField'
+import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
 import { Avatar } from '@/components/ui/Avatar'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { RequestState } from '@/components/feedback/RequestState'
@@ -16,6 +18,7 @@ import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 import { useAssignableProfiles, useAssignCase, useCaseDetail } from '../useCases'
 import { getAvailableCaseActions } from '../casePermissions'
+import { reassignmentReasonSchema } from '../schemas'
 
 type Props = NativeStackScreenProps<MainStackParamList, 'AssignCase'>
 
@@ -28,7 +31,10 @@ export function AssignCaseScreen({ navigation, route }: Props) {
   const profiles = useAssignableProfiles(detail.data?.targetAreaId, canAssign)
   const mutation = useAssignCase(route.params.caseId)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [reason, setReason] = useState('')
   const isReassignment = Boolean(detail.data?.assignedTo)
+  const needsReason = detail.data?.status === 'en_ejecucion' || detail.data?.status === 'en_espera'
+  const reasonValid = !needsReason || reassignmentReasonSchema.safeParse(reason).success
 
   useEffect(() => {
     navigation.setOptions({ title: isReassignment ? 'Reasignar personal' : 'Asignar personal' })
@@ -60,24 +66,27 @@ export function AssignCaseScreen({ navigation, route }: Props) {
   const selectedProfile = availableProfiles.find((item) => item.id === selectedId)
 
   async function handleSubmit() {
-    if (!selectedProfile) return
+    if (!selectedProfile || !reasonValid) return
     try {
-      await mutation.mutateAsync(selectedProfile.id)
+      await mutation.mutateAsync({
+        assignedTo: selectedProfile.id,
+        comment: needsReason ? reason : '',
+      })
       AppFeedback.toast(
         `Solicitud ${isReassignment ? 'reasignada' : 'asignada'} a ${selectedProfile.fullName}`,
       )
       navigation.goBack()
-    } catch {
+    } catch (error) {
       AppFeedback.show(
         isReassignment ? 'No fue posible reasignar' : 'No fue posible asignar',
-        'Comprueba tus permisos y la conexión.',
+        error instanceof Error ? error.message : 'Comprueba tus permisos y la conexión.',
       )
     }
   }
 
   return (
     <SafeAreaView edges={['bottom']} style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <KeyboardFormScrollView contentContainerStyle={styles.content}>
         <Text style={styles.instructions}>
           {isReassignment
             ? `${detail.data.caseNumber} · Elige a quién pasarle la solicitud. La persona actual dejará de verla en «Mis trabajos».`
@@ -144,7 +153,23 @@ export function AssignCaseScreen({ navigation, route }: Props) {
             subtitle={`${ROLE_LABELS[item.role]} · ${item.areaName || 'Sin área'}`}
           />
         ))}
-      </ScrollView>
+        {needsReason && availableProfiles.length ? (
+          <FormField
+            label="Motivo de la reasignación (obligatorio)"
+            maxLength={500}
+            multiline
+            onChangeText={setReason}
+            placeholder="Explica por qué cambia la persona responsable"
+            showCharacterCount
+            style={styles.reason}
+            textAlignVertical="top"
+            value={reason}
+          />
+        ) : null}
+        {needsReason && availableProfiles.length ? (
+          <Text style={styles.reasonHint}>Escribe entre 3 y 500 caracteres.</Text>
+        ) : null}
+      </KeyboardFormScrollView>
       {availableProfiles.length ? (
         <View style={styles.stickyAction}>
           <Button
@@ -155,7 +180,7 @@ export function AssignCaseScreen({ navigation, route }: Props) {
                   ? 'Reasignar personal'
                   : 'Asignar personal'
             }
-            disabled={!selectedProfile}
+            disabled={!selectedProfile || !reasonValid}
             loading={mutation.isPending}
             onPress={() => void handleSubmit()}
           />
@@ -238,6 +263,8 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   optionSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
+  reason: { minHeight: 100 },
+  reasonHint: { ...typography.caption, color: colors.textMuted },
   optionContent: { flex: 1, gap: spacing.xs },
   optionTitle: { ...typography.heading, color: colors.text },
   optionSubtitle: { ...typography.caption, color: colors.textMuted },

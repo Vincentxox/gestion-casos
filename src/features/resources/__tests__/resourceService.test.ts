@@ -1,4 +1,5 @@
 import { supabase } from '@/services/supabase/client'
+import { listFormerMemberNames } from '@/services/supabase/formerMembers'
 
 import {
   addCaseUsage,
@@ -13,6 +14,10 @@ import {
 import type { ResourceInput, UsageInput } from '../types'
 
 jest.mock('@/services/supabase/client', () => ({ supabase: { from: jest.fn() } }))
+jest.mock('@/services/supabase/formerMembers', () => ({
+  listFormerMemberNames: jest.fn(),
+  memberDisplayName: jest.requireActual('@/services/supabase/formerMembers').memberDisplayName,
+}))
 
 const from = supabase.from as jest.Mock
 const query = {
@@ -68,6 +73,7 @@ const usageInput: UsageInput = {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  ;(listFormerMemberNames as jest.Mock).mockResolvedValue(new Map())
   from.mockReturnValue(query)
   for (const method of ['select', 'eq', 'update', 'delete'] as const)
     query[method].mockReturnValue(query)
@@ -113,6 +119,17 @@ test('consulta registros de uso con los datos copiados por el servidor', async (
     { caseId: 'c1', resourceName: 'Cable', unitCost: 2.5, quantity: 2 },
   ])
   expect(query.eq).toHaveBeenCalledWith('case_id', 'c1')
+})
+
+test('conserva el nombre histórico de quien registró mano de obra', async () => {
+  ;(listFormerMemberNames as jest.Mock).mockResolvedValue(new Map([['tech', 'Luis']]))
+  query.order.mockResolvedValue({
+    data: [{ ...usage, kind: 'mano_de_obra', technician_id: 'tech', technician: null }],
+    error: null,
+  })
+  await expect(listCaseUsages('c1')).resolves.toMatchObject([
+    { technicianName: 'Luis (dado de baja)' },
+  ])
 })
 
 test('registra recurso y mano de obra sin enviar empresa ni costos desde el cliente', async () => {

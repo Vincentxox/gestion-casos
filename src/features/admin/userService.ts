@@ -32,3 +32,8 @@ export async function setMemberAccess(
 
   if (error) throw error
 }
+
+export async function deactivateMember(userId: string): Promise<void> {
+  const { error } = await supabase.rpc('deactivate_member', { target_user_id: userId })
+  if (error) throw error
+}

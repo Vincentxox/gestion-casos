@@ -14,10 +14,11 @@ export type StatusFilter = 'todos' | 'pendientes' | 'en_curso' | 'cerradas'
 
 export function getScopeOptions(profile: Profile, areaKind: 'solicitante' | 'tecnica' | null) {
   if (profile.role === 'solicitante') return [] as ScopeFilter[]
-  if (profile.role === 'tecnico') return ['mis_trabajos', 'mi_area'] as ScopeFilter[]
+  // "Todas" incluye también casos firmados o asignados antes de cambiar de área.
+  if (profile.role === 'tecnico') return ['mis_trabajos', 'mi_area', 'todas'] as ScopeFilter[]
   if (profile.role === 'jefe_area' && areaKind === 'tecnica')
-    return ['bandeja', 'mi_area'] as ScopeFilter[]
-  if (profile.role === 'jefe_area') return ['mi_area', 'mias'] as ScopeFilter[]
+    return ['bandeja', 'mi_area', 'todas'] as ScopeFilter[]
+  if (profile.role === 'jefe_area') return ['mi_area', 'mias', 'todas'] as ScopeFilter[]
   if (profile.role === 'auditor') return ['todas'] as ScopeFilter[]
   return ['todas', 'bandeja'] as ScopeFilter[]
 }

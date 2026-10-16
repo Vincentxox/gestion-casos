@@ -1,4 +1,5 @@
 import { supabase } from '@/services/supabase/client'
+import { listFormerMemberNames, memberDisplayName } from '@/services/supabase/formerMembers'
 import { statusMeta } from '@/theme/statusMeta'
 
 import type {
@@ -46,8 +47,7 @@ const caseSelection = `id, case_number, title, description, category_id,
   location, priority, status, created_by, creator:profiles!cases_created_by_fkey(full_name),
   assigned_to, assignee:profiles!cases_assigned_to_fkey(full_name), created_at, accepted_at, assigned_at, started_at, updated_at, due_at, overdue_stage`
 
-function mapCase(value: unknown): CaseRecord {
-  const row = value as CaseRow
+function mapCase(row: CaseRow, formerNames: ReadonlyMap<string, string>): CaseRecord {
   return {
     id: row.id,
     caseNumber: row.case_number,
@@ -64,9 +64,21 @@ function mapCase(value: unknown): CaseRecord {
     priority: row.priority,
     status: row.status,
     createdBy: row.created_by,
-    creatorName: row.creator?.full_name || 'Usuario sin nombre',
+    creatorName: memberDisplayName(
+      row.created_by,
+      row.creator?.full_name,
+      formerNames,
+      'Usuario sin nombre',
+    ),
     assignedTo: row.assigned_to,
-    assigneeName: row.assignee?.full_name ?? null,
+    assigneeName: row.assigned_to
+      ? memberDisplayName(
+          row.assigned_to,
+          row.assignee?.full_name,
+          formerNames,
+          'Usuario sin nombre',
+        )
+      : null,
     createdAt: row.created_at,
     acceptedAt: row.accepted_at,
     assignedAt: row.assigned_at,
@@ -77,6 +89,16 @@ function mapCase(value: unknown): CaseRecord {
   }
 }
 
+async function mapCases(values: unknown[]): Promise<CaseRecord[]> {
+  const rows = values as CaseRow[]
+  const missingIds = rows.flatMap((row) => [
+    !row.creator ? row.created_by : null,
+    !row.assignee ? row.assigned_to : null,
+  ])
+  const formerNames = await listFormerMemberNames(missingIds)
+  return rows.map((row) => mapCase(row, formerNames))
+}
+
 export async function listCases(): Promise<CaseRecord[]> {
   const { data, error } = await supabase
     .from('cases')
@@ -84,7 +106,7 @@ export async function listCases(): Promise<CaseRecord[]> {
     .order('created_at', { ascending: false })
     .limit(100)
   if (error) throw error
-  return data.map(mapCase)
+  return mapCases(data)
 }
 
 export async function getCase(caseId: string): Promise<CaseRecord> {
@@ -94,7 +116,7 @@ export async function getCase(caseId: string): Promise<CaseRecord> {
     .eq('id', caseId)
     .single()
   if (error) throw error
-  return mapCase(data)
+  return (await mapCases([data]))[0]!
 }
 
 export async function createCase(input: CreateCaseInput): Promise<CaseRecord> {
@@ -110,7 +132,7 @@ export async function createCase(input: CreateCaseInput): Promise<CaseRecord> {
     .select(caseSelection)
     .single()
   if (error) throw error
-  return mapCase(data)
+  return (await mapCases([data]))[0]!
 }
 
 export async function updateCase(caseId: string, input: UpdateCaseInput): Promise<CaseRecord> {
@@ -130,7 +152,7 @@ export async function updateCase(caseId: string, input: UpdateCaseInput): Promis
     throw new Error('La solicitud ya no se puede editar; actualiza la pantalla')
   }
   if (error) throw error
-  return mapCase(data)
+  return (await mapCases([data]))[0]!
 }
 
 export async function changeCaseStatus(
@@ -146,11 +168,16 @@ export async function changeCaseStatus(
   return getCase((data as { id: string }).id)
 }
 
-export async function assignCase(caseId: string, assignedTo: string): Promise<CaseRecord> {
+export async function assignCase(
+  caseId: string,
+  assignedTo: string,
+  comment = '',
+): Promise<CaseRecord> {
   const { data, error } = await supabase.rpc('transition_case', {
     target_case_id: caseId,
     requested_action: 'asignar',
     new_assignee_id: assignedTo,
+    action_comment: comment.trim() || null,
   })
   if (error) throw error
   return getCase((data as { id: string }).id)
@@ -189,18 +216,36 @@ export async function listCaseHistory(caseId: string): Promise<CaseStatusHistory
   const { data, error } = await supabase
     .from('case_events')
     .select(
-      'id, action, from_status, to_status, comment, created_at, actor:profiles!case_events_actor_id_fkey(full_name), assignee:profiles!case_events_assignee_id_fkey(full_name)',
+      'id, action, from_status, to_status, comment, created_at, actor_id, assignee_id, actor:profiles!case_events_actor_id_fkey(full_name), assignee:profiles!case_events_assignee_id_fkey(full_name)',
     )
     .eq('case_id', caseId)
     .order('created_at', { ascending: false })
   if (error) throw error
+  const formerNames = await listFormerMemberNames(
+    data.flatMap((row) => [
+      !row.actor ? row.actor_id : null,
+      !row.assignee ? row.assignee_id : null,
+    ]),
+  )
   return data.map((row) => ({
     id: row.id,
     action: row.action,
     previousStatus: row.from_status,
     newStatus: row.to_status,
-    actorName: row.actor?.full_name || 'Usuario sin nombre',
-    assigneeName: row.assignee?.full_name ?? null,
+    actorName: memberDisplayName(
+      row.actor_id,
+      row.actor?.full_name,
+      formerNames,
+      'Usuario sin nombre',
+    ),
+    assigneeName: row.assignee_id
+      ? memberDisplayName(
+          row.assignee_id,
+          row.assignee?.full_name,
+          formerNames,
+          'Usuario sin nombre',
+        )
+      : null,
     comment: row.comment,
     createdAt: row.created_at,
   }))

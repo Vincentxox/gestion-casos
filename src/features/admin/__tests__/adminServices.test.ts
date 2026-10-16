@@ -8,7 +8,7 @@ import {
   regenerateOrganizationJoinCode,
   renameOrganization,
 } from '../organizationService'
-import { listManagedProfiles, setMemberAccess } from '../userService'
+import { deactivateMember, listManagedProfiles, setMemberAccess } from '../userService'
 
 jest.mock('@/services/supabase/client', () => ({
   supabase: { from: jest.fn(), rpc: jest.fn() },
@@ -134,6 +134,15 @@ test('mapea perfiles y actualiza rol y área con la RPC', async () => {
     new_role: 'tecnico',
     new_area_id: 'a1',
   })
+})
+
+test('da de baja mediante la RPC y conserva el error con los casos abiertos', async () => {
+  rpc.mockResolvedValueOnce({ error: null })
+  await deactivateMember('u1')
+  expect(rpc).toHaveBeenCalledWith('deactivate_member', { target_user_id: 'u1' })
+  const error = new Error('Reasigna primero sus trabajos abiertos: CAS-2026-00009')
+  rpc.mockResolvedValueOnce({ error })
+  await expect(deactivateMember('u1')).rejects.toBe(error)
 })
 
 test('propaga fallos del servidor sin ocultarlos', async () => {
