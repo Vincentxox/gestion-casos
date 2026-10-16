@@ -208,6 +208,9 @@ describe('servicio de autenticación', () => {
       organizationId: 'org-1',
       organizationName: 'Empresa',
     })
+    expect(select).toHaveBeenCalledWith(
+      'id, full_name, avatar_url, role, area_id, area:areas(name), organization_id, organization:organizations!profiles_organization_id_fkey(name)',
+    )
   })
 
   test('rechaza roles desconocidos', async () => {
