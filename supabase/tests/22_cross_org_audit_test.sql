@@ -336,7 +336,10 @@ select test.set('unreviewed_functions', (
     'unregister_push_token(text)',
     -- SECURITY INVOKER: calculan sobre una fila de cases que RLS ya filtró.
     'due_at(cases)',
-    'overdue_stage(cases)'
+    'overdue_stage(cases)',
+    -- SECURITY INVOKER: filtran cases con RLS (prueba 24).
+    'count_cases_by_status(text, case_priority, timestamp with time zone, text)',
+    'search_cases(text, case_status[], case_priority, timestamp with time zone, text)'
   )));
 select test.ok(
   test.get('unreviewed_functions') = '',
