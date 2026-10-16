@@ -71,6 +71,27 @@ Aprobado por el responsable el 15/10/2026 (hallazgo D-1).
 - Una baja y una asignación simultáneas a la misma persona no pueden dejarle un trabajo
   abierto: la base de datos las hace esperar una a la otra.
 
+### 2.3 Empresa inactiva
+
+Aprobado por el responsable el 16/10/2026 (hallazgo D-5).
+
+- Solo la plataforma (Nexo Casos) desactiva o reactiva una empresa, por ejemplo por falta
+  de pago. Lo hace fuera de la app, con `organizations.is_active`. Los administradores de
+  la empresa no pueden cambiarlo.
+- Mientras la empresa está inactiva, **nadie de esa empresa tiene acceso**: no ve casos,
+  avisos, usuarios, catálogos ni reportes, y no crea ni modifica nada, tampoco mediante
+  RPC. Tampoco se pueden crear invitaciones ni solicitudes de acceso para esa empresa.
+- La persona sigue pudiendo iniciar sesión y leer su propio perfil y el nombre y estado
+  de su empresa. La app le muestra «Tu empresa está inactiva» y la opción de cerrar
+  sesión. No registra dispositivos nuevos para avisos, pero sí puede quitar el suyo al
+  cerrar sesión.
+- Quien todavía no tiene empresa y pidió acceso a una empresa que luego se desactivó
+  sigue viendo su solicitud y puede cancelarla.
+- No se borra ni se modifica ningún dato. Al reactivar la empresa, todos recuperan el
+  acceso que tenían, con el mismo rol y área.
+- Las tareas del servidor (envío de avisos ya generados, limpieza de fotos) no se
+  bloquean.
+
 ## 3. Áreas
 
 - Cada área pertenece a una empresa y tiene un tipo:
@@ -440,3 +461,4 @@ Tratamiento de los datos existentes (confirmado por el responsable el 22/09/2026
    administrador, dejando constancia (5.3 y 8).
 8. ~~Baja de miembros, reasignación en ejecución y visibilidad por participación.~~
    Resueltas el 15/10/2026: ver 2.2, 5.4 y 5.5.3.
+9. ~~Acceso de una empresa inactiva.~~ Resuelta el 16/10/2026: bloqueo total, ver 2.3.
