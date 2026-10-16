@@ -55,6 +55,7 @@ const profile: Profile = {
   areaName: null,
   organizationId: 'org-1',
   organizationName: 'Empresa',
+  organizationActive: true,
 }
 
 describe('estado global de autenticación', () => {
@@ -307,5 +308,46 @@ describe('estado global de autenticación', () => {
     expect(mockClearMemoryCache).toHaveBeenCalledTimes(1)
     expect(mockClearDiskCache).toHaveBeenCalledTimes(1)
     expect(useAuthStore.getState().profile?.organizationId).toBe('org-2')
+  })
+
+  test('al desactivarse la empresa limpia consultas e imágenes sin cerrar la sesión', async () => {
+    queryClient.setQueryData(['cases'], [{ id: 'private' }])
+    useAuthStore.setState({ session, profile, status: 'authenticated' })
+    mockResolveSessionProfile.mockResolvedValue({ ...profile, organizationActive: false })
+
+    await useAuthStore.getState().refreshProfile()
+
+    expect(queryClient.getQueryData(['cases'])).toBeUndefined()
+    expect(mockClearMemoryCache).toHaveBeenCalledTimes(1)
+    expect(mockClearDiskCache).toHaveBeenCalledTimes(1)
+    expect(useAuthStore.getState()).toMatchObject({
+      session,
+      status: 'authenticated',
+      profile: { organizationActive: false },
+    })
+  })
+
+  test('al reactivarse la empresa limpia las cachés y recupera el acceso', async () => {
+    useAuthStore.setState({
+      session,
+      profile: { ...profile, organizationActive: false },
+      status: 'authenticated',
+    })
+    mockResolveSessionProfile.mockResolvedValue(profile)
+
+    await expect(useAuthStore.getState().refreshProfile()).resolves.toEqual(profile)
+
+    expect(useAuthStore.getState().profile?.organizationActive).toBe(true)
+    expect(mockClearMemoryCache).toHaveBeenCalledTimes(1)
+    expect(mockClearDiskCache).toHaveBeenCalledTimes(1)
+  })
+
+  test('si falla la recarga del perfil conserva la sesión y permite reintentar', async () => {
+    useAuthStore.setState({ session, profile, status: 'authenticated' })
+    mockResolveSessionProfile.mockRejectedValue(new Error('network'))
+
+    await expect(useAuthStore.getState().refreshProfile()).rejects.toThrow('network')
+
+    expect(useAuthStore.getState()).toMatchObject({ session, profile, status: 'authenticated' })
   })
 })

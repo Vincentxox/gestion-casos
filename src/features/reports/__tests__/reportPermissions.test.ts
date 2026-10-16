@@ -35,6 +35,7 @@ const base: Profile = {
   areaName: 'Mantenimiento',
   organizationId: 'org',
   organizationName: 'Empresa',
+  organizationActive: true,
 }
 
 test('el técnico asignado edita y envía solo mientras ejecuta', () => {

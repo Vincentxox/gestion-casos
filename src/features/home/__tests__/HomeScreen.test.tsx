@@ -16,6 +16,7 @@ const mockProfile: Profile = {
   areaName: 'Mantenimiento',
   organizationId: 'org',
   organizationName: 'Empresa',
+  organizationActive: true,
 }
 const mockSummary: HomeSummary = {
   role: 'jefe_area',

@@ -19,6 +19,7 @@ const profile: Profile = {
   areaName: 'Oficina',
   organizationId: 'org',
   organizationName: 'Empresa',
+  organizationActive: true,
 }
 
 const summary: HomeSummary = {

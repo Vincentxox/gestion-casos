@@ -11,6 +11,7 @@ const profile: Profile = {
   areaName: 'Mantenimiento',
   organizationId: 'org',
   organizationName: 'Empresa',
+  organizationActive: true,
 }
 const item: CaseRecord = {
   id: 'case',
