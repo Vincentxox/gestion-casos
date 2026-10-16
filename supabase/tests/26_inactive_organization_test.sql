@@ -28,6 +28,60 @@ select test.ok(
 );
 reset role;
 
+-- Datos propios de miembros de C, creados con la empresa activa: fotos del técnico (una
+-- confirmada, una pendiente con archivos y una reservada sin archivos), un dispositivo
+-- para avisos, una solicitud aprobada (nuevo_c2 entra a C) y una pendiente (nuevo_c).
+select test.register('nuevo_c2', 'nuevo2@c.test', 'Noelia Nueva');
+
+select test.login('tec_c2');
+set role authenticated;
+select test.set('c_photo_ok', public.reserve_case_photo(test.get('c_case_assigned')::uuid, 'antes')::text);
+select test.upload(test.get('c_photo_ok')::jsonb ->> 'image_path', 100000);
+select test.upload(test.get('c_photo_ok')::jsonb ->> 'thumb_path', 10000);
+select public.confirm_case_photo((test.get('c_photo_ok')::jsonb ->> 'id')::uuid);
+select test.set('c_photo_pending', public.reserve_case_photo(test.get('c_case_assigned')::uuid, 'antes')::text);
+select test.upload(test.get('c_photo_pending')::jsonb ->> 'image_path', 100000);
+select test.set('c_photo_empty', public.reserve_case_photo(test.get('c_case_assigned')::uuid, 'antes')::text);
+select public.register_push_token('ExponentPushToken[tecC2]', 'android');
+reset role;
+
+select test.login('nuevo_c2');
+set role authenticated;
+select public.request_organization_access(test.get('c_join_code'));
+reset role;
+select test.login('admin_c');
+set role authenticated;
+select public.approve_access_request(
+  (select id from public.organization_access_requests where user_id = test.uid('nuevo_c2')),
+  'solicitante',
+  test.get('area_ventas_c')::uuid
+);
+reset role;
+
+select test.login('nuevo_c');
+set role authenticated;
+select public.request_organization_access(test.get('c_join_code'));
+reset role;
+
+select test.login('tec_c2');
+set role authenticated;
+select test.ok(
+  (select count(*) from public.case_photos
+   where id in ((test.get('c_photo_ok')::jsonb ->> 'id')::uuid,
+                (test.get('c_photo_pending')::jsonb ->> 'id')::uuid)) = 2
+  and (select count(*) from storage.objects
+       where name = test.get('c_photo_pending')::jsonb ->> 'image_path') = 1,
+  'con la empresa activa, el técnico ve sus fotos y sus archivos'
+);
+reset role;
+
+select test.ok(
+  (select organization_id = test.get('org_c')::uuid from public.profiles where id = test.uid('nuevo_c2'))
+  and (select status = 'pendiente' from public.organization_access_requests
+       where user_id = test.uid('nuevo_c')),
+  'nuevo_c2 entró a C con su solicitud y nuevo_c tiene una pendiente'
+);
+
 -- La plataforma desactiva la empresa (sin usuario autenticado).
 select test.login('nadie');
 update public.organizations set is_active = false where id = test.get('org_c')::uuid;
@@ -85,6 +139,49 @@ select test.ok(
 );
 reset role;
 
+select test.login('tec_c2');
+set role authenticated;
+select test.ok(
+  (select count(*) from public.case_photos) = 0
+  and (select count(*) from storage.objects where bucket_id = 'case-media') = 0
+  and not private.can_read_case_photo_object(test.get('c_photo_pending')::jsonb ->> 'image_path'),
+  'el técnico no ve sus fotos, ni pendientes ni confirmadas, ni sus archivos'
+);
+select test.ok(
+  not private.can_manage_case_photos(test.get('c_case_assigned')::uuid, 'antes')
+  and not private.can_register_case_usage(test.get('c_case_assigned')::uuid),
+  'pierde los permisos de fotos y recursos sobre sus trabajos'
+);
+select test.throws(
+  format($$select test.upload(%L, 100000)$$, test.get('c_photo_empty')::jsonb ->> 'image_path'),
+  'row-level security',
+  'no sube a Storage el archivo de una foto que había reservado'
+);
+reset role;
+
+select test.login('nuevo_c2');
+set role authenticated;
+select test.ok(
+  (select count(*) from public.organization_access_requests) = 0
+  and (select count(*) from public.get_my_access_request()) = 0,
+  'quien entró con una solicitud no la ve mientras su empresa está inactiva'
+);
+reset role;
+
+select test.login('nuevo_c');
+set role authenticated;
+select test.ok(
+  (select count(*) = 1 and bool_and(status = 'pendiente' and organization_name = 'Empresa C')
+   from public.get_my_access_request()),
+  'quien no tiene empresa sigue viendo su solicitud pendiente a una empresa inactiva'
+);
+select public.cancel_my_access_request();
+select test.ok(
+  (select status = 'cancelada' from public.get_my_access_request()),
+  'y puede cancelarla para pedir acceso a otra empresa'
+);
+reset role;
+
 -- ---------------------------------------------------------------------------
 -- 2. Escritura, también mediante RPC
 -- ---------------------------------------------------------------------------
@@ -121,6 +218,16 @@ select test.throws(
   format($$select public.transition_case(%L, 'iniciar')$$, test.get('c_case_assigned')),
   'Tu empresa está inactiva',
   'el técnico no inicia su trabajo'
+);
+select test.throws(
+  $$select public.register_push_token('ExponentPushToken[tecC2b]', 'android')$$,
+  'Tu empresa está inactiva',
+  'no registra dispositivos nuevos para avisos'
+);
+select public.unregister_push_token('ExponentPushToken[tecC2]');
+select test.ok(
+  (select count(*) from public.push_tokens) = 0,
+  'sí puede quitar su dispositivo al cerrar sesión'
 );
 select test.throws(
   $$select public.mark_notifications_read(null)$$,

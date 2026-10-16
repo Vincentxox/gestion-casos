@@ -83,7 +83,10 @@ Aprobado por el responsable el 16/10/2026 (hallazgo D-5).
   RPC. Tampoco se pueden crear invitaciones ni solicitudes de acceso para esa empresa.
 - La persona sigue pudiendo iniciar sesión y leer su propio perfil y el nombre y estado
   de su empresa. La app le muestra «Tu empresa está inactiva» y la opción de cerrar
-  sesión.
+  sesión. No registra dispositivos nuevos para avisos, pero sí puede quitar el suyo al
+  cerrar sesión.
+- Quien todavía no tiene empresa y pidió acceso a una empresa que luego se desactivó
+  sigue viendo su solicitud y puede cancelarla.
 - No se borra ni se modifica ningún dato. Al reactivar la empresa, todos recuperan el
   acceso que tenían, con el mismo rol y área.
 - Las tareas del servidor (envío de avisos ya generados, limpieza de fotos) no se
