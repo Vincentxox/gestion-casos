@@ -52,8 +52,9 @@ export function ActionSheet<T extends string>({
           key={action.id}
           accessibilityRole="button"
           onPress={() => onSelect(action.id)}
-          style={[
+          style={({ pressed }) => [
             styles.option,
+            pressed && styles.pressed,
             action.destructive &&
               (index === 0 || !ordered[index - 1]?.destructive) &&
               styles.destructiveDivider,
@@ -102,6 +103,7 @@ const styles = StyleSheet.create({
   iconCircleDanger: { backgroundColor: colors.dangerSoft },
   optionCopy: { flex: 1, gap: spacing.xs },
   optionText: { fontFamily: fonts.semibold, fontSize: 16, lineHeight: 22, color: colors.text },
+  pressed: { opacity: 0.7 },
   optionDescription: {
     fontFamily: fonts.regular,
     fontSize: 13,
@@ -109,5 +111,5 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
   },
   destructive: { color: colors.error },
-  destructiveDivider: { borderTopWidth: 1, borderTopColor: colors.border, marginTop: spacing.sm },
+  destructiveDivider: { borderTopWidth: 1, borderTopColor: colors.track, marginTop: spacing.sm },
 })

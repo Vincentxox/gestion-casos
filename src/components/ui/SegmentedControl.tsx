@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
 import { feedback } from '@/services/feedback'
-import { colors, elevation, fonts, radius, spacing, typography } from '@/theme/tokens'
+import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
 
 export interface Segment<T extends string> {
   value: T
@@ -68,8 +68,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.xs,
     padding: spacing.xs,
-    borderRadius: radius.md,
-    backgroundColor: colors.neutralSoft,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceMuted,
   },
   segment: {
     minHeight: 44,
@@ -79,17 +79,17 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.xs,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
   },
-  active: { backgroundColor: colors.surface, ...elevation.sm },
+  active: { backgroundColor: colors.ink },
   label: {
     ...typography.caption,
     color: colors.text,
     textAlign: 'center',
     flexShrink: 0,
   },
-  activeLabel: { color: colors.text, fontFamily: fonts.bold },
+  activeLabel: { color: colors.white, fontFamily: fonts.bold },
   count: {
     minWidth: 22,
     height: 22,
@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  activeCount: { backgroundColor: colors.primarySoft },
+  activeCount: { backgroundColor: colors.primary },
   countText: {
     ...typography.caption,
     color: colors.textMuted,

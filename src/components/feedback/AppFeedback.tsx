@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Button } from '@/components/ui/Button'
 import { Icon, type IconName } from '@/components/ui/Icon'
 import { feedback } from '@/services/feedback'
-import { colors, elevation, phaseColors, radius, spacing, typography } from '@/theme/tokens'
+import { colors, elevation, fonts, radius, spacing, typography } from '@/theme/tokens'
 
 type DialogTone = 'info' | 'warning' | 'danger'
 type ToastTone = 'success' | 'info'
@@ -102,19 +102,11 @@ export function useFeedback(): FeedbackApi {
 const toneMeta: Record<DialogTone, { icon: IconName; color: string; background: string }> = {
   info: {
     icon: 'information-circle-outline',
-    color: phaseColors.curso.fg,
-    background: phaseColors.curso.bg,
+    color: colors.primary,
+    background: colors.primarySoft,
   },
-  warning: {
-    icon: 'warning-outline',
-    color: phaseColors.nueva.fg,
-    background: phaseColors.nueva.bg,
-  },
-  danger: {
-    icon: 'alert-circle-outline',
-    color: phaseColors.rechazada.fg,
-    background: phaseColors.rechazada.bg,
-  },
+  warning: { icon: 'warning-outline', color: colors.warning, background: colors.warningSoft },
+  danger: { icon: 'warning-outline', color: colors.error, background: colors.dangerSoft },
 }
 
 function AppDialog({
@@ -126,10 +118,6 @@ function AppDialog({
 }) {
   const tone = dialog?.tone ?? 'info'
   const meta = toneMeta[tone]
-  const stacked =
-    dialog?.kind === 'confirm' &&
-    ((dialog.cancelLabel ?? 'Cancelar').length > 14 ||
-      (dialog.confirmLabel ?? 'Confirmar').length > 14)
 
   return (
     <Modal
@@ -148,43 +136,25 @@ function AppDialog({
         {dialog ? (
           <View accessibilityViewIsModal style={styles.dialogCard}>
             <View style={[styles.dialogIcon, { backgroundColor: meta.background }]}>
-              <Icon name={meta.icon} color={meta.color} size={28} />
+              <Icon name={meta.icon} color={meta.color} size="base" />
             </View>
             <Text accessibilityRole="header" style={styles.dialogTitle}>
               {dialog.title}
             </Text>
             {dialog.message ? <Text style={styles.dialogMessage}>{dialog.message}</Text> : null}
-            <View
-              style={[
-                styles.dialogActions,
-                stacked ? styles.dialogActionsStacked : styles.dialogActionsRow,
-              ]}
-              testID="app-dialog-actions"
-            >
-              {stacked ? (
-                <Button
-                  label={dialog.confirmLabel ?? 'Confirmar'}
-                  onPress={() => onClose(true)}
-                  containerStyle={styles.dialogActionFullWidth}
-                  variant={tone === 'danger' ? 'destructive' : 'primary'}
-                />
-              ) : null}
+            <View style={styles.dialogActions} testID="app-dialog-actions">
+              <Button
+                label={
+                  dialog.kind === 'confirm' ? (dialog.confirmLabel ?? 'Confirmar') : 'Entendido'
+                }
+                onPress={() => onClose(true)}
+                variant={tone === 'danger' ? 'destructive' : 'primary'}
+              />
               {dialog.kind === 'confirm' ? (
                 <Button
                   label={dialog.cancelLabel ?? 'Cancelar'}
                   onPress={() => onClose(false)}
-                  containerStyle={stacked ? styles.dialogActionFullWidth : styles.dialogAction}
                   variant="secondary"
-                />
-              ) : null}
-              {!stacked ? (
-                <Button
-                  label={
-                    dialog.kind === 'confirm' ? (dialog.confirmLabel ?? 'Confirmar') : 'Entendido'
-                  }
-                  onPress={() => onClose(true)}
-                  containerStyle={styles.dialogAction}
-                  variant={tone === 'danger' ? 'destructive' : 'primary'}
                 />
               ) : null}
             </View>
@@ -208,26 +178,29 @@ function AppToast({
   return (
     <View
       accessibilityLiveRegion="polite"
-      style={[styles.toast, { top: insets.top + spacing.xl * 4 }]}
+      pointerEvents="box-none"
+      style={[styles.toastLayer, { top: insets.top + spacing.sm }]}
       testID="app-toast"
     >
-      <View style={styles.toastIcon}>
-        <Icon
-          name={value.tone === 'success' ? 'checkmark' : 'information-circle-outline'}
-          color={value.tone === 'success' ? '#6EE7A0' : '#93C5FD'}
-          size="base"
-        />
+      <View style={styles.toast}>
+        <View style={[styles.toastIcon, value.tone === 'info' && styles.toastIconInfo]}>
+          <Icon
+            name={value.tone === 'success' ? 'checkmark' : 'information'}
+            color={colors.white}
+            size="inline"
+          />
+        </View>
+        <Text style={styles.toastText}>{value.message}</Text>
+        <Pressable
+          accessibilityLabel="Cerrar aviso"
+          accessibilityRole="button"
+          hitSlop={0}
+          onPress={onClose}
+          style={styles.toastClose}
+        >
+          <Icon name="close" color={colors.white} size="inline" />
+        </Pressable>
       </View>
-      <Text style={styles.toastText}>{value.message}</Text>
-      <Pressable
-        accessibilityLabel="Cerrar aviso"
-        accessibilityRole="button"
-        hitSlop={0}
-        onPress={onClose}
-        style={styles.toastClose}
-      >
-        <Icon name="close" color={colors.white} size="base" />
-      </Pressable>
     </View>
   )
 }
@@ -307,68 +280,60 @@ const styles = StyleSheet.create({
   dialogOverlay: {
     flex: 1,
     justifyContent: 'center',
-    padding: spacing.lg,
+    padding: spacing.roomy,
     backgroundColor: colors.modalBackdrop,
   },
   dialogCard: {
     width: '100%',
-    maxWidth: 342,
+    maxWidth: 360,
     alignSelf: 'center',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingTop: spacing.roomy,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.lg,
-    borderRadius: radius.xl,
+    gap: spacing.base,
+    padding: spacing.lg,
+    borderRadius: radius.sheet,
     backgroundColor: colors.surface,
-    ...elevation.md,
   },
   dialogIcon: {
-    width: 56,
-    height: 56,
+    width: 48,
+    height: 48,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dialogTitle: {
-    fontFamily: typography.title.fontFamily,
-    fontSize: 19,
-    lineHeight: 25,
-    color: colors.text,
-    textAlign: 'center',
-  },
-  dialogMessage: { ...typography.body, color: colors.textMuted, textAlign: 'center' },
-  dialogActions: { alignSelf: 'stretch', gap: spacing.sm },
-  dialogActionsRow: { flexDirection: 'row' },
-  dialogActionsStacked: { flexDirection: 'column', alignSelf: 'stretch' },
-  dialogAction: { flex: 1 },
-  dialogActionFullWidth: { alignSelf: 'stretch' },
-  toast: {
+  dialogTitle: { ...typography.title, fontFamily: fonts.extrabold, color: colors.ink },
+  dialogMessage: { ...typography.body, color: colors.textMuted },
+  dialogActions: { flexDirection: 'column', gap: spacing.sm, marginTop: spacing.xs },
+  toastLayer: {
     position: 'absolute',
-    left: spacing.lg,
-    right: spacing.lg,
+    left: spacing.md,
+    right: spacing.md,
     zIndex: 100,
+    alignItems: 'center',
+  },
+  toast: {
+    maxWidth: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    backgroundColor: colors.text,
+    borderRadius: radius.pill,
+    paddingVertical: spacing.xs,
+    paddingLeft: spacing.sm,
+    backgroundColor: colors.ink,
     ...elevation.md,
   },
   toastIcon: {
-    width: 32,
-    height: 32,
+    width: 30,
+    height: 30,
     borderRadius: radius.pill,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: colors.sky,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  toastIconInfo: { backgroundColor: colors.primary },
   toastClose: {
     width: 44,
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  toastText: { ...typography.body, color: colors.white, flex: 1 },
+  toastText: { ...typography.body, fontFamily: fonts.bold, color: colors.white, flexShrink: 1 },
 })

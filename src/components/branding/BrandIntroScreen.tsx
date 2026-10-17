@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
-import { AccessibilityInfo, Animated, Easing, Image, StyleSheet, Text, View } from 'react-native'
+import { AccessibilityInfo, Animated, Easing, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import appConfig from '../../../app.json'
-import { colors, elevation, fonts, radius, spacing, typography } from '@/theme/tokens'
+import { NexoLogo } from '@/components/branding/NexoLogo'
+import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
 
 type Props = { onFinish: () => void; ready: boolean }
-
-const logoSource = require('../../../assets/logo-mark.png')
 
 export function BrandIntroScreen({ onFinish, ready }: Props) {
   const insets = useSafeAreaInsets()
@@ -134,7 +133,7 @@ export function BrandIntroScreen({ onFinish, ready }: Props) {
         <Animated.View
           style={[styles.logoCard, { opacity: logoOpacity, transform: [{ scale: logoScale }] }]}
         >
-          <Image accessible={false} resizeMode="contain" source={logoSource} style={styles.logo} />
+          <NexoLogo size={104} check />
         </Animated.View>
         <Animated.Text
           numberOfLines={1}
@@ -150,14 +149,18 @@ export function BrandIntroScreen({ onFinish, ready }: Props) {
         >
           Conecta cada caso con su solución
         </Animated.Text>
-        <View accessibilityLabel="Cargando sesión" style={styles.progressTrack}>
-          {reduceMotion ? (
-            <View style={styles.progressStatic} />
-          ) : (
-            <Animated.View
-              style={[styles.progressBar, { transform: [{ translateX: progressOffset }] }]}
-            />
-          )}
+        <View style={styles.progressRow}>
+          <View style={styles.progressStart} />
+          <View accessibilityLabel="Cargando sesión" style={styles.progressTrack}>
+            {reduceMotion ? (
+              <View style={styles.progressStatic} />
+            ) : (
+              <Animated.View
+                style={[styles.progressBar, { transform: [{ translateX: progressOffset }] }]}
+              />
+            )}
+          </View>
+          <View style={styles.progressEnd} />
         </View>
       </View>
       <Text style={[styles.version, { bottom: insets.bottom + spacing.lg }]}>
@@ -175,23 +178,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   content: { alignItems: 'center', width: '100%', paddingHorizontal: spacing.xl },
-  logoCard: {
-    width: 112,
-    height: 112,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    ...elevation.sm,
-    marginBottom: spacing.lg,
-  },
-  logo: { width: 100, height: 100 },
+  logoCard: { marginBottom: spacing.lg },
   name: {
     ...typography.title,
     fontFamily: fonts.extrabold,
-    fontSize: 24,
-    lineHeight: 30,
-    color: colors.text,
+    fontSize: 30,
+    lineHeight: 36,
+    letterSpacing: -0.8,
+    color: colors.ink,
     textAlign: 'center',
     alignSelf: 'stretch',
   },
@@ -201,13 +195,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing.sm,
   },
+  progressRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.xl },
+  progressStart: { width: 12, height: 12, borderRadius: radius.pill, backgroundColor: colors.ink },
+  progressEnd: {
+    width: 12,
+    height: 12,
+    borderRadius: radius.pill,
+    borderWidth: 3,
+    borderColor: colors.sky,
+    backgroundColor: colors.background,
+  },
   progressTrack: {
     width: 84,
     height: 4,
     overflow: 'hidden',
-    borderRadius: radius.pill,
-    backgroundColor: colors.border,
-    marginTop: spacing.xl,
+    backgroundColor: colors.track,
   },
   progressBar: {
     width: 28,

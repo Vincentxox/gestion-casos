@@ -98,22 +98,22 @@ describe('AppFeedback', () => {
     expect(onDecision).toHaveBeenCalledWith(false)
   })
 
-  test('usa dos columnas de igual ancho o apila etiquetas largas', async () => {
+  test('apila las acciones con la principal primero', async () => {
     const screen = await setup()
     await fireEvent.press(screen.getByLabelText('Abrir confirmación'))
     expect(screen.getByTestId('app-dialog-actions').props.style).toEqual(
-      expect.arrayContaining([expect.objectContaining({ flexDirection: 'row' })]),
+      expect.objectContaining({ flexDirection: 'column' }),
     )
-    const cancel = screen.getByLabelText('Cancelar')
-    const confirm = screen.getByLabelText('Confirmar')
-    expect(cancel.parent?.props.style).toEqual(confirm.parent?.props.style)
-    await fireEvent.press(cancel)
+    const labels = screen
+      .getAllByRole('button')
+      .map((button) => button.props.accessibilityLabel)
+      .filter((label) => label === 'Confirmar' || label === 'Cancelar')
+    expect(labels).toEqual(['Confirmar', 'Cancelar'])
+    await fireEvent.press(screen.getByLabelText('Cancelar'))
 
     await fireEvent.press(screen.getByLabelText('Abrir confirmación larga'))
-    expect(screen.getByTestId('app-dialog-actions').props.style).toEqual(
-      expect.arrayContaining([expect.objectContaining({ flexDirection: 'column' })]),
-    )
     expect(screen.getByLabelText('Revocar invitación')).toBeTruthy()
+    expect(screen.getByLabelText('Mantener invitación')).toBeTruthy()
   })
 
   test('conserva la acción destructiva de las confirmaciones existentes', async () => {
@@ -133,9 +133,6 @@ describe('AppFeedback', () => {
     const screen = await setup()
     await fireEvent.press(screen.getByLabelText('Abrir aviso'))
     expect(screen.getByText('Sin conexión')).toBeTruthy()
-    expect(screen.getByLabelText('Entendido').parent?.props.style).toEqual(
-      expect.arrayContaining([expect.objectContaining({ flex: 1 })]),
-    )
     await fireEvent.press(screen.getByText('Entendido'))
 
     jest.useFakeTimers()
@@ -147,13 +144,11 @@ describe('AppFeedback', () => {
     jest.useRealTimers()
   })
 
-  test('muestra el tono informativo arriba y permite cerrar el aviso', async () => {
+  test('muestra el aviso como isla arriba y permite cerrarlo', async () => {
     const screen = await setup()
     await fireEvent.press(screen.getByLabelText('Mostrar información'))
     const toast = screen.getByTestId('app-toast')
-    expect(toast.props.style).toEqual(
-      expect.arrayContaining([expect.objectContaining({ top: 128 })]),
-    )
+    expect(toast.props.style).toEqual(expect.arrayContaining([expect.objectContaining({ top: 8 })]))
     expect(screen.getByText('La solicitud ya se encuentra actualizada.')).toBeTruthy()
     await fireEvent.press(screen.getByLabelText('Cerrar aviso'))
     expect(screen.queryByTestId('app-toast')).toBeNull()

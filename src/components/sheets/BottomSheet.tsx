@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
 import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
-import { colors, elevation, fonts, radius, spacing } from '@/theme/tokens'
+import { colors, fonts, radius, spacing } from '@/theme/tokens'
 
 interface FooterAction {
   label: string
@@ -133,19 +133,17 @@ const styles = StyleSheet.create({
   sheet: {
     maxHeight: '90%',
     minHeight: 180,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
+    borderTopLeftRadius: radius.sheet,
+    borderTopRightRadius: radius.sheet,
     backgroundColor: colors.surface,
-    ...elevation.md,
-    shadowOffset: { width: 0, height: -4 },
   },
   handle: {
     alignSelf: 'center',
     width: 40,
-    height: 4,
+    height: 5,
     marginTop: spacing.sm,
     borderRadius: radius.pill,
-    backgroundColor: colors.border,
+    backgroundColor: colors.track,
   },
   header: {
     minHeight: 64,
@@ -156,7 +154,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   heading: { flex: 1, gap: spacing.xs },
-  title: { fontFamily: fonts.bold, fontSize: 20, lineHeight: 26, color: colors.text },
+  title: { fontFamily: fonts.extrabold, fontSize: 22, lineHeight: 28, color: colors.ink },
   subtitle: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 20, color: colors.textMuted },
   closeButton: {
     width: 44,
@@ -164,14 +162,12 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.background,
+    backgroundColor: colors.surfaceMuted,
   },
   scrollArea: { flex: 1 },
   content: { gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
   staticContent: { flex: 1 },
   footer: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
   },

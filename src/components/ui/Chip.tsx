@@ -28,7 +28,7 @@ export function Chip({
     danger: [colors.dangerSoft, colors.error],
   } as const
   const [backgroundColor, color] = toneStyles[tone]
-  const foreground = selected ? colors.white : color
+  const foreground = selected ? colors.white : onPress ? colors.text : color
   const content = (
     <>
       {icon ? <Icon name={icon} size="inline" color={foreground} /> : null}
@@ -49,7 +49,7 @@ export function Chip({
       style={[
         styles.chip,
         styles.interactive,
-        { backgroundColor: selected ? colors.primary : colors.surface },
+        { backgroundColor: selected ? colors.ink : colors.surfaceMuted },
       ]}
     >
       {content}
@@ -69,6 +69,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.base,
     paddingVertical: spacing.xs,
   },
-  interactive: { borderWidth: 1, borderColor: colors.border },
-  label: { fontFamily: fonts.semibold, fontSize: 13 },
+  interactive: { minHeight: 40, paddingHorizontal: spacing.md },
+  label: { fontFamily: fonts.semibold, fontSize: 14 },
 })

@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native'
 
-import { colors, spacing, typography } from '@/theme/tokens'
+import { colors, fonts, spacing, typography } from '@/theme/tokens'
 
 export function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
@@ -15,6 +15,6 @@ export function SectionHeader({ title, subtitle }: { title: string; subtitle?: s
 
 const styles = StyleSheet.create({
   container: { gap: spacing.xs },
-  title: { ...typography.heading, color: colors.text },
+  title: { ...typography.heading, fontFamily: fonts.extrabold, fontSize: 18, color: colors.ink },
   subtitle: { ...typography.body, color: colors.textMuted },
 })

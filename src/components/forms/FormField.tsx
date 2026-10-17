@@ -89,8 +89,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
+    borderColor: colors.track,
+    borderRadius: radius.lg,
     backgroundColor: colors.surface,
   },
   input: {

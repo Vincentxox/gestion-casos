@@ -1,30 +1,36 @@
 export const colors = {
-  primary: '#075EAD',
-  primaryDark: '#064B8A',
-  primarySoft: '#EAF3FC',
-  background: '#F5F7FA',
+  primary: '#1366D6',
+  primaryDark: '#0E4FA8',
+  primarySoft: '#E6F0FC',
+  ink: '#13305E',
+  sky: '#1BA6E8',
+  skySoft: '#E2F5FD',
+  night: '#0A1426',
+  track: '#E4E9F0',
+  background: '#FFFFFF',
   surface: '#FFFFFF',
-  text: '#172B4D',
-  textMuted: '#5E6C84',
-  border: '#D7DEE8',
+  surfaceMuted: '#F2F5F9',
+  text: '#13203A',
+  textMuted: '#5A6780',
+  border: '#E4E9F0',
   error: '#B42318',
   success: '#16803B',
   successSoft: '#E8F5EE',
   warning: '#9A6700',
   warningSoft: '#FFF4D6',
   white: '#FFFFFF',
-  info: '#075EAD',
-  infoSoft: '#EAF3FC',
+  info: '#1366D6',
+  infoSoft: '#E6F0FC',
   neutral: '#52627A',
-  neutralSoft: '#EDF0F4',
-  dangerSoft: '#FDECE9',
+  neutralSoft: '#F0F3F7',
+  dangerSoft: '#FDE7E2',
   dangerBadge: '#FEE2E2',
-  dangerText: '#B91C1C',
+  dangerText: '#9A2B16',
   cardBorder: '#E4E9F0',
   purple: '#6941C6',
   purpleSoft: '#F1EBFF',
   backdrop: '#00000088',
-  modalBackdrop: 'rgba(15,30,55,0.56)',
+  modalBackdrop: 'rgba(10,20,38,0.48)',
 } as const
 
 export const spacing = {
@@ -43,17 +49,18 @@ export const radius = {
   md: 12,
   lg: 16,
   xl: 24,
+  sheet: 32,
   pill: 999,
 } as const
 
 export const iconSize = { inline: 16, base: 22, hero: 44 } as const
 
 export const fonts = {
-  regular: 'PlusJakartaSans_400Regular',
-  medium: 'PlusJakartaSans_500Medium',
-  semibold: 'PlusJakartaSans_600SemiBold',
-  bold: 'PlusJakartaSans_700Bold',
-  extrabold: 'PlusJakartaSans_800ExtraBold',
+  regular: 'Onest_400Regular',
+  medium: 'Onest_500Medium',
+  semibold: 'Onest_600SemiBold',
+  bold: 'Onest_700Bold',
+  extrabold: 'Onest_800ExtraBold',
 } as const
 
 const noLigatures = { fontVariant: ['no-common-ligatures'] as ['no-common-ligatures'] }

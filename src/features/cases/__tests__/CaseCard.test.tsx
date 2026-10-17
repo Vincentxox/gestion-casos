@@ -28,7 +28,7 @@ const item: CaseRecord = {
 }
 
 describe('CaseCard', () => {
-  test('mantiene la tarjeta pulsable sin flecha y alinea el avatar a la derecha', async () => {
+  test('mantiene la fila pulsable sin flecha y muestra al responsable', async () => {
     const onPress = jest.fn()
     const screen = await render(<CaseCard item={item} onPress={onPress} />)
 

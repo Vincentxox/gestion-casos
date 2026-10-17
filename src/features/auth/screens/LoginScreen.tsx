@@ -4,7 +4,8 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { FontAwesome } from '@expo/vector-icons'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { NexoLogo } from '@/components/branding/NexoLogo'
 
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -17,8 +18,6 @@ import { useAuthStore } from '@/store/authStore'
 import { colors, elevation, radius, spacing, typography } from '@/theme/tokens'
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>
-
-const logoSource = require('../../../../assets/logo-mark.png')
 
 export function LoginScreen({ navigation }: Props) {
   const login = useAuthStore((state) => state.login)
@@ -72,12 +71,9 @@ export function LoginScreen({ navigation }: Props) {
   return (
     <KeyboardFormScrollView contentContainerStyle={styles.scrollContent} style={styles.flex}>
       <View style={styles.brand}>
-        <Image
-          accessibilityLabel="Logo de Nexo Casos"
-          resizeMode="contain"
-          source={logoSource}
-          style={styles.logo}
-        />
+        <View accessibilityLabel="Logo de Nexo Casos" accessible style={styles.logo}>
+          <NexoLogo size={88} check />
+        </View>
         <Text accessibilityRole="header" style={styles.title}>
           Nexo Casos
         </Text>
@@ -203,7 +199,7 @@ const styles = StyleSheet.create({
     height: 88,
   },
   title: {
-    color: colors.text,
+    color: colors.ink,
     ...typography.display,
   },
   subtitle: {

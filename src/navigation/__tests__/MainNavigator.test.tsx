@@ -151,3 +151,31 @@ test('desde Avisos, Ir a Usuarios abre Administración cuando no hay personal', 
   await waitFor(() => expect(ref.getCurrentRoute()?.name).toBe('Users'))
   expect(screen.getByText('Usuarios de prueba')).toBeTruthy()
 })
+
+test('la barra flotante lleva a Ayuda y oculta el botón + sin área', async () => {
+  const ref = createNavigationContainerRef<RootStackParamList>()
+  const screen = await render(
+    <SafeAreaProvider
+      initialMetrics={{
+        frame: { x: 0, y: 0, width: 400, height: 800 },
+        insets: { top: 0, right: 0, bottom: 0, left: 0 },
+      }}
+    >
+      <NavigationContainer ref={ref}>
+        <MainRootNavigator />
+      </NavigationContainer>
+    </SafeAreaProvider>,
+  )
+
+  expect(screen.getAllByRole('tab').map((tab) => tab.props.accessibilityLabel)).toEqual([
+    'Inicio',
+    'Solicitudes',
+    'Administrar',
+    'Ayuda',
+    'Perfil',
+  ])
+  expect(screen.queryByRole('button', { name: 'Nueva solicitud' })).toBeNull()
+  await fireEvent.press(screen.getByRole('tab', { name: 'Ayuda' }))
+  await waitFor(() => expect(ref.getCurrentRoute()?.name).toBe('Help'))
+  expect(screen.getByText('Tu recorrido · administración')).toBeTruthy()
+})

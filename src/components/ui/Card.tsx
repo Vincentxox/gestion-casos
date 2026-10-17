@@ -7,7 +7,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 
-import { colors, elevation, radius } from '@/theme/tokens'
+import { colors, radius } from '@/theme/tokens'
 
 export function Card({
   children,
@@ -50,11 +50,8 @@ export function Card({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
-    borderColor: colors.cardBorder,
-    borderWidth: 1,
-    borderRadius: radius.lg,
-    padding: 14,
-    ...elevation.sm,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.xl,
+    padding: 16,
   },
 })
