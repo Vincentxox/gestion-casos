@@ -10,12 +10,13 @@ jest.mock('@react-native-community/netinfo', () => ({
 test('muestra el aviso sin conexión', async () => {
   const screen = await render(<OfflineBanner />)
 
-  expect(screen.getByText('Sin conexión. Los cambios se enviarán al reconectar.')).toBeTruthy()
+  expect(screen.getByText('Sin conexión')).toBeTruthy()
+  expect(screen.getByText('Los cambios se enviarán al reconectar.')).toBeTruthy()
 })
 
 test('oculta el aviso cuando vuelve la red', async () => {
   mockNetwork = { isConnected: true, isInternetReachable: true }
   const screen = await render(<OfflineBanner />)
 
-  expect(screen.queryByText('Sin conexión. Los cambios se enviarán al reconectar.')).toBeNull()
+  expect(screen.queryByText('Sin conexión')).toBeNull()
 })

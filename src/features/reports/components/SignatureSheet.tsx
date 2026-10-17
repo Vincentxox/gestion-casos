@@ -132,7 +132,7 @@ export function SignatureSheet({
           {...pan.panHandlers}
         >
           <Svg pointerEvents="none" width="100%" height="100%">
-            <Path d={preview} stroke={colors.text} strokeWidth={2} fill="none" />
+            <Path d={preview} stroke={colors.ink} strokeWidth={2.6} fill="none" />
           </Svg>
           <View pointerEvents="none" style={styles.guide} />
         </View>
@@ -160,10 +160,8 @@ const styles = StyleSheet.create({
   canvas: {
     flex: 1,
     minHeight: 180,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    backgroundColor: colors.white,
+    borderRadius: radius.xl,
+    backgroundColor: colors.surfaceMuted,
     overflow: 'hidden',
   },
   canvasHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -173,8 +171,9 @@ const styles = StyleSheet.create({
     left: spacing.lg,
     right: spacing.lg,
     bottom: 28,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomWidth: 1.5,
+    borderStyle: 'dashed',
+    borderBottomColor: colors.textMuted,
   },
   consent: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   consentText: { flex: 1 },

@@ -50,6 +50,7 @@ export type AdministrationStackParamList = {
 export type MainTabParamList = {
   Home: undefined
   CasesTab: NavigatorScreenParams<MainStackParamList> | undefined
+  Help: undefined
   Profile: undefined
   Administration: NavigatorScreenParams<AdministrationStackParamList> | undefined
 }

@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { Pressable } from 'react-native'
@@ -23,13 +22,16 @@ import { OrganizationScreen } from '@/features/admin/screens/OrganizationScreen'
 import { AreasScreen } from '@/features/areas/screens/AreasScreen'
 import { hasPermission } from '@/features/auth/permissions'
 import { CategoriesScreen } from '@/features/categories/screens/CategoriesScreen'
+import { HelpScreen } from '@/features/help/HelpScreen'
 import { ProfileScreen } from '@/features/settings/ProfileScreen'
 import { ResourcesScreen } from '@/features/resources/screens/ResourcesScreen'
 import { CaseResourcesScreen } from '@/features/resources/screens/CaseResourcesScreen'
 import { CaseReportScreen } from '@/features/reports/screens/CaseReportScreen'
 import { ReportReviewScreen } from '@/features/reports/screens/ReportReviewScreen'
 import { useAuthStore } from '@/store/authStore'
-import { colors, typography } from '@/theme/tokens'
+import { colors } from '@/theme/tokens'
+
+import { FloatingTabBar } from './FloatingTabBar'
 
 import type {
   AdministrationStackParamList,
@@ -227,18 +229,13 @@ function AdministrationNavigator() {
   )
 }
 
-const TAB_ICONS = {
-  Home: ['home-outline', 'home'],
-  CasesTab: ['folder-open-outline', 'folder-open'],
-  Profile: ['person-outline', 'person'],
-  Administration: ['settings-outline', 'settings'],
-} as const
-
 export function MainNavigator() {
   const role = useAuthStore((state) => state.profile?.role)
   const organizationId = useAuthStore((state) => state.profile?.organizationId)
   const home = useHomeSummary(Boolean(organizationId))
+  const areaId = useAuthStore((state) => state.profile?.areaId)
   const canManageAreas = hasPermission(role, 'areas.manage')
+  const canCreate = hasPermission(role, 'cases.create') && Boolean(areaId)
   const caseTabTitle =
     role === 'solicitante'
       ? 'Mis solicitudes'
@@ -252,30 +249,37 @@ export function MainNavigator() {
 
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textMuted,
-        tabBarHideOnKeyboard: true,
-        tabBarLabelStyle: typography.caption,
-        tabBarStyle: { borderTopColor: colors.border, backgroundColor: colors.surface },
-        tabBarIcon: ({ color, focused, size }) => (
-          <Ionicons color={color} name={TAB_ICONS[route.name][focused ? 1 : 0]} size={size} />
-        ),
-      })}
+      screenOptions={{ headerShown: false }}
+      tabBar={(props) => (
+        <FloatingTabBar
+          {...props}
+          onCreate={
+            canCreate
+              ? () =>
+                  props.navigation.navigate('CasesTab', { screen: 'CreateCase', initial: false })
+              : undefined
+          }
+        />
+      )}
     >
       <Tab.Screen component={HomeScreen} name="Home" options={{ title: 'Inicio' }} />
-      <Tab.Screen component={CasesNavigator} name="CasesTab" options={{ title: caseTabTitle }} />
+      <Tab.Screen
+        component={CasesNavigator}
+        name="CasesTab"
+        options={{ title: caseTabTitle, tabBarLabel: 'Casos' }}
+      />
       {canManageAreas ? (
         <Tab.Screen
           component={AdministrationNavigator}
           name="Administration"
           options={{
             title: 'Administrar',
+            tabBarLabel: 'Admin',
             tabBarBadge: home.data?.admin?.solicitudes_acceso_pendientes || undefined,
           }}
         />
       ) : null}
+      <Tab.Screen component={HelpScreen} name="Help" options={{ title: 'Ayuda' }} />
       <Tab.Screen component={ProfileScreen} name="Profile" options={{ title: 'Perfil' }} />
     </Tab.Navigator>
   )

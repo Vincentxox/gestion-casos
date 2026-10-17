@@ -1,66 +1,60 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { useQueryClient } from '@tanstack/react-query'
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import Animated, { LinearTransition, useReducedMotion } from 'react-native-reanimated'
 
-import { PriorityBadge } from '@/components/badges/PriorityBadge'
-import { Chip } from '@/components/ui/Chip'
-import { StatusBadge } from '@/components/badges/StatusBadge'
-import { ActionSheet } from '@/components/actions/ActionSheet'
-import { Timeline } from '@/components/timeline/Timeline'
+import { ActionSheet, type SheetAction } from '@/components/actions/ActionSheet'
 import { RequestState } from '@/components/feedback/RequestState'
 import { OfflineBanner } from '@/components/feedback/OfflineBanner'
-import { ProgressTracker } from '@/components/progress/ProgressTracker'
+import { BottomSheet } from '@/components/sheets/BottomSheet'
 import { Button } from '@/components/ui/Button'
-import { Card } from '@/components/ui/Card'
+import { Icon } from '@/components/ui/Icon'
 import { SkeletonList } from '@/components/ui/SkeletonList'
-import { Icon, type IconName } from '@/components/ui/Icon'
-import { IconTile } from '@/components/ui/IconTile'
 import { ReportSummary } from '@/features/reports/components/ReportSummary'
 import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
-import { colors, spacing, typography } from '@/theme/tokens'
-import { statusMeta } from '@/theme/statusMeta'
+import { priorityMeta, statusMeta } from '@/theme/statusMeta'
+import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
 
-import { useCaseActions, useCaseDetail, useCaseHistory } from '../useCases'
+import { CaseConversation } from '../components/CaseConversation'
+import { CaseProgressDots } from '../components/CaseProgressDots'
+import { getCaseActionMeta } from '../caseActionPresentation'
 import { refreshCaseDetail } from '../refreshCaseDetail'
-import { getCaseActionMeta, getSecondaryActionPresentation } from '../caseActionPresentation'
-import type { CaseAction, CaseActionName } from '../types'
+import type { CaseAction, CaseActionName, CaseStatus } from '../types'
+import { useCaseActions, useCaseDetail, useCaseHistory } from '../useCases'
 
 type Props = NativeStackScreenProps<MainStackParamList, 'CaseDetail'>
 
-function Field({ label, value, icon }: { label: string; value: string; icon: IconName }) {
-  return (
-    <View style={styles.field}>
-      <IconTile icon={icon} size={36} />
-      <View style={styles.fieldContent}>
-        <Text style={styles.fieldLabel}>{label}</Text>
-        <Text style={styles.fieldValue}>{value}</Text>
-      </View>
-    </View>
-  )
+type MenuId = CaseAction | 'editar'
+
+const REPORT_STATUSES: CaseStatus[] = [
+  'asignado',
+  'en_ejecucion',
+  'en_espera',
+  'reporte_enviado',
+  'validado',
+  'aprobado',
+]
+
+const WAITING: Record<CaseStatus, string> = {
+  solicitado: 'Esperando que el área técnica la acepte',
+  aceptado: 'Esperando que se asigne un técnico',
+  asignado: 'Esperando que el técnico inicie el trabajo',
+  en_ejecucion: 'Trabajo en curso',
+  en_espera: 'Trabajo en pausa',
+  reporte_enviado: 'Esperando la validación del reporte',
+  validado: 'Esperando la aprobación del reporte',
+  aprobado: 'Caso cerrado',
+  rechazado: 'Solicitud rechazada',
+  cancelado: 'Solicitud cancelada',
 }
 
-function DetailSection({ title, children }: { title: string; children: ReactNode }) {
-  const [open, setOpen] = useState(true)
-  return (
-    <Card style={styles.panel}>
-      <Pressable
-        accessibilityLabel={`${open ? 'Contraer' : 'Expandir'} ${title}`}
-        accessibilityRole="button"
-        accessibilityState={{ expanded: open }}
-        onPress={() => setOpen(!open)}
-        style={styles.sectionHeader}
-      >
-        <Text style={styles.panelTitle}>{title}</Text>
-        <Icon name={open ? 'chevron-down' : 'chevron-forward'} color={colors.textMuted} />
-      </Pressable>
-      {open ? children : null}
-    </Card>
-  )
-}
+const REPORT_STEPS = {
+  enviar_reporte: { label: 'Completar reporte', next: 'Te toca completar el reporte' },
+  validar_reporte: { label: 'Revisar y validar', next: 'Te toca validar el reporte' },
+  aprobar_reporte: { label: 'Revisar y aprobar', next: 'Te toca aprobar el reporte' },
+} as const
 
 export function CaseDetailScreen({ navigation, route }: Props) {
   const { caseId } = route.params
@@ -69,9 +63,9 @@ export function CaseDetailScreen({ navigation, route }: Props) {
   const detail = useCaseDetail(caseId)
   const caseActions = useCaseActions(caseId)
   const history = useCaseHistory(caseId)
-  const [actionsVisible, setActionsVisible] = useState(false)
+  const [menuVisible, setMenuVisible] = useState(false)
+  const [dataVisible, setDataVisible] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
-  const reduceMotion = useReducedMotion()
 
   async function refreshDetail() {
     setRefreshing(true)
@@ -108,25 +102,79 @@ export function CaseDetailScreen({ navigation, route }: Props) {
 
   const item = detail.data
   const allowed = (action: CaseActionName) => caseActions.data?.[action]?.allowed === true
-  const canUpdate = allowed('editar_datos')
-  const actions = (
+  const caseActionsAllowed = (
     ['aceptar', 'rechazar', 'cancelar', 'asignar', 'iniciar', 'pausar', 'reanudar'] as CaseAction[]
   ).filter((action) => allowed(action))
-  const reportPrimary = allowed('enviar_reporte')
-    ? 'Completar reporte'
-    : allowed('validar_reporte')
-      ? 'Revisar y validar'
-      : allowed('aprobar_reporte')
-        ? 'Revisar y aprobar'
-        : null
-  const primaryAction = actions.find((action) => !['rechazar', 'cancelar'].includes(action))
-  const otherActions = actions.filter((action) => action !== primaryAction)
-  const secondaryPresentation = getSecondaryActionPresentation(otherActions)
-  const actionMetaForCase = (action: CaseAction) => getCaseActionMeta(action, item.assignedTo)
-  function navigateAction(action: CaseAction) {
-    if (action === 'asignar') navigation.navigate('AssignCase', { caseId })
-    else navigation.navigate('ChangeCaseStatus', { caseId, action })
+  const reportKey = (['enviar_reporte', 'validar_reporte', 'aprobar_reporte'] as const).find(
+    (action) => allowed(action),
+  )
+  const reportStep = reportKey ? REPORT_STEPS[reportKey] : null
+  const primaryAction = caseActionsAllowed.find(
+    (action) => !['rechazar', 'cancelar'].includes(action),
+  )
+  const metaFor = (action: CaseAction) => getCaseActionMeta(action, item.assignedTo)
+
+  const menu: SheetAction<MenuId>[] = [
+    ...(reportStep && primaryAction ? [primaryAction] : []),
+    ...caseActionsAllowed.filter((action) => action !== primaryAction),
+  ].map((action) => ({
+    id: action,
+    label: metaFor(action).label,
+    description: metaFor(action).description,
+    icon: metaFor(action).icon,
+    destructive: ['rechazar', 'cancelar'].includes(action),
+  }))
+  if (allowed('editar_datos'))
+    menu.push({
+      id: 'editar',
+      label: 'Editar solicitud',
+      description: 'Corrige el título, la descripción o la ubicación',
+      icon: 'create-outline',
+    })
+
+  const quick = menu[0]
+  const nextStep = reportStep
+    ? reportStep.next
+    : primaryAction
+      ? `Te toca: ${metaFor(primaryAction).label}`
+      : WAITING[item.status]
+
+  function runMenu(id: MenuId) {
+    if (id === 'editar') navigation.navigate('EditCase', { caseId })
+    else if (id === 'asignar') navigation.navigate('AssignCase', { caseId })
+    else navigation.navigate('ChangeCaseStatus', { caseId, action: id })
   }
+
+  function runPrimary() {
+    if (reportKey)
+      navigation.navigate(reportKey === 'enviar_reporte' ? 'CaseReport' : 'ReportReview', {
+        caseId,
+      })
+    else if (primaryAction) runMenu(primaryAction)
+  }
+
+  const primaryLabel = reportStep?.label ?? (primaryAction ? metaFor(primaryAction).label : null)
+  const overdue =
+    item.overdueStage === 'aceptacion'
+      ? 'Vencida · aceptación'
+      : item.overdueStage === 'resolucion'
+        ? 'Vencida · resolución'
+        : null
+  const dataRows = [
+    { label: 'Solicita', value: item.requestingAreaName },
+    { label: 'Atiende', value: item.targetAreaName },
+    { label: 'Servicio', value: item.category },
+    { label: 'Ubicación', value: item.location },
+    {
+      label: 'Prioridad',
+      value: overdue
+        ? `${priorityMeta[item.priority].label} · ${overdue.toLowerCase()}`
+        : priorityMeta[item.priority].label,
+    },
+    { label: 'Técnico', value: item.assigneeName || 'Sin asignar' },
+    { label: 'Creada', value: new Date(item.createdAt).toLocaleDateString('es-GT') },
+  ]
+
   return (
     <SafeAreaView edges={['bottom']} style={styles.safeArea}>
       <ScrollView
@@ -135,225 +183,197 @@ export function CaseDetailScreen({ navigation, route }: Props) {
           <RefreshControl refreshing={refreshing} onRefresh={() => void refreshDetail()} />
         }
       >
-        <Animated.View
-          layout={reduceMotion ? undefined : LinearTransition.duration(250)}
-          style={styles.heading}
-        >
-          <Text style={styles.caseNumber}>{item.caseNumber}</Text>
-          <View style={styles.headingRow}>
-            <StatusBadge status={item.status} />
-            <PriorityBadge priority={item.priority} />
-            {item.overdueStage ? (
-              <Chip
-                label={
-                  item.overdueStage === 'aceptacion'
-                    ? 'Vencida · aceptación'
-                    : 'Vencida · resolución'
-                }
-                tone="warning"
-              />
+        <View style={styles.heading}>
+          <View style={styles.toolbar}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Datos del caso"
+              onPress={() => setDataVisible(true)}
+              style={({ pressed }) => [styles.pill, pressed && styles.pressed]}
+            >
+              <Icon name="information-circle-outline" size={18} color={colors.text} />
+              <Text style={styles.pillText}>Datos del caso</Text>
+            </Pressable>
+            {menu.length > 0 ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Más acciones"
+                onPress={() => setMenuVisible(true)}
+                style={({ pressed }) => [styles.round, pressed && styles.pressed]}
+              >
+                <Icon name="ellipsis-vertical" size={20} color={colors.text} />
+              </Pressable>
             ) : null}
           </View>
           <Text accessibilityRole="header" style={styles.title}>
             {item.title}
           </Text>
-          <Text style={styles.subtitle}>
-            Solicitada por {item.creatorName} · {item.requestingAreaName} ·{' '}
-            {new Date(item.createdAt).toLocaleDateString('es-GT')}
+          {item.status === 'rechazado' || item.status === 'cancelado' ? null : (
+            <CaseProgressDots status={item.status} />
+          )}
+          <Text style={styles.meta}>
+            {item.caseNumber} · {statusMeta[item.status].label}
+            {item.priority === 'alta' ? ' · Prioridad alta' : ''}
+            {overdue ? <Text style={styles.overdue}> · {overdue}</Text> : null}
           </Text>
-        </Animated.View>
+        </View>
 
         <OfflineBanner />
 
-        <Card style={styles.panel}>
-          <ProgressTracker
-            status={item.status}
-            reason={
-              history.data?.find((event) => ['rechazar', 'cancelar'].includes(event.action))
-                ?.comment
-            }
-          />
-        </Card>
-
-        {[
-          'asignado',
-          'en_ejecucion',
-          'en_espera',
-          'reporte_enviado',
-          'validado',
-          'aprobado',
-        ].includes(item.status) ? (
-          <ReportSummary
-            item={item}
-            beforeEditable={allowed('fotos_antes')}
-            afterEditable={allowed('fotos_despues')}
-            userId={profile?.id}
-            onOpen={() => navigation.navigate('CaseReport', { caseId })}
-            onReview={() => navigation.navigate('ReportReview', { caseId })}
-          />
-        ) : null}
-
-        <DetailSection title="Datos de la solicitud">
-          <Field icon="business-outline" label="Área solicitante" value={item.requestingAreaName} />
-          <Field icon="pricetag-outline" label="Tipo de servicio" value={item.category} />
-          <Field icon="location-outline" label="Ubicación" value={item.location} />
-          <Field
-            icon="person-outline"
-            label="Técnico asignado"
-            value={item.assigneeName || 'Sin asignar'}
-          />
-        </DetailSection>
-
-        <DetailSection title="Descripción">
-          <Text style={styles.description}>{item.description}</Text>
-        </DetailSection>
-
-        <DetailSection title="Recursos utilizados">
-          <Text style={styles.description}>
-            Consulta materiales, equipos y horas de trabajo de esta solicitud.
-          </Text>
-          <Button
-            label="Ver recursos y mano de obra"
-            icon="cube-outline"
-            variant="secondary"
-            onPress={() => navigation.navigate('CaseResources', { caseId })}
-          />
-        </DetailSection>
-
-        <DetailSection title="Línea de tiempo">
-          {history.isLoading ? <SkeletonList count={3} /> : null}
+        <CaseConversation item={item} events={history.data ?? []} nextStep={nextStep}>
+          {history.isLoading ? <SkeletonList count={2} /> : null}
           {history.error ? (
             <Text style={styles.error}>No fue posible cargar el historial.</Text>
           ) : null}
-          {history.data ? <Timeline events={history.data} /> : null}
-        </DetailSection>
-      </ScrollView>
-      {reportPrimary || primaryAction || canUpdate || otherActions.length > 0 ? (
-        <View style={styles.stickyAction}>
-          {reportPrimary ? (
-            <Button
-              label={reportPrimary}
-              icon="document-text-outline"
-              onPress={() =>
-                navigation.navigate(
-                  reportPrimary === 'Completar reporte' ? 'CaseReport' : 'ReportReview',
-                  { caseId },
-                )
-              }
-            />
-          ) : primaryAction ? (
-            <Button
-              label={actionMetaForCase(primaryAction).label}
-              icon={actionMetaForCase(primaryAction).icon}
-              onPress={() => navigateAction(primaryAction)}
-            />
+          {REPORT_STATUSES.includes(item.status) ? (
+            <View style={styles.reportRow}>
+              <View style={styles.reportIcon}>
+                <Icon name="document-text-outline" size={16} color={colors.white} />
+              </View>
+              <View style={styles.reportBody}>
+                <ReportSummary
+                  item={item}
+                  beforeEditable={allowed('fotos_antes')}
+                  afterEditable={allowed('fotos_despues')}
+                  userId={profile?.id}
+                  onOpen={() => navigation.navigate('CaseReport', { caseId })}
+                  onReview={() => navigation.navigate('ReportReview', { caseId })}
+                />
+              </View>
+            </View>
           ) : null}
-          {canUpdate || otherActions.length > 0 || (reportPrimary && primaryAction) ? (
-            <View style={styles.secondaryActions}>
-              {reportPrimary && primaryAction ? (
-                <View style={styles.secondaryAction}>
-                  <Button
-                    label={actionMetaForCase(primaryAction).label}
-                    icon={actionMetaForCase(primaryAction).icon}
-                    variant="text"
-                    onPress={() => navigateAction(primaryAction)}
-                  />
-                </View>
-              ) : null}
-              {canUpdate ? (
-                <View style={styles.secondaryAction}>
-                  <Button
-                    label="Editar"
-                    variant="text"
-                    onPress={() => navigation.navigate('EditCase', { caseId })}
-                  />
-                </View>
-              ) : null}
-              {secondaryPresentation.kind === 'direct' ? (
-                <View style={styles.secondaryAction}>
-                  <Button
-                    label={actionMetaForCase(secondaryPresentation.action).label}
-                    icon={actionMetaForCase(secondaryPresentation.action).icon}
-                    variant={
-                      secondaryPresentation.variant === 'secondary'
-                        ? 'text'
-                        : secondaryPresentation.variant
-                    }
-                    onPress={() => navigateAction(secondaryPresentation.action)}
-                  />
-                </View>
-              ) : null}
-              {secondaryPresentation.kind === 'menu' ? (
-                <View style={styles.secondaryAction}>
-                  <Button
-                    label="Más acciones"
-                    icon="ellipsis-horizontal"
-                    variant="text"
-                    onPress={() => setActionsVisible(true)}
-                  />
-                </View>
-              ) : null}
+        </CaseConversation>
+      </ScrollView>
+
+      {primaryLabel || quick ? (
+        <View accessibilityRole="toolbar" style={styles.actionBar}>
+          {primaryLabel ? (
+            <View style={styles.primarySlot}>
+              <Button label={primaryLabel} onPress={runPrimary} />
+            </View>
+          ) : null}
+          {quick ? (
+            <View style={styles.secondarySlot}>
+              <Button
+                label={menu.length > 1 ? 'Más' : quick.label}
+                variant={menu.length === 1 && quick.destructive ? 'danger' : 'secondary'}
+                onPress={() => (menu.length > 1 ? setMenuVisible(true) : runMenu(quick.id))}
+              />
             </View>
           ) : null}
         </View>
       ) : null}
-      <ActionSheet<CaseAction>
+
+      <ActionSheet<MenuId>
         title="Más acciones"
-        subtitle={`${detail.data.caseNumber} · ${statusMeta[detail.data.status].label}`}
-        actions={otherActions.map((action) => ({
-          id: action,
-          label: actionMetaForCase(action).label,
-          description: actionMetaForCase(action).description,
-          icon: actionMetaForCase(action).icon,
-          destructive: ['rechazar', 'cancelar'].includes(action),
-        }))}
-        visible={actionsVisible && otherActions.length > 0}
-        onClose={() => setActionsVisible(false)}
-        onSelect={(action) => {
-          setActionsVisible(false)
-          navigateAction(action)
+        subtitle={`${item.caseNumber} · ${statusMeta[item.status].label}`}
+        actions={menu}
+        visible={menuVisible && menu.length > 0}
+        onClose={() => setMenuVisible(false)}
+        onSelect={(id) => {
+          setMenuVisible(false)
+          runMenu(id)
         }}
       />
+
+      <BottomSheet
+        title="Datos del caso"
+        subtitle={item.caseNumber}
+        visible={dataVisible}
+        onClose={() => setDataVisible(false)}
+        fitContent
+      >
+        {dataRows.map((row) => (
+          <View key={row.label} style={styles.dataRow}>
+            <Text style={styles.dataLabel}>{row.label}</Text>
+            <Text style={styles.dataValue}>{row.value}</Text>
+          </View>
+        ))}
+        <Button
+          label="Ver recursos y mano de obra"
+          icon="cube-outline"
+          variant="secondary"
+          onPress={() => {
+            setDataVisible(false)
+            navigation.navigate('CaseResources', { caseId })
+          }}
+        />
+      </BottomSheet>
     </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
-  content: { gap: spacing.md, padding: spacing.lg, paddingBottom: spacing.xl },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.background,
-  },
-  heading: { gap: spacing.sm },
-  headingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  subtitle: { ...typography.caption, color: colors.textMuted },
-  caseNumber: { ...typography.caption, color: colors.primary },
-  title: { ...typography.heading, color: colors.text },
-  description: { ...typography.body, color: colors.textMuted },
-  panel: { gap: spacing.md },
-  panelTitle: { ...typography.heading, color: colors.text },
-  sectionHeader: {
+  content: { gap: spacing.lg, padding: spacing.md, paddingBottom: spacing.xl },
+  heading: { gap: spacing.base },
+  toolbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  pill: {
     minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  stickyAction: {
     gap: spacing.sm,
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceMuted,
+  },
+  pillText: { ...typography.caption, fontFamily: fonts.semibold, color: colors.text },
+  round: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceMuted,
+  },
+  pressed: { opacity: 0.7 },
+  title: {
+    fontFamily: fonts.extrabold,
+    fontSize: 24,
+    lineHeight: 28,
+    letterSpacing: -0.6,
+    color: colors.ink,
+  },
+  meta: { ...typography.caption, color: colors.textMuted },
+  overdue: { fontFamily: fonts.semibold, color: colors.error },
+  reportRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.base },
+  reportIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.sky,
+  },
+  reportBody: { flex: 1 },
+  actionBar: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
   },
-  secondaryActions: { flexDirection: 'row', gap: spacing.sm },
-  secondaryAction: { flex: 1 },
-  field: { flexDirection: 'row', alignItems: 'center', gap: spacing.base },
-  fieldContent: { flex: 1, gap: spacing.xs },
-  fieldLabel: { ...typography.caption, color: colors.textMuted },
-  fieldValue: { ...typography.body, color: colors.text },
-  error: { ...typography.body, color: colors.error, textAlign: 'center' },
+  primarySlot: { flex: 2 },
+  secondarySlot: { flex: 1 },
+  dataRow: {
+    minHeight: 46,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  dataLabel: { ...typography.body, color: colors.textMuted },
+  dataValue: {
+    ...typography.body,
+    fontFamily: fonts.semibold,
+    color: colors.text,
+    flexShrink: 1,
+    textAlign: 'right',
+  },
+  error: { ...typography.body, color: colors.error },
 })

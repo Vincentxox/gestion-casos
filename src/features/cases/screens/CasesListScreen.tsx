@@ -17,6 +17,7 @@ import { EmptyState } from '@/components/feedback/EmptyState'
 import { OfflineBanner } from '@/components/feedback/OfflineBanner'
 import { Button } from '@/components/ui/Button'
 import { Chip } from '@/components/ui/Chip'
+import { Icon } from '@/components/ui/Icon'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
 import { SkeletonList } from '@/components/ui/SkeletonList'
 import { hasPermission } from '@/features/auth/permissions'
@@ -24,7 +25,7 @@ import { useHomeSummary } from '@/features/home/useHomeSummary'
 import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
 import { statusMeta } from '@/theme/statusMeta'
-import { colors, radius, spacing, typography } from '@/theme/tokens'
+import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
 
 import type { CaseRecord } from '../types'
 import { groupCasesByDay } from '../caseDateGroups'
@@ -61,7 +62,6 @@ export function CasesListScreen({ navigation, route }: Props) {
     const timeout = setTimeout(() => setDebouncedSearch(search), 300)
     return () => clearTimeout(timeout)
   }, [search])
-  const [floatingActionHeight, setFloatingActionHeight] = useState(48)
   const [animateInitialList, setAnimateInitialList] = useState(true)
   const reduceMotion = useReducedMotion()
   const [filterNow, setFilterNow] = useState(() => Date.now())
@@ -144,13 +144,14 @@ export function CasesListScreen({ navigation, route }: Props) {
   )
 
   return (
-    <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
       <View style={styles.container}>
         <Text accessibilityRole="header" style={styles.heading}>
           Solicitudes
         </Text>
         <OfflineBanner />
         <View style={styles.toolbar}>
+          <Icon name="search" size="inline" color={colors.textMuted} />
           <TextInput
             accessibilityLabel="Buscar casos"
             maxLength={100}
@@ -239,16 +240,7 @@ export function CasesListScreen({ navigation, route }: Props) {
           />
         ) : (
           <SectionList
-            contentContainerStyle={
-              filteredCases.length
-                ? [
-                    styles.list,
-                    canCreate && {
-                      paddingBottom: floatingActionHeight + spacing.md + spacing.lg,
-                    },
-                  ]
-                : styles.emptyList
-            }
+            contentContainerStyle={filteredCases.length ? styles.list : styles.emptyList}
             sections={
               filters.sortPending && filteredCases.length
                 ? [{ title: 'Pendientes', data: filteredCases }]
@@ -330,18 +322,6 @@ export function CasesListScreen({ navigation, route }: Props) {
             }}
           />
         )}
-        {canCreate ? (
-          <View
-            style={styles.floatingAction}
-            onLayout={(event) => setFloatingActionHeight(event.nativeEvent.layout.height)}
-          >
-            <Button
-              label="Nueva solicitud"
-              icon="add"
-              onPress={() => navigation.navigate('CreateCase')}
-            />
-          </View>
-        ) : null}
       </View>
     </SafeAreaView>
   )
@@ -349,26 +329,37 @@ export function CasesListScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
-  container: { flex: 1, padding: spacing.md, gap: spacing.md },
-  heading: { ...typography.display, color: colors.text },
-  sectionTitle: {
-    ...typography.overline,
-    color: colors.textMuted,
-    marginTop: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  floatingAction: { position: 'absolute', right: spacing.md, bottom: spacing.md },
-  toolbar: { flexDirection: 'row', gap: spacing.sm },
-  search: {
+  container: {
     flex: 1,
-    minHeight: 48,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    color: colors.text,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.compact,
+    paddingTop: spacing.md,
+    gap: spacing.base,
   },
+  heading: {
+    ...typography.display,
+    fontSize: 36,
+    lineHeight: 42,
+    letterSpacing: -1,
+    color: colors.ink,
+  },
+  sectionTitle: {
+    ...typography.caption,
+    fontFamily: fonts.bold,
+    color: colors.textMuted,
+    backgroundColor: colors.background,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xs,
+  },
+  toolbar: {
+    minHeight: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.xl,
+    backgroundColor: colors.surfaceMuted,
+  },
+  search: { ...typography.body, flex: 1, minHeight: 48, color: colors.text },
   filterScroll: { flexGrow: 0, flexShrink: 0, minHeight: 52 },
   filters: {
     flexDirection: 'row',
@@ -376,6 +367,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.xs,
   },
-  list: { gap: spacing.md, paddingBottom: spacing.lg },
+  list: { gap: spacing.xs, paddingBottom: spacing.lg },
   emptyList: { flexGrow: 1 },
 })

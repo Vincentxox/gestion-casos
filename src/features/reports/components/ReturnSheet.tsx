@@ -3,9 +3,12 @@ import { useState } from 'react'
 import { StyleSheet, Text, TextInput, View } from 'react-native'
 
 import { BottomSheet } from '@/components/sheets/BottomSheet'
+import { Chip } from '@/components/ui/Chip'
 import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 import { returnReportSchema } from '../schemas'
+
+const QUICK_REASONS = ['Falta una foto', 'Recursos incompletos', 'Falta detalle del trabajo']
 
 export function ReturnSheet({
   visible,
@@ -48,6 +51,25 @@ export function ReturnSheet({
       height="65%"
       footerAction={{ label, onPress: () => void submit(), loading, variant: 'destructive' }}
     >
+      <Text style={styles.copy}>¿Qué le falta al reporte?</Text>
+      <View accessibilityLabel="Motivos frecuentes" style={styles.quickReasons}>
+        {QUICK_REASONS.map((quick) => (
+          <Chip
+            key={quick}
+            label={quick}
+            selected={reason.includes(quick)}
+            onPress={() =>
+              setReason((current) =>
+                current.includes(quick)
+                  ? current
+                  : current.trim()
+                    ? `${current.trim()}. ${quick}`
+                    : quick,
+              )
+            }
+          />
+        ))}
+      </View>
       <Text style={styles.copy}>Motivo de la devolución *</Text>
       <TextInput
         accessibilityLabel="Motivo de la devolución, obligatorio"
@@ -71,13 +93,13 @@ const styles = StyleSheet.create({
   copy: { ...typography.body, color: colors.text },
   input: {
     minHeight: 100,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.xl,
     padding: spacing.md,
     color: colors.text,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surfaceMuted,
+    textAlignVertical: 'top',
   },
+  quickReasons: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   helpRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   help: { ...typography.caption, color: colors.textMuted, flex: 1 },
   counter: { ...typography.caption, color: colors.textMuted },

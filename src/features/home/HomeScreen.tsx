@@ -5,15 +5,14 @@ import { useCallback, useState } from 'react'
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
+import { NexoLogo } from '@/components/branding/NexoLogo'
 import { StatTile } from '@/components/stats/StatTile'
-import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { Chip } from '@/components/ui/Chip'
 import { Icon } from '@/components/ui/Icon'
-import { IconTile } from '@/components/ui/IconTile'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { OfflineBanner } from '@/components/feedback/OfflineBanner'
-import { hasPermission } from '@/features/auth/permissions'
 import { ROLE_LABELS } from '@/features/auth/types'
 import { useCases } from '@/features/cases/useCases'
 import { ACTIVE_CASE_STATUSES } from '@/features/cases/caseSearch'
@@ -22,7 +21,7 @@ import { SectionHeader } from '@/components/ui/SectionHeader'
 import { SkeletonList } from '@/components/ui/SkeletonList'
 import type { MainTabParamList, RootStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
-import { colors, fonts, phaseColors, radius, spacing, typography } from '@/theme/tokens'
+import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
 
 import {
   getAdminAlerts,
@@ -76,7 +75,6 @@ export function HomeScreen({ navigation }: Props) {
   )
   if (!profile) return null
 
-  const canCreate = hasPermission(profile.role, 'cases.create') && Boolean(profile.areaId)
   const alerts = summary.data?.admin ? getAdminAlerts(summary.data.admin) : []
   const tiles = summary.data ? getHomeTiles(profile, summary.data).slice(0, 4) : []
   const hero = summary.data ? getHomeHero(profile, summary.data) : null
@@ -109,38 +107,40 @@ export function HomeScreen({ navigation }: Props) {
           />
         }
       >
-        <View style={styles.header}>
-          <View style={styles.headerTop}>
-            <View style={styles.identity}>
-              <Text style={styles.eyebrow}>{dateLabel}</Text>
-              <Text accessibilityRole="header" style={styles.title}>
-                {getGreeting(today.getHours())}, {firstName}
-              </Text>
-              <Text style={styles.subtitle}>
-                {ROLE_LABELS[profile.role]} · {profile.areaName || 'Sin área asignada'}
-              </Text>
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Avisos, ${summary.data?.notificaciones_sin_leer ?? 0} sin leer`}
-              onPress={() =>
-                navigation
-                  .getParent<NativeStackNavigationProp<RootStackParamList>>()
-                  ?.navigate('NotificationsFlow')
-              }
-              style={styles.bell}
-            >
-              <Icon name="notifications-outline" color={colors.primary} />
-              {(summary.data?.notificaciones_sin_leer ?? 0) > 0 ? (
-                <Text style={styles.bellCount}>
-                  {(summary.data?.notificaciones_sin_leer ?? 0) > 99
-                    ? '99+'
-                    : summary.data?.notificaciones_sin_leer}
-                </Text>
-              ) : null}
-            </Pressable>
-            <Avatar name={profile.fullName} id={profile.id} size={44} />
+        <View style={styles.brandRow}>
+          <View style={styles.brand}>
+            <NexoLogo size={30} />
+            <Text style={styles.wordmark}>nexo</Text>
           </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Avisos, ${summary.data?.notificaciones_sin_leer ?? 0} sin leer`}
+            onPress={() =>
+              navigation
+                .getParent<NativeStackNavigationProp<RootStackParamList>>()
+                ?.navigate('NotificationsFlow')
+            }
+            style={styles.bell}
+          >
+            <Icon name="notifications-outline" color={colors.text} size={21} />
+            {(summary.data?.notificaciones_sin_leer ?? 0) > 0 ? (
+              <Text style={styles.bellCount}>
+                {(summary.data?.notificaciones_sin_leer ?? 0) > 99
+                  ? '99+'
+                  : summary.data?.notificaciones_sin_leer}
+              </Text>
+            ) : null}
+          </Pressable>
+        </View>
+
+        <View style={styles.header}>
+          <Text style={styles.eyebrow}>{dateLabel}</Text>
+          <Text accessibilityRole="header" style={styles.title}>
+            {getGreeting(today.getHours())}, {firstName}
+          </Text>
+          <Text style={styles.subtitle}>
+            {ROLE_LABELS[profile.role]} · {profile.areaName || 'Sin área asignada'}
+          </Text>
         </View>
 
         <OfflineBanner />
@@ -162,67 +162,55 @@ export function HomeScreen({ navigation }: Props) {
         {!summary.isLoading && hero ? (
           hero.count > 0 ? (
             <View style={styles.hero}>
-              <Text style={styles.heroEyebrow}>{hero.eyebrow}</Text>
+              <View accessibilityElementsHidden importantForAccessibility="no" style={styles.line}>
+                <View style={styles.lineStart} />
+                <View style={styles.lineTrack} />
+                <View style={styles.lineEnd} />
+              </View>
               <Text style={styles.heroTitle}>{hero.title}</Text>
+              {hero.supportingText ? (
+                <Text style={styles.message}>{hero.supportingText}</Text>
+              ) : null}
               {hero.detail.length > 0 ? (
                 <View style={styles.heroDetails}>
                   {hero.detail.map((part) => (
-                    <Pressable
-                      accessibilityLabel={part.label}
-                      accessibilityRole="button"
+                    <Chip
                       key={part.id}
+                      label={part.label}
                       onPress={() =>
                         navigation.navigate('CasesTab', {
                           screen: 'Cases',
                           params: getHomeTileTarget(profile, part.id),
                         })
                       }
-                      style={[styles.heroTag, part.id.startsWith('reportes_') && styles.reportTag]}
-                    >
-                      <Text
-                        style={[
-                          styles.heroDetail,
-                          part.id.startsWith('reportes_') && styles.reportTagText,
-                        ]}
-                      >
-                        {part.label}
-                      </Text>
-                    </Pressable>
+                    />
                   ))}
                 </View>
               ) : null}
-              {hero.supportingText ? (
-                <Text style={styles.heroSupport}>{hero.supportingText}</Text>
-              ) : null}
-              <View style={styles.heroButton}>
-                <Button
-                  label={hero.actionLabel}
-                  icon="arrow-forward"
-                  variant="secondary"
-                  onPress={() =>
-                    navigation.navigate('CasesTab', { screen: 'Cases', params: hero.target })
-                  }
-                />
-              </View>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() =>
+                  navigation.navigate('CasesTab', { screen: 'Cases', params: hero.target })
+                }
+                style={styles.link}
+              >
+                <Text style={styles.linkText}>{hero.actionLabel}</Text>
+                <Icon name="arrow-forward" size="inline" color={colors.primary} />
+              </Pressable>
             </View>
           ) : (
-            <Card>
-              <EmptyState
-                title="Todo al día"
-                message="No tienes solicitudes pendientes en este momento."
-                variant="allDone"
-                compact
-              />
-            </Card>
+            <EmptyState
+              title="Todo al día"
+              message="No tienes solicitudes pendientes en este momento."
+              variant="allDone"
+              compact
+            />
           )
         ) : null}
 
         {alerts.length > 0 ? (
-          <View style={styles.notice}>
-            <View style={styles.alertHeading}>
-              <IconTile icon="warning-outline" phase="detenida" size={36} />
-              <Text style={styles.noticeTitle}>Completa la configuración</Text>
-            </View>
+          <View style={styles.section}>
+            <SectionHeader title="Completa la configuración" />
             {alerts.map((alert) => (
               <Pressable
                 accessibilityRole="button"
@@ -308,13 +296,6 @@ export function HomeScreen({ navigation }: Props) {
             </Text>
           </View>
         ) : null}
-        {canCreate ? (
-          <Button
-            label="Nueva solicitud"
-            icon="add"
-            onPress={() => navigation.navigate('CasesTab', { screen: 'CreateCase' })}
-          />
-        ) : null}
         {showRecent ? (
           <View style={styles.section}>
             <View style={styles.recentHeading}>
@@ -362,64 +343,77 @@ export function HomeScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
-  content: { gap: spacing.lg, padding: spacing.lg, paddingBottom: spacing.xl },
-  header: { gap: spacing.sm },
-  headerTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.base },
-  bell: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  bellCount: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    minWidth: 18,
-    textAlign: 'center',
-    borderRadius: radius.pill,
-    backgroundColor: colors.primary,
-    color: colors.white,
-    ...typography.caption,
+  content: {
+    gap: spacing.lg,
+    paddingHorizontal: spacing.compact,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xl,
   },
-  identity: { flex: 1, gap: spacing.xs },
-  eyebrow: { color: colors.primary, ...typography.overline },
-  title: { color: colors.text, ...typography.display },
-  subtitle: { color: colors.textMuted, ...typography.caption },
-  hero: {
-    gap: spacing.base,
-    padding: spacing.lg,
-    borderRadius: radius.xl,
-    backgroundColor: colors.primary,
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginRight: -spacing.sm,
   },
-  heroTitle: { ...typography.title, color: colors.white },
-  heroEyebrow: { ...typography.overline, color: colors.white },
-  heroDetails: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  heroTag: {
-    minHeight: 44,
+  brand: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  wordmark: { fontFamily: fonts.extrabold, fontSize: 19, letterSpacing: -0.4, color: colors.ink },
+  bell: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.white,
-    paddingHorizontal: spacing.base,
-    paddingVertical: spacing.xs,
+    backgroundColor: colors.surfaceMuted,
   },
-  heroDetail: { ...typography.caption, color: colors.white },
-  reportTag: { backgroundColor: phaseColors.revision.bg, borderColor: phaseColors.revision.fg },
-  reportTagText: { color: phaseColors.revision.fg },
-  heroSupport: { ...typography.body, color: colors.white },
-  heroButton: { width: '100%' },
-  section: { gap: spacing.md },
+  bellCount: {
+    position: 'absolute',
+    top: 2,
+    right: 0,
+    minWidth: 18,
+    paddingHorizontal: 3,
+    textAlign: 'center',
+    overflow: 'hidden',
+    borderRadius: radius.pill,
+    backgroundColor: colors.sky,
+    color: colors.white,
+    ...typography.caption,
+    fontSize: 11,
+    lineHeight: 18,
+  },
+  header: { gap: spacing.xs },
+  eyebrow: { ...typography.body, fontFamily: fonts.medium, fontSize: 14, color: colors.textMuted },
+  title: {
+    ...typography.display,
+    fontSize: 36,
+    lineHeight: 40,
+    letterSpacing: -1.1,
+    color: colors.ink,
+  },
+  subtitle: { color: colors.textMuted, ...typography.caption },
+  hero: { gap: spacing.base },
+  line: { flexDirection: 'row', alignItems: 'center' },
+  lineStart: { width: 14, height: 14, borderRadius: radius.pill, backgroundColor: colors.ink },
+  lineTrack: { flex: 1, height: 6, marginHorizontal: -2, backgroundColor: colors.primary },
+  lineEnd: {
+    width: 14,
+    height: 14,
+    borderRadius: radius.pill,
+    borderWidth: 3,
+    borderColor: colors.sky,
+    backgroundColor: colors.background,
+  },
+  heroTitle: { ...typography.title, fontFamily: fonts.extrabold, color: colors.ink },
+  heroDetails: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  section: { gap: spacing.sm },
   indicatorCard: { gap: spacing.sm },
   indicatorTitle: { ...typography.heading, color: colors.text },
-  tileGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  tileGrid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: spacing.md },
   recentHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  notice: {
-    gap: spacing.sm,
-    padding: spacing.md,
-    borderRadius: radius.lg,
-    backgroundColor: colors.warningSoft,
-  },
+  notice: { gap: spacing.sm },
   noticeTitle: { color: colors.text, ...typography.heading },
-  alertHeading: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   message: { color: colors.textMuted, ...typography.body },
   alertRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   alertText: { flex: 1, color: colors.text, ...typography.body },
-  link: { minHeight: 44, justifyContent: 'center' },
+  link: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   linkText: { ...typography.body, fontFamily: fonts.bold, color: colors.primary },
 })

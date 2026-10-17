@@ -1,5 +1,26 @@
 # Sistema visual y rediseño D-003 — Nexo Casos
 
+> **Actualización del 17/10/2026: identidad «nexo».** Vincent aprobó un rediseño menos
+> cuadrado y amontonado (lienzo «Nexo Casos · Diseño final»). Lo que cambia respecto de este
+> documento:
+>
+> - Colores (`src/theme/tokens.ts`): marino `#13305E` (`ink`, títulos y logo), nexo `#1366D6`
+>   (`primary`, acciones), cielo `#1BA6E8` (`sky`, avance y avisos), fondo blanco y
+>   `surfaceMuted` `#F2F5F9` para paneles, campos y chips. Los colores de fase no cambian.
+> - Letra **Onest** (`@expo-google-fonts/onest`) en lugar de Plus Jakarta Sans.
+> - Menos cajas: `Card` es un panel gris suave sin borde ni sombra, `CaseCard` y `StatTile` son
+>   filas planas, botones y chips en forma de píldora y hojas inferiores con esquinas de 32.
+> - «Línea nexo»: punto marino, barra y círculo celeste. Se usa en la bienvenida, el Inicio, el
+>   aviso sin conexión y el recorrido de Ayuda. Logo simplificado en `NexoLogo`.
+> - Navegación: barra inferior flotante en forma de píldora (`FloatingTabBar`) con la pestaña
+>   nueva **Ayuda** (recorrido por rol y preguntas frecuentes) y el botón **+** para crear
+>   solicitudes cuando el rol lo permite.
+> - Alertas: diálogo con acciones apiladas (la principal primero) y aviso breve tipo isla
+>   arriba. El inventario de alertas está en la carpeta de diseño del proyecto.
+> - Pantalla de carga nativa con `expo-splash-screen` (fondo blanco y logo simplificado).
+>
+> El resto de este documento describe el sistema anterior y sigue vigente donde no lo contradiga.
+
 Especificación para implementar en el cliente (Codex implementa y Claude revisa). Recoge la
 maqueta «Nexo Casos – propuesta visual», aprobada por el responsable el 23/09/2026. Este
 documento es autosuficiente: no hace falta abrir la maqueta.
