@@ -5,6 +5,7 @@ import {
   useCreateCase,
   useChangeCaseStatus,
   useUpdateCase,
+  useSendCaseMessage,
 } from '../useCases'
 import { getCaseActions } from '../caseService'
 
@@ -19,8 +20,12 @@ jest.mock('../caseService', () => ({
   updateCase: jest.fn(),
   assignCase: jest.fn(),
   getCaseActions: jest.fn(),
+  sendCaseMessage: jest.fn(),
 }))
 jest.mock('@/features/home/useHomeSummary', () => ({ homeSummaryQueryKey: ['home-summary'] }))
+jest.mock('@/features/notifications/notificationQueryKey', () => ({
+  notificationsQueryKey: ['notifications'],
+}))
 
 test.each([
   useCreateCase,
@@ -43,4 +48,15 @@ test('consulta las acciones con la clave del caso y conserva una lista vacía', 
   expect(options.queryKey).toEqual(['cases', 'case-1', 'actions'])
   ;(getCaseActions as jest.Mock).mockResolvedValue({})
   await expect(options.queryFn()).resolves.toEqual({})
+})
+
+test('al enviar un mensaje invalida historial, acciones y avisos', async () => {
+  const invalidateQueries = jest.fn().mockResolvedValue(undefined)
+  ;(useQueryClient as jest.Mock).mockReturnValue({ invalidateQueries })
+  useSendCaseMessage('case-1')
+  const options = (useMutation as jest.Mock).mock.calls.at(-1)?.[0]
+  await options.onSuccess(42, 'Hola')
+  expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['cases', 'case-1', 'history'] })
+  expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['cases', 'case-1', 'actions'] })
+  expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['notifications'] })
 })

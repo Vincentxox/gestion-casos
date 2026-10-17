@@ -1,4 +1,4 @@
-import { fireEvent, render } from '@testing-library/react-native'
+import { fireEvent, render, waitFor } from '@testing-library/react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import type { CaseRecord, CaseStatusHistoryRecord } from '../types'
@@ -31,6 +31,8 @@ const baseCase: CaseRecord = {
 let mockCase: CaseRecord = baseCase
 let mockAllowed: string[] = []
 let mockHistory: CaseStatusHistoryRecord[] = []
+const mockSendMessage = jest.fn()
+let mockSendPending = false
 
 jest.mock('../useCases', () => ({
   useCaseDetail: () => ({ data: mockCase, isLoading: false, error: null, refetch: jest.fn() }),
@@ -41,6 +43,7 @@ jest.mock('../useCases', () => ({
     refetch: jest.fn(),
   }),
   useCaseHistory: () => ({ data: mockHistory, isLoading: false, error: null }),
+  useSendCaseMessage: () => ({ mutateAsync: mockSendMessage, isPending: mockSendPending }),
 }))
 jest.mock('@/features/reports/components/ReportSummary', () => {
   const { Text } = jest.requireActual<typeof import('react-native')>('react-native')
@@ -76,6 +79,8 @@ beforeEach(() => {
   mockCase = baseCase
   mockAllowed = []
   mockHistory = []
+  mockSendPending = false
+  mockSendMessage.mockReset().mockResolvedValue(42)
 })
 
 test('cuenta el caso como conversación con la descripción y los comentarios', async () => {
@@ -179,4 +184,63 @@ test('un caso rechazado no muestra avance y muestra el motivo como mensaje', asy
   expect(screen.queryByTestId('case-progress')).toBeNull()
   expect(screen.getByText('No corresponde a mantenimiento.')).toBeTruthy()
   expect(screen.getByText('Solicitud rechazada')).toBeTruthy()
+})
+
+test('el cuadro de mensaje solo aparece con permiso y queda sobre la acción principal', async () => {
+  const withoutPermission = await renderScreen()
+  expect(withoutPermission.queryByLabelText('Escribir mensaje')).toBeNull()
+  await withoutPermission.unmount()
+
+  mockAllowed = ['mensaje', 'aceptar']
+  const screen = await renderScreen()
+  expect(screen.getByLabelText('Escribir mensaje')).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Aceptar solicitud' })).toBeTruthy()
+  await fireEvent.changeText(screen.getByLabelText('Escribir mensaje'), '  Hola equipo  ')
+  await fireEvent.press(screen.getByRole('button', { name: 'Enviar' }))
+  await waitFor(() => expect(mockSendMessage).toHaveBeenCalledWith('Hola equipo'))
+  await waitFor(() => expect(screen.getByLabelText('Escribir mensaje').props.value).toBe(''))
+})
+
+test('muestra validación y el error del servidor sin perder el borrador', async () => {
+  mockAllowed = ['mensaje']
+  mockSendMessage.mockRejectedValue({ code: 'P0001', message: 'La solicitud está cerrada' })
+  const screen = await renderScreen()
+  await fireEvent.changeText(screen.getByLabelText('Escribir mensaje'), ' ab ')
+  await fireEvent.press(screen.getByRole('button', { name: 'Enviar' }))
+  expect(screen.getByText('El mensaje debe tener entre 3 y 500 caracteres')).toBeTruthy()
+  await fireEvent.changeText(screen.getByLabelText('Escribir mensaje'), 'Mensaje válido')
+  await fireEvent.press(screen.getByRole('button', { name: 'Enviar' }))
+  await waitFor(() => expect(screen.getByText('La solicitud está cerrada')).toBeTruthy())
+  expect(screen.getByLabelText('Escribir mensaje').props.value).toBe('Mensaje válido')
+})
+
+test('deshabilita Enviar durante el envío', async () => {
+  mockAllowed = ['mensaje']
+  mockSendPending = true
+  const screen = await renderScreen()
+  expect(screen.getByRole('button', { name: 'Enviar' }).props.accessibilityState.disabled).toBe(
+    true,
+  )
+})
+
+test('un mensaje es burbuja con autor y hora sin línea de cambio de estado', async () => {
+  mockHistory = [
+    {
+      id: 9,
+      actorId: 'u1',
+      previousStatus: 'solicitado',
+      newStatus: 'solicitado',
+      action: 'mensaje',
+      actorName: 'Ana López',
+      assigneeName: null,
+      comment: '¿Cuándo pueden venir?',
+      createdAt: '2026-10-17T10:05:00Z',
+    },
+  ]
+  const screen = await renderScreen()
+  expect(screen.getByTestId('case-message-9')).toBeTruthy()
+  expect(screen.getByTestId('own-case-message')).toBeTruthy()
+  expect(screen.getByText('¿Cuándo pueden venir?')).toBeTruthy()
+  expect(screen.getByText(/Ana López · (Hoy|Ayer|\d{1,2} )/)).toBeTruthy()
+  expect(screen.queryByText(/Ana López cambió el estado/)).toBeNull()
 })

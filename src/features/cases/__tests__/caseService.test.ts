@@ -12,6 +12,7 @@ import {
   listAssignableProfiles,
   listCaseHistory,
   listCases,
+  sendCaseMessage,
   updateCase,
 } from '../caseService'
 
@@ -83,16 +84,30 @@ test('mapea las acciones del servidor y conserva una respuesta vacía como sin a
     data: [
       { action: 'aceptar', allowed: true, reason: null },
       { action: 'rechazar', allowed: false, reason: 'No puedes rechazar' },
+      { action: 'mensaje', allowed: true, reason: null },
     ],
     error: null,
   })
   await expect(getCaseActions('case-1')).resolves.toEqual({
     aceptar: { allowed: true, reason: null },
     rechazar: { allowed: false, reason: 'No puedes rechazar' },
+    mensaje: { allowed: true, reason: null },
   })
   expect(rpc).toHaveBeenCalledWith('get_case_actions', { target_case_id: 'case-1' })
   rpc.mockResolvedValueOnce({ data: [], error: null })
   await expect(getCaseActions('case-1')).resolves.toEqual({})
+})
+
+test('envía el mensaje recortado por RPC y devuelve el id del evento', async () => {
+  rpc.mockResolvedValueOnce({ data: 42, error: null })
+  await expect(sendCaseMessage('case-1', '  Hola equipo.  ')).resolves.toBe(42)
+  expect(rpc).toHaveBeenCalledWith('send_case_message', {
+    target_case_id: 'case-1',
+    message: 'Hola equipo.',
+  })
+  const error = { code: 'P0001', message: 'La solicitud está cerrada' }
+  rpc.mockResolvedValueOnce({ data: null, error })
+  await expect(sendCaseMessage('case-1', 'Hola')).rejects.toBe(error)
 })
 
 test('propaga el error al consultar acciones', async () => {

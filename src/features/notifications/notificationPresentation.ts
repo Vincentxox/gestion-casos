@@ -56,6 +56,12 @@ export function notificationAppearance(action: AppNotification['action']): {
         foreground: colors.primary,
         background: colors.primarySoft,
       }
+    case 'mensaje':
+      return {
+        icon: 'chatbubble-outline',
+        foreground: colors.primary,
+        background: colors.primarySoft,
+      }
     default:
       return {
         icon: 'notifications-outline',

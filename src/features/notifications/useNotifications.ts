@@ -2,8 +2,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { homeSummaryQueryKey } from '@/features/home/useHomeSummary'
 import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { listNotifications, markNotificationsRead } from './notificationService'
+import { notificationsQueryKey } from './notificationQueryKey'
 
-export const notificationsQueryKey = ['notifications'] as const
+export { notificationsQueryKey } from './notificationQueryKey'
 
 export function useNotifications() {
   return useQuery({ queryKey: notificationsQueryKey, queryFn: listNotifications })
