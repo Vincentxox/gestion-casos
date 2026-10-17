@@ -5,17 +5,17 @@ import { FontAwesome } from '@expo/vector-icons'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import { NexoLogo } from '@/components/branding/NexoLogo'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Button } from '@/components/ui/Button'
-import { Card } from '@/components/ui/Card'
 import { FormField } from '@/components/forms/FormField'
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
 import { getAuthErrorMessage } from '@/features/auth/authErrors'
+import { AuthBrand, AuthHeading } from '@/features/auth/components/AuthHeading'
 import { loginSchema, type LoginInput } from '@/features/auth/schemas'
 import type { AuthStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
-import { colors, elevation, radius, spacing, typography } from '@/theme/tokens'
+import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>
 
@@ -69,113 +69,119 @@ export function LoginScreen({ navigation }: Props) {
   }
 
   return (
-    <KeyboardFormScrollView contentContainerStyle={styles.scrollContent} style={styles.flex}>
-      <View style={styles.brand}>
-        <View accessibilityLabel="Logo de Nexo Casos" accessible style={styles.logo}>
-          <NexoLogo size={88} check />
+    <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={styles.flex}>
+      <KeyboardFormScrollView contentContainerStyle={styles.scrollContent} style={styles.flex}>
+        <AuthBrand />
+
+        <View style={styles.headingBlock}>
+          <AuthHeading title="Inicia sesión">
+            Accede de forma segura a tus casos y documentos.
+          </AuthHeading>
+
+          {initializationError ? (
+            <View accessibilityLiveRegion="polite" style={styles.sessionNotice}>
+              <Text style={styles.sessionNoticeText}>{initializationError}</Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => void initialize()}
+                style={styles.retryButton}
+              >
+                <Text style={styles.retryButtonText}>Reintentar</Text>
+              </Pressable>
+            </View>
+          ) : null}
         </View>
-        <Text accessibilityRole="header" style={styles.title}>
-          Nexo Casos
-        </Text>
-        <Text style={styles.subtitle}>Accede de forma segura a tus casos y documentos.</Text>
-      </View>
 
-      <Card contentStyle={styles.card}>
-        <Text accessibilityRole="header" style={styles.cardTitle}>
-          Iniciar sesión
-        </Text>
+        <View style={styles.form}>
+          <Controller
+            control={control}
+            name="email"
+            render={({ field: { onBlur, onChange, value } }) => (
+              <FormField
+                autoCapitalize="none"
+                autoComplete="email"
+                error={errors.email?.message}
+                keyboardType="email-address"
+                label="Correo electrónico"
+                onBlur={onBlur}
+                onChangeText={onChange}
+                placeholder="nombre@empresa.com"
+                returnKeyType="next"
+                value={value}
+                variant="filled"
+              />
+            )}
+          />
 
-        {initializationError ? (
-          <View accessibilityLiveRegion="polite" style={styles.sessionNotice}>
-            <Text style={styles.sessionNoticeText}>{initializationError}</Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => void initialize()}
-              style={styles.retryButton}
-            >
-              <Text style={styles.retryButtonText}>Reintentar</Text>
-            </Pressable>
+          <Controller
+            control={control}
+            name="password"
+            render={({ field: { onBlur, onChange, value } }) => (
+              <FormField
+                autoCapitalize="none"
+                autoComplete="current-password"
+                error={errors.password?.message}
+                label="Contraseña"
+                onBlur={onBlur}
+                onChangeText={onChange}
+                onSubmitEditing={() => void submit()}
+                placeholder="Ingresa tu contraseña"
+                returnKeyType="done"
+                secureTextEntry
+                value={value}
+                variant="filled"
+              />
+            )}
+          />
+        </View>
+
+        <View style={styles.actions}>
+          <Button
+            disabled={isGoogleSubmitting}
+            label="Ingresar"
+            loading={isSubmitting}
+            onPress={() => void submit()}
+            style={styles.primaryButton}
+          />
+
+          <View accessibilityElementsHidden style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>o continúa con</Text>
+            <View style={styles.dividerLine} />
           </View>
-        ) : null}
 
-        <Controller
-          control={control}
-          name="email"
-          render={({ field: { onBlur, onChange, value } }) => (
-            <FormField
-              autoCapitalize="none"
-              autoComplete="email"
-              error={errors.email?.message}
-              keyboardType="email-address"
-              label="Correo electrónico"
-              onBlur={onBlur}
-              onChangeText={onChange}
-              placeholder="nombre@empresa.com"
-              returnKeyType="next"
-              value={value}
-            />
-          )}
-        />
-
-        <Controller
-          control={control}
-          name="password"
-          render={({ field: { onBlur, onChange, value } }) => (
-            <FormField
-              autoCapitalize="none"
-              autoComplete="current-password"
-              error={errors.password?.message}
-              label="Contraseña"
-              onBlur={onBlur}
-              onChangeText={onChange}
-              onSubmitEditing={() => void submit()}
-              placeholder="Ingresa tu contraseña"
-              returnKeyType="done"
-              secureTextEntry
-              value={value}
-            />
-          )}
-        />
-
-        <Button
-          disabled={isGoogleSubmitting}
-          label="Ingresar"
-          loading={isSubmitting}
-          onPress={() => void submit()}
-        />
-
-        <View accessibilityElementsHidden style={styles.dividerRow}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>o continúa con</Text>
-          <View style={styles.dividerLine} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ busy: isGoogleSubmitting, disabled: isGoogleSubmitting }}
+            disabled={isGoogleSubmitting || isSubmitting}
+            onPress={() => void submitGoogle()}
+            style={({ pressed }) => [
+              styles.googleButton,
+              pressed ? styles.googleButtonPressed : null,
+              isGoogleSubmitting || isSubmitting ? styles.googleButtonDisabled : null,
+            ]}
+          >
+            <FontAwesome color="#4285F4" name="google" size={20} />
+            <Text style={styles.googleButtonText}>
+              {isGoogleSubmitting ? 'Conectando…' : 'Continuar con Google'}
+            </Text>
+          </Pressable>
         </View>
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ busy: isGoogleSubmitting, disabled: isGoogleSubmitting }}
-          disabled={isGoogleSubmitting || isSubmitting}
-          onPress={() => void submitGoogle()}
-          style={({ pressed }) => [
-            styles.googleButton,
-            pressed ? styles.googleButtonPressed : null,
-            isGoogleSubmitting || isSubmitting ? styles.googleButtonDisabled : null,
-          ]}
-        >
-          <FontAwesome color="#4285F4" name="google" size={20} />
-          <Text style={styles.googleButtonText}>
-            {isGoogleSubmitting ? 'Conectando…' : 'Continuar con Google'}
-          </Text>
-        </Pressable>
+        <View style={styles.spacer} />
 
         <Pressable
+          accessibilityLabel="¿No tienes una cuenta? Crear cuenta"
           accessibilityRole="button"
           onPress={() => navigation.navigate('Register')}
           style={styles.linkButton}
         >
-          <Text style={styles.linkText}>¿No tienes una cuenta? Crear cuenta</Text>
+          <Text style={styles.linkText}>
+            ¿No tienes una cuenta? <Text style={styles.linkStrong}>Crear cuenta</Text>
+          </Text>
         </Pressable>
-      </Card>
-    </KeyboardFormScrollView>
+      </KeyboardFormScrollView>
+    </SafeAreaView>
   )
 }
 
@@ -186,40 +192,27 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
-    padding: spacing.lg,
-    gap: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.md,
+    gap: spacing.roomy,
   },
-  brand: {
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  logo: {
-    width: 88,
-    height: 88,
-  },
-  title: {
-    color: colors.ink,
-    ...typography.display,
-  },
-  subtitle: {
-    maxWidth: 320,
-    color: colors.textMuted,
-    ...typography.body,
-    textAlign: 'center',
-  },
-  card: {
+  headingBlock: {
     gap: spacing.md,
-    padding: spacing.lg,
-    ...elevation.md,
+    paddingTop: spacing.base,
   },
-  cardTitle: {
-    color: colors.text,
-    ...typography.title,
+  form: {
+    gap: spacing.md,
+  },
+  actions: {
+    gap: spacing.base,
+  },
+  primaryButton: {
+    minHeight: 56,
   },
   sessionNotice: {
     gap: spacing.sm,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     backgroundColor: colors.warningSoft,
     padding: spacing.md,
   },
@@ -236,15 +229,18 @@ const styles = StyleSheet.create({
     color: colors.primary,
     ...typography.caption,
   },
+  spacer: {
+    flex: 1,
+  },
   linkButton: {
-    minHeight: 44,
+    minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
   },
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.base,
   },
   dividerLine: {
     flex: 1,
@@ -256,15 +252,13 @@ const styles = StyleSheet.create({
     ...typography.caption,
   },
   googleButton: {
-    minHeight: 50,
+    minHeight: 56,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
+    gap: spacing.base,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceMuted,
   },
   googleButtonPressed: {
     backgroundColor: colors.primarySoft,
@@ -274,11 +268,16 @@ const styles = StyleSheet.create({
   },
   googleButtonText: {
     color: colors.text,
-    ...typography.heading,
+    fontFamily: fonts.semibold,
+    fontSize: 16,
   },
   linkText: {
-    color: colors.primary,
-    ...typography.caption,
+    color: colors.textMuted,
+    ...typography.body,
     textAlign: 'center',
+  },
+  linkStrong: {
+    color: colors.primary,
+    fontFamily: fonts.bold,
   },
 })
