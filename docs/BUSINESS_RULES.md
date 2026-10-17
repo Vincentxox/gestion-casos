@@ -260,6 +260,30 @@ firmó esa versión, firma el siguiente suplente que no la haya firmado:
 Esto ocurre cuando un área técnica se pide un trabajo a sí misma o cuando el único jefe
 técnico ejecuta el trabajo.
 
+### 5.7 Mensajes del caso
+
+Aprobado por el responsable el 17/10/2026.
+
+- **Quién escribe**: los participantes del caso: su creador, el técnico asignado, los
+  jefes del área solicitante y del área técnica, y los administradores. El auditor y el
+  resto de las personas que pueden ver el caso (5.4) leen los mensajes, pero no escriben.
+- **Hasta cuándo**: mientras el caso está abierto. Al quedar `aprobado`, `rechazado` o
+  `cancelado` ya no se escriben mensajes nuevos.
+- **Contenido**: solo texto, de 3 a 500 caracteres (el mismo límite que los comentarios
+  del historial). Sin adjuntos: las fotos siguen en el reporte (7.1).
+- **Evidencia**: un mensaje es un evento del historial con la acción `mensaje`. No se
+  edita ni se borra, y queda con su autor, su rol y su fecha y hora. No cambia el estado
+  del caso y no se incluye en el PDF (9).
+- **Avisos**: cada mensaje avisa en la app y por push al creador, al técnico asignado, a
+  los jefes de las dos áreas y a quienes ya escribieron en el caso, nunca a quien lo
+  escribió.
+- **Bajas y empresa inactiva**: quien se da de baja deja de escribir y de recibir avisos
+  (2.2); con la empresa inactiva nadie escribe (2.3). Los mensajes se conservan con el
+  nombre de su autor.
+- **Dónde se cumple**: base de datos (`send_case_message`, permiso en
+  `private.case_action_denial`, que `get_case_actions` expone como la acción `mensaje`;
+  `check` de largo en `case_events.comment`). El cliente valida lo mismo con Zod.
+
 ## 6. Recursos
 
 ### 6.1 Catálogo
@@ -455,8 +479,8 @@ Tratamiento de los datos existentes (confirmado por el responsable el 22/09/2026
    por definir si el proyecto actual se conserva como entorno de desarrollo permanente.
 5. Prioridad decidida por el área técnica en lugar del solicitante (ver
    `docs/UX_REDESIGN.md`, sección 10.2).
-6. Comentarios en la solicitud (las notificaciones push se adelantaron al MVP el
-   23/09/2026).
+6. ~~Comentarios en la solicitud.~~ Resuelta el 17/10/2026: mensajes dentro del caso,
+   ver 5.7.
 7. ~~Jefe técnico que ejecuta el trabajo.~~ Resuelta el 23/09/2026: valida el
    administrador, dejando constancia (5.3 y 8).
 8. ~~Baja de miembros, reasignación en ejecución y visibilidad por participación.~~

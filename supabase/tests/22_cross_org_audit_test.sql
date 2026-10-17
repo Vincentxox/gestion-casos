@@ -324,6 +324,8 @@ select test.set('unreviewed_functions', (
     'transition_case(uuid, case_action, text, uuid)',
     'validate_case_report(uuid, text, boolean)',
     'verify_report_code(text)',
+    -- Probada con identificadores de otra empresa en la prueba 28.
+    'send_case_message(uuid, text)',
     -- Sin identificadores de otra empresa: actúan sobre el propio usuario o su empresa.
     'accept_pending_invitation()',
     'cancel_my_access_request()',
