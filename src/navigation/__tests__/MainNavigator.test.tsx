@@ -23,6 +23,7 @@ jest.mock('@/features/cases/useCases', () => ({
     error: null,
   }),
   useAssignableProfiles: () => ({ data: [], isLoading: false, error: null }),
+  useCaseActions: () => ({ data: { asignar: { allowed: true } }, isLoading: false, error: null }),
   useAssignCase: () => ({ mutateAsync: jest.fn(), isPending: false }),
 }))
 jest.mock('@/features/admin/screens/UsersScreen', () => {

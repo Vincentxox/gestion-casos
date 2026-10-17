@@ -12,7 +12,7 @@ import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollVi
 import { RequestState } from '@/components/feedback/RequestState'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { useCaseDetail } from '@/features/cases/useCases'
+import { useCaseActions, useCaseDetail } from '@/features/cases/useCases'
 import { PhotoGrid } from '@/features/photos/components/PhotoGrid'
 import { listPendingPhotos } from '@/features/photos/uploadQueue'
 import { useCasePhotos } from '@/features/photos/usePhotos'
@@ -22,8 +22,7 @@ import { useAuthStore } from '@/store/authStore'
 import { colors, spacing, typography } from '@/theme/tokens'
 
 import { reportDraftSchema, getReportRequirements } from '../schemas'
-import { useAreaChiefs, useReportDraft, useSaveReportDraft } from '../useReports'
-import { getReportActions } from '../reportPermissions'
+import { useReportDraft, useSaveReportDraft } from '../useReports'
 import type { ReportDraftInput } from '../types'
 
 type Props = NativeStackScreenProps<MainStackParamList, 'CaseReport'>
@@ -39,10 +38,10 @@ export function CaseReportScreen({ navigation, route }: Props) {
   const { caseId } = route.params
   const profile = useAuthStore((state) => state.profile)
   const detail = useCaseDetail(caseId)
+  const caseActions = useCaseActions(caseId)
   const draft = useReportDraft(caseId)
   const photos = useCasePhotos(caseId)
   const usages = useCaseUsages(caseId)
-  const chiefs = useAreaChiefs()
   const saveMutation = useSaveReportDraft(caseId)
   const { mutateAsync: saveDraft } = saveMutation
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -60,9 +59,8 @@ export function CaseReportScreen({ navigation, route }: Props) {
     defaultValues: { diagnosis: '', workDone: '', cause: '', observations: '' },
   })
   const values = useWatch({ control })
-  const actions = detail.data ? getReportActions(detail.data, profile, chiefs.data ?? []) : []
-  const canEdit = actions.includes('edit')
-  const canSubmit = actions.includes('submit')
+  const canEdit = caseActions.data?.editar_reporte?.allowed === true
+  const canSubmit = caseActions.data?.enviar_reporte?.allowed === true
 
   useEffect(() => {
     if (!draft.isFetched || initialized.current) return
@@ -121,9 +119,9 @@ export function CaseReportScreen({ navigation, route }: Props) {
     [navigation, canEdit, isDirty, persist, getValues, profile?.id, caseId],
   )
 
-  if (detail.isLoading || draft.isLoading)
+  if (detail.isLoading || draft.isLoading || caseActions.isPending)
     return <RequestState kind="loading" title="Cargando reporte…" />
-  if (detail.error || !detail.data || draft.error) {
+  if (detail.error || !detail.data || draft.error || caseActions.error) {
     return (
       <RequestState
         kind="error"
@@ -131,6 +129,7 @@ export function CaseReportScreen({ navigation, route }: Props) {
         onRetry={() => {
           void detail.refetch()
           void draft.refetch()
+          void caseActions.refetch()
         }}
       />
     )
@@ -218,9 +217,14 @@ export function CaseReportScreen({ navigation, route }: Props) {
             caseId={caseId}
             kind="antes"
             userId={profile?.id}
-            editable={actions.includes('photos_before')}
+            editable={caseActions.data?.fotos_antes?.allowed === true}
           />
-          <PhotoGrid caseId={caseId} kind="despues" userId={profile?.id} editable={canEdit} />
+          <PhotoGrid
+            caseId={caseId}
+            kind="despues"
+            userId={profile?.id}
+            editable={caseActions.data?.fotos_despues?.allowed === true}
+          />
         </Card>
         <Card contentStyle={styles.card}>
           <Text style={styles.sectionTitle}>Recursos y mano de obra</Text>

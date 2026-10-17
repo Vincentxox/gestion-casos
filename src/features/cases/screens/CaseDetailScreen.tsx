@@ -19,18 +19,15 @@ import { SkeletonList } from '@/components/ui/SkeletonList'
 import { Icon, type IconName } from '@/components/ui/Icon'
 import { IconTile } from '@/components/ui/IconTile'
 import { ReportSummary } from '@/features/reports/components/ReportSummary'
-import { getReportActions } from '@/features/reports/reportPermissions'
-import { useAreaChiefs, useCurrentReportSigners } from '@/features/reports/useReports'
 import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
 import { colors, spacing, typography } from '@/theme/tokens'
 import { statusMeta } from '@/theme/statusMeta'
 
-import { useCaseDetail, useCaseHistory } from '../useCases'
+import { useCaseActions, useCaseDetail, useCaseHistory } from '../useCases'
 import { refreshCaseDetail } from '../refreshCaseDetail'
-import { canEditCase, getAvailableCaseActions } from '../casePermissions'
 import { getCaseActionMeta, getSecondaryActionPresentation } from '../caseActionPresentation'
-import type { CaseAction } from '../types'
+import type { CaseAction, CaseActionName } from '../types'
 
 type Props = NativeStackScreenProps<MainStackParamList, 'CaseDetail'>
 
@@ -70,9 +67,8 @@ export function CaseDetailScreen({ navigation, route }: Props) {
   const queryClient = useQueryClient()
   const profile = useAuthStore((state) => state.profile)
   const detail = useCaseDetail(caseId)
+  const caseActions = useCaseActions(caseId)
   const history = useCaseHistory(caseId)
-  const chiefs = useAreaChiefs()
-  const currentSigners = useCurrentReportSigners(caseId)
   const [actionsVisible, setActionsVisible] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const reduceMotion = useReducedMotion()
@@ -100,20 +96,27 @@ export function CaseDetailScreen({ navigation, route }: Props) {
     )
   }
 
+  if (caseActions.error) {
+    return (
+      <RequestState
+        kind="error"
+        title="No fue posible cargar las acciones de esta solicitud"
+        onRetry={() => void caseActions.refetch()}
+      />
+    )
+  }
+
   const item = detail.data
-  const canUpdate = canEditCase(item, profile)
-  const actions = getAvailableCaseActions(item, profile)
-  const reportActions = getReportActions(
-    item,
-    profile,
-    chiefs.data ?? [],
-    currentSigners.data ?? null,
-  )
-  const reportPrimary = reportActions.includes('submit')
+  const allowed = (action: CaseActionName) => caseActions.data?.[action]?.allowed === true
+  const canUpdate = allowed('editar_datos')
+  const actions = (
+    ['aceptar', 'rechazar', 'cancelar', 'asignar', 'iniciar', 'pausar', 'reanudar'] as CaseAction[]
+  ).filter((action) => allowed(action))
+  const reportPrimary = allowed('enviar_reporte')
     ? 'Completar reporte'
-    : reportActions.includes('validate')
+    : allowed('validar_reporte')
       ? 'Revisar y validar'
-      : reportActions.includes('approve')
+      : allowed('aprobar_reporte')
         ? 'Revisar y aprobar'
         : null
   const primaryAction = actions.find((action) => !['rechazar', 'cancelar'].includes(action))
@@ -182,8 +185,8 @@ export function CaseDetailScreen({ navigation, route }: Props) {
         ].includes(item.status) ? (
           <ReportSummary
             item={item}
-            beforeEditable={reportActions.includes('photos_before')}
-            afterEditable={reportActions.includes('edit')}
+            beforeEditable={allowed('fotos_antes')}
+            afterEditable={allowed('fotos_despues')}
             userId={profile?.id}
             onOpen={() => navigation.navigate('CaseReport', { caseId })}
             onReview={() => navigation.navigate('ReportReview', { caseId })}
@@ -304,7 +307,7 @@ export function CaseDetailScreen({ navigation, route }: Props) {
           icon: actionMetaForCase(action).icon,
           destructive: ['rechazar', 'cancelar'].includes(action),
         }))}
-        visible={actionsVisible}
+        visible={actionsVisible && otherActions.length > 0}
         onClose={() => setActionsVisible(false)}
         onSelect={(action) => {
           setActionsVisible(false)

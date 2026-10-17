@@ -7,8 +7,6 @@ import { caseUsagesQueryKey } from '@/features/resources/useResources'
 
 import {
   getReportDraft,
-  listAreaChiefs,
-  listCurrentReportSigners,
   listReportSignatures,
   listReportVersions,
   returnReport,
@@ -41,22 +39,13 @@ export function useReportSignatures(caseId: string) {
   })
 }
 
-export function useCurrentReportSigners(caseId: string) {
-  return useQuery({
-    queryKey: [...reportsQueryKey, caseId, 'current-signers'],
-    queryFn: () => listCurrentReportSigners(caseId),
-  })
-}
-
-export function useAreaChiefs() {
-  return useQuery({ queryKey: [...reportsQueryKey, 'chiefs'], queryFn: listAreaChiefs })
-}
-
 export function useSaveReportDraft(caseId: string) {
   const client = useQueryClient()
   return useMutation({
     mutationFn: (input: ReportDraftInput) => saveReportDraft(caseId, input),
-    onSuccess: (draft) => client.setQueryData([...reportsQueryKey, caseId, 'draft'], draft),
+    onSuccess: (draft) => {
+      client.setQueryData([...reportsQueryKey, caseId, 'draft'], draft)
+    },
   })
 }
 

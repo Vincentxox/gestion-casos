@@ -1,10 +1,12 @@
 import { supabase } from '@/services/supabase/client'
 import { listFormerMemberNames, memberDisplayName } from '@/services/supabase/formerMembers'
 import { statusMeta } from '@/theme/statusMeta'
+import { CASE_ACTION_NAMES } from './types'
 
 import type {
   AssignableProfile,
   CaseRecord,
+  CaseActionPermissions,
   CaseStatus,
   CaseStatusHistoryRecord,
   ChangeCaseStatusInput,
@@ -146,6 +148,20 @@ export async function getCase(caseId: string): Promise<CaseRecord> {
     .single()
   if (error) throw error
   return (await mapCases([data]))[0]!
+}
+
+export async function getCaseActions(caseId: string): Promise<CaseActionPermissions> {
+  const { data, error } = await supabase.rpc('get_case_actions', { target_case_id: caseId })
+  if (error) throw error
+  const result: CaseActionPermissions = {}
+  for (const row of data ?? []) {
+    if (!CASE_ACTION_NAMES.some((name) => name === row.action)) continue
+    result[row.action as keyof CaseActionPermissions] = {
+      allowed: row.allowed,
+      reason: row.reason,
+    }
+  }
+  return result
 }
 
 export async function createCase(input: CreateCaseInput): Promise<CaseRecord> {

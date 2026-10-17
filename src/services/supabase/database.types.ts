@@ -1246,6 +1246,14 @@ export type Database = {
         Args: { target: Database['public']['Tables']['cases']['Row'] }
         Returns: string
       }
+      get_case_actions: {
+        Args: { target_case_id: string }
+        Returns: {
+          action: string
+          allowed: boolean
+          reason: string
+        }[]
+      }
       get_case_indicators: {
         Args: { period_end?: string; period_start?: string }
         Returns: Json

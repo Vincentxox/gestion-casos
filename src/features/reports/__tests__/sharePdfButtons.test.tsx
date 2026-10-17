@@ -21,6 +21,7 @@ const mockVersion = {
 
 jest.mock('@/features/cases/useCases', () => ({
   useCaseDetail: () => ({ data: mockItem, isLoading: false, error: null }),
+  useCaseActions: () => ({ data: {}, isLoading: false, error: null }),
 }))
 jest.mock('@/features/photos/usePhotos', () => ({
   useCasePhotos: () => ({ data: [] }),
@@ -36,11 +37,9 @@ jest.mock('../useReports', () => ({
   useReportDraft: () => ({ data: null, isLoading: false }),
   useReportVersions: () => ({ data: [mockVersion], isLoading: false, error: null }),
   useReportSignatures: () => ({ data: [], isLoading: false, error: null }),
-  useAreaChiefs: () => ({ data: [] }),
   useSignReport: () => ({ isPending: false }),
   useReturnReport: () => ({ isPending: false }),
 }))
-jest.mock('../reportPermissions', () => ({ getReportActions: () => [] }))
 jest.mock('../reportService', () => ({
   generateReportPdf: jest.fn(),
   shareReportPdf: jest.fn(),

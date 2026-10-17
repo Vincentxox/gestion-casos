@@ -12,41 +12,42 @@ import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollVi
 import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
 import type { MainStackParamList } from '@/navigation/types'
-import { useAuthStore } from '@/store/authStore'
 import { colors, radius, spacing, typography } from '@/theme/tokens'
 import { actionMeta, actionToastMeta } from '@/theme/statusMeta'
 
 import { changeCaseStatusSchema } from '../schemas'
-import { getAvailableCaseActions } from '../casePermissions'
 import type { CaseAction } from '../types'
-import { useCaseDetail, useChangeCaseStatus } from '../useCases'
+import { useCaseActions, useCaseDetail, useChangeCaseStatus } from '../useCases'
 
 type Props = NativeStackScreenProps<MainStackParamList, 'ChangeCaseStatus'>
 
 export function ChangeCaseStatusScreen({ navigation, route }: Props) {
-  const profile = useAuthStore((state) => state.profile)
   const detail = useCaseDetail(route.params.caseId)
+  const actions = useCaseActions(route.params.caseId)
   const mutation = useChangeCaseStatus(route.params.caseId)
   const [action, setAction] = useState<CaseAction | null>(route.params.action ?? null)
   const [comment, setComment] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  if (detail.isLoading) {
+  if (detail.isLoading || actions.isPending) {
     return <RequestState kind="loading" title="Cargando solicitud…" />
   }
 
-  if (!detail.data || detail.error)
+  if (!detail.data || detail.error || actions.error)
     return (
       <RequestState
         kind="error"
         title="No fue posible cargar la solicitud"
-        onRetry={() => void detail.refetch()}
+        onRetry={() => {
+          void detail.refetch()
+          void actions.refetch()
+        }}
       />
     )
 
-  const availableActions = getAvailableCaseActions(detail.data, profile).filter(
-    (item) => item !== 'asignar',
-  )
+  const availableActions = (
+    ['aceptar', 'rechazar', 'cancelar', 'iniciar', 'pausar', 'reanudar'] as CaseAction[]
+  ).filter((item) => actions.data?.[item]?.allowed === true)
   if (availableActions.length === 0)
     return (
       <RequestState

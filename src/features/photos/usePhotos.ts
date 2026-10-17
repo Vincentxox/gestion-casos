@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { listCasePhotos, deleteCasePhoto, getSignedPhotoUrl } from './photoService'
+import { casesQueryKey } from '@/features/cases/useCases'
 import type { CasePhoto } from './types'
 
 export const photosQueryKey = ['case-photos'] as const
@@ -22,6 +23,9 @@ export function useDeletePhoto(caseId: string) {
   const client = useQueryClient()
   return useMutation({
     mutationFn: (photo: CasePhoto) => deleteCasePhoto(photo),
-    onSuccess: () => client.invalidateQueries({ queryKey: [...photosQueryKey, caseId] }),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: [...photosQueryKey, caseId] })
+      await client.invalidateQueries({ queryKey: [...casesQueryKey, caseId] })
+    },
   })
 }

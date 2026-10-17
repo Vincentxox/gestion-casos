@@ -7,6 +7,7 @@ import {
   countCasesByStatus,
   createCase,
   getCase,
+  getCaseActions,
   getStatusLabel,
   listAssignableProfiles,
   listCaseHistory,
@@ -75,6 +76,29 @@ beforeEach(() => {
   query.single.mockResolvedValue({ data: row, error: null })
   query.limit.mockResolvedValue({ data: [row], error: null })
   query.range.mockResolvedValue({ data: [row], error: null })
+})
+
+test('mapea las acciones del servidor y conserva una respuesta vacía como sin acciones', async () => {
+  rpc.mockResolvedValueOnce({
+    data: [
+      { action: 'aceptar', allowed: true, reason: null },
+      { action: 'rechazar', allowed: false, reason: 'No puedes rechazar' },
+    ],
+    error: null,
+  })
+  await expect(getCaseActions('case-1')).resolves.toEqual({
+    aceptar: { allowed: true, reason: null },
+    rechazar: { allowed: false, reason: 'No puedes rechazar' },
+  })
+  expect(rpc).toHaveBeenCalledWith('get_case_actions', { target_case_id: 'case-1' })
+  rpc.mockResolvedValueOnce({ data: [], error: null })
+  await expect(getCaseActions('case-1')).resolves.toEqual({})
+})
+
+test('propaga el error al consultar acciones', async () => {
+  const error = { code: 'PGRST116', message: 'Sin acceso' }
+  rpc.mockResolvedValueOnce({ data: null, error })
+  await expect(getCaseActions('case-1')).rejects.toBe(error)
 })
 
 test('pagina y ordena solicitudes en el servidor y conserva los nombres de relaciones', async () => {

@@ -25,6 +25,24 @@ export type CaseStatus = (typeof CASE_STATUSES)[number]
 export type CasePriority = (typeof CASE_PRIORITIES)[number]
 export type CaseAction = (typeof CASE_ACTIONS)[number]
 
+export const CASE_ACTION_NAMES = [
+  ...CASE_ACTIONS,
+  'editar_datos',
+  'enviar_reporte',
+  'editar_reporte',
+  'validar_reporte',
+  'aprobar_reporte',
+  'devolver_reporte',
+  'fotos_antes',
+  'fotos_despues',
+  'recursos',
+] as const
+
+export type CaseActionName = (typeof CASE_ACTION_NAMES)[number]
+export type CaseActionPermissions = Partial<
+  Record<CaseActionName, { allowed: boolean; reason: string | null }>
+>
+
 export interface CaseRecord {
   id: string
   caseNumber: string
