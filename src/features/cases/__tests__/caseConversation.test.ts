@@ -4,9 +4,9 @@ import { caseProgressStep } from '../components/CaseProgressDots'
 const now = new Date(2026, 9, 17, 12, 0)
 
 test('formatEventMoment dice hoy, ayer o la fecha corta', () => {
-  expect(formatEventMoment(new Date(2026, 9, 17, 10, 5).toISOString(), now)).toMatch(/^Hoy /)
-  expect(formatEventMoment(new Date(2026, 9, 16, 9, 0).toISOString(), now)).toMatch(/^Ayer /)
-  expect(formatEventMoment(new Date(2026, 9, 2, 9, 0).toISOString(), now)).toMatch(/ · /)
+  expect(formatEventMoment(new Date(2026, 9, 17, 10, 5).toISOString(), now)).toBe('Hoy 10:05')
+  expect(formatEventMoment(new Date(2026, 9, 16, 9, 0).toISOString(), now)).toBe('Ayer 09:00')
+  expect(formatEventMoment(new Date(2026, 9, 2, 10, 5).toISOString(), now)).toBe('2 oct · 10:05')
   expect(formatEventMoment('no es fecha', now)).toBe('Fecha no disponible')
 })
 

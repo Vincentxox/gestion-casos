@@ -1,4 +1,21 @@
-import { changeCaseStatusSchema, createCaseSchema, reassignmentReasonSchema } from '../schemas'
+import {
+  caseMessageSchema,
+  changeCaseStatusSchema,
+  createCaseSchema,
+  reassignmentReasonSchema,
+} from '../schemas'
+
+test('el mensaje se recorta y respeta el límite de 3 a 500 caracteres', () => {
+  expect(caseMessageSchema.parse('  Hola equipo  ')).toBe('Hola equipo')
+  expect(caseMessageSchema.safeParse('  ab  ').success).toBe(false)
+  expect(caseMessageSchema.safeParse('   ').success).toBe(false)
+  expect(caseMessageSchema.safeParse('a'.repeat(500)).success).toBe(true)
+  expect(caseMessageSchema.safeParse('a'.repeat(501)).success).toBe(false)
+  const invalid = caseMessageSchema.safeParse('ab')
+  if (!invalid.success) {
+    expect(invalid.error.issues[0]?.message).toBe('El mensaje debe tener entre 3 y 500 caracteres')
+  }
+})
 
 test('el motivo de reasignación usa los límites de PostgreSQL', () => {
   expect(reassignmentReasonSchema.safeParse(' ok ').success).toBe(false)

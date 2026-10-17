@@ -11,10 +11,12 @@ import {
   listCaseHistory,
   listCases,
   CASE_PAGE_SIZE,
+  sendCaseMessage,
   updateCase,
 } from './caseService'
 import type { ChangeCaseStatusInput, CreateCaseInput, UpdateCaseInput } from './types'
 import { homeSummaryQueryKey } from '@/features/home/useHomeSummary'
+import { notificationsQueryKey } from '@/features/notifications/notificationQueryKey'
 import { feedback } from '@/services/feedback'
 import type { CaseSearchFilters } from './caseSearch'
 
@@ -74,6 +76,20 @@ export function useCaseHistory(caseId: string) {
   return useQuery({
     queryKey: [...casesQueryKey, caseId, 'history'],
     queryFn: () => listCaseHistory(caseId),
+  })
+}
+
+export function useSendCaseMessage(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (message: string) => sendCaseMessage(caseId, message),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: [...casesQueryKey, caseId, 'history'] }),
+        queryClient.invalidateQueries({ queryKey: [...casesQueryKey, caseId, 'actions'] }),
+        queryClient.invalidateQueries({ queryKey: notificationsQueryKey }),
+      ])
+    },
   })
 }
 

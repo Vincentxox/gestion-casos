@@ -1,7 +1,17 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { ActionSheet, type SheetAction } from '@/components/actions/ActionSheet'
@@ -16,13 +26,15 @@ import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
 import { priorityMeta, statusMeta } from '@/theme/statusMeta'
 import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
+import { getErrorMessage } from '@/utils/errorMessage'
 
 import { CaseConversation } from '../components/CaseConversation'
 import { CaseProgressDots } from '../components/CaseProgressDots'
 import { getCaseActionMeta } from '../caseActionPresentation'
 import { refreshCaseDetail } from '../refreshCaseDetail'
+import { caseMessageSchema } from '../schemas'
 import type { CaseAction, CaseActionName, CaseStatus } from '../types'
-import { useCaseActions, useCaseDetail, useCaseHistory } from '../useCases'
+import { useCaseActions, useCaseDetail, useCaseHistory, useSendCaseMessage } from '../useCases'
 
 type Props = NativeStackScreenProps<MainStackParamList, 'CaseDetail'>
 
@@ -63,9 +75,30 @@ export function CaseDetailScreen({ navigation, route }: Props) {
   const detail = useCaseDetail(caseId)
   const caseActions = useCaseActions(caseId)
   const history = useCaseHistory(caseId)
+  const sendMessage = useSendCaseMessage(caseId)
   const [menuVisible, setMenuVisible] = useState(false)
   const [dataVisible, setDataVisible] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [messageDraft, setMessageDraft] = useState('')
+  const [messageError, setMessageError] = useState<string | null>(null)
+
+  async function submitMessage() {
+    if (sendMessage.isPending) return
+    const parsed = caseMessageSchema.safeParse(messageDraft)
+    if (!parsed.success) {
+      setMessageError(parsed.error.issues[0]?.message ?? 'Revisa el mensaje.')
+      return
+    }
+    setMessageError(null)
+    try {
+      await sendMessage.mutateAsync(parsed.data)
+      setMessageDraft('')
+    } catch (error) {
+      setMessageError(
+        getErrorMessage(error, 'No fue posible enviar el mensaje. Inténtalo de nuevo.'),
+      )
+    }
+  }
 
   async function refreshDetail() {
     setRefreshing(true)
@@ -177,92 +210,133 @@ export function CaseDetailScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView edges={['bottom']} style={styles.safeArea}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => void refreshDetail()} />
-        }
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardArea}
       >
-        <View style={styles.heading}>
-          <View style={styles.toolbar}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Datos del caso"
-              onPress={() => setDataVisible(true)}
-              style={({ pressed }) => [styles.pill, pressed && styles.pressed]}
-            >
-              <Icon name="information-circle-outline" size={18} color={colors.text} />
-              <Text style={styles.pillText}>Datos del caso</Text>
-            </Pressable>
-            {menu.length > 0 ? (
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={() => void refreshDetail()} />
+          }
+        >
+          <View style={styles.heading}>
+            <View style={styles.toolbar}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Más acciones"
-                onPress={() => setMenuVisible(true)}
-                style={({ pressed }) => [styles.round, pressed && styles.pressed]}
+                accessibilityLabel="Datos del caso"
+                onPress={() => setDataVisible(true)}
+                style={({ pressed }) => [styles.pill, pressed && styles.pressed]}
               >
-                <Icon name="ellipsis-vertical" size={20} color={colors.text} />
+                <Icon name="information-circle-outline" size={18} color={colors.text} />
+                <Text style={styles.pillText}>Datos del caso</Text>
               </Pressable>
+              {menu.length > 0 ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Más acciones"
+                  onPress={() => setMenuVisible(true)}
+                  style={({ pressed }) => [styles.round, pressed && styles.pressed]}
+                >
+                  <Icon name="ellipsis-vertical" size={20} color={colors.text} />
+                </Pressable>
+              ) : null}
+            </View>
+            <Text accessibilityRole="header" style={styles.title}>
+              {item.title}
+            </Text>
+            {item.status === 'rechazado' || item.status === 'cancelado' ? null : (
+              <CaseProgressDots status={item.status} />
+            )}
+            <Text style={styles.meta}>
+              {item.caseNumber} · {statusMeta[item.status].label}
+              {item.priority === 'alta' ? ' · Prioridad alta' : ''}
+              {overdue ? <Text style={styles.overdue}> · {overdue}</Text> : null}
+            </Text>
+          </View>
+
+          <OfflineBanner />
+
+          <CaseConversation
+            item={item}
+            events={history.data ?? []}
+            nextStep={nextStep}
+            currentUserId={profile?.id}
+          >
+            {history.isLoading ? <SkeletonList count={2} /> : null}
+            {history.error ? (
+              <Text style={styles.error}>No fue posible cargar el historial.</Text>
+            ) : null}
+            {REPORT_STATUSES.includes(item.status) ? (
+              <View style={styles.reportRow}>
+                <View style={styles.reportIcon}>
+                  <Icon name="document-text-outline" size={16} color={colors.white} />
+                </View>
+                <View style={styles.reportBody}>
+                  <ReportSummary
+                    item={item}
+                    beforeEditable={allowed('fotos_antes')}
+                    afterEditable={allowed('fotos_despues')}
+                    userId={profile?.id}
+                    onOpen={() => navigation.navigate('CaseReport', { caseId })}
+                    onReview={() => navigation.navigate('ReportReview', { caseId })}
+                  />
+                </View>
+              </View>
+            ) : null}
+          </CaseConversation>
+        </ScrollView>
+
+        {allowed('mensaje') ? (
+          <View style={styles.composer}>
+            <TextInput
+              accessibilityLabel="Escribir mensaje"
+              placeholder="Escribe un mensaje…"
+              placeholderTextColor={colors.textMuted}
+              multiline
+              maxLength={500}
+              value={messageDraft}
+              onChangeText={(value) => {
+                setMessageDraft(value)
+                if (messageError) setMessageError(null)
+              }}
+              style={styles.messageInput}
+            />
+            <Button
+              label="Enviar"
+              onPress={() => void submitMessage()}
+              loading={sendMessage.isPending}
+              disabled={sendMessage.isPending}
+              containerStyle={styles.sendButton}
+            />
+            {messageError ? (
+              <Text accessibilityRole="alert" style={styles.messageError}>
+                {messageError}
+              </Text>
             ) : null}
           </View>
-          <Text accessibilityRole="header" style={styles.title}>
-            {item.title}
-          </Text>
-          {item.status === 'rechazado' || item.status === 'cancelado' ? null : (
-            <CaseProgressDots status={item.status} />
-          )}
-          <Text style={styles.meta}>
-            {item.caseNumber} · {statusMeta[item.status].label}
-            {item.priority === 'alta' ? ' · Prioridad alta' : ''}
-            {overdue ? <Text style={styles.overdue}> · {overdue}</Text> : null}
-          </Text>
-        </View>
+        ) : null}
 
-        <OfflineBanner />
-
-        <CaseConversation item={item} events={history.data ?? []} nextStep={nextStep}>
-          {history.isLoading ? <SkeletonList count={2} /> : null}
-          {history.error ? (
-            <Text style={styles.error}>No fue posible cargar el historial.</Text>
-          ) : null}
-          {REPORT_STATUSES.includes(item.status) ? (
-            <View style={styles.reportRow}>
-              <View style={styles.reportIcon}>
-                <Icon name="document-text-outline" size={16} color={colors.white} />
+        {primaryLabel || quick ? (
+          <View accessibilityRole="toolbar" style={styles.actionBar}>
+            {primaryLabel ? (
+              <View style={styles.primarySlot}>
+                <Button label={primaryLabel} onPress={runPrimary} />
               </View>
-              <View style={styles.reportBody}>
-                <ReportSummary
-                  item={item}
-                  beforeEditable={allowed('fotos_antes')}
-                  afterEditable={allowed('fotos_despues')}
-                  userId={profile?.id}
-                  onOpen={() => navigation.navigate('CaseReport', { caseId })}
-                  onReview={() => navigation.navigate('ReportReview', { caseId })}
+            ) : null}
+            {quick ? (
+              <View style={styles.secondarySlot}>
+                <Button
+                  label={menu.length > 1 ? 'Más' : quick.label}
+                  variant={menu.length === 1 && quick.destructive ? 'danger' : 'secondary'}
+                  onPress={() => (menu.length > 1 ? setMenuVisible(true) : runMenu(quick.id))}
                 />
               </View>
-            </View>
-          ) : null}
-        </CaseConversation>
-      </ScrollView>
-
-      {primaryLabel || quick ? (
-        <View accessibilityRole="toolbar" style={styles.actionBar}>
-          {primaryLabel ? (
-            <View style={styles.primarySlot}>
-              <Button label={primaryLabel} onPress={runPrimary} />
-            </View>
-          ) : null}
-          {quick ? (
-            <View style={styles.secondarySlot}>
-              <Button
-                label={menu.length > 1 ? 'Más' : quick.label}
-                variant={menu.length === 1 && quick.destructive ? 'danger' : 'secondary'}
-                onPress={() => (menu.length > 1 ? setMenuVisible(true) : runMenu(quick.id))}
-              />
-            </View>
-          ) : null}
-        </View>
-      ) : null}
+            ) : null}
+          </View>
+        ) : null}
+      </KeyboardAvoidingView>
 
       <ActionSheet<MenuId>
         title="Más acciones"
@@ -305,6 +379,7 @@ export function CaseDetailScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
+  keyboardArea: { flex: 1 },
   content: { gap: spacing.lg, padding: spacing.md, paddingBottom: spacing.xl },
   heading: { gap: spacing.base },
   toolbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -346,6 +421,32 @@ const styles = StyleSheet.create({
     backgroundColor: colors.sky,
   },
   reportBody: { flex: 1 },
+  composer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'flex-end',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  messageInput: {
+    ...typography.body,
+    flex: 1,
+    minHeight: 44,
+    maxHeight: 110,
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    color: colors.text,
+    backgroundColor: colors.surfaceMuted,
+  },
+  sendButton: { minWidth: 82 },
+  messageError: { ...typography.caption, color: colors.error, width: '100%' },
   actionBar: {
     flexDirection: 'row',
     gap: spacing.xs,

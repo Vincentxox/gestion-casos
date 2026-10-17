@@ -17,7 +17,11 @@ function sameDay(a: Date, b: Date) {
 export function formatEventMoment(value: string, now = new Date()): string {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return 'Fecha no disponible'
-  const time = date.toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' })
+  const time = date.toLocaleTimeString('es-GT', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
   const yesterday = new Date(now)
   yesterday.setDate(now.getDate() - 1)
   if (sameDay(date, now)) return `Hoy ${time}`
@@ -46,13 +50,28 @@ function EventLine({ text, tone }: { text: string; tone: 'start' | 'step' }) {
   )
 }
 
-function Bubble({ name, id, children }: { name: string; id: string; children: ReactNode }) {
+function Bubble({
+  name,
+  id,
+  children,
+  own = false,
+}: {
+  name: string
+  id: string
+  children: ReactNode
+  own?: boolean
+}) {
   return (
-    <View style={styles.bubbleRow}>
-      <View style={styles.rail}>
-        <Avatar name={name} id={id} size={28} />
-      </View>
-      <View style={styles.bubble}>{children}</View>
+    <View
+      testID={own ? 'own-case-message' : undefined}
+      style={[styles.bubbleRow, own && styles.ownBubbleRow]}
+    >
+      {!own ? (
+        <View style={styles.rail}>
+          <Avatar name={name} id={id} size={28} />
+        </View>
+      ) : null}
+      <View style={[styles.bubble, own && styles.ownBubble]}>{children}</View>
     </View>
   )
 }
@@ -66,12 +85,14 @@ export function CaseConversation({
   events,
   nextStep,
   children,
+  currentUserId,
 }: {
   item: CaseRecord
   /** Historial en el orden del servicio (más reciente primero). */
   events: CaseStatusHistoryRecord[]
   nextStep?: string | null
   children?: ReactNode
+  currentUserId?: string
 }) {
   const chronological = [...events].reverse().filter((event) => event.action !== 'crear')
   return (
@@ -85,19 +106,34 @@ export function CaseConversation({
         <Text style={styles.bubbleText}>{item.description}</Text>
         <Text style={styles.bubbleMeta}>{item.location}</Text>
       </Bubble>
-      {chronological.map((event) => (
-        <View key={event.id} style={styles.group}>
-          <EventLine
-            tone="step"
-            text={`${formatEventMoment(event.createdAt)} · ${describeEvent(event)}`}
-          />
-          {event.comment ? (
-            <Bubble name={event.actorName} id={event.actorName}>
+      {chronological.map((event) =>
+        event.action === 'mensaje' ? (
+          <View key={event.id} testID={`case-message-${event.id}`}>
+            <Bubble
+              name={event.actorName}
+              id={event.actorId ?? event.actorName}
+              own={Boolean(currentUserId && event.actorId === currentUserId)}
+            >
               <Text style={styles.bubbleText}>{event.comment}</Text>
+              <Text style={styles.bubbleMeta}>
+                {event.actorName} · {formatEventMoment(event.createdAt)}
+              </Text>
             </Bubble>
-          ) : null}
-        </View>
-      ))}
+          </View>
+        ) : (
+          <View key={event.id} style={styles.group}>
+            <EventLine
+              tone="step"
+              text={`${formatEventMoment(event.createdAt)} · ${describeEvent(event)}`}
+            />
+            {event.comment ? (
+              <Bubble name={event.actorName} id={event.actorName}>
+                <Text style={styles.bubbleText}>{event.comment}</Text>
+              </Bubble>
+            ) : null}
+          </View>
+        ),
+      )}
       {children}
       {nextStep ? (
         <View style={styles.line}>
@@ -141,6 +177,7 @@ const styles = StyleSheet.create({
   lineText: { ...typography.caption, color: colors.textMuted, flex: 1 },
   nextText: { ...typography.body, fontFamily: fonts.bold, color: colors.text, flex: 1 },
   bubbleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.base },
+  ownBubbleRow: { justifyContent: 'flex-end' },
   bubble: {
     flexShrink: 1,
     maxWidth: '82%',
@@ -153,4 +190,9 @@ const styles = StyleSheet.create({
   },
   bubbleText: { ...typography.body, color: colors.text },
   bubbleMeta: { ...typography.caption, color: colors.textMuted },
+  ownBubble: {
+    backgroundColor: colors.primarySoft,
+    borderBottomLeftRadius: radius.xl - 4,
+    borderBottomRightRadius: 6,
+  },
 })

@@ -33,6 +33,10 @@ test('mapea acciones sin depender del título', () => {
   expect(notificationAppearance('cancelar').background).toBe(phaseColors.rechazada.bg)
   expect(notificationAppearance('devolver_reporte').background).toBe(phaseColors.nueva.bg)
   expect(notificationAppearance('crear').background).toBe(colors.primarySoft)
+  expect(notificationAppearance('mensaje')).toMatchObject({
+    icon: 'chatbubble-outline',
+    background: colors.primarySoft,
+  })
   expect(notificationAppearance('aceptar').background).toBe(colors.neutralSoft)
   expect(notificationAppearance('iniciar').background).toBe(colors.neutralSoft)
 })

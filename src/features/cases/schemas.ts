@@ -21,6 +21,12 @@ export const reassignmentReasonSchema = z
   .min(3, 'Explica el motivo con al menos 3 caracteres.')
   .max(500, 'El motivo no puede exceder 500 caracteres.')
 
+export const caseMessageSchema = z
+  .string()
+  .trim()
+  .min(3, 'El mensaje debe tener entre 3 y 500 caracteres')
+  .max(500, 'El mensaje debe tener entre 3 y 500 caracteres')
+
 export const changeCaseStatusSchema = z
   .object({
     action: z.enum(['aceptar', 'rechazar', 'cancelar', 'iniciar', 'pausar', 'reanudar']),

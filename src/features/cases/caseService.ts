@@ -164,6 +164,15 @@ export async function getCaseActions(caseId: string): Promise<CaseActionPermissi
   return result
 }
 
+export async function sendCaseMessage(caseId: string, message: string): Promise<number> {
+  const { data, error } = await supabase.rpc('send_case_message', {
+    target_case_id: caseId,
+    message: message.trim(),
+  })
+  if (error) throw error
+  return data
+}
+
 export async function createCase(input: CreateCaseInput): Promise<CaseRecord> {
   const { data, error } = await supabase
     .from('cases')
@@ -275,6 +284,7 @@ export async function listCaseHistory(caseId: string): Promise<CaseStatusHistory
   return data.map((row) => ({
     id: row.id,
     action: row.action,
+    actorId: row.actor_id ?? undefined,
     previousStatus: row.from_status,
     newStatus: row.to_status,
     actorName: memberDisplayName(

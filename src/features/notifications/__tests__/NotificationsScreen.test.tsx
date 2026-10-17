@@ -72,6 +72,17 @@ test('abre detalle desde Avisos y marca solo el aviso seleccionado', async () =>
   expect(mockNavigate).toHaveBeenCalledWith('CaseDetail', { caseId: 'case-2' })
 })
 
+test('un aviso de mensaje abre el detalle por action, no por el título', async () => {
+  mockItems = [{ ...item, title: 'Título libre', action: 'mensaje' }]
+  const screen = await renderScreen()
+  await fireEvent.press(
+    screen.getByRole('button', {
+      name: 'Sin leer. Título libre. CAS-2026-00002 · Fuga de agua. por Ana (dado de baja)',
+    }),
+  )
+  expect(mockNavigate).toHaveBeenCalledWith('CaseDetail', { caseId: 'case-2' })
+})
+
 test('Leer todo solo existe en cabecera si quedan no leídos', async () => {
   mockItems = [item]
   const firstScreen = await renderScreen()

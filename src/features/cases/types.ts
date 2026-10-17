@@ -36,6 +36,7 @@ export const CASE_ACTION_NAMES = [
   'fotos_antes',
   'fotos_despues',
   'recursos',
+  'mensaje',
 ] as const
 
 export type CaseActionName = (typeof CASE_ACTION_NAMES)[number]
@@ -96,6 +97,7 @@ export interface AssignableProfile {
 
 export interface CaseStatusHistoryRecord {
   id: number
+  actorId?: string
   previousStatus: CaseStatus | null
   newStatus: CaseStatus
   action: string

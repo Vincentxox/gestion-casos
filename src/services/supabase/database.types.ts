@@ -1280,6 +1280,11 @@ export type Database = {
         Returns: string
       }
       regenerate_organization_join_code: { Args: never; Returns: string }
+      // C-016: tipo manual hasta aplicar las migraciones y regenerar desde Supabase.
+      send_case_message: {
+        Args: { target_case_id: string; message: string }
+        Returns: number
+      }
       register_push_token: {
         Args: { device_platform: string; push_token: string }
         Returns: undefined
@@ -1535,6 +1540,7 @@ export type Database = {
         | 'validar_reporte'
         | 'devolver_reporte'
         | 'aprobar_reporte'
+        | 'mensaje'
       case_priority: 'alta' | 'media' | 'baja'
       case_status:
         | 'solicitado'
@@ -1690,6 +1696,7 @@ export const Constants = {
         'validar_reporte',
         'devolver_reporte',
         'aprobar_reporte',
+        'mensaje',
       ],
       case_priority: ['alta', 'media', 'baja'],
       case_status: [
