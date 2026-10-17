@@ -14,13 +14,11 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { IconTile } from '@/components/ui/IconTile'
 import { formatNumber, formatQuetzales, plural } from '@/theme/formatters'
-import { useAssignableProfiles, useCaseDetail } from '@/features/cases/useCases'
+import { useAssignableProfiles, useCaseActions, useCaseDetail } from '@/features/cases/useCases'
 import type { MainStackParamList } from '@/navigation/types'
-import { useAuthStore } from '@/store/authStore'
 import { colors, spacing, typography } from '@/theme/tokens'
 
 import { UsageForm } from '../components/UsageForm'
-import { canManageCaseUsage } from '../resourcePermissions'
 import { RESOURCE_KIND_LABELS, type CaseUsageRecord, type UsageInput } from '../types'
 import {
   useAddCaseUsage,
@@ -34,11 +32,11 @@ type Props = NativeStackScreenProps<MainStackParamList, 'CaseResources'>
 
 export function CaseResourcesScreen({ route }: Props) {
   const { caseId } = route.params
-  const profile = useAuthStore((state) => state.profile)
   const detail = useCaseDetail(caseId)
+  const actions = useCaseActions(caseId)
   const usages = useCaseUsages(caseId)
   const resources = useResources()
-  const canManage = detail.data ? canManageCaseUsage(detail.data, profile) : false
+  const canManage = actions.data?.recursos?.allowed === true
   const technicians = useAssignableProfiles(detail.data?.targetAreaId, canManage)
   const add = useAddCaseUsage(caseId)
   const update = useUpdateCaseUsage(caseId)
@@ -48,11 +46,13 @@ export function CaseResourcesScreen({ route }: Props) {
   const formSubmit = useRef<(() => void) | null>(null)
 
   function openForm(usage?: CaseUsageRecord) {
+    if (!canManage) return
     setEditing(usage ?? null)
     setFormVisible(true)
   }
 
   async function save(input: UsageInput) {
+    if (!canManage) return
     try {
       if (editing)
         await update.mutateAsync({
@@ -71,6 +71,7 @@ export function CaseResourcesScreen({ route }: Props) {
   }
 
   function confirmDelete(usage: CaseUsageRecord) {
+    if (!canManage) return
     AppFeedback.show('Eliminar registro', '¿Deseas quitar este uso de la solicitud?', [
       { text: 'Cancelar', style: 'cancel' },
       {
@@ -89,8 +90,9 @@ export function CaseResourcesScreen({ route }: Props) {
     ])
   }
 
-  const loading = detail.isLoading || usages.isLoading || resources.isLoading
-  const error = detail.error || usages.error || resources.error || technicians.error
+  const loading = detail.isLoading || actions.isPending || usages.isLoading || resources.isLoading
+  const error =
+    detail.error || actions.error || usages.error || resources.error || technicians.error
   const totalHours = (usages.data ?? []).reduce((sum, item) => sum + (item.hours ?? 0), 0)
   const recordCount = usages.data?.length ?? 0
   return (
@@ -112,6 +114,7 @@ export function CaseResourcesScreen({ route }: Props) {
             title="No fue posible cargar los recursos de esta solicitud"
             onRetry={() => {
               void detail.refetch()
+              void actions.refetch()
               void usages.refetch()
               void resources.refetch()
               if (canManage) void technicians.refetch()
@@ -130,8 +133,8 @@ export function CaseResourcesScreen({ route }: Props) {
                 </Text>
                 {!canManage ? (
                   <Text style={styles.hint}>
-                    Puedes consultar estos registros. Solo el responsable asignado o el jefe del
-                    área técnica pueden modificarlos durante la ejecución o espera.
+                    Puedes consultar estos registros. Las modificaciones dependen de las acciones
+                    disponibles para tu usuario.
                   </Text>
                 ) : null}
               </View>
@@ -211,7 +214,7 @@ export function CaseResourcesScreen({ route }: Props) {
       </View>
       <BottomSheet
         title={editing ? 'Corregir uso' : 'Registrar uso'}
-        visible={formVisible}
+        visible={formVisible && canManage}
         onClose={() => setFormVisible(false)}
         form
         height="82%"

@@ -9,7 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { RequestState } from '@/components/feedback/RequestState'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
-import { useCaseDetail } from '@/features/cases/useCases'
+import { useCaseActions, useCaseDetail } from '@/features/cases/useCases'
 import { ROLE_LABELS } from '@/features/auth/types'
 import { useCasePhotos } from '@/features/photos/usePhotos'
 import { useCaseUsages } from '@/features/resources/useResources'
@@ -21,11 +21,9 @@ import { ReportContent } from '../components/ReportContent'
 import { ReturnSheet } from '../components/ReturnSheet'
 import { SignatureSheet } from '../components/SignatureSheet'
 import { generateReportPdf, shareReportPdf, type SignatureAction } from '../reportService'
-import { getReportActions } from '../reportPermissions'
 import { getReportRequirements } from '../schemas'
 import type { FrozenReportContent } from '../types'
 import {
-  useAreaChiefs,
   useReportDraft,
   useReportSignatures,
   useReportVersions,
@@ -102,12 +100,12 @@ export function ReportReviewScreen({ navigation, route }: Props) {
   const { caseId } = route.params
   const profile = useAuthStore((state) => state.profile)
   const detail = useCaseDetail(caseId)
+  const caseActions = useCaseActions(caseId)
   const draft = useReportDraft(caseId)
   const usages = useCaseUsages(caseId)
   const photos = useCasePhotos(caseId)
   const versions = useReportVersions(caseId)
   const signatures = useReportSignatures(caseId)
-  const chiefs = useAreaChiefs()
   const sign = useSignReport(caseId)
   const returnMutation = useReturnReport(caseId)
   const [signatureAction, setSignatureAction] = useState<SignatureAction | null>(null)
@@ -116,10 +114,16 @@ export function ReportReviewScreen({ navigation, route }: Props) {
   const [shareLoading, setShareLoading] = useState(false)
   const [expandedPast, setExpandedPast] = useState<string | null>(null)
 
-  if (detail.isLoading || draft.isLoading || versions.isLoading || signatures.isLoading) {
+  if (
+    detail.isLoading ||
+    caseActions.isPending ||
+    draft.isLoading ||
+    versions.isLoading ||
+    signatures.isLoading
+  ) {
     return <RequestState kind="loading" title="Cargando reporte…" />
   }
-  if (!detail.data || detail.error || versions.error || signatures.error) {
+  if (!detail.data || detail.error || caseActions.error || versions.error || signatures.error) {
     return (
       <RequestState
         kind="error"
@@ -128,6 +132,7 @@ export function ReportReviewScreen({ navigation, route }: Props) {
           void detail.refetch()
           void versions.refetch()
           void signatures.refetch()
+          void caseActions.refetch()
         }}
       />
     )
@@ -135,13 +140,10 @@ export function ReportReviewScreen({ navigation, route }: Props) {
 
   const item = detail.data
   const current = versions.data?.find((version) => version.status === 'vigente')
-  const currentSigners = current
-    ? (signatures.data ?? [])
-        .filter((entry) => entry.versionId === current.id)
-        .map((entry) => entry.signerId)
-    : []
-  const actions = getReportActions(item, profile, chiefs.data ?? [], currentSigners)
-  const isSubmitting = item.status === 'en_ejecucion' && actions.includes('submit')
+  const allowed = (
+    action: 'enviar_reporte' | 'validar_reporte' | 'aprobar_reporte' | 'devolver_reporte',
+  ) => caseActions.data?.[action]?.allowed === true
+  const isSubmitting = allowed('enviar_reporte')
   const missing = getReportRequirements(
     draft.data?.diagnosis ?? '',
     draft.data?.workDone ?? '',
@@ -155,9 +157,9 @@ export function ReportReviewScreen({ navigation, route }: Props) {
       : current?.content
   const action: SignatureAction | null = isSubmitting
     ? 'submit'
-    : actions.includes('validate')
+    : allowed('validar_reporte')
       ? 'validate'
-      : actions.includes('approve')
+      : allowed('aprobar_reporte')
         ? 'approve'
         : null
   const actionLabel =
@@ -204,7 +206,7 @@ export function ReportReviewScreen({ navigation, route }: Props) {
   }
 
   async function onSign(path: string) {
-    if (!signatureAction) return
+    if (!signatureAction || signatureAction !== action) return
     await sign.mutateAsync({ action: signatureAction, stroke: path })
     setSignatureAction(null)
     AppFeedback.toast(
@@ -218,6 +220,7 @@ export function ReportReviewScreen({ navigation, route }: Props) {
   }
 
   async function onReturn(reason: string) {
+    if (!allowed('devolver_reporte')) return
     await returnMutation.mutateAsync(reason)
     setReturnVisible(false)
     AppFeedback.toast('Reporte devuelto', { tone: 'info' })
@@ -287,7 +290,7 @@ export function ReportReviewScreen({ navigation, route }: Props) {
               ))
             : null}
           <View style={styles.actionRow}>
-            {actions.includes('return') ? (
+            {allowed('devolver_reporte') ? (
               <View style={styles.returnCell}>
                 <Button label="Devolver" variant="danger" onPress={() => setReturnVisible(true)} />
               </View>
@@ -327,7 +330,7 @@ export function ReportReviewScreen({ navigation, route }: Props) {
       ) : null}
       <SignatureSheet
         key={signatureAction ?? 'closed'}
-        visible={Boolean(signatureAction)}
+        visible={Boolean(signatureAction && signatureAction === action)}
         title={title}
         buttonLabel={
           signatureAction === 'submit'
@@ -343,7 +346,7 @@ export function ReportReviewScreen({ navigation, route }: Props) {
         onSign={onSign}
       />
       <ReturnSheet
-        visible={returnVisible}
+        visible={returnVisible && allowed('devolver_reporte')}
         loading={returnMutation.isPending}
         label={action === 'validate' ? 'Devolver al técnico' : 'Devolver'}
         nextVersion={(current?.versionNumber ?? 0) + 1}

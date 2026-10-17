@@ -62,8 +62,3 @@ export interface ReportSignature {
   consentText: string
   strokePath: string
 }
-
-export interface AreaChief {
-  id: string
-  areaId: string
-}

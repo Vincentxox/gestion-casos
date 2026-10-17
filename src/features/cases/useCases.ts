@@ -6,6 +6,7 @@ import {
   countCasesByStatus,
   createCase,
   getCase,
+  getCaseActions,
   listAssignableProfiles,
   listCaseHistory,
   listCases,
@@ -60,6 +61,13 @@ export function useCreateCase() {
 
 export function useCaseDetail(caseId: string) {
   return useQuery({ queryKey: [...casesQueryKey, caseId], queryFn: () => getCase(caseId) })
+}
+
+export function useCaseActions(caseId: string) {
+  return useQuery({
+    queryKey: [...casesQueryKey, caseId, 'actions'],
+    queryFn: () => getCaseActions(caseId),
+  })
 }
 
 export function useCaseHistory(caseId: string) {
