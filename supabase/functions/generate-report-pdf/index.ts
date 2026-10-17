@@ -85,6 +85,8 @@ Deno.serve(async (request) => {
         .from('case_events')
         .select('action, actor_id, actor_role, comment, created_at')
         .eq('case_id', caseId)
+        // Los mensajes del caso no entran en el PDF (BUSINESS_RULES 5.7).
+        .neq('action', 'mensaje')
         .order('id'),
       service.from('organizations').select('name').eq('id', visibleCase.organization_id).single(),
     ])

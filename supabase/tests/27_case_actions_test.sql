@@ -270,19 +270,20 @@ cross join unnest(array[
 ]) as actions (action);
 
 -- Acciones que get_case_actions debe listar en cada estado, en orden. Se escriben aquí a
--- mano, a partir del contrato C-015, y no a partir de la propia función.
+-- mano, a partir del contrato C-015, y no a partir de la propia función. `mensaje` se
+-- agregó con la regla 5.7 y su permiso se prueba en la prueba 28.
 create table test.expected_case_actions (status text, actions text);
 insert into test.expected_case_actions
 values
-  ('solicitado', 'aceptar,rechazar,cancelar,editar_datos'),
+  ('solicitado', 'aceptar,rechazar,cancelar,editar_datos,mensaje'),
   ('rechazado', ''),
   ('cancelado', ''),
-  ('aceptado', 'asignar,editar_datos'),
-  ('asignado', 'iniciar,asignar,editar_datos,fotos_antes'),
-  ('en_ejecucion', 'enviar_reporte,pausar,asignar,editar_datos,editar_reporte,recursos,fotos_antes,fotos_despues'),
-  ('en_espera', 'reanudar,asignar,editar_datos,editar_reporte,recursos,fotos_antes,fotos_despues'),
-  ('reporte_enviado', 'validar_reporte,devolver_reporte'),
-  ('validado', 'aprobar_reporte,devolver_reporte'),
+  ('aceptado', 'asignar,editar_datos,mensaje'),
+  ('asignado', 'iniciar,asignar,editar_datos,fotos_antes,mensaje'),
+  ('en_ejecucion', 'enviar_reporte,pausar,asignar,editar_datos,editar_reporte,recursos,fotos_antes,fotos_despues,mensaje'),
+  ('en_espera', 'reanudar,asignar,editar_datos,editar_reporte,recursos,fotos_antes,fotos_despues,mensaje'),
+  ('reporte_enviado', 'validar_reporte,devolver_reporte,mensaje'),
+  ('validado', 'aprobar_reporte,devolver_reporte,mensaje'),
   ('aprobado', '');
 
 -- Lo que cada persona recibe de get_case_actions en cada caso, y si ve el caso.
