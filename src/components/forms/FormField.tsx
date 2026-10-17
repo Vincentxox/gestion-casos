@@ -2,13 +2,15 @@ import { Ionicons } from '@expo/vector-icons'
 import { useState } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, type TextInputProps, View } from 'react-native'
 
-import { colors, radius, spacing, typography } from '@/theme/tokens'
+import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
 
 interface FormFieldProps extends TextInputProps {
   label: string
   error?: string
   required?: boolean
   showCharacterCount?: boolean
+  /** `filled`: campo relleno sin borde, como en las pantallas de acceso. */
+  variant?: 'outlined' | 'filled'
 }
 
 export function FormField({
@@ -16,6 +18,7 @@ export function FormField({
   error,
   required = false,
   showCharacterCount = false,
+  variant = 'outlined',
   secureTextEntry,
   style,
   ...inputProps
@@ -27,12 +30,18 @@ export function FormField({
     <View style={styles.container}>
       <Text
         accessibilityLabel={required ? `${label}, obligatorio` : undefined}
-        style={styles.label}
+        style={[styles.label, variant === 'filled' ? styles.labelFilled : null]}
       >
         {label}
         {required ? <Text style={styles.required}> *</Text> : null}
       </Text>
-      <View style={[styles.inputContainer, error ? styles.inputError : null]}>
+      <View
+        style={[
+          styles.inputContainer,
+          variant === 'filled' ? styles.inputContainerFilled : null,
+          error ? styles.inputError : null,
+        ]}
+      >
         <TextInput
           {...inputProps}
           accessibilityLabel={
@@ -82,6 +91,7 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.text,
   },
+  labelFilled: { fontFamily: fonts.semibold, fontSize: 14 },
   required: { color: colors.error },
   count: { ...typography.caption, color: colors.textMuted, textAlign: 'right' },
   inputContainer: {
@@ -92,6 +102,12 @@ const styles = StyleSheet.create({
     borderColor: colors.track,
     borderRadius: radius.lg,
     backgroundColor: colors.surface,
+  },
+  inputContainerFilled: {
+    minHeight: 54,
+    borderWidth: 1.5,
+    borderColor: colors.surfaceMuted,
+    backgroundColor: colors.surfaceMuted,
   },
   input: {
     ...typography.body,
