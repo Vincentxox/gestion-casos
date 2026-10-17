@@ -17,8 +17,7 @@ import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
 import { colors, radius, spacing, typography } from '@/theme/tokens'
 
-import { useAssignableProfiles, useAssignCase, useCaseDetail } from '../useCases'
-import { getAvailableCaseActions } from '../casePermissions'
+import { useAssignableProfiles, useAssignCase, useCaseActions, useCaseDetail } from '../useCases'
 import { reassignmentReasonSchema } from '../schemas'
 
 type Props = NativeStackScreenProps<MainStackParamList, 'AssignCase'>
@@ -26,9 +25,8 @@ type Props = NativeStackScreenProps<MainStackParamList, 'AssignCase'>
 export function AssignCaseScreen({ navigation, route }: Props) {
   const profile = useAuthStore((state) => state.profile)
   const detail = useCaseDetail(route.params.caseId)
-  const canAssign = detail.data
-    ? getAvailableCaseActions(detail.data, profile).includes('asignar')
-    : false
+  const actions = useCaseActions(route.params.caseId)
+  const canAssign = actions.data?.asignar?.allowed === true
   const profiles = useAssignableProfiles(detail.data?.targetAreaId, canAssign)
   const mutation = useAssignCase(route.params.caseId)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -41,17 +39,18 @@ export function AssignCaseScreen({ navigation, route }: Props) {
     navigation.setOptions({ title: isReassignment ? 'Reasignar personal' : 'Asignar personal' })
   }, [isReassignment, navigation])
 
-  if (detail.isLoading || profiles.isLoading) {
+  if (detail.isLoading || actions.isPending || profiles.isLoading) {
     return <RequestState kind="loading" title="Cargando personal…" />
   }
 
-  if (!detail.data || detail.error || profiles.error) {
+  if (!detail.data || detail.error || actions.error || profiles.error) {
     return (
       <RequestState
         kind="error"
         title="No fue posible cargar el personal disponible"
         onRetry={() => {
           void detail.refetch()
+          void actions.refetch()
           void profiles.refetch()
         }}
       />

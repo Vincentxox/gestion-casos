@@ -20,6 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { ActionSheet } from '@/components/actions/ActionSheet'
 import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
+import { useCaseActions, casesQueryKey } from '@/features/cases/useCases'
 import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 import { preparePhoto } from '../imagePreparation'
@@ -123,6 +124,7 @@ export function PhotoGrid({
   const client = useQueryClient()
   const network = useNetInfo()
   const photos = useCasePhotos(caseId)
+  const actions = useCaseActions(caseId)
   const remove = useDeletePhoto(caseId)
   const [pending, setPending] = useState<PendingPhoto[]>([])
   const [pickerVisible, setPickerVisible] = useState(false)
@@ -135,6 +137,10 @@ export function PhotoGrid({
   const [busy, setBusy] = useState(false)
   const queueReadVersion = useRef(0)
   const label = kind === 'antes' ? 'Antes' : 'Después'
+  const canEdit =
+    editable &&
+    !actions.error &&
+    actions.data?.[kind === 'antes' ? 'fotos_antes' : 'fotos_despues']?.allowed === true
   const confirmed = (photos.data ?? []).filter((photo) => photo.kind === kind)
   const queued = pending.filter((photo) => photo.kind === kind)
   const offline = network.isConnected === false || network.isInternetReachable === false
@@ -148,13 +154,14 @@ export function PhotoGrid({
 
   const resume = useCallback(
     async (mode: 'startup' | 'manual' = 'startup', onlyLocalId?: string) => {
-      if (!userId) return
+      if (!userId || !canEdit) return
       setBusy(true)
       try {
         await resumePendingPhotos(
           userId,
           (changedCase) => {
             void client.invalidateQueries({ queryKey: [...photosQueryKey, changedCase] })
+            void client.invalidateQueries({ queryKey: [...casesQueryKey, changedCase] })
           },
           mode,
           onlyLocalId,
@@ -164,7 +171,7 @@ export function PhotoGrid({
         setBusy(false)
       }
     },
-    [userId, client, refreshQueue],
+    [userId, canEdit, client, refreshQueue],
   )
 
   useEffect(() => {
@@ -173,11 +180,16 @@ export function PhotoGrid({
   }, [userId, caseId, refreshQueue])
 
   useEffect(() => {
+    void refreshQueue()
+  }, [refreshQueue])
+
+  useEffect(() => {
     const timer = setTimeout(() => void resume(), 0)
     return () => clearTimeout(timer)
   }, [resume])
 
   async function pick(source: 'camera' | 'library') {
+    if (!canEdit) return
     setPickerVisible(false)
     const permission =
       source === 'camera'
@@ -219,7 +231,7 @@ export function PhotoGrid({
   }
 
   async function confirmDelete() {
-    if (!deletePhoto) return
+    if (!deletePhoto || !canEdit) return
     try {
       await remove.mutateAsync(deletePhoto)
       setDeletePhoto(null)
@@ -257,7 +269,17 @@ export function PhotoGrid({
       <Text style={styles.title}>
         Fotos de {label.toLowerCase()} · {confirmed.length} de 3
       </Text>
-      {!editable && confirmed.length === 0 ? (
+      {actions.error ? (
+        <View style={styles.errorRow}>
+          <Text style={styles.error}>No fue posible cargar las acciones de fotos.</Text>
+          <Button
+            label="Reintentar permisos"
+            variant="text"
+            onPress={() => void actions.refetch()}
+          />
+        </View>
+      ) : null}
+      {!canEdit && confirmed.length === 0 && queued.length === 0 ? (
         <Text style={styles.description}>Sin fotos de {label.toLowerCase()}</Text>
       ) : (
         <View style={styles.row}>
@@ -268,13 +290,16 @@ export function PhotoGrid({
                 photo={confirmedPhoto}
                 label={`${label} ${index + 1}`}
                 onPress={() => setSelectedPhoto(confirmedPhoto)}
-                onOptions={editable ? () => setOptionsPhoto(confirmedPhoto) : undefined}
+                onOptions={canEdit ? () => setOptionsPhoto(confirmedPhoto) : undefined}
               />
             ) : pendingPhoto ? (
               <View key={pendingPhoto.localId} style={styles.slot}>
                 <Image source={{ uri: pendingPhoto.thumbUri }} style={styles.image} />
                 <View style={styles.pendingOverlay}>
-                  {offline && (pendingPhoto.status !== 'error' || pendingPhoto.retryOnReconnect) ? (
+                  {pendingPhoto.status === 'error' && !canEdit ? (
+                    <Text style={styles.pendingLabel}>No puedes reintentar esta foto ahora</Text>
+                  ) : offline &&
+                    (pendingPhoto.status !== 'error' || pendingPhoto.retryOnReconnect) ? (
                     <Text style={styles.pendingLabel}>Sin conexión; se subirá al reconectar</Text>
                   ) : pendingPhoto.status === 'error' ? (
                     <Pressable
@@ -289,7 +314,7 @@ export function PhotoGrid({
                   )}
                 </View>
               </View>
-            ) : editable && confirmed.length + queued.length < 3 ? (
+            ) : canEdit && confirmed.length + queued.length < 3 ? (
               <Pressable
                 key={index}
                 accessibilityLabel={`Agregar foto de ${label.toLowerCase()}`}
@@ -300,7 +325,7 @@ export function PhotoGrid({
                 <Icon name="camera-outline" color={colors.primary} />
                 <Text style={styles.addLabel}>Agregar</Text>
               </Pressable>
-            ) : editable ? (
+            ) : canEdit ? (
               <View key={index} style={[styles.slot, styles.emptySlot]} />
             ) : null,
           )}
@@ -349,7 +374,7 @@ export function PhotoGrid({
             icon: 'images-outline',
           },
         ]}
-        visible={pickerVisible}
+        visible={canEdit && pickerVisible}
         onClose={() => setPickerVisible(false)}
         onSelect={(source) => void pick(source)}
       />
@@ -364,7 +389,7 @@ export function PhotoGrid({
             destructive: true,
           },
         ]}
-        visible={Boolean(optionsPhoto)}
+        visible={canEdit && Boolean(optionsPhoto)}
         onClose={() => setOptionsPhoto(null)}
         onSelect={() => {
           setDeletePhoto(optionsPhoto)
@@ -374,7 +399,7 @@ export function PhotoGrid({
       <Modal
         animationType="fade"
         transparent
-        visible={Boolean(deletePhoto)}
+        visible={canEdit && Boolean(deletePhoto)}
         onRequestClose={() => setDeletePhoto(null)}
       >
         <View style={styles.confirmBackdrop}>

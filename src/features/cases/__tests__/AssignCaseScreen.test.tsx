@@ -5,7 +5,7 @@ import { AppFeedback } from '@/components/feedback/AppFeedback'
 
 import { AssignCaseScreen } from '../screens/AssignCaseScreen'
 import type { CaseRecord } from '../types'
-import { useAssignableProfiles, useAssignCase, useCaseDetail } from '../useCases'
+import { useAssignableProfiles, useAssignCase, useCaseActions, useCaseDetail } from '../useCases'
 
 jest.mock('@/store/authStore', () => ({
   useAuthStore: (selector: (state: unknown) => unknown) =>
@@ -25,6 +25,7 @@ jest.mock('../useCases', () => ({
   useAssignableProfiles: jest.fn(),
   useAssignCase: jest.fn(),
   useCaseDetail: jest.fn(),
+  useCaseActions: jest.fn(),
 }))
 
 const baseCase: CaseRecord = {
@@ -54,6 +55,11 @@ async function setup(item: CaseRecord) {
   const mutateAsync = jest.fn().mockResolvedValue(undefined)
   const navigation = { setOptions: jest.fn(), goBack: jest.fn(), getParent: jest.fn() }
   ;(useCaseDetail as jest.Mock).mockReturnValue({ data: item, isLoading: false, error: null })
+  ;(useCaseActions as jest.Mock).mockReturnValue({
+    data: { asignar: { allowed: true } },
+    isLoading: false,
+    error: null,
+  })
   ;(useAssignableProfiles as jest.Mock).mockReturnValue({
     data: [
       { id: 'ana', fullName: 'Ana', role: 'tecnico', areaId: 'technical', areaName: 'Tecnología' },

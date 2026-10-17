@@ -5,6 +5,7 @@ import { AppState } from 'react-native'
 import { queryClient } from '@/config/queryClient'
 import { resumePendingPhotos } from '@/features/photos/uploadQueue'
 import { photosQueryKey } from '@/features/photos/usePhotos'
+import { casesQueryKey } from '@/features/cases/useCases'
 
 import type { Profile } from './types'
 
@@ -28,6 +29,7 @@ export function useOrganizationLifecycle({
         userId,
         (caseId) => {
           void queryClient.invalidateQueries({ queryKey: [...photosQueryKey, caseId] })
+          void queryClient.invalidateQueries({ queryKey: [...casesQueryKey, caseId] })
         },
         mode,
       )

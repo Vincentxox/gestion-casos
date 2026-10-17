@@ -4,13 +4,7 @@ import * as Sharing from 'expo-sharing'
 import { supabase } from '@/services/supabase/client'
 import { listFormerMemberNames, memberDisplayName } from '@/services/supabase/formerMembers'
 
-import type {
-  AreaChief,
-  ReportDraft,
-  ReportDraftInput,
-  ReportSignature,
-  ReportVersion,
-} from './types'
+import type { ReportDraft, ReportDraftInput, ReportSignature, ReportVersion } from './types'
 
 interface DraftRow {
   case_id: string
@@ -137,27 +131,6 @@ export async function listReportSignatures(caseId: string): Promise<ReportSignat
     consentText: row.consent_text,
     strokePath: row.stroke_path,
   }))
-}
-
-export async function listCurrentReportSigners(caseId: string): Promise<string[]> {
-  const { data, error } = await supabase
-    .from('case_signatures')
-    .select('signer_id, case_report_versions!inner(status)')
-    .eq('case_id', caseId)
-    .eq('case_report_versions.status', 'vigente')
-  if (error) throw error
-  return (data as { signer_id: string }[]).map((row) => row.signer_id)
-}
-
-export async function listAreaChiefs(): Promise<AreaChief[]> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id, area_id')
-    .eq('role', 'jefe_area')
-  if (error) throw error
-  return (data as { id: string; area_id: string | null }[])
-    .filter((row): row is { id: string; area_id: string } => Boolean(row.area_id))
-    .map((row) => ({ id: row.id, areaId: row.area_id }))
 }
 
 export type SignatureAction = 'submit' | 'validate' | 'approve'

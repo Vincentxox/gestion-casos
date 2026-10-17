@@ -12,6 +12,7 @@ jest.mock('@react-native-community/netinfo', () => ({
 }))
 jest.mock('@/features/photos/uploadQueue', () => ({ resumePendingPhotos: jest.fn() }))
 jest.mock('@/features/photos/usePhotos', () => ({ photosQueryKey: ['case-photos'] }))
+jest.mock('@/features/cases/useCases', () => ({ casesQueryKey: ['cases'] }))
 
 const addNetworkListener = jest.mocked(NetInfo.addEventListener)
 const mockResumePendingPhotos = jest.mocked(resumePendingPhotos)
