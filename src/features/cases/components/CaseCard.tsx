@@ -35,9 +35,10 @@ export function CaseCard({ item, onPress }: { item: CaseRecord; onPress: () => v
           <Text style={styles.time}>{formatRelativeDate(item.createdAt)}</Text>
         </View>
         <View style={styles.metaRow}>
-          <Text style={[styles.meta, overdueLabel && styles.overdue]}>
-            {overdueLabel ?? status.label}
-          </Text>
+          <Text style={styles.meta}>{status.label}</Text>
+          {overdueLabel ? (
+            <Text style={[styles.meta, styles.overdue]}>· {overdueLabel}</Text>
+          ) : null}
           <Text numberOfLines={1} style={styles.metaMuted}>
             · {item.location}
           </Text>

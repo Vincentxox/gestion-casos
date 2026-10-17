@@ -55,7 +55,28 @@ describe('CaseCard', () => {
     const screen = await render(
       <CaseCard item={{ ...item, overdueStage: 'aceptacion' }} onPress={jest.fn()} />,
     )
-    expect(screen.getByText('Vencida · aceptación')).toBeTruthy()
+    expect(screen.getByText('· Vencida · aceptación')).toBeTruthy()
     expect(screen.getByRole('button', { name: /vencida por aceptacion/ })).toBeTruthy()
+  })
+
+  test('un caso vencido conserva su estado para distinguir asignado de en espera', async () => {
+    const asignado = await render(
+      <CaseCard
+        item={{ ...item, status: 'asignado', overdueStage: 'resolucion' }}
+        onPress={jest.fn()}
+      />,
+    )
+    expect(asignado.getByText('Asignada')).toBeTruthy()
+    expect(asignado.getByText('· Vencida · resolución')).toBeTruthy()
+    asignado.unmount()
+
+    const espera = await render(
+      <CaseCard
+        item={{ ...item, status: 'en_espera', overdueStage: 'resolucion' }}
+        onPress={jest.fn()}
+      />,
+    )
+    expect(espera.getByText('En espera')).toBeTruthy()
+    expect(espera.getByText('· Vencida · resolución')).toBeTruthy()
   })
 })
