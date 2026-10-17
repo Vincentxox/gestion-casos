@@ -18,13 +18,31 @@ jest.mock('@/features/cases/useCases', () => ({
       status: 'aceptado',
       targetAreaId: 'technical',
       assignedTo: null,
+      title: 'Fuga en oficina',
+      description: 'Revisar tubería',
+      categoryId: 'category-1',
+      location: 'Oficina 1',
+      priority: 'media',
     },
     isLoading: false,
     error: null,
   }),
   useAssignableProfiles: () => ({ data: [], isLoading: false, error: null }),
-  useCaseActions: () => ({ data: { asignar: { allowed: true } }, isLoading: false, error: null }),
+  useCaseActions: () => ({
+    data: { asignar: { allowed: true }, editar_datos: { allowed: true } },
+    isLoading: false,
+    isPending: false,
+    error: null,
+  }),
   useAssignCase: () => ({ mutateAsync: jest.fn(), isPending: false }),
+  useUpdateCase: () => ({ mutateAsync: jest.fn(), isPending: false }),
+}))
+jest.mock('@/features/categories/useCategories', () => ({
+  useCategories: () => ({
+    data: [{ id: 'category-1', name: 'Mantenimiento', isActive: true }],
+    isLoading: false,
+    isError: false,
+  }),
 }))
 jest.mock('@/features/admin/screens/UsersScreen', () => {
   const { Text } = jest.requireActual<typeof import('react-native')>('react-native')
@@ -33,6 +51,24 @@ jest.mock('@/features/admin/screens/UsersScreen', () => {
 jest.mock('@/features/home/useHomeSummary', () => ({
   useHomeSummary: () => ({ data: null }),
 }))
+jest.mock('@/features/cases/screens/CasesListScreen', () => {
+  const { Pressable, Text } = jest.requireActual<typeof import('react-native')>('react-native')
+  return {
+    CasesListScreen: ({
+      navigation,
+    }: {
+      navigation: { navigate: (screen: string, params: object) => void }
+    }) => (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Abrir solicitud"
+        onPress={() => navigation.navigate('CaseDetail', { caseId: 'case-1' })}
+      >
+        <Text>Lista de prueba</Text>
+      </Pressable>
+    ),
+  }
+})
 jest.mock('@/features/home/HomeScreen', () => {
   const { Pressable, Text } = jest.requireActual<typeof import('react-native')>('react-native')
   return {
@@ -92,9 +128,63 @@ jest.mock('@/features/cases/screens/CaseDetailScreen', () => {
         >
           <Text>Asignar</Text>
         </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Editar solicitud"
+          onPress={() => navigation.navigate('EditCase', { caseId: 'case-1' })}
+        >
+          <Text>Editar</Text>
+        </Pressable>
       </>
     ),
   }
+})
+
+test('Editar se muestra dentro de NotificationsFlow sin contexto de pestañas', async () => {
+  const ref = createNavigationContainerRef<RootStackParamList>()
+  const screen = await render(
+    <SafeAreaProvider
+      initialMetrics={{
+        frame: { x: 0, y: 0, width: 400, height: 800 },
+        insets: { top: 0, right: 0, bottom: 0, left: 0 },
+      }}
+    >
+      <NavigationContainer ref={ref}>
+        <MainRootNavigator />
+      </NavigationContainer>
+    </SafeAreaProvider>,
+  )
+
+  await fireEvent.press(screen.getByRole('button', { name: 'Abrir Avisos' }))
+  await fireEvent.press(await screen.findByRole('button', { name: 'Abrir caso' }))
+  await fireEvent.press(await screen.findByRole('button', { name: 'Editar solicitud' }))
+
+  await waitFor(() => expect(ref.getCurrentRoute()?.name).toBe('EditCase'))
+  expect(screen.getByText('¿Qué necesitas?')).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Guardar cambios' })).toBeTruthy()
+})
+
+test('Editar también se muestra desde la pestaña Solicitudes', async () => {
+  const ref = createNavigationContainerRef<RootStackParamList>()
+  const screen = await render(
+    <SafeAreaProvider
+      initialMetrics={{
+        frame: { x: 0, y: 0, width: 400, height: 800 },
+        insets: { top: 0, right: 0, bottom: 0, left: 0 },
+      }}
+    >
+      <NavigationContainer ref={ref}>
+        <MainRootNavigator />
+      </NavigationContainer>
+    </SafeAreaProvider>,
+  )
+
+  await fireEvent.press(screen.getByRole('tab', { name: 'Solicitudes' }))
+  await fireEvent.press(await screen.findByRole('button', { name: 'Abrir solicitud' }))
+  await fireEvent.press(await screen.findByRole('button', { name: 'Editar solicitud' }))
+
+  await waitFor(() => expect(ref.getCurrentRoute()?.name).toBe('EditCase'))
+  expect(screen.getByText('¿Qué necesitas?')).toBeTruthy()
 })
 
 test('Avisos se apila sobre las pestañas y el detalle regresa a Avisos', async () => {
@@ -175,6 +265,8 @@ test('la barra flotante lleva a Ayuda y oculta el botón + sin área', async () 
     'Ayuda',
     'Perfil',
   ])
+  expect(screen.getByText('Solicitudes')).toBeTruthy()
+  expect(screen.queryByText('Casos')).toBeNull()
   expect(screen.queryByRole('button', { name: 'Nueva solicitud' })).toBeNull()
   await fireEvent.press(screen.getByRole('tab', { name: 'Ayuda' }))
   await waitFor(() => expect(ref.getCurrentRoute()?.name).toBe('Help'))

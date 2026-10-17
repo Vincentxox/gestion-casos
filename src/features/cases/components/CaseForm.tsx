@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
+import React, { useState } from 'react'
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { Button } from '@/components/ui/Button'
@@ -39,7 +39,7 @@ export function CaseForm({
   submitLabel,
   markRequired = false,
 }: Props) {
-  const tabBarHeight = useBottomTabBarHeight()
+  const tabBarHeight = React.useContext(BottomTabBarHeightContext) ?? 0
   const [values, setValues] = useState(initialValues)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [categorySelectorOpen, setCategorySelectorOpen] = useState(false)
