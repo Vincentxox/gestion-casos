@@ -11,9 +11,13 @@
 --    administrador). El resto de la función es idéntico a 20261016230000.
 -- 2. `public.get_case_actions` ofrece `mensaje` en todos los estados abiertos, al final.
 --    El resto es idéntico a 20261016230000.
--- 3. `public.send_case_message` escribe el mensaje.
--- 4. `private.enqueue_case_notifications` avisa de cada mensaje a los demás participantes:
---    creador, técnico asignado, jefes de las dos áreas y quienes ya escribieron en el caso.
+-- 3. `private.member_can_read_case` repite, para cualquier persona, la política de lectura
+--    de `cases` («Members can read visible cases», 20261015200000).
+-- 4. `public.send_case_message` escribe el mensaje. Para quien no ve el caso responde
+--    «Solicitud no encontrada», igual que si no existiera.
+-- 5. `private.enqueue_case_notifications` avisa de cada mensaje a los demás participantes:
+--    creador, técnico asignado, jefes de las dos áreas y quienes ya escribieron en el caso,
+--    siempre que hoy puedan ver el caso (no quien cambió de área o fue dado de baja).
 --    El resto es idéntico a 20261006120000.
 --
 -- `transition_case` recibe un `case_action`, pero rechaza `mensaje`: solo acepta las siete
@@ -293,7 +297,59 @@ revoke all on function public.get_case_actions(uuid) from public, anon;
 grant execute on function public.get_case_actions(uuid) to authenticated;
 
 -- ---------------------------------------------------------------------------
--- 3. Escribir un mensaje
+-- 3. Quién puede ver un caso
+-- ---------------------------------------------------------------------------
+
+-- Misma condición que la política de lectura de `cases`, pero para `member_id` en lugar de
+-- `auth.uid()`. Si la política cambia, esta función debe cambiar con ella (la prueba 28
+-- compara las dos).
+create or replace function private.member_can_read_case(
+  target_case public.cases,
+  member_id uuid
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.profiles as member
+    join public.organizations as organization on organization.id = member.organization_id
+    where member.id = member_id
+      and organization.is_active
+      and member.organization_id = target_case.organization_id
+      and (
+        member.role in ('administrador', 'auditor')
+        or target_case.created_by = member.id
+        or target_case.requesting_area_id = member.area_id
+        or (
+          target_case.target_area_id = member.area_id
+          and member.role in ('tecnico', 'jefe_area')
+        )
+        or target_case.assigned_to = member.id
+        or exists (
+          select 1 from public.case_events
+          where case_id = target_case.id
+            and organization_id = target_case.organization_id
+            and assignee_id = member.id
+        )
+        or exists (
+          select 1 from public.case_signatures
+          where case_id = target_case.id
+            and organization_id = target_case.organization_id
+            and signer_id = member.id
+        )
+      )
+  );
+$$;
+
+revoke all on function private.member_can_read_case(public.cases, uuid)
+  from public, anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- 4. Escribir un mensaje
 -- ---------------------------------------------------------------------------
 
 -- Devuelve el id del evento creado. El texto se guarda sin espacios al inicio ni al
@@ -317,6 +373,15 @@ begin
     raise exception 'Tu cuenta no está vinculada a una empresa';
   end if;
 
+  -- Mismo texto que el bloqueo de empresas inactivas (20261016190000), que de otro modo
+  -- quedaría oculto tras «Solicitud no encontrada».
+  if not exists (
+    select 1 from public.organizations
+    where id = member.organization_id and is_active
+  ) then
+    raise exception 'Tu empresa está inactiva. Comunícate con Nexo Casos para reactivarla.';
+  end if;
+
   -- Bloquea el caso para que no cambie de estado mientras se escribe el mensaje.
   select * into target_case
   from public.cases
@@ -324,7 +389,8 @@ begin
     and organization_id = member.organization_id
   for share;
 
-  if not found then
+  -- Quien no ve el caso recibe la misma respuesta que si no existiera.
+  if not found or not (select private.member_can_read_case(target_case, member.id)) then
     raise exception 'Solicitud no encontrada';
   end if;
 
@@ -366,7 +432,7 @@ revoke all on function public.send_case_message(uuid, text) from public, anon;
 grant execute on function public.send_case_message(uuid, text) to authenticated;
 
 -- ---------------------------------------------------------------------------
--- 4. Avisos de mensajes
+-- 5. Avisos de mensajes
 -- ---------------------------------------------------------------------------
 
 create or replace function private.enqueue_case_notifications()
@@ -479,6 +545,11 @@ begin
         where case_id = new.case_id
           and action = 'mensaje'
           and id < new.id
+      );
+      -- Solo quien hoy ve el caso: no quien cambió de área, de rol o fue dado de baja.
+      recipients := array(
+        select recipient from unnest(recipients) as recipient
+        where (select private.member_can_read_case(target_case, recipient))
       );
     else
       return null;

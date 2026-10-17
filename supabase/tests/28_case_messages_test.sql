@@ -255,4 +255,113 @@ select test.ok(
   'send_case_message es SECURITY DEFINER con search_path vacío y anon no la ejecuta'
 );
 
+-- ---------------------------------------------------------------------------
+-- 6. Solo escribe y recibe avisos quien hoy ve el caso
+-- ---------------------------------------------------------------------------
+
+-- member_can_read_case repite la política de lectura de cases para cualquier persona.
+create table test.visibility_results (user_name text, case_key text, by_policy boolean, by_helper boolean);
+grant select, insert on test.visibility_results to authenticated;
+
+create function test.check_visibility(user_name text)
+returns void language plpgsql
+as $$
+declare
+  case_key text;
+  helper_result boolean;
+begin
+  for case_key in select distinct candidates.case_key from test.case_candidates as candidates loop
+    select private.member_can_read_case(cases, test.uid(user_name)) into helper_result
+    from public.cases where id = test.get(case_key)::uuid;
+
+    perform test.login(user_name);
+    set local role authenticated;
+    insert into test.visibility_results
+    values (
+      user_name,
+      case_key,
+      exists (select 1 from public.cases where id = test.get(case_key)::uuid),
+      helper_result
+    );
+    reset role;
+  end loop;
+end;
+$$;
+
+select test.check_visibility(user_name)
+from unnest(array['admin_d', 'jefe_t_d', 'tec_a_d', 'tec_b_d', 'jefe_s_d', 'sol_d', 'sol_c_d', 'aud_d', 'admin_e']) as users (user_name);
+
+select test.ok(
+  (select count(*) = 9 * 14 from test.visibility_results)
+  and (select count(*) filter (where by_policy) > 0 and count(*) filter (where not by_policy) > 0
+       from test.visibility_results)
+  and not exists (select 1 from test.visibility_results where by_policy is distinct from by_helper),
+  'member_can_read_case coincide con la política de lectura de cases para 9 personas y 14 casos'
+);
+
+-- Quien no ve un caso de su empresa recibe la misma respuesta que si no existiera.
+select test.login('sol_c_d');
+set role authenticated;
+select test.ok(
+  (select count(*) = 0 from public.cases where id = test.get('d_ejecucion')::uuid)
+  and test.try_message(test.get('d_ejecucion')::uuid) = 'Solicitud no encontrada'
+  and test.try_message(test.get('d_aprobado')::uuid) = 'Solicitud no encontrada'
+  and test.try_message(gen_random_uuid()) = 'Solicitud no encontrada',
+  'para quien no ve el caso, un caso oculto de su empresa responde igual que uno inexistente'
+);
+reset role;
+
+-- Una jefa que escribió y luego cambió de área deja de recibir los mensajes nuevos.
+select test.login('jefe_s_d');
+set role authenticated;
+select test.set('msg_4', public.send_case_message(test.get('d_ejecucion')::uuid,
+  'Quedo atenta al cierre.')::text);
+reset role;
+
+update public.profiles set area_id = test.get('area_compras_d')::uuid
+where id = test.uid('jefe_s_d');
+
+select test.login('sol_d');
+set role authenticated;
+select test.set('msg_5', public.send_case_message(test.get('d_ejecucion')::uuid,
+  'Gracias, lo reviso mañana.')::text);
+reset role;
+
+select test.ok(
+  (select count(*) = 0 from public.notifications
+   where event_id = test.get('msg_5')::bigint and recipient_id = test.uid('jefe_s_d'))
+  and (select count(*) = 1 from public.notifications
+       where event_id = test.get('msg_5')::bigint and recipient_id = test.uid('admin_d')),
+  'quien escribió y cambió de área ya no recibe los mensajes nuevos; el administrador sí'
+);
+
+update public.profiles set area_id = test.get('area_ventas_d')::uuid
+where id = test.uid('jefe_s_d');
+
+-- Un autor dado de baja tampoco recibe avisos.
+select test.login('admin_d');
+set role authenticated;
+select public.deactivate_member(test.uid('jefe_s_d'));
+reset role;
+
+select test.login('tec_a_d');
+set role authenticated;
+select test.set('msg_6', public.send_case_message(test.get('d_ejecucion')::uuid,
+  'Enchufe cambiado.')::text);
+reset role;
+
+select test.ok(
+  (select count(*) = 0 from public.notifications
+   where event_id = test.get('msg_6')::bigint and recipient_id = test.uid('jefe_s_d'))
+  and (select count(*) = 1 from public.notifications
+       where event_id = test.get('msg_6')::bigint and recipient_id = test.uid('sol_d')),
+  'quien escribió y fue dado de baja no recibe avisos de mensajes nuevos'
+);
+
+select test.ok(
+  not has_function_privilege('authenticated', 'private.member_can_read_case(public.cases, uuid)', 'execute')
+  and not has_function_privilege('anon', 'private.member_can_read_case(public.cases, uuid)', 'execute'),
+  'member_can_read_case no se ejecuta desde la app'
+);
+
 \echo 'Todas las pruebas de mensajes del caso pasaron.'
