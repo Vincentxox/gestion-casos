@@ -20,7 +20,7 @@ function setup(index = 0, onCreate?: () => void) {
     state: { index, routes },
     descriptors: {
       home: { options: { title: 'Inicio' } },
-      cases: { options: { title: 'Mis trabajos', tabBarLabel: 'Casos', tabBarBadge: 3 } },
+      cases: { options: { title: 'Mis trabajos', tabBarLabel: 'Solicitudes', tabBarBadge: 3 } },
       help: { options: { title: 'Ayuda' } },
     },
     navigation: { emit, navigate },
@@ -33,7 +33,7 @@ describe('FloatingTabBar', () => {
   test('usa la etiqueta corta, marca la pestaña activa y anuncia pendientes', async () => {
     const { props } = setup()
     const screen = await render(<FloatingTabBar {...props} />)
-    expect(screen.getByText('Casos')).toBeTruthy()
+    expect(screen.getByText('Solicitudes')).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Mis trabajos, 3 pendientes' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Inicio' }).props.accessibilityState).toEqual({
       selected: true,

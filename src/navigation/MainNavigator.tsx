@@ -266,7 +266,7 @@ export function MainNavigator() {
       <Tab.Screen
         component={CasesNavigator}
         name="CasesTab"
-        options={{ title: caseTabTitle, tabBarLabel: 'Casos' }}
+        options={{ title: caseTabTitle, tabBarLabel: 'Solicitudes' }}
       />
       {canManageAreas ? (
         <Tab.Screen
