@@ -72,7 +72,7 @@ function AvatarPhoto({ path, initials }: { path: string; initials: ReactNode }) 
       cachePolicy="memory-disk"
       contentFit="cover"
       onError={() => setFailedUrl(signedUrl)}
-      source={{ uri: signedUrl }}
+      source={{ uri: signedUrl, cacheKey: path }}
       style={styles.photo}
       testID="avatar-photo"
     />

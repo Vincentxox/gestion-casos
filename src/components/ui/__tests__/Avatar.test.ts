@@ -34,10 +34,27 @@ describe('Avatar', () => {
       createElement(Avatar, { name: 'Ana López', id: 'u1', avatarPath: 'org/u1/foto.jpg' }),
     )
     const photo = screen.getByTestId('avatar-photo')
-    expect(photo.props.source).toEqual([{ uri: 'https://foto-firmada' }])
+    expect(photo.props.source).toEqual([
+      { uri: 'https://foto-firmada', cacheKey: 'org/u1/foto.jpg' },
+    ])
     await act(async () => photo.props.onError({ nativeEvent: { error: 'imagen no disponible' } }))
     expect(screen.queryByTestId('avatar-photo')).toBeNull()
     expect(screen.getByText('AL')).toBeTruthy()
+  })
+
+  it('mantiene la clave de caché al renovarse el enlace firmado', async () => {
+    ;(useSignedProfilePhoto as jest.Mock).mockReturnValue({ data: 'https://foto-firmada-1' })
+    const props = { name: 'Ana López', id: 'u1', avatarPath: 'org/u1/foto.jpg' }
+    const screen = await render(createElement(Avatar, props))
+    expect(screen.getByTestId('avatar-photo').props.source).toEqual([
+      { uri: 'https://foto-firmada-1', cacheKey: props.avatarPath },
+    ])
+
+    ;(useSignedProfilePhoto as jest.Mock).mockReturnValue({ data: 'https://foto-firmada-2' })
+    await act(async () => screen.rerender(createElement(Avatar, props)))
+    expect(screen.getByTestId('avatar-photo').props.source).toEqual([
+      { uri: 'https://foto-firmada-2', cacheKey: props.avatarPath },
+    ])
   })
 
   it('muestra iniciales si no puede firmar el enlace', async () => {
