@@ -37,6 +37,7 @@ interface AuthStore {
   ) => void
   applyOrganizationName: (name: string) => void
   applyOwnName: (name: string) => void
+  applyOwnAvatar: (path: string | null) => void
   retryInvitation: () => Promise<boolean>
 }
 
@@ -206,6 +207,11 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   applyOwnName(name) {
     const profile = get().profile
     if (profile) set({ profile: { ...profile, fullName: name } })
+  },
+
+  applyOwnAvatar(path) {
+    const profile = get().profile
+    if (profile) set({ profile: { ...profile, avatarUrl: path } })
   },
 
   async retryInvitation() {

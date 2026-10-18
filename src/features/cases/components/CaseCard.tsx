@@ -56,7 +56,12 @@ export function CaseCard({ item, onPress }: { item: CaseRecord; onPress: () => v
           <View style={styles.assignee}>
             {item.assigneeName ? (
               <>
-                <Avatar name={item.assigneeName} id={item.assignedTo ?? item.id} size={24} />
+                <Avatar
+                  name={item.assigneeName}
+                  id={item.assignedTo ?? item.id}
+                  avatarPath={item.assigneeAvatarPath}
+                  size={24}
+                />
                 <Text numberOfLines={1} style={styles.assigneeName}>
                   {item.assigneeName.split(/\s+/)[0]}
                 </Text>

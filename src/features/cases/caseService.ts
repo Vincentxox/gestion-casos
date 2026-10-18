@@ -32,9 +32,9 @@ interface CaseRow {
   priority: CaseRecord['priority']
   status: CaseStatus
   created_by: string
-  creator: { full_name: string } | null
+  creator: { full_name: string; avatar_url: string | null } | null
   assigned_to: string | null
-  assignee: { full_name: string } | null
+  assignee: { full_name: string; avatar_url: string | null } | null
   created_at: string
   accepted_at: string | null
   assigned_at: string | null
@@ -48,8 +48,8 @@ const caseSelection = `id, case_number, title, description, category_id,
   category:categories!cases_category_id_fkey(name,min_after_photos),
   requesting_area_id, requesting_area:areas!cases_requesting_area_id_fkey(name),
   target_area_id, target_area:areas!cases_target_area_id_fkey(name),
-  location, priority, status, created_by, creator:profiles!cases_created_by_fkey(full_name),
-  assigned_to, assignee:profiles!cases_assigned_to_fkey(full_name), created_at, accepted_at, assigned_at, started_at, updated_at, due_at, overdue_stage`
+  location, priority, status, created_by, creator:profiles!cases_created_by_fkey(full_name,avatar_url),
+  assigned_to, assignee:profiles!cases_assigned_to_fkey(full_name,avatar_url), created_at, accepted_at, assigned_at, started_at, updated_at, due_at, overdue_stage`
 
 function mapCase(row: CaseRow, formerNames: ReadonlyMap<string, string>): CaseRecord {
   return {
@@ -74,6 +74,7 @@ function mapCase(row: CaseRow, formerNames: ReadonlyMap<string, string>): CaseRe
       formerNames,
       'Usuario sin nombre',
     ),
+    creatorAvatarPath: row.creator?.avatar_url ?? null,
     assignedTo: row.assigned_to,
     assigneeName: row.assigned_to
       ? memberDisplayName(
@@ -83,6 +84,7 @@ function mapCase(row: CaseRow, formerNames: ReadonlyMap<string, string>): CaseRe
           'Usuario sin nombre',
         )
       : null,
+    assigneeAvatarPath: row.assignee?.avatar_url ?? null,
     createdAt: row.created_at,
     acceptedAt: row.accepted_at,
     assignedAt: row.assigned_at,
@@ -240,7 +242,7 @@ export async function assignCase(
 export async function listAssignableProfiles(targetAreaId: string): Promise<AssignableProfile[]> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, full_name, role, area_id, area:areas(name)')
+    .select('id, full_name, avatar_url, role, area_id, area:areas(name)')
     .eq('area_id', targetAreaId)
     .in('role', ['tecnico', 'jefe_area'])
     .order('full_name', { ascending: true })
@@ -249,6 +251,7 @@ export async function listAssignableProfiles(targetAreaId: string): Promise<Assi
     data as unknown as {
       id: string
       full_name: string
+      avatar_url: string | null
       role: AssignableProfile['role']
       area_id: string
       area: { name: string } | null
@@ -256,6 +259,7 @@ export async function listAssignableProfiles(targetAreaId: string): Promise<Assi
   ).map((row) => ({
     id: row.id,
     fullName: row.full_name || 'Usuario sin nombre',
+    avatarPath: row.avatar_url,
     role: row.role,
     areaId: row.area_id,
     areaName: row.area?.name ?? null,
@@ -270,7 +274,7 @@ export async function listCaseHistory(caseId: string): Promise<CaseStatusHistory
   const { data, error } = await supabase
     .from('case_events')
     .select(
-      'id, action, from_status, to_status, comment, created_at, actor_id, assignee_id, actor:profiles!case_events_actor_id_fkey(full_name), assignee:profiles!case_events_assignee_id_fkey(full_name)',
+      'id, action, from_status, to_status, comment, created_at, actor_id, assignee_id, actor:profiles!case_events_actor_id_fkey(full_name,avatar_url), assignee:profiles!case_events_assignee_id_fkey(full_name)',
     )
     .eq('case_id', caseId)
     .order('created_at', { ascending: false })
@@ -293,6 +297,7 @@ export async function listCaseHistory(caseId: string): Promise<CaseStatusHistory
       formerNames,
       'Usuario sin nombre',
     ),
+    actorAvatarPath: row.actor?.avatar_url ?? null,
     assigneeName: row.assignee_id
       ? memberDisplayName(
           row.assignee_id,

@@ -50,7 +50,7 @@ const row = {
   priority: 'media',
   status: 'solicitado',
   created_by: 'u1',
-  creator: { full_name: 'Ana' },
+  creator: { full_name: 'Ana', avatar_url: 'org/u1/photo.jpg' },
   assigned_to: null,
   assignee: null,
   created_at: '2026-01-01',
@@ -121,6 +121,7 @@ test('pagina y ordena solicitudes en el servidor y conserva los nombres de relac
     {
       category: 'Equipos',
       creatorName: 'Ana',
+      creatorAvatarPath: 'org/u1/photo.jpg',
       targetAreaName: 'Tecnología',
       dueAt: '2026-01-01T08:00:00Z',
       overdueStage: 'aceptacion',
@@ -252,14 +253,19 @@ test('lee eventos inmutables con nombre de actor y asignado', async () => {
         created_at: '2026-01-01',
         actor_id: 'jefe-1',
         assignee_id: 'tech-1',
-        actor: { full_name: 'Jefe' },
+        actor: { full_name: 'Jefe', avatar_url: 'org/jefe-1/photo.jpg' },
         assignee: { full_name: 'Tomás' },
       },
     ],
     error: null,
   })
   await expect(listCaseHistory('case-1')).resolves.toMatchObject([
-    { action: 'asignar', actorName: 'Jefe', assigneeName: 'Tomás' },
+    {
+      action: 'asignar',
+      actorName: 'Jefe',
+      actorAvatarPath: 'org/jefe-1/photo.jpg',
+      assigneeName: 'Tomás',
+    },
   ])
   expect(from).toHaveBeenCalledWith('case_events')
 })

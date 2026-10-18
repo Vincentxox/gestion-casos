@@ -62,7 +62,9 @@ export interface CaseRecord {
   createdBy: string
   assignedTo: string | null
   creatorName: string
+  creatorAvatarPath?: string | null
   assigneeName: string | null
+  assigneeAvatarPath?: string | null
   createdAt: string
   acceptedAt?: string | null
   assignedAt?: string | null
@@ -90,6 +92,7 @@ export interface ChangeCaseStatusInput {
 export interface AssignableProfile {
   id: string
   fullName: string
+  avatarPath?: string | null
   role: 'tecnico' | 'jefe_area'
   areaId: string
   areaName: string | null
@@ -102,6 +105,7 @@ export interface CaseStatusHistoryRecord {
   newStatus: CaseStatus
   action: string
   actorName: string
+  actorAvatarPath?: string | null
   assigneeName: string | null
   comment: string | null
   createdAt: string

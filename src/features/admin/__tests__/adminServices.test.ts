@@ -117,6 +117,7 @@ test('mapea perfiles y actualiza rol y área con la RPC', async () => {
       {
         id: 'u1',
         full_name: ' Ana ',
+        avatar_url: 'org/u1/photo.jpg',
         role: 'tecnico',
         area_id: 'a1',
         area: { name: 'Tecnología' },
@@ -125,7 +126,14 @@ test('mapea perfiles y actualiza rol y área con la RPC', async () => {
     error: null,
   })
   await expect(listManagedProfiles()).resolves.toEqual([
-    { id: 'u1', fullName: 'Ana', role: 'tecnico', areaId: 'a1', areaName: 'Tecnología' },
+    {
+      id: 'u1',
+      fullName: 'Ana',
+      avatarPath: 'org/u1/photo.jpg',
+      role: 'tecnico',
+      areaId: 'a1',
+      areaName: 'Tecnología',
+    },
   ])
   rpc.mockResolvedValue({ error: null })
   await setMemberAccess('u1', 'tecnico', 'a1')
