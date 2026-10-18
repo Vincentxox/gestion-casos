@@ -344,8 +344,8 @@ select test.set('unreviewed_functions', (
     'due_at(cases)',
     'overdue_stage(cases)',
     -- SECURITY INVOKER: filtran cases con RLS (prueba 24).
-    'count_cases_by_status(text, case_priority, timestamp with time zone, text)',
-    'search_cases(text, case_status[], case_priority, timestamp with time zone, text)'
+    'count_cases_by_status(text, case_priority, timestamp with time zone, text, case_status[], case_priority[], timestamp with time zone, timestamp with time zone, boolean)',
+    'search_cases(text, case_status[], case_priority, timestamp with time zone, text, case_priority[], timestamp with time zone, timestamp with time zone, boolean)'
   )));
 select test.ok(
   test.get('unreviewed_functions') = '',
