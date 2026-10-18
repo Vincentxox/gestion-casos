@@ -345,7 +345,11 @@ select test.set('unreviewed_functions', (
     'overdue_stage(cases)',
     -- SECURITY INVOKER: filtran cases con RLS (prueba 24).
     'count_cases_by_status(text, case_priority, timestamp with time zone, text)',
-    'search_cases(text, case_status[], case_priority, timestamp with time zone, text)'
+    'search_cases(text, case_status[], case_priority, timestamp with time zone, text)',
+    -- SECURITY INVOKER: filtran cases con RLS y vuelven a leer la fila por su id; probadas
+    -- con filas de otra empresa en la prueba 30.
+    'list_next_steps()',
+    'next_step(cases)'
   )));
 select test.ok(
   test.get('unreviewed_functions') = '',
