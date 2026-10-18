@@ -326,9 +326,12 @@ select test.set('unreviewed_functions', (
     'verify_report_code(text)',
     -- Probada con identificadores de otra empresa en la prueba 28.
     'send_case_message(uuid, text)',
+    -- Probada con rutas de otra persona y de otra empresa en la prueba 29.
+    'set_profile_photo(text)',
     -- Sin identificadores de otra empresa: actúan sobre el propio usuario o su empresa.
     'accept_pending_invitation()',
     'cancel_my_access_request()',
+    'clear_profile_photo()',
     'get_home_summary()',
     'get_my_access_request()',
     'get_organization_join_code()',
