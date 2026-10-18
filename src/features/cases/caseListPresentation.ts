@@ -23,6 +23,19 @@ export function getScopeOptions(profile: Profile, areaKind: 'solicitante' | 'tec
   return ['todas', 'bandeja'] as ScopeFilter[]
 }
 
+/** Los dos alcances principales de la pantalla, sin perder los accesos especiales de Inicio. */
+export function getPrimaryScopeOptions(
+  profile: Profile,
+  areaKind: 'solicitante' | 'tecnica' | null,
+): readonly [ScopeFilter] | readonly [ScopeFilter, ScopeFilter] {
+  if (profile.role === 'administrador') return ['todas', 'bandeja']
+  if (profile.role === 'tecnico') return ['mis_trabajos', 'mi_area']
+  if (profile.role === 'jefe_area' && areaKind === 'tecnica') return ['bandeja', 'mi_area']
+  if (profile.role === 'jefe_area') return ['mi_area', 'mias']
+  if (profile.role === 'auditor') return ['todas']
+  return ['todas', 'mias']
+}
+
 export function matchesCaseScope(item: CaseRecord, scope: ScopeFilter, profile: Profile) {
   switch (scope) {
     case 'mias':

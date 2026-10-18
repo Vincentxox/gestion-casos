@@ -1,5 +1,5 @@
 import type { Profile } from '@/features/auth/types'
-import { getScopeOptions, matchesCaseScope } from '../caseListPresentation'
+import { getPrimaryScopeOptions, getScopeOptions, matchesCaseScope } from '../caseListPresentation'
 import type { CaseRecord } from '../types'
 
 const profile: Profile = {
@@ -66,6 +66,27 @@ test('ofrece los alcances adecuados a cada rol', () => {
   expect(
     matchesCaseScope(item, 'bandeja', { ...profile, role: 'administrador', areaId: null }),
   ).toBe(true)
+})
+
+test('el selector compacto ofrece dos alcances útiles según el rol', () => {
+  expect(getPrimaryScopeOptions({ ...profile, role: 'administrador' }, null)).toEqual([
+    'todas',
+    'bandeja',
+  ])
+  expect(getPrimaryScopeOptions(profile, 'tecnica')).toEqual(['mis_trabajos', 'mi_area'])
+  expect(getPrimaryScopeOptions({ ...profile, role: 'jefe_area' }, 'tecnica')).toEqual([
+    'bandeja',
+    'mi_area',
+  ])
+  expect(getPrimaryScopeOptions({ ...profile, role: 'jefe_area' }, 'solicitante')).toEqual([
+    'mi_area',
+    'mias',
+  ])
+  expect(getPrimaryScopeOptions({ ...profile, role: 'solicitante' }, 'solicitante')).toEqual([
+    'todas',
+    'mias',
+  ])
+  expect(getPrimaryScopeOptions({ ...profile, role: 'auditor' }, null)).toEqual(['todas'])
 })
 
 test('filtra bandeja, autor, estados y asignaciones sin depender de la UI', () => {
