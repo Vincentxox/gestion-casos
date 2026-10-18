@@ -134,7 +134,7 @@ export function ProfileScreen() {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <Text accessibilityRole="header" style={styles.title}>
-            Perfil
+            Mi perfil
           </Text>
         </View>
 
@@ -144,7 +144,7 @@ export function ProfileScreen() {
               name={profile?.fullName || 'Usuario'}
               id={profile?.id || 'user'}
               avatarPath={profile?.avatarUrl}
-              size={72}
+              size={76}
             />
             <Pressable
               accessibilityLabel="Cambiar foto de perfil"
@@ -157,73 +157,72 @@ export function ProfileScreen() {
                 !profile?.organizationActive || uploadPhoto.isPending || clearPhoto.isPending
               }
               onPress={() => setPhotoSheetOpen(true)}
-              style={styles.cameraButton}
+              style={styles.cameraTouchTarget}
             >
-              <Icon name="camera" color={colors.white} size={18} />
+              <View style={styles.cameraCircle} testID="profile-camera-circle">
+                <Icon name="camera" color={colors.white} size={16} />
+              </View>
             </Pressable>
           </View>
-          <Text style={styles.identityName}>{profile?.fullName || 'Usuario sin nombre'}</Text>
-          <Text style={styles.identitySub}>
-            {profile?.organizationName || 'Sin empresa'} ·{' '}
-            {profile?.role ? ROLE_LABELS[profile.role] : 'Sin rol'}
-          </Text>
-        </View>
-
-        <Card style={styles.card}>
-          <View style={styles.field}>
-            <Text style={styles.label}>Nombre</Text>
-            {name === null ? (
-              <View style={styles.nameRow}>
-                <Text style={styles.value}>{profile?.fullName || 'Sin nombre'}</Text>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Editar nombre"
-                  onPress={() => setName(profile?.fullName ?? '')}
-                  style={styles.editName}
-                >
-                  <Icon name="create-outline" color={colors.primary} />
-                </Pressable>
-              </View>
-            ) : (
-              <>
-                <FormField
-                  label="Nombre completo"
-                  maxLength={120}
-                  onChangeText={setName}
-                  value={name}
-                />
-                <View style={styles.nameActions}>
-                  <Button label="Guardar" loading={saving} onPress={() => void saveName()} />
-                  <Button label="Cancelar" variant="text" onPress={() => setName(null)} />
-                </View>
-              </>
-            )}
-          </View>
-          <View style={styles.separator} />
-          <View style={styles.field}>
-            <Text style={styles.label}>Empresa</Text>
-            <Text style={styles.value}>{profile?.organizationName || 'Sin empresa'}</Text>
-          </View>
-          <View style={styles.separator} />
-          <View style={styles.field}>
-            <Text style={styles.label}>Correo electrónico</Text>
-            <Text style={styles.value}>{session?.user.email || 'No disponible'}</Text>
-          </View>
-          <View style={styles.separator} />
-          <View style={styles.field}>
-            <Text style={styles.label}>Rol asignado</Text>
+          <View style={styles.identityDetails}>
+            <View style={styles.nameRow}>
+              <Text style={styles.identityName} numberOfLines={2}>
+                {profile?.fullName || 'Usuario sin nombre'}
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Editar nombre"
+                onPress={() => setName(profile?.fullName ?? '')}
+                style={styles.editName}
+              >
+                <Icon name="create-outline" color={colors.primary} />
+              </Pressable>
+            </View>
             {profile?.role ? (
               <Chip label={ROLE_LABELS[profile.role]} icon={ROLE_ICONS[profile.role]} tone="info" />
             ) : (
-              <Text style={styles.value}>Sin asignar</Text>
+              <Text style={styles.roleFallback}>Sin rol</Text>
             )}
           </View>
-          <View style={styles.separator} />
-          <View style={styles.field}>
-            <Text style={styles.label}>Área</Text>
-            <Text style={styles.value}>{profile?.areaName || 'Sin área asignada'}</Text>
+        </View>
+
+        {name !== null ? (
+          <View style={styles.nameEditor}>
+            <FormField
+              label="Nombre completo"
+              maxLength={120}
+              onChangeText={setName}
+              value={name}
+            />
+            <View style={styles.nameActions}>
+              <Button label="Guardar" loading={saving} onPress={() => void saveName()} />
+              <Button label="Cancelar" variant="text" onPress={() => setName(null)} />
+            </View>
           </View>
-        </Card>
+        ) : null}
+
+        <View style={styles.dataList}>
+          <View style={styles.dataRow}>
+            <Text style={styles.dataLabel}>Empresa</Text>
+            <Text style={styles.value} numberOfLines={1}>
+              {profile?.organizationName || 'Sin empresa'}
+            </Text>
+          </View>
+          <View style={styles.separator} />
+          <View style={styles.dataRow}>
+            <Text style={styles.dataLabel}>Área</Text>
+            <Text style={styles.value} numberOfLines={1}>
+              {profile?.areaName || 'Sin área asignada'}
+            </Text>
+          </View>
+          <View style={styles.separator} />
+          <View style={styles.dataRow}>
+            <Text style={styles.dataLabel}>Correo</Text>
+            <Text style={styles.value} numberOfLines={1}>
+              {session?.user.email || 'No disponible'}
+            </Text>
+          </View>
+        </View>
 
         <Text style={styles.sectionHeading}>AJUSTES</Text>
         <Card style={styles.settingsCard}>
@@ -250,10 +249,12 @@ export function ProfileScreen() {
         </Card>
         <Button
           label="Cerrar sesión"
-          variant="secondary"
+          icon="log-out-outline"
+          variant="danger"
+          style={styles.logoutButton}
           onPress={() => confirmLogout(() => void handleLogout())}
         />
-        <Text style={styles.version}>Versión {appConfig.expo.version}</Text>
+        <Text style={styles.version}>Nexo Casos · versión {appConfig.expo.version}</Text>
       </ScrollView>
       <BottomSheet
         visible={photoSheetOpen}
@@ -332,31 +333,39 @@ const styles = StyleSheet.create({
   content: { flexGrow: 1, gap: spacing.lg, padding: spacing.lg, paddingBottom: spacing.xl },
   header: { gap: spacing.sm },
   title: { ...typography.display, color: colors.text },
-  identity: { alignItems: 'center', gap: spacing.xs },
-  avatarWrap: { marginBottom: spacing.sm },
-  cameraButton: {
+  identity: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+  avatarWrap: { width: 76, height: 76 },
+  cameraTouchTarget: {
     position: 'absolute',
     right: -8,
-    bottom: -4,
+    bottom: -8,
     width: 44,
     height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cameraCircle: {
+    width: 32,
+    height: 32,
     borderRadius: radius.pill,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: colors.background,
   },
-  identityName: { ...typography.title, color: colors.text },
-  identitySub: { ...typography.caption, color: colors.textMuted, textAlign: 'center' },
-  card: { padding: spacing.md },
-  field: { gap: spacing.xs },
-  nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  identityDetails: { flex: 1, alignItems: 'flex-start', gap: spacing.xs },
+  identityName: { ...typography.title, color: colors.text, flex: 1 },
+  nameRow: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  nameEditor: { gap: spacing.sm },
   nameActions: { flexDirection: 'row', gap: spacing.sm },
   editName: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  label: { ...typography.caption, color: colors.textMuted },
-  value: { ...typography.body, color: colors.text },
-  separator: { height: 1, marginVertical: spacing.md, backgroundColor: colors.border },
+  roleFallback: { ...typography.body, color: colors.textMuted },
+  dataList: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border },
+  dataRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  dataLabel: { ...typography.caption, color: colors.textMuted, width: 72 },
+  value: { ...typography.body, color: colors.text, flex: 1 },
+  separator: { height: 1, backgroundColor: colors.border },
   sectionHeading: { ...typography.overline, color: colors.textMuted },
   settingsCard: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
   settingRow: { minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
@@ -364,5 +373,16 @@ const styles = StyleSheet.create({
   settingLabel: { ...typography.body, color: colors.text },
   settingDetail: { ...typography.caption, color: colors.textMuted },
   sheetText: { ...typography.body, color: colors.text },
-  version: { ...typography.caption, color: colors.textMuted, textAlign: 'center' },
+  logoutButton: {
+    minHeight: 52,
+    borderWidth: 1,
+    borderColor: colors.dangerBorder,
+    backgroundColor: colors.background,
+  },
+  version: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: 'auto',
+  },
 })

@@ -25,6 +25,7 @@ export const colors = {
   neutralSoft: '#F0F3F7',
   dangerSoft: '#FDE7E2',
   dangerBadge: '#FEE2E2',
+  dangerBorder: '#F3C7BD',
   dangerText: '#9A2B16',
   cardBorder: '#E4E9F0',
   purple: '#6941C6',

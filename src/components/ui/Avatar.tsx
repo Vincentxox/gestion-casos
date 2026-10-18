@@ -31,12 +31,12 @@ export function Avatar({
 }: {
   name: string
   id: string
-  size?: 24 | 28 | 44 | 72
+  size?: 24 | 28 | 44 | 72 | 76
   tone?: 'default' | 'neutral'
   avatarPath?: string | null
 }) {
   const initials = (
-    <Text style={[styles.initials, size <= 28 && styles.small, size === 72 && styles.large]}>
+    <Text style={[styles.initials, size <= 28 && styles.small, size >= 72 && styles.large]}>
       {avatarInitials(name)}
     </Text>
   )
