@@ -61,13 +61,24 @@ select test.ok(
 -- 2. Datos: fechas de creación repartidas semana a semana
 -- ---------------------------------------------------------------------------
 
--- Cada caso pasa a crearse 0, 7, 14… días antes (nunca después de su fecha actual), para
--- que haya casos recientes y antiguos, vencidos y a tiempo. Sin disparadores: solo cambia
--- la fecha de creación.
+-- Fechas fijas, sin depender del orden de los identificadores (son aleatorios): entre las
+-- solicitudes abiertas, una sí y otra no pasa a crearse hace 60 días, así que queda vencida
+-- y antigua; las demás pasan a crearse hace 10 minutos y siguen a tiempo. Las cerradas se
+-- reparten semana a semana. Sin disparadores: solo cambia la fecha de creación.
 set local session_replication_role = replica;
 update public.cases c
-set created_at = least(c.created_at, now() - make_interval(days => 7 * (o.n::int - 1)))
-from (select id, row_number() over (order by id) as n from public.cases) o
+set created_at = case
+  when o.is_open and o.n % 2 = 0 then now() - interval '60 days'
+  when o.is_open then now() - interval '10 minutes'
+  else least(c.created_at, now() - make_interval(days => 7 * (o.n::int - 1)))
+end
+from (
+  select id, is_open, row_number() over (partition by is_open order by id) as n
+  from (
+    select id, status in ('solicitado', 'aceptado', 'asignado', 'en_ejecucion', 'en_espera') as is_open
+    from public.cases
+  ) t
+) o
 where o.id = c.id;
 set local session_replication_role = origin;
 
