@@ -111,6 +111,10 @@ as $$
 declare
   current_user_id uuid := (select auth.uid());
 begin
+  -- Bloquea el perfil antes de comprobar la empresa: una baja simultánea termina antes o
+  -- espera, así que la foto nunca queda en un perfil ya desvinculado.
+  perform 1 from public.profiles where id = current_user_id for update;
+
   if current_user_id is null or (select private.current_organization_id()) is null then
     raise exception 'Acceso denegado';
   end if;

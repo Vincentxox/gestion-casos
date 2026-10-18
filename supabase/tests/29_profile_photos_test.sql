@@ -211,6 +211,59 @@ select test.throws(
 );
 reset role;
 
+-- Una baja simultánea: la persona elige su foto mientras la dan de baja en otra sesión.
+-- La elección espera a que la baja termine y no deja la foto en el perfil desvinculado.
+create extension if not exists dblink;
+
+select test.set('photo_race', test.profile_photo_path('tec_b_d', 'carrera.jpg'));
+select test.login('tec_b_d');
+set role authenticated;
+select test.upload_profile_photo(test.get('photo_race'));
+reset role;
+
+select dblink_connect('baja', format('dbname=%s user=%s', current_database(), current_user));
+select dblink_connect('foto', format('dbname=%s user=%s', current_database(), current_user));
+
+-- Los mismos cambios de perfil que hace deactivate_member, sin confirmar todavía.
+select dblink_exec('baja', 'begin');
+select dblink_exec('baja', format(
+  'update public.profiles set organization_id = null, area_id = null, role = %L where id = %L',
+  'solicitante', test.uid('tec_b_d')
+));
+
+select count(*) from dblink('foto', format('select test.login(%L)', 'tec_b_d')) as t(result text);
+select dblink_exec('foto', 'set role authenticated');
+select test.set('photo_race_pid',
+  (select pid::text from dblink('foto', 'select pg_backend_pid()') as t(pid integer)));
+select dblink_send_query('foto', format('select public.set_profile_photo(%L)', test.get('photo_race')));
+
+do $$
+declare
+  attempts integer := 0;
+begin
+  while not exists (
+    select 1 from pg_locks where pid = test.get('photo_race_pid')::integer and not granted
+  ) loop
+    attempts := attempts + 1;
+    if attempts > 200 then
+      raise exception 'FALLÓ: la elección de foto no llegó a esperar a la baja';
+    end if;
+    perform pg_sleep(0.05);
+  end loop;
+end $$;
+
+select dblink_exec('baja', 'commit');
+select count(*) from dblink_get_result('foto', false) as t(result text);
+select test.set('photo_race_error', dblink_error_message('foto'));
+select count(*) from dblink_get_result('foto', false) as t(result text);
+select dblink_disconnect('foto');
+select dblink_disconnect('baja');
+
+select test.ok(
+  test.avatar_of('tec_b_d') is null and test.get('photo_race_error') like '%Acceso denegado%',
+  'una baja simultánea no deja la foto elegida en el perfil desvinculado'
+);
+
 select test.set('photo_e', test.profile_photo_path('admin_e', 'e.jpg', 'org_e'));
 select test.login('admin_e');
 set role authenticated;
