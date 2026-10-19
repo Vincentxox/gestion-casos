@@ -19,10 +19,13 @@ jest.mock('@/features/home/useHomeSummary', () => ({ homeSummaryQueryKey: ['home
 const filters = {
   scope: 'todas' as const,
   statuses: ['solicitado' as const],
-  priority: null,
-  updatedSince: null,
+  priorities: null,
+  createdFrom: null,
+  createdTo: null,
+  overdueOnly: false,
+  unassignedOnly: false,
   searchText: 'motor',
-  sortPending: true,
+  sort: 'recientes' as const,
 }
 
 test('usa páginas de 30 y separa la clave por filtros', async () => {
@@ -36,10 +39,21 @@ test('usa páginas de 30 y separa la clave por filtros', async () => {
   expect(listCases).toHaveBeenCalledWith(filters, 1)
 })
 
-test('los conteos ignoran estados y orden en la clave pero respetan los demás filtros', async () => {
+test('los conteos respetan estados y filtros, pero no el orden', async () => {
   useCaseCounts(filters)
   const options = (useQuery as jest.Mock).mock.calls[0]?.[0]
-  expect(options.queryKey).toEqual(['cases', 'counts', 'todas', null, null, 'motor'])
+  expect(options.queryKey).toEqual([
+    'cases',
+    'counts',
+    'todas',
+    ['solicitado'],
+    null,
+    null,
+    null,
+    false,
+    false,
+    'motor',
+  ])
   await options.queryFn()
   expect(countCasesByStatus).toHaveBeenCalledWith(filters)
 })

@@ -55,10 +55,13 @@ export function HomeScreen({ navigation }: Props) {
               ? 'mi_area'
               : 'todas',
       statuses: ACTIVE_CASE_STATUSES,
-      priority: null,
-      updatedSince: null,
+      priorities: null,
+      createdFrom: null,
+      createdTo: null,
+      overdueOnly: false,
+      unassignedOnly: false,
       searchText: null,
-      sortPending: false,
+      sort: 'recientes',
     },
     showRecent,
   )

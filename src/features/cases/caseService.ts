@@ -14,7 +14,7 @@ import type {
   UpdateCaseInput,
 } from './types'
 import type { CaseSearchFilters, CaseStatusCount } from './caseSearch'
-import { caseSearchTextSchema } from './schemas'
+import { caseCreatedRangeSchema, caseSearchTextSchema } from './schemas'
 
 // Incluye campos calculados de PostgREST que no aparecen como columnas en database.types.ts.
 interface CaseRow {
@@ -108,11 +108,14 @@ async function mapCases(values: unknown[]): Promise<CaseRecord[]> {
 export const CASE_PAGE_SIZE = 30
 
 function searchArgs(filters: CaseSearchFilters) {
+  caseCreatedRangeSchema.parse({ createdFrom: filters.createdFrom, createdTo: filters.createdTo })
   return {
     scope: filters.scope,
     statuses: filters.statuses,
-    priority_filter: filters.priority,
-    updated_since: filters.updatedSince,
+    priorities: filters.priorities,
+    created_from: filters.createdFrom,
+    created_to: filters.createdTo,
+    overdue_only: filters.overdueOnly,
     search_text:
       filters.searchText === null ? null : caseSearchTextSchema.parse(filters.searchText),
   }
@@ -121,9 +124,14 @@ function searchArgs(filters: CaseSearchFilters) {
 export async function listCases(filters: CaseSearchFilters, page: number): Promise<CaseRecord[]> {
   const from = page * CASE_PAGE_SIZE
   let query = supabase.rpc('search_cases', searchArgs(filters)).select(caseSelection)
-  if (filters.sortPending) query = query.order('priority', { ascending: true })
+  if (filters.unassignedOnly) query = query.is('assigned_to', null)
+  if (filters.sort === 'prioridad') query = query.order('priority', { ascending: true })
+  if (filters.sort === 'vencen_antes')
+    query = query.order('due_at', { ascending: true, nullsFirst: false })
+  if (filters.sort === 'antiguas') query = query.order('created_at', { ascending: true })
+  if (filters.sort === 'recientes' || filters.sort === 'prioridad')
+    query = query.order('created_at', { ascending: false })
   const { data, error } = await query
-    .order('created_at', { ascending: false })
     .order('id', { ascending: false })
     .range(from, from + CASE_PAGE_SIZE - 1)
   if (error) throw error
@@ -131,15 +139,19 @@ export async function listCases(filters: CaseSearchFilters, page: number): Promi
 }
 
 export async function countCasesByStatus(filters: CaseSearchFilters): Promise<CaseStatusCount[]> {
+  caseCreatedRangeSchema.parse({ createdFrom: filters.createdFrom, createdTo: filters.createdTo })
   const { data, error } = await supabase.rpc('count_cases_by_status', {
     scope: filters.scope,
-    priority_filter: filters.priority,
-    updated_since: filters.updatedSince,
+    statuses: filters.statuses,
+    priorities: filters.priorities,
+    created_from: filters.createdFrom,
+    created_to: filters.createdTo,
+    overdue_only: filters.overdueOnly,
     search_text:
       filters.searchText === null ? null : caseSearchTextSchema.parse(filters.searchText),
   })
   if (error) throw error
-  return data
+  return filters.unassignedOnly ? data.map((row) => ({ ...row, total: row.unassigned })) : data
 }
 
 export async function getCase(caseId: string): Promise<CaseRecord> {

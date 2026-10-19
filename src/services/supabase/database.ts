@@ -33,9 +33,23 @@ type ServerFilledColumns = {
 
 type NullableRpcArgs = {
   approve_access_request: 'new_area_id'
-  count_cases_by_status: 'priority_filter' | 'updated_since' | 'search_text'
+  count_cases_by_status:
+    | 'priority_filter'
+    | 'updated_since'
+    | 'search_text'
+    | 'statuses'
+    | 'priorities'
+    | 'created_from'
+    | 'created_to'
   reject_access_request: 'note'
-  search_cases: 'statuses' | 'priority_filter' | 'updated_since' | 'search_text'
+  search_cases:
+    | 'statuses'
+    | 'priority_filter'
+    | 'updated_since'
+    | 'search_text'
+    | 'priorities'
+    | 'created_from'
+    | 'created_to'
   set_member_access: 'new_area_id'
   transition_case: 'action_comment'
 }
