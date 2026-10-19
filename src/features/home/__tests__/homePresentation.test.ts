@@ -2,7 +2,8 @@ import type { AppNotification } from '@/features/notifications/notificationServi
 import {
   getAdminAlerts,
   getGreeting,
-  getHomePhases,
+  getHomeCaseCards,
+  getHomeCaseView,
   getTodayNotifications,
   NEXT_STEP_BUTTON_LABELS,
   NEXT_STEP_LABELS,
@@ -47,22 +48,44 @@ test('cada acción principal tiene texto, botón e ícono de fase', () => {
   ])
 })
 
-test('las cuatro fases reúnen cada estado una sola vez y suman el total', () => {
+test.each([
+  ['tecnico', null, 'Tu área', 'mi_area'],
+  ['jefe_area', 'tecnica', 'Tu área', 'area_atiende'],
+  ['jefe_area', 'solicitante', 'Tus solicitudes', 'mias'],
+  ['solicitante', null, 'Tus solicitudes', 'mias'],
+  ['administrador', null, 'Solicitudes', 'todas'],
+  ['auditor', null, 'Solicitudes', 'todas'],
+] as const)('Inicio de %s en área %s usa %s y %s', (role, areaKind, title, scope) => {
+  expect(getHomeCaseView(role, areaKind)).toEqual({ title, scope })
+})
+
+test('el jefe espera el tipo de área antes de escoger alcance', () => {
+  expect(getHomeCaseView('jefe_area', null)).toBeNull()
+})
+
+test('los cuatro recuadros usan los estados abiertos y sus filtros correspondientes', () => {
   expect(
-    getHomePhases([
-      { status: 'solicitado', total: 1 },
-      { status: 'aceptado', total: 2 },
-      { status: 'asignado', total: 3 },
-      { status: 'en_ejecucion', total: 4 },
-      { status: 'en_espera', total: 5 },
-      { status: 'reporte_enviado', total: 6 },
-      { status: 'validado', total: 7 },
-      { status: 'aprobado', total: 8 },
-      { status: 'rechazado', total: 9 },
-      { status: 'cancelado', total: 10 },
-    ]),
-  ).toEqual({ por_aceptar: 1, en_curso: 14, en_revision: 13, cerradas: 27, total: 55 })
-  expect(getHomePhases([]).total).toBe(0)
+    getHomeCaseCards([
+      { status: 'solicitado', total: 1, overdue: 1, unassigned: 0 },
+      { status: 'aceptado', total: 2, overdue: 1, unassigned: 0 },
+      { status: 'asignado', total: 3, overdue: 0, unassigned: 0 },
+      { status: 'en_ejecucion', total: 4, overdue: 2, unassigned: 0 },
+      { status: 'en_espera', total: 5, overdue: 0, unassigned: 0 },
+      { status: 'reporte_enviado', total: 6, overdue: 0, unassigned: 0 },
+      { status: 'validado', total: 7, overdue: 0, unassigned: 0 },
+      { status: 'aprobado', total: 8, overdue: 0, unassigned: 0 },
+    ]).map(({ key, count, filter }) => ({ key, count, filter })),
+  ).toEqual([
+    { key: 'vencidas', count: 4, filter: { overdueOnly: true } },
+    { key: 'por_aceptar', count: 1, filter: { quick: 'por_aceptar' } },
+    {
+      key: 'en_curso',
+      count: 14,
+      filter: { statuses: ['aceptado', 'asignado', 'en_ejecucion', 'en_espera'] },
+    },
+    { key: 'en_revision', count: 13, filter: { quick: 'en_revision' } },
+  ])
+  expect(getHomeCaseCards([]).map(({ count }) => count)).toEqual([0, 0, 0, 0])
 })
 
 test('la línea de datos muestra el plazo futuro o vencido', () => {

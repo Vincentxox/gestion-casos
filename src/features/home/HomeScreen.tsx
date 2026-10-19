@@ -11,6 +11,7 @@ import { OfflineBanner } from '@/components/feedback/OfflineBanner'
 import { RequestState } from '@/components/feedback/RequestState'
 import { Icon } from '@/components/ui/Icon'
 import { Avatar } from '@/components/ui/Avatar'
+import { OPEN_CASE_STATUSES } from '@/features/cases/caseSearch'
 import { useCaseCounts } from '@/features/cases/useCases'
 import { notificationTimeLabel } from '@/features/notifications/notificationPresentation'
 import { useNotifications } from '@/features/notifications/useNotifications'
@@ -20,7 +21,8 @@ import { colors, fonts, phaseColors, radius, spacing, typography } from '@/theme
 
 import {
   getGreeting,
-  getHomePhases,
+  getHomeCaseCards,
+  getHomeCaseView,
   getTodayNotifications,
   NEXT_STEP_BUTTON_LABELS,
   NEXT_STEP_LABELS,
@@ -34,14 +36,13 @@ import { useNextSteps } from './useNextSteps'
 
 type Props = BottomTabScreenProps<MainTabParamList, 'Home'>
 
-const PHASES = [
-  { key: 'por_aceptar', label: 'Por aceptar', color: phaseColors.nueva.fg, status: 'pendientes' },
-  { key: 'en_curso', label: 'En curso', color: phaseColors.curso.fg, status: 'en_curso' },
-  { key: 'en_revision', label: 'En revisión', color: phaseColors.revision.fg, status: 'en_curso' },
-  { key: 'cerradas', label: 'Cerradas', color: phaseColors.cerrada.fg, status: 'cerradas' },
-] as const
-
 const RING_CIRCUMFERENCE = 2 * Math.PI * 25
+const CARD_TONES = {
+  danger: colors.error,
+  new: phaseColors.nueva.fg,
+  course: phaseColors.curso.fg,
+  review: phaseColors.revision.fg,
+} as const
 
 export function HomeScreen({ navigation }: Props) {
   const profile = useAuthStore((state) => state.profile)
@@ -49,10 +50,14 @@ export function HomeScreen({ navigation }: Props) {
   const summary = useHomeSummary(enabled)
   const nextSteps = useNextSteps(enabled)
   const notifications = useNotifications()
+  const homeCaseView = profile
+    ? getHomeCaseView(profile.role, summary.data?.area_kind ?? null)
+    : null
+  const countScope = homeCaseView?.scope
   const counts = useCaseCounts(
     {
-      scope: 'mias',
-      statuses: null,
+      scope: countScope ?? 'todas',
+      statuses: OPEN_CASE_STATUSES,
       priorities: null,
       createdFrom: null,
       createdTo: null,
@@ -61,7 +66,7 @@ export function HomeScreen({ navigation }: Props) {
       searchText: null,
       sort: 'recientes',
     },
-    enabled,
+    enabled && Boolean(countScope),
   )
   const firstSteps = useFirstSteps(profile?.id)
   const [nextIndex, setNextIndex] = useState(0)
@@ -76,10 +81,10 @@ export function HomeScreen({ navigation }: Props) {
       if (enabled) {
         void refetchSummary()
         void refetchNext()
-        void refetchCounts()
+        if (countScope) void refetchCounts()
         void refetchNotifications()
       }
-    }, [enabled, refetchSummary, refetchNext, refetchCounts, refetchNotifications]),
+    }, [enabled, countScope, refetchSummary, refetchNext, refetchCounts, refetchNotifications]),
   )
   if (!profile) return null
 
@@ -90,7 +95,8 @@ export function HomeScreen({ navigation }: Props) {
   const items = nextSteps.data?.items ?? []
   const currentIndex = items.length ? nextIndex % items.length : 0
   const currentStep = nextSteps.isError ? undefined : items[currentIndex]
-  const phases = getHomePhases(counts.data ?? [])
+  const caseCards = getHomeCaseCards(counts.data ?? [])
+  const noNextStep = !nextSteps.isLoading && !nextSteps.isError && !currentStep
   const today = getTodayNotifications(notifications.data ?? [], now)
   const rawFirstName = profile.fullName.trim().split(/\s+/)[0] || 'usuario'
   const firstName = rawFirstName.charAt(0).toLocaleUpperCase('es-GT') + rawFirstName.slice(1)
@@ -129,7 +135,7 @@ export function HomeScreen({ navigation }: Props) {
             onRefresh={() => {
               void summary.refetch()
               void nextSteps.refetch()
-              void counts.refetch()
+              if (countScope) void counts.refetch()
               void notifications.refetch()
             }}
           />
@@ -164,7 +170,10 @@ export function HomeScreen({ navigation }: Props) {
           <Text accessibilityRole="header" style={styles.title}>
             {getGreeting(now.getHours())}, {firstName}
           </Text>
-          <Text style={styles.subtitle}>{profile.areaName || 'Sin área asignada'}</Text>
+          <View style={styles.areaRow}>
+            <Text style={styles.subtitle}>{profile.areaName || 'Sin área asignada'}</Text>
+            {noNextStep ? <Text style={styles.upToDate}>✓ Estás al día</Text> : null}
+          </View>
         </View>
 
         <OfflineBanner />
@@ -235,93 +244,115 @@ export function HomeScreen({ navigation }: Props) {
           </View>
         ) : null}
 
-        <View style={styles.section}>
-          <Text accessibilityRole="header" style={styles.sectionTitle}>
-            Tu siguiente paso
-          </Text>
-          {nextSteps.isLoading ? (
-            <RequestState kind="loading" title="Buscando tu siguiente paso…" />
-          ) : null}
-          {nextSteps.isError ? (
-            <RequestState
-              kind="error"
-              title="No pudimos cargar tu siguiente paso"
-              onRetry={() => void nextSteps.refetch()}
-            />
-          ) : null}
-          {!nextSteps.isLoading && !nextSteps.isError && !currentStep ? (
-            <Text style={styles.quietEmpty}>Estás al día</Text>
-          ) : null}
-          {currentStep ? (
-            <View style={items.length > 1 ? styles.stackBack : undefined}>
-              <View style={styles.stackCard}>
-                <View style={styles.nextTop}>
-                  <Text style={styles.stepCounter}>
-                    {currentIndex + 1} de {nextSteps.data?.total ?? items.length}
-                  </Text>
-                  <Text style={[styles.deadline, currentStep.overdueStage && styles.overdue]}>
-                    {nextStepDeadlineLabel(currentStep, now)}
-                  </Text>
-                </View>
-                <View style={styles.nextActionRow}>
-                  <View
-                    style={[
-                      styles.stepIcon,
-                      {
-                        backgroundColor:
-                          phaseColors[NEXT_STEP_VISUALS[currentStep.action].phase].bg,
-                      },
-                    ]}
-                  >
-                    <Icon
-                      name={NEXT_STEP_VISUALS[currentStep.action].icon}
-                      color={phaseColors[NEXT_STEP_VISUALS[currentStep.action].phase].fg}
-                    />
-                  </View>
-                  <Text style={styles.nextAction}>{NEXT_STEP_LABELS[currentStep.action]}</Text>
-                </View>
-                <Text style={styles.nextCase}>{currentStep.title}</Text>
-                <Text style={styles.nextMeta}>
-                  {currentStep.caseNumber} · prioridad {currentStep.priority} ·{' '}
-                  {nextStepDueMeta(currentStep, now)}
-                </Text>
-                <View style={styles.nextActions}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Luego"
-                    onPress={() => setNextIndex((value) => value + 1)}
-                    style={styles.secondaryAction}
-                  >
-                    <Text style={styles.secondaryText}>Luego</Text>
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`${NEXT_STEP_BUTTON_LABELS[currentStep.action]} ${currentStep.caseNumber}, abre el detalle`}
-                    onPress={() =>
-                      navigation.navigate('CasesTab', {
-                        screen: 'CaseDetail',
-                        params: { caseId: currentStep.id },
-                        initial: false,
-                      })
-                    }
-                    style={styles.primaryAction}
-                  >
-                    <Text style={styles.primaryText}>
-                      {NEXT_STEP_BUTTON_LABELS[currentStep.action]}
+        {nextSteps.isLoading || nextSteps.isError || currentStep ? (
+          <View style={styles.section}>
+            <Text accessibilityRole="header" style={styles.sectionTitle}>
+              Tu siguiente paso
+            </Text>
+            {nextSteps.isLoading ? (
+              <RequestState kind="loading" title="Buscando tu siguiente paso…" />
+            ) : null}
+            {nextSteps.isError ? (
+              <RequestState
+                kind="error"
+                title="No pudimos cargar tu siguiente paso"
+                onRetry={() => void nextSteps.refetch()}
+              />
+            ) : null}
+            {currentStep ? (
+              <View style={items.length > 1 ? styles.stackBack : undefined}>
+                <View style={styles.stackCard}>
+                  <View style={styles.nextTop}>
+                    <Text style={styles.stepCounter}>
+                      {currentIndex + 1} de {nextSteps.data?.total ?? items.length}
                     </Text>
-                    <Icon name="arrow-forward" size="inline" color={colors.white} />
-                  </Pressable>
+                    <Text style={[styles.deadline, currentStep.overdueStage && styles.overdue]}>
+                      {nextStepDeadlineLabel(currentStep, now)}
+                    </Text>
+                  </View>
+                  <View style={styles.nextActionRow}>
+                    <View
+                      style={[
+                        styles.stepIcon,
+                        {
+                          backgroundColor:
+                            phaseColors[NEXT_STEP_VISUALS[currentStep.action].phase].bg,
+                        },
+                      ]}
+                    >
+                      <Icon
+                        name={NEXT_STEP_VISUALS[currentStep.action].icon}
+                        color={phaseColors[NEXT_STEP_VISUALS[currentStep.action].phase].fg}
+                      />
+                    </View>
+                    <Text style={styles.nextAction}>{NEXT_STEP_LABELS[currentStep.action]}</Text>
+                  </View>
+                  <Text style={styles.nextCase}>{currentStep.title}</Text>
+                  <Text style={styles.nextMeta}>
+                    {currentStep.caseNumber} · prioridad {currentStep.priority} ·{' '}
+                    {nextStepDueMeta(currentStep, now)}
+                  </Text>
+                  <View style={styles.nextActions}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Luego"
+                      onPress={() => setNextIndex((value) => value + 1)}
+                      style={styles.secondaryAction}
+                    >
+                      <Text style={styles.secondaryText}>Luego</Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`${NEXT_STEP_BUTTON_LABELS[currentStep.action]} ${currentStep.caseNumber}, abre el detalle`}
+                      onPress={() =>
+                        navigation.navigate('CasesTab', {
+                          screen: 'CaseDetail',
+                          params: { caseId: currentStep.id },
+                          initial: false,
+                        })
+                      }
+                      style={styles.primaryAction}
+                    >
+                      <Text style={styles.primaryText}>
+                        {NEXT_STEP_BUTTON_LABELS[currentStep.action]}
+                      </Text>
+                      <Icon name="arrow-forward" size="inline" color={colors.white} />
+                    </Pressable>
+                  </View>
                 </View>
               </View>
-            </View>
-          ) : null}
-        </View>
+            ) : null}
+          </View>
+        ) : null}
 
         <View style={styles.section}>
-          <Text accessibilityRole="header" style={styles.sectionTitle}>
-            Tus solicitudes
-          </Text>
-          {counts.isLoading ? (
+          <View style={styles.sectionTitleRow}>
+            <Text accessibilityRole="header" style={styles.sectionTitle}>
+              {homeCaseView?.title ?? 'Solicitudes'}
+            </Text>
+            {homeCaseView ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Ver todas las solicitudes abiertas"
+                onPress={() =>
+                  navigation.navigate('CasesTab', {
+                    screen: 'Cases',
+                    params: { scope: homeCaseView.scope, status: 'abiertas' },
+                  })
+                }
+                style={styles.smallAction}
+              >
+                <Text style={styles.actionText}>Ver todas</Text>
+              </Pressable>
+            ) : null}
+          </View>
+          {!homeCaseView && summary.isError ? (
+            <RequestState
+              kind="error"
+              title="No pudimos cargar tus solicitudes"
+              onRetry={() => void summary.refetch()}
+            />
+          ) : !homeCaseView || counts.isLoading ? (
             <RequestState kind="loading" title="Cargando tus solicitudes…" />
           ) : null}
           {counts.isError ? (
@@ -331,43 +362,42 @@ export function HomeScreen({ navigation }: Props) {
               onRetry={() => void counts.refetch()}
             />
           ) : null}
-          {!counts.isLoading && !counts.isError ? (
-            <View style={styles.phaseCard}>
-              <Text style={styles.phaseTotal}>{phases.total} abiertas y cerradas</Text>
-              <View style={styles.phaseBar}>
-                {PHASES.map((phase) => {
-                  const value = phases[phase.key]
-                  return value > 0 ? (
-                    <View key={phase.key} style={{ flex: value, backgroundColor: phase.color }} />
-                  ) : null
-                })}
-                {phases.total === 0 ? <View style={styles.phaseEmpty} /> : null}
-              </View>
-              <View style={styles.phaseLegend}>
-                {PHASES.map((phase) => (
-                  <Pressable
-                    key={phase.key}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${phase.label}, ${phases[phase.key]} ${phases[phase.key] === 1 ? 'solicitud' : 'solicitudes'}`}
-                    onPress={() =>
-                      navigation.navigate('CasesTab', {
-                        screen: 'Cases',
-                        params: {
-                          scope: 'mias',
-                          status: phase.status,
-                          ...(phase.key === 'por_aceptar' ? { exactStatus: 'solicitado' } : {}),
-                        },
-                      })
-                    }
-                    style={styles.phaseItem}
+          {homeCaseView && !counts.isLoading && !counts.isError ? (
+            <View style={styles.caseGrid}>
+              {caseCards.map((card) => (
+                <Pressable
+                  key={card.key}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${card.label}, ${card.count} ${card.count === 1 ? 'solicitud' : 'solicitudes'}`}
+                  onPress={() =>
+                    navigation.navigate('CasesTab', {
+                      screen: 'Cases',
+                      params: {
+                        scope: homeCaseView.scope,
+                        status: 'abiertas',
+                        ...card.filter,
+                      },
+                    })
+                  }
+                  style={[
+                    styles.caseTile,
+                    card.key === 'vencidas' && card.count > 0 && styles.caseTileOverdue,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.caseCount,
+                      card.key === 'vencidas' && card.count > 0 && styles.caseCountOverdue,
+                    ]}
                   >
-                    <View style={[styles.phaseDot, { backgroundColor: phase.color }]} />
-                    <Text style={styles.phaseLabel}>
-                      {phase.label} {phases[phase.key]}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
+                    {card.count}
+                  </Text>
+                  <View style={styles.caseTileLabel}>
+                    <View style={[styles.caseDot, { backgroundColor: CARD_TONES[card.tone] }]} />
+                    <Text style={styles.caseLabel}>{card.label}</Text>
+                  </View>
+                </Pressable>
+              ))}
             </View>
           ) : null}
         </View>
@@ -489,7 +519,16 @@ const styles = StyleSheet.create({
   header: { gap: spacing.xs },
   eyebrow: { ...typography.caption, color: colors.textMuted },
   title: { ...typography.display, fontSize: 34, lineHeight: 40, color: colors.ink },
+  areaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
   subtitle: { ...typography.caption, color: colors.textMuted },
+  upToDate: {
+    ...typography.caption,
+    color: colors.success,
+    backgroundColor: colors.successSoft,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
   section: { gap: spacing.sm },
   sectionTitleRow: {
     minHeight: 44,
@@ -565,27 +604,24 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   primaryText: { ...typography.caption, fontFamily: fonts.bold, color: colors.white },
-  phaseCard: {
+  caseGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  caseTile: {
+    flexBasis: '47%',
+    flexGrow: 1,
+    minHeight: 88,
     padding: spacing.md,
-    gap: spacing.md,
+    gap: spacing.xs,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     backgroundColor: colors.surface,
   },
-  phaseTotal: { ...typography.caption, color: colors.textMuted },
-  phaseBar: {
-    height: 8,
-    borderRadius: radius.pill,
-    overflow: 'hidden',
-    flexDirection: 'row',
-    backgroundColor: colors.track,
-  },
-  phaseEmpty: { flex: 1, backgroundColor: colors.track },
-  phaseLegend: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  phaseItem: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  phaseDot: { width: 8, height: 8, borderRadius: radius.pill },
-  phaseLabel: { ...typography.caption, color: colors.text },
+  caseTileOverdue: { backgroundColor: colors.dangerSoft, borderColor: colors.dangerBorder },
+  caseCount: { ...typography.display, color: colors.ink },
+  caseCountOverdue: { color: colors.error },
+  caseTileLabel: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  caseDot: { width: 8, height: 8, borderRadius: radius.pill },
+  caseLabel: { ...typography.caption, color: colors.textMuted },
   todayRow: {
     minHeight: 64,
     flexDirection: 'row',

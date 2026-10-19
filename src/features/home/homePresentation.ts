@@ -1,5 +1,8 @@
 import type { CaseStatus } from '@/features/cases/types'
 import type { CaseStatusCount } from '@/features/cases/caseSearch'
+import { OPEN_CASE_STATUSES } from '@/features/cases/caseSearch'
+import type { AppRole } from '@/features/auth/types'
+import type { ScopeFilter } from '@/features/cases/caseListPresentation'
 import type { IconName } from '@/components/ui/Icon'
 import type { phaseColors } from '@/theme/tokens'
 import { plural } from '@/theme/formatters'
@@ -37,21 +40,72 @@ export const NEXT_STEP_VISUALS: Record<
   aprobar_reporte: { icon: 'ribbon-outline', phase: 'cerrada' },
 }
 
-export function getHomePhases(counts: CaseStatusCount[]) {
-  const byStatus = new Map(counts.map(({ status, total }) => [status, total]))
-  const sum = (statuses: CaseStatus[]) =>
-    statuses.reduce((total, status) => total + (byStatus.get(status) ?? 0), 0)
-  const por_aceptar = sum(['solicitado'])
-  const en_curso = sum(['aceptado', 'asignado', 'en_ejecucion', 'en_espera'])
-  const en_revision = sum(['reporte_enviado', 'validado'])
-  const cerradas = sum(['aprobado', 'rechazado', 'cancelado'])
-  return {
-    por_aceptar,
-    en_curso,
-    en_revision,
-    cerradas,
-    total: por_aceptar + en_curso + en_revision + cerradas,
-  }
+export function getHomeCaseView(
+  role: AppRole,
+  areaKind: 'solicitante' | 'tecnica' | null,
+): { title: string; scope: ScopeFilter } | null {
+  if (role === 'tecnico') return { title: 'Tu área', scope: 'mi_area' }
+  if (role === 'jefe_area' && areaKind === 'tecnica')
+    return { title: 'Tu área', scope: 'area_atiende' }
+  if (role === 'solicitante' || (role === 'jefe_area' && areaKind === 'solicitante'))
+    return { title: 'Tus solicitudes', scope: 'mias' }
+  if (role === 'jefe_area') return null
+  return { title: 'Solicitudes', scope: 'todas' }
+}
+
+const IN_PROGRESS_STATUSES: CaseStatus[] = ['aceptado', 'asignado', 'en_ejecucion', 'en_espera']
+
+const HOME_CASE_CARD_DEFINITIONS: {
+  key: 'vencidas' | 'por_aceptar' | 'en_curso' | 'en_revision'
+  label: string
+  statuses: CaseStatus[]
+  filter:
+    { overdueOnly: true } | { quick: 'por_aceptar' | 'en_revision' } | { statuses: CaseStatus[] }
+  tone: 'danger' | 'new' | 'course' | 'review'
+}[] = [
+  {
+    key: 'vencidas',
+    label: 'Vencidas',
+    statuses: OPEN_CASE_STATUSES,
+    filter: { overdueOnly: true },
+    tone: 'danger',
+  },
+  {
+    key: 'por_aceptar',
+    label: 'Por aceptar',
+    statuses: ['solicitado'],
+    filter: { quick: 'por_aceptar' },
+    tone: 'new',
+  },
+  {
+    key: 'en_curso',
+    label: 'En curso',
+    statuses: IN_PROGRESS_STATUSES,
+    filter: { statuses: IN_PROGRESS_STATUSES },
+    tone: 'course',
+  },
+  {
+    key: 'en_revision',
+    label: 'En revisión',
+    statuses: ['reporte_enviado', 'validado'],
+    filter: { quick: 'en_revision' },
+    tone: 'review',
+  },
+]
+
+export function getHomeCaseCards(counts: CaseStatusCount[]) {
+  const byStatus = new Map(counts.map((row) => [row.status, row]))
+  return HOME_CASE_CARD_DEFINITIONS.map((card) => ({
+    ...card,
+    count: card.statuses.reduce(
+      (total, status) =>
+        total +
+        (card.key === 'vencidas'
+          ? (byStatus.get(status)?.overdue ?? 0)
+          : (byStatus.get(status)?.total ?? 0)),
+      0,
+    ),
+  }))
 }
 
 export function nextStepDueMeta(item: Pick<NextStepCase, 'dueAt'>, now: Date) {
