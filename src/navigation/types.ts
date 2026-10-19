@@ -1,6 +1,7 @@
 import type { NavigatorScreenParams } from '@react-navigation/native'
 import type { CaseAction, CaseStatus } from '@/features/cases/types'
 import type { ScopeFilter, StatusFilter } from '@/features/cases/caseListPresentation'
+import type { QuickStatusFilter } from '@/features/cases/caseSearch'
 
 export type AuthStackParamList = {
   Login: undefined
@@ -13,6 +14,9 @@ export type MainStackParamList = {
         scope?: ScopeFilter
         status?: StatusFilter
         exactStatus?: CaseStatus
+        quick?: QuickStatusFilter
+        overdueOnly?: boolean
+        statuses?: CaseStatus[]
         priority?: 'alta'
         sinceDays?: number
         activeOnly?: boolean

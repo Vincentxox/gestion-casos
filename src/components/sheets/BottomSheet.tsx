@@ -32,6 +32,7 @@ interface BottomSheetProps {
   onClose: () => void
   children: ReactNode
   footerAction?: FooterAction
+  footerSecondaryAction?: Pick<FooterAction, 'label' | 'onPress' | 'disabled'>
   form?: boolean
   scrollable?: boolean
   height?: DimensionValue
@@ -46,6 +47,7 @@ export function BottomSheet({
   onClose,
   children,
   footerAction,
+  footerSecondaryAction,
   form = false,
   scrollable = true,
   height,
@@ -109,13 +111,29 @@ export function BottomSheet({
           </View>
           {content}
           {footerAction ? (
-            <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
+            <View
+              style={[
+                styles.footer,
+                footerSecondaryAction && styles.footerRow,
+                { paddingBottom: Math.max(insets.bottom, spacing.md) },
+              ]}
+            >
+              {footerSecondaryAction ? (
+                <Button
+                  label={footerSecondaryAction.label}
+                  onPress={footerSecondaryAction.onPress}
+                  disabled={footerSecondaryAction.disabled}
+                  variant="secondary"
+                  containerStyle={styles.secondaryAction}
+                />
+              ) : null}
               <Button
                 label={footerAction.label}
                 loading={footerAction.loading}
                 disabled={footerAction.disabled}
                 onPress={footerAction.onPress}
                 variant={footerAction.variant ?? 'primary'}
+                containerStyle={footerSecondaryAction ? styles.primaryAction : undefined}
               />
             </View>
           ) : (
@@ -171,4 +189,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
   },
+  footerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  secondaryAction: { flexGrow: 0 },
+  primaryAction: { flex: 1 },
 })

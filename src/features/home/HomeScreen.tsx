@@ -53,10 +53,13 @@ export function HomeScreen({ navigation }: Props) {
     {
       scope: 'mias',
       statuses: null,
-      priority: null,
-      updatedSince: null,
+      priorities: null,
+      createdFrom: null,
+      createdTo: null,
+      overdueOnly: false,
+      unassignedOnly: false,
       searchText: null,
-      sortPending: false,
+      sort: 'recientes',
     },
     enabled,
   )

@@ -182,7 +182,7 @@ export function UsersScreen() {
                 onPress={() => openProfile(item)}
                 contentStyle={styles.card}
               >
-                <Avatar name={item.fullName} id={item.id} size={44} />
+                <Avatar name={item.fullName} id={item.id} avatarPath={item.avatarPath} size={44} />
                 <View style={styles.cardContent}>
                   <Text style={styles.name}>{item.fullName}</Text>
                   <Chip icon={ROLE_ICONS[item.role]} label={ROLE_LABELS[item.role]} />

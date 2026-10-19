@@ -99,6 +99,7 @@ export function AssignCaseScreen({ navigation, route }: Props) {
               <Avatar
                 name={detail.data.assigneeName || currentAssignee?.fullName || 'Responsable actual'}
                 id={detail.data.assignedTo}
+                avatarPath={detail.data.assigneeAvatarPath ?? currentAssignee?.avatarPath}
                 size={44}
                 tone="neutral"
               />
@@ -151,6 +152,7 @@ export function AssignCaseScreen({ navigation, route }: Props) {
             id={item.id}
             key={item.id}
             label={item.fullName}
+            avatarPath={item.avatarPath}
             onPress={() => setSelectedId(item.id)}
             selected={selectedId === item.id}
             subtitle={`${ROLE_LABELS[item.role]} · ${item.areaName || 'Sin área'}`}
@@ -196,12 +198,14 @@ export function AssignCaseScreen({ navigation, route }: Props) {
 function ProfileOption({
   id,
   label,
+  avatarPath,
   onPress,
   selected,
   subtitle,
 }: {
   id: string
   label: string
+  avatarPath?: string | null
   onPress: () => void
   selected: boolean
   subtitle: string
@@ -214,7 +218,7 @@ function ProfileOption({
       onPress={onPress}
       style={[styles.option, selected ? styles.optionSelected : null]}
     >
-      <Avatar name={label} id={id} size={44} />
+      <Avatar name={label} id={id} avatarPath={avatarPath} size={44} />
       <View style={styles.optionContent}>
         <Text style={styles.optionTitle}>{label}</Text>
         <Text style={styles.optionSubtitle}>{subtitle}</Text>

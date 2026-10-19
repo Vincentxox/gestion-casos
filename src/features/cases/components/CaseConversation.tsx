@@ -53,11 +53,13 @@ function EventLine({ text, tone }: { text: string; tone: 'start' | 'step' }) {
 function Bubble({
   name,
   id,
+  avatarPath,
   children,
   own = false,
 }: {
   name: string
   id: string
+  avatarPath?: string | null
   children: ReactNode
   own?: boolean
 }) {
@@ -68,7 +70,7 @@ function Bubble({
     >
       {!own ? (
         <View style={styles.rail}>
-          <Avatar name={name} id={id} size={28} />
+          <Avatar name={name} id={id} avatarPath={avatarPath} size={28} />
         </View>
       ) : null}
       <View style={[styles.bubble, own && styles.ownBubble]}>{children}</View>
@@ -102,7 +104,7 @@ export function CaseConversation({
         tone="start"
         text={`${formatEventMoment(item.createdAt)} · ${item.creatorName} creó la solicitud`}
       />
-      <Bubble name={item.creatorName} id={item.createdBy}>
+      <Bubble name={item.creatorName} id={item.createdBy} avatarPath={item.creatorAvatarPath}>
         <Text style={styles.bubbleText}>{item.description}</Text>
         <Text style={styles.bubbleMeta}>{item.location}</Text>
       </Bubble>
@@ -112,6 +114,7 @@ export function CaseConversation({
             <Bubble
               name={event.actorName}
               id={event.actorId ?? event.actorName}
+              avatarPath={event.actorAvatarPath}
               own={Boolean(currentUserId && event.actorId === currentUserId)}
             >
               <Text style={styles.bubbleText}>{event.comment}</Text>
@@ -127,7 +130,11 @@ export function CaseConversation({
               text={`${formatEventMoment(event.createdAt)} · ${describeEvent(event)}`}
             />
             {event.comment ? (
-              <Bubble name={event.actorName} id={event.actorName}>
+              <Bubble
+                name={event.actorName}
+                id={event.actorName}
+                avatarPath={event.actorAvatarPath}
+              >
                 <Text style={styles.bubbleText}>{event.comment}</Text>
               </Bubble>
             ) : null}

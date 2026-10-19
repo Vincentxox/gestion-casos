@@ -1,5 +1,5 @@
 import type { Profile } from '@/features/auth/types'
-import { getScopeOptions, matchesCaseScope } from '../caseListPresentation'
+import { getPrimaryScopeOptions, getScopeOptions, matchesCaseScope } from '../caseListPresentation'
 import type { CaseRecord } from '../types'
 
 const profile: Profile = {
@@ -36,10 +36,11 @@ const item: CaseRecord = {
   updatedAt: '',
 }
 
-test('el técnico puede consultar también todos los casos que RLS le permite ver', () => {
-  expect(getScopeOptions(profile, 'tecnica')).toEqual(['mis_trabajos', 'mi_area', 'todas'])
+test('el técnico ve sus trabajos y su área; los alcances antiguos siguen aceptados', () => {
+  expect(getScopeOptions(profile, 'tecnica')).toEqual(['mis_trabajos', 'mi_area'])
   expect(matchesCaseScope(item, 'mis_trabajos', profile)).toBe(false)
   expect(matchesCaseScope(item, 'mi_area', profile)).toBe(true)
+  expect(matchesCaseScope(item, 'todas', profile)).toBe(true)
 })
 
 test('la bandeja técnica incluye aceptadas sin asignar', () => {
@@ -52,20 +53,36 @@ test('la bandeja técnica incluye aceptadas sin asignar', () => {
 test('ofrece los alcances adecuados a cada rol', () => {
   expect(getScopeOptions({ ...profile, role: 'solicitante' }, 'solicitante')).toEqual([])
   expect(getScopeOptions({ ...profile, role: 'jefe_area' }, 'tecnica')).toEqual([
-    'bandeja',
-    'mi_area',
-    'todas',
+    'area_atiende',
+    'area_envia',
   ])
   expect(getScopeOptions({ ...profile, role: 'jefe_area' }, 'solicitante')).toEqual([
     'mi_area',
     'mias',
-    'todas',
   ])
-  expect(getScopeOptions({ ...profile, role: 'administrador' }, null)).toEqual(['todas', 'bandeja'])
+  expect(getScopeOptions({ ...profile, role: 'administrador' }, null)).toEqual(['todas'])
   expect(getScopeOptions({ ...profile, role: 'auditor' }, null)).toEqual(['todas'])
   expect(
     matchesCaseScope(item, 'bandeja', { ...profile, role: 'administrador', areaId: null }),
   ).toBe(true)
+})
+
+test('el selector compacto ofrece dos alcances útiles según el rol', () => {
+  expect(getPrimaryScopeOptions({ ...profile, role: 'administrador' }, null)).toEqual(['todas'])
+  expect(getPrimaryScopeOptions(profile, 'tecnica')).toEqual(['mis_trabajos', 'mi_area'])
+  expect(getPrimaryScopeOptions({ ...profile, role: 'jefe_area' }, 'tecnica')).toEqual([
+    'area_atiende',
+    'area_envia',
+  ])
+  expect(getPrimaryScopeOptions({ ...profile, role: 'jefe_area' }, 'solicitante')).toEqual([
+    'mi_area',
+    'mias',
+  ])
+  expect(getPrimaryScopeOptions({ ...profile, role: 'solicitante' }, 'solicitante')).toEqual([
+    'todas',
+    'mias',
+  ])
+  expect(getPrimaryScopeOptions({ ...profile, role: 'auditor' }, null)).toEqual(['todas'])
 })
 
 test('filtra bandeja, autor, estados y asignaciones sin depender de la UI', () => {
@@ -76,4 +93,8 @@ test('filtra bandeja, autor, estados y asignaciones sin depender de la UI', () =
   expect(matchesCaseScope({ ...item, status: 'en_ejecucion' }, 'en_curso', profile)).toBe(true)
   expect(matchesCaseScope({ ...item, status: 'aprobado' }, 'en_curso', profile)).toBe(false)
   expect(matchesCaseScope(item, 'todas', profile)).toBe(true)
+  expect(matchesCaseScope(item, 'area_atiende', profile)).toBe(true)
+  expect(matchesCaseScope(item, 'area_envia', profile)).toBe(false)
+  expect(matchesCaseScope(item, 'area_envia', { ...profile, areaId: 'office' })).toBe(true)
+  expect(matchesCaseScope(item, 'mi_area', { ...profile, areaId: 'office' })).toBe(true)
 })
