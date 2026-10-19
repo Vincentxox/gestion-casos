@@ -96,13 +96,11 @@ export function buildCaseSearchFilters(input: CaseListFilterInput): CaseSearchFi
       : input.tab === 'cerradas'
         ? [...CLOSED_CASE_STATUSES]
         : null
-  const required = input.exactStatus
-    ? [input.exactStatus]
-    : input.quickStatus
-      ? QUICK_STATUSES[input.quickStatus]
-      : null
-  if (required)
-    statuses = statuses ? statuses.filter((status) => required.includes(status)) : required
+  const requiredFilters: CaseStatus[][] = []
+  if (input.exactStatus) requiredFilters.push([input.exactStatus])
+  if (input.quickStatus) requiredFilters.push(QUICK_STATUSES[input.quickStatus])
+  for (const required of requiredFilters)
+    statuses = statuses ? statuses.filter((status) => required.includes(status)) : [...required]
   if (input.legacyStatuses)
     statuses = statuses
       ? statuses.filter((status) => input.legacyStatuses?.includes(status))
@@ -125,13 +123,42 @@ export function buildCaseSearchFilters(input: CaseListFilterInput): CaseSearchFi
   }
 }
 
-export function getCaseSegments(counts: CaseStatusCount[]) {
-  const byStatus = new Map(counts.map(({ status, total }) => [status, total]))
+export function getCaseSegments(
+  counts: CaseStatusCount[],
+  quickStatus: QuickStatusFilter | null = null,
+  overdueOnly = false,
+) {
+  const byStatus = new Map(
+    counts.map((row) => [
+      row.status,
+      quickStatus && !QUICK_STATUSES[quickStatus].includes(row.status)
+        ? 0
+        : quickStatus === 'sin_asignar'
+          ? row.unassigned
+          : overdueOnly
+            ? row.overdue
+            : row.total,
+    ]),
+  )
   const count = (statuses: CaseStatus[]) =>
     statuses.reduce((sum, status) => sum + (byStatus.get(status) ?? 0), 0)
   return {
     abiertas: count(OPEN_CASE_STATUSES),
     cerradas: count(CLOSED_CASE_STATUSES),
     todas: count([...OPEN_CASE_STATUSES, ...CLOSED_CASE_STATUSES]),
+  }
+}
+
+/** Conteos de accesos rápidos sobre las filas ya filtradas por la RPC. */
+export function getQuickFilterCounts(counts: CaseStatusCount[]) {
+  const byStatus = new Map(counts.map((row) => [row.status, row]))
+  const total = (status: CaseStatus) => byStatus.get(status)?.total ?? 0
+  return {
+    vencidas: counts.reduce((sum, row) => sum + row.overdue, 0),
+    por_aceptar: total('solicitado'),
+    sin_asignar: byStatus.get('aceptado')?.unassigned ?? 0,
+    en_ejecucion: total('en_ejecucion'),
+    en_espera: total('en_espera'),
+    en_revision: total('reporte_enviado') + total('validado'),
   }
 }

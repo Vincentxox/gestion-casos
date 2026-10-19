@@ -28,15 +28,16 @@ import { useAuthStore } from '@/store/authStore'
 import { statusMeta } from '@/theme/statusMeta'
 import { colors, elevation, fonts, radius, spacing, typography } from '@/theme/tokens'
 
-import type { CasePriority, CaseRecord } from '../types'
+import { CASE_STATUSES, type CasePriority, type CaseRecord } from '../types'
 import { groupCasesByDay } from '../caseDateGroups'
 import { CaseCard } from '../components/CaseCard'
 import { useCaseCounts, useCases } from '../useCases'
-import { getPrimaryScopeOptions, type ScopeFilter } from '../caseListPresentation'
+import { getPrimaryScopeOptions, getScopeOptions, type ScopeFilter } from '../caseListPresentation'
 import {
   buildCaseSearchFilters,
   CLOSED_CASE_STATUSES,
   getCaseSegments,
+  getQuickFilterCounts,
   validateCreatedRange,
   type CaseListTab,
   type CaseSort,
@@ -130,10 +131,10 @@ export function CasesListScreen({ navigation, route }: Props) {
           route.params?.scope === 'sin_asignar' ||
           Boolean(route.params?.exactStatus)
         ? 'abiertas'
-        : 'todas'
+        : 'abiertas'
   const status = selection?.key === routeKey ? (selection.status ?? initialTab) : initialTab
   const scope = routeFilters?.scope ?? null
-  const exactStatus = routeFilters?.exactStatus ?? null
+  const routeExactStatus = routeFilters?.exactStatus ?? null
   const legacyStatuses =
     selection?.key === routeKey ? (selection.legacyStatuses ?? null) : routeLegacyStatuses
   const priority = route.params?.priority ?? null
@@ -149,11 +150,17 @@ export function CasesListScreen({ navigation, route }: Props) {
   const overdueOnly = selection?.key === routeKey ? (selection.overdueOnly ?? false) : false
   const sort = selection?.key === routeKey ? (selection.sort ?? 'recientes') : 'recientes'
   const routeQuickStatus: QuickStatusFilter | null =
-    scope === 'por_aceptar' || (scope === 'bandeja' && exactStatus === 'solicitado')
+    scope === 'por_aceptar' || (scope === 'bandeja' && routeExactStatus === 'solicitado')
       ? 'por_aceptar'
-      : scope === 'sin_asignar' || (scope === 'bandeja' && exactStatus === 'aceptado')
+      : scope === 'sin_asignar' || (scope === 'bandeja' && routeExactStatus === 'aceptado')
         ? 'sin_asignar'
         : null
+  const exactStatus =
+    routeQuickStatus &&
+    ((routeQuickStatus === 'por_aceptar' && routeExactStatus === 'solicitado') ||
+      (routeQuickStatus === 'sin_asignar' && routeExactStatus === 'aceptado'))
+      ? null
+      : routeExactStatus
   const quickStatus =
     selection?.key === routeKey ? (selection.quickStatus ?? null) : routeQuickStatus
   const dateError = validateCreatedRange(fromDateDraft.trim() || null, toDateDraft.trim() || null)
@@ -182,6 +189,11 @@ export function CasesListScreen({ navigation, route }: Props) {
   const primaryScopes = profile
     ? getPrimaryScopeOptions(profile, home.data?.area_kind ?? null)
     : (['todas'] as const)
+  const extraScopes = profile
+    ? getScopeOptions(profile, home.data?.area_kind ?? null).filter(
+        (value) => value !== 'bandeja' && !primaryScopes.includes(value),
+      )
+    : []
   const effectiveScope =
     scope === 'bandeja' || scope === 'por_aceptar' || scope === 'sin_asignar'
       ? primaryScopes[0]
@@ -203,7 +215,14 @@ export function CasesListScreen({ navigation, route }: Props) {
     now: filterNow,
   }
   const filters = buildCaseSearchFilters(filterInput)
-  const countFilters = buildCaseSearchFilters({ ...filterInput, tab: 'todas' })
+  // Una sola respuesta base permite contar cada chip como alternativa al activo.
+  // Conserva alcance, búsqueda, prioridad, fecha y estado exacto.
+  const countFilters = buildCaseSearchFilters({
+    ...filterInput,
+    tab: 'todas',
+    quickStatus: null,
+    overdueOnly: false,
+  })
   const {
     data,
     error,
@@ -224,18 +243,25 @@ export function CasesListScreen({ navigation, route }: Props) {
     const timeout = setTimeout(() => setAnimateInitialList(false), 600)
     return () => clearTimeout(timeout)
   }, [animateInitialList, isLoading, error, filteredCases.length])
-  const segmentCounts = counts.data ? getCaseSegments(counts.data) : null
+  const segmentCounts = counts.data ? getCaseSegments(counts.data, quickStatus, overdueOnly) : null
+  const quickCounts = counts.data ? getQuickFilterCounts(counts.data) : null
   const segments = (Object.keys(STATUS_LABELS) as CaseListTab[]).map((value) => ({
     value,
     label: STATUS_LABELS[value],
     count: segmentCounts?.[value],
   }))
-  const extraScope = scope && !primaryScopes.includes(scope) && !routeQuickStatus ? scope : null
+  const quickChips = [
+    { key: 'vencidas', label: 'Vencidas', count: quickCounts?.vencidas },
+    ...(Object.keys(QUICK_LABELS) as QuickStatusFilter[]).map((key) => ({
+      key,
+      label: QUICK_LABELS[key],
+      count: quickCounts?.[key],
+    })),
+  ] as const
+  const extraScope = scope && extraScopes.includes(scope) ? scope : null
   const chips = [
     ...(quickStatus ? [{ key: 'quickStatus', label: QUICK_LABELS[quickStatus] }] : []),
-    ...(exactStatus && !quickStatus
-      ? [{ key: 'exactStatus', label: statusMeta[exactStatus].label }]
-      : []),
+    ...(exactStatus ? [{ key: 'exactStatus', label: statusMeta[exactStatus].label }] : []),
     ...(extraScope ? [{ key: 'scope', label: SCOPE_LABELS[extraScope] }] : []),
     ...(priorities.length
       ? [{ key: 'priorities', label: `Prioridad: ${priorities.join(', ')}` }]
@@ -247,7 +273,7 @@ export function CasesListScreen({ navigation, route }: Props) {
     ...(overdueOnly ? [{ key: 'overdueOnly', label: 'Vencidas' }] : []),
     ...(sort !== 'recientes' ? [{ key: 'sort', label: SORT_LABELS[sort] }] : []),
   ] as const
-  const hasFilters = Boolean(search || status !== 'todas' || chips.length || scope)
+  const hasFilters = Boolean(search || status !== 'abiertas' || chips.length || extraScope)
   function clearChips() {
     changeFilters({
       quickStatus: null,
@@ -263,8 +289,7 @@ export function CasesListScreen({ navigation, route }: Props) {
     })
   }
   function removeChip(key: (typeof chips)[number]['key']) {
-    if (key === 'quickStatus')
-      changeFilters({ quickStatus: null, scope: effectiveScope, exactStatus: null })
+    if (key === 'quickStatus') changeFilters({ quickStatus: null, scope: effectiveScope })
     if (key === 'exactStatus') changeFilters({ exactStatus: null })
     if (key === 'scope') changeFilters({ scope: primaryScopes[0] })
     if (key === 'priorities') changeFilters({ priorities: [] })
@@ -272,6 +297,25 @@ export function CasesListScreen({ navigation, route }: Props) {
     if (key === 'dates') changeFilters({ fromDate: null, toDate: null })
     if (key === 'overdueOnly') changeFilters({ overdueOnly: false })
     if (key === 'sort') changeFilters({ sort: 'recientes' })
+  }
+  function toggleQuickFilter(value: QuickStatusFilter | 'vencidas') {
+    if (value === 'vencidas') {
+      changeFilters({
+        overdueOnly: !overdueOnly,
+        quickStatus: null,
+        legacyStatuses: null,
+        scope: effectiveScope,
+        status: 'abiertas',
+      })
+      return
+    }
+    changeFilters({
+      quickStatus: quickStatus === value ? null : value,
+      overdueOnly: false,
+      legacyStatuses: null,
+      scope: effectiveScope,
+      status: 'abiertas',
+    })
   }
 
   return (
@@ -325,22 +369,26 @@ export function CasesListScreen({ navigation, route }: Props) {
           </Pressable>
         </View>
 
-        <View accessibilityLabel="Alcance" style={styles.scopeSelector}>
-          {primaryScopes.map((value) => (
-            <Pressable
-              key={value}
-              accessibilityLabel={SCOPE_LABELS[value]}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: selectedScope === value }}
-              onPress={() => changeFilters({ scope: value })}
-              style={[styles.scopeTab, selectedScope === value && styles.scopeTabSelected]}
-            >
-              <Text style={[styles.scopeText, selectedScope === value && styles.scopeTextSelected]}>
-                {SCOPE_LABELS[value]}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+        {primaryScopes.length > 1 ? (
+          <View accessibilityLabel="Alcance" style={styles.scopeSelector}>
+            {primaryScopes.map((value) => (
+              <Pressable
+                key={value}
+                accessibilityLabel={SCOPE_LABELS[value]}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: selectedScope === value }}
+                onPress={() => changeFilters({ scope: value })}
+                style={[styles.scopeTab, selectedScope === value && styles.scopeTabSelected]}
+              >
+                <Text
+                  style={[styles.scopeText, selectedScope === value && styles.scopeTextSelected]}
+                >
+                  {SCOPE_LABELS[value]}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
 
         <View accessibilityLabel="Estado" style={styles.statusTabs}>
           {segments.map((segment) => (
@@ -368,6 +416,52 @@ export function CasesListScreen({ navigation, route }: Props) {
             </Pressable>
           ))}
         </View>
+        <ScrollView
+          accessibilityLabel="Filtros rápidos"
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.quickFilterScroll}
+          contentContainerStyle={styles.quickFilters}
+        >
+          {quickChips.map((chip) => {
+            const selected = chip.key === 'vencidas' ? overdueOnly : quickStatus === chip.key
+            const overdue = chip.key === 'vencidas'
+            return (
+              <Pressable
+                key={chip.key}
+                accessibilityLabel={`${chip.label}, ${chip.count ?? 'cargando'} ${chip.count === 1 ? 'solicitud' : 'solicitudes'}`}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                onPress={() => toggleQuickFilter(chip.key)}
+                style={[
+                  styles.quickChip,
+                  overdue && styles.quickChipOverdue,
+                  selected &&
+                    (overdue ? styles.quickChipOverdueSelected : styles.quickChipSelected),
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.quickChipText,
+                    overdue && styles.quickChipOverdueText,
+                    selected && styles.quickChipSelectedText,
+                  ]}
+                >
+                  {chip.label}
+                </Text>
+                <Text
+                  style={[
+                    styles.quickChipCount,
+                    overdue && styles.quickChipOverdueText,
+                    selected && styles.quickChipSelectedText,
+                  ]}
+                >
+                  {chip.count ?? '…'}
+                </Text>
+              </Pressable>
+            )
+          })}
+        </ScrollView>
         {counts.isError ? (
           <Button label="Reintentar conteos" variant="text" onPress={() => void counts.refetch()} />
         ) : null}
@@ -515,25 +609,33 @@ export function CasesListScreen({ navigation, route }: Props) {
           },
         }}
       >
-        <Text style={styles.sheetHeading}>Accesos rápidos</Text>
+        {extraScopes.length ? (
+          <>
+            <Text style={styles.sheetHeading}>Más alcances</Text>
+            <View style={styles.sheetChoices}>
+              {extraScopes.map((value) => (
+                <Chip
+                  key={value}
+                  label={SCOPE_LABELS[value]}
+                  selected={effectiveScope === value}
+                  onPress={() => changeFilters({ scope: value })}
+                />
+              ))}
+            </View>
+          </>
+        ) : null}
+        <Text style={styles.sheetHeading}>Estado exacto</Text>
         <View style={styles.sheetChoices}>
-          <Chip
-            label="Vencidas"
-            selected={overdueOnly}
-            onPress={() => changeFilters({ overdueOnly: !overdueOnly, status: 'abiertas' })}
-          />
-          {(Object.keys(QUICK_LABELS) as QuickStatusFilter[]).map((value) => (
+          {CASE_STATUSES.map((value) => (
             <Chip
               key={value}
-              label={QUICK_LABELS[value]}
-              selected={quickStatus === value}
+              label={statusMeta[value].label}
+              selected={exactStatus === value}
               onPress={() =>
                 changeFilters({
-                  quickStatus: quickStatus === value ? null : value,
-                  exactStatus: null,
+                  exactStatus: exactStatus === value ? null : value,
                   legacyStatuses: null,
-                  scope: effectiveScope,
-                  status: 'abiertas',
+                  status: CLOSED_CASE_STATUSES.includes(value) ? 'cerradas' : 'abiertas',
                 })
               }
             />
@@ -726,6 +828,24 @@ const styles = StyleSheet.create({
   statusTextSelected: { fontFamily: fonts.bold, color: colors.ink },
   statusCount: { fontSize: 12, fontFamily: fonts.bold, color: colors.textMuted },
   statusCountSelected: { color: colors.primary },
+  quickFilterScroll: { flexGrow: 0, flexShrink: 0 },
+  quickFilters: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  quickChip: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.base,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceMuted,
+  },
+  quickChipSelected: { backgroundColor: colors.primary },
+  quickChipOverdue: { backgroundColor: colors.dangerSoft },
+  quickChipOverdueSelected: { backgroundColor: colors.error },
+  quickChipText: { ...typography.caption, fontFamily: fonts.semibold, color: colors.text },
+  quickChipCount: { fontSize: 12, fontFamily: fonts.bold, color: colors.textMuted },
+  quickChipOverdueText: { color: colors.error },
+  quickChipSelectedText: { color: colors.white },
   filterScroll: { flexGrow: 0, flexShrink: 0 },
   filters: {
     flexDirection: 'row',

@@ -2,6 +2,7 @@ import {
   buildCaseSearchFilters,
   calendarDateBoundary,
   getCaseSegments,
+  getQuickFilterCounts,
   validateCreatedRange,
 } from '../caseSearch'
 import { caseSearchTextSchema } from '../schemas'
@@ -91,6 +92,64 @@ test('los contadores incluyen ceros y agrupan abiertas, cerradas y todas', () =>
       { status: 'aprobado', total: 2, overdue: 0, unassigned: 0 },
     ]),
   ).toEqual({ abiertas: 8, cerradas: 2, todas: 10 })
+})
+
+test('las pestañas aplican el chip activo sobre los conteos base sin otra consulta', () => {
+  const counts = [
+    { status: 'solicitado' as const, total: 5, overdue: 2, unassigned: 5 },
+    { status: 'aceptado' as const, total: 4, overdue: 1, unassigned: 3 },
+    { status: 'en_ejecucion' as const, total: 3, overdue: 2, unassigned: 0 },
+    { status: 'aprobado' as const, total: 2, overdue: 0, unassigned: 0 },
+  ]
+  expect(getCaseSegments(counts, 'sin_asignar')).toEqual({ abiertas: 3, cerradas: 0, todas: 3 })
+  expect(getCaseSegments(counts, null, true)).toEqual({ abiertas: 5, cerradas: 0, todas: 5 })
+})
+
+test('los seis filtros rápidos se cuentan a partir de las filas filtradas por el servidor', () => {
+  expect(
+    getQuickFilterCounts([
+      { status: 'solicitado', total: 5, overdue: 2, unassigned: 5 },
+      { status: 'aceptado', total: 4, overdue: 1, unassigned: 3 },
+      { status: 'en_ejecucion', total: 3, overdue: 2, unassigned: 0 },
+      { status: 'en_espera', total: 2, overdue: 1, unassigned: 0 },
+      { status: 'reporte_enviado', total: 4, overdue: 0, unassigned: 0 },
+      { status: 'validado', total: 1, overdue: 0, unassigned: 0 },
+    ]),
+  ).toEqual({
+    vencidas: 6,
+    por_aceptar: 5,
+    sin_asignar: 3,
+    en_ejecucion: 3,
+    en_espera: 2,
+    en_revision: 5,
+  })
+  expect(getQuickFilterCounts([])).toEqual({
+    vencidas: 0,
+    por_aceptar: 0,
+    sin_asignar: 0,
+    en_ejecucion: 0,
+    en_espera: 0,
+    en_revision: 0,
+  })
+})
+
+test('el estado exacto se intersecta con el filtro rápido', () => {
+  expect(
+    buildCaseSearchFilters({
+      ...base,
+      tab: 'abiertas',
+      exactStatus: 'validado',
+      quickStatus: 'en_revision',
+    }).statuses,
+  ).toEqual(['validado'])
+  expect(
+    buildCaseSearchFilters({
+      ...base,
+      tab: 'abiertas',
+      exactStatus: 'aceptado',
+      quickStatus: 'en_revision',
+    }).statuses,
+  ).toEqual([])
 })
 
 test('la búsqueda respeta el límite de 100 caracteres', () => {
