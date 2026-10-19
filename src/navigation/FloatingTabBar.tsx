@@ -71,7 +71,9 @@ export function FloatingTabBar({
               <View>
                 <Icon name={icons[focused ? 1 : 0]} color={color} size={21} />
                 {badge ? (
-                  <View style={styles.badge}>
+                  <View
+                    style={[styles.badge, route.name === 'Administration' && styles.adminBadge]}
+                  >
                     <Text style={styles.badgeText}>{badge}</Text>
                   </View>
                 ) : null}
@@ -144,6 +146,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.sky,
   },
   badgeText: { fontFamily: fonts.bold, fontSize: 11, lineHeight: 14, color: colors.white },
+  adminBadge: { backgroundColor: colors.warning },
   create: {
     width: 62,
     height: 62,

@@ -14,6 +14,7 @@ import { NotificationsScreen } from '@/features/notifications/NotificationsScree
 import { IndicatorsScreen } from '@/features/home/IndicatorsScreen'
 import { PriorityTargetsScreen } from '@/features/admin/screens/PriorityTargetsScreen'
 import { useHomeSummary } from '@/features/home/useHomeSummary'
+import { getAdminAlerts } from '@/features/home/homePresentation'
 import { AdministrationHomeScreen } from '@/features/admin/screens/AdministrationHomeScreen'
 import { AccessRequestsScreen } from '@/features/admin/screens/AccessRequestsScreen'
 import { UsersScreen } from '@/features/admin/screens/UsersScreen'
@@ -236,6 +237,7 @@ export function MainNavigator() {
   const areaId = useAuthStore((state) => state.profile?.areaId)
   const canManageAreas = hasPermission(role, 'areas.manage')
   const canCreate = hasPermission(role, 'cases.create') && Boolean(areaId)
+  const adminPending = home.data?.admin ? getAdminAlerts(home.data.admin).length : 0
   const caseTabTitle =
     role === 'solicitante'
       ? 'Mis solicitudes'
@@ -275,7 +277,7 @@ export function MainNavigator() {
           options={{
             title: 'Administrar',
             tabBarLabel: 'Admin',
-            tabBarBadge: home.data?.admin?.solicitudes_acceso_pendientes || undefined,
+            tabBarBadge: adminPending || undefined,
           }}
         />
       ) : null}

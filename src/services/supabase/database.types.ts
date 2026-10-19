@@ -1271,9 +1271,46 @@ export type Database = {
         }[]
       }
       get_organization_join_code: { Args: never; Returns: string }
+      list_next_steps: {
+        Args: never
+        Returns: {
+          accept_target_hours: number
+          accepted_at: string | null
+          assigned_at: string | null
+          assigned_to: string | null
+          case_number: string
+          category_id: string
+          closed_at: string | null
+          created_at: string
+          created_by: string
+          description: string
+          id: string
+          location: string
+          organization_id: string
+          priority: Database['public']['Enums']['case_priority']
+          requesting_area_id: string
+          resolve_target_hours: number
+          started_at: string | null
+          status: Database['public']['Enums']['case_status']
+          status_changed_at: string
+          target_area_id: string
+          title: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: '*'
+          to: 'cases'
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       mark_notifications_read: {
         Args: { notification_ids?: number[] }
         Returns: number
+      }
+      next_step: {
+        Args: { target_case: Database['public']['Tables']['cases']['Row'] }
+        Returns: string
       }
       overdue_stage: {
         Args: { target: Database['public']['Tables']['cases']['Row'] }

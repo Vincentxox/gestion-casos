@@ -17,7 +17,9 @@ const item = (id: number, date: Date, readAt: string | null = null): AppNotifica
   action: 'crear',
   caseNumber: 'CAS-2026-00001',
   caseTitle: 'Fuga',
+  actorId: null,
   actorName: null,
+  comment: null,
   createdAt: date.toISOString(),
   readAt,
 })

@@ -15,7 +15,7 @@ jest.mock('@/features/resources/useResources', () => ({
   caseUsagesQueryKey: (id: string) => ['cases', id, 'usages'],
 }))
 
-test('el guardado automático del borrador no recarga permisos del caso', async () => {
+test('el guardado automático del borrador no recarga la cola ni los permisos del caso', async () => {
   const invalidateQueries = jest.fn().mockResolvedValue(undefined)
   const setQueryData = jest.fn()
   ;(useQueryClient as jest.Mock).mockReturnValue({ invalidateQueries, setQueryData })

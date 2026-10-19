@@ -121,6 +121,8 @@
       "src/features/resources/resourceService.ts",
       "src/features/resources/schemas.ts",
       "src/features/home/homeService.ts",
+      "src/features/home/useNextSteps.ts",
+      "src/features/home/useFirstSteps.ts",
       "src/features/home/indicatorsService.ts",
       "src/features/home/schemas.ts",
       "src/features/notifications/notificationService.ts",
