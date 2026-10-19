@@ -64,7 +64,7 @@ function CasesNavigator() {
       <Stack.Screen
         component={CaseDetailScreen}
         name="CaseDetail"
-        options={{ title: 'Detalle de solicitud' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         component={EditCaseScreen}
@@ -131,7 +131,7 @@ function NotificationsNavigator() {
       <Stack.Screen
         component={CaseDetailScreen}
         name="CaseDetail"
-        options={{ title: 'Detalle de solicitud' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         component={EditCaseScreen}
