@@ -326,9 +326,12 @@ select test.set('unreviewed_functions', (
     'verify_report_code(text)',
     -- Probada con identificadores de otra empresa en la prueba 28.
     'send_case_message(uuid, text)',
+    -- Probada con rutas de otra persona y de otra empresa en la prueba 29.
+    'set_profile_photo(text)',
     -- Sin identificadores de otra empresa: actúan sobre el propio usuario o su empresa.
     'accept_pending_invitation()',
     'cancel_my_access_request()',
+    'clear_profile_photo()',
     'get_home_summary()',
     'get_my_access_request()',
     'get_organization_join_code()',
@@ -341,8 +344,12 @@ select test.set('unreviewed_functions', (
     'due_at(cases)',
     'overdue_stage(cases)',
     -- SECURITY INVOKER: filtran cases con RLS (prueba 24).
-    'count_cases_by_status(text, case_priority, timestamp with time zone, text)',
-    'search_cases(text, case_status[], case_priority, timestamp with time zone, text)'
+    'count_cases_by_status(text, case_priority, timestamp with time zone, text, case_status[], case_priority[], timestamp with time zone, timestamp with time zone, boolean)',
+    'search_cases(text, case_status[], case_priority, timestamp with time zone, text, case_priority[], timestamp with time zone, timestamp with time zone, boolean)',
+    -- SECURITY INVOKER: filtran cases con RLS y vuelven a leer la fila por su id; probadas
+    -- con filas de otra empresa en la prueba 30.
+    'list_next_steps()',
+    'next_step(cases)'
   )));
 select test.ok(
   test.get('unreviewed_functions') = '',

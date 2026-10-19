@@ -92,6 +92,22 @@ Aprobado por el responsable el 16/10/2026 (hallazgo D-5).
 - Las tareas del servidor (envío de avisos ya generados, limpieza de fotos) no se
   bloquean.
 
+### 2.4 Foto de perfil
+
+Aprobado por el responsable el 17/10/2026 (contrato C-017, rediseño del Perfil).
+
+- Cada persona sube, cambia o quita **su propia** foto de perfil. Nadie más puede
+  cambiarla, tampoco un administrador.
+- La foto la ven solo los miembros de su misma empresa (Perfil, listas de personas,
+  historial y mensajes del caso).
+- Formato JPEG o WebP, de 1 MB como máximo. La app la recorta en cuadrado y la reduce a
+  512 px antes de subirla.
+- Si la persona se da de baja (2.2), su foto deja de mostrarse. Si su empresa queda
+  inactiva (2.3), nadie de la empresa la ve. En los dos casos la app muestra sus
+  iniciales.
+- Se hace cumplir en la base de datos: bucket privado de Storage con políticas por
+  empresa y persona, y RPC que solo aceptan un archivo de la carpeta propia.
+
 ## 3. Áreas
 
 - Cada área pertenece a una empresa y tiene un tipo:
@@ -486,3 +502,4 @@ Tratamiento de los datos existentes (confirmado por el responsable el 22/09/2026
 8. ~~Baja de miembros, reasignación en ejecución y visibilidad por participación.~~
    Resueltas el 15/10/2026: ver 2.2, 5.4 y 5.5.3.
 9. ~~Acceso de una empresa inactiva.~~ Resuelta el 16/10/2026: bloqueo total, ver 2.3.
+10. ~~Foto de perfil.~~ Resuelta el 17/10/2026: ver 2.4.
