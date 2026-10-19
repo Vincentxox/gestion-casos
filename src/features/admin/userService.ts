@@ -5,7 +5,7 @@ import type { ManagedProfile } from './types'
 export async function listManagedProfiles(): Promise<ManagedProfile[]> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, full_name, role, area_id, area:areas(name)')
+    .select('id, full_name, avatar_url, role, area_id, area:areas(name)')
     .order('full_name')
 
   if (error) throw error
@@ -13,6 +13,7 @@ export async function listManagedProfiles(): Promise<ManagedProfile[]> {
   return data.map((row) => ({
     id: row.id,
     fullName: row.full_name.trim() || 'Usuario sin nombre',
+    avatarPath: row.avatar_url,
     role: row.role,
     areaId: row.area_id,
     areaName: row.area?.name ?? null,

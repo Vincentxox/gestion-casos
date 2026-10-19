@@ -1197,6 +1197,7 @@ export type Database = {
           thumb_path: string
         }[]
       }
+      clear_profile_photo: { Args: never; Returns: undefined }
       complete_push: {
         Args: { error_message?: string; notification_ids: number[] }
         Returns: number
@@ -1408,6 +1409,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      set_profile_photo: { Args: { photo_path: string }; Returns: undefined }
       submit_case_report: {
         Args: {
           accepts_terms: boolean
