@@ -6,8 +6,8 @@
 \set QUIET 1
 
 select test.ok(
-  not (select prosecdef from pg_proc where oid = 'public.search_cases(text, public.case_status[], public.case_priority, timestamptz, text)'::regprocedure)
-  and not (select prosecdef from pg_proc where oid = 'public.count_cases_by_status(text, public.case_priority, timestamptz, text)'::regprocedure)
+  not (select prosecdef from pg_proc where oid = 'public.search_cases(text, public.case_status[], public.case_priority, timestamptz, text, public.case_priority[], timestamptz, timestamptz, boolean)'::regprocedure)
+  and not (select prosecdef from pg_proc where oid = 'public.count_cases_by_status(text, public.case_priority, timestamptz, text, public.case_status[], public.case_priority[], timestamptz, timestamptz, boolean)'::regprocedure)
   and (select provolatile = 'i' from pg_proc where oid = 'private.check_case_search(text, text)'::regprocedure),
   'la búsqueda es SECURITY INVOKER: respeta la política de cases'
 );
@@ -37,9 +37,9 @@ select test.ok(
   'search_cases y count_cases_by_status se incorporan a la consulta del cliente'
 );
 select test.ok(
-  not has_function_privilege('anon', 'public.search_cases(text, public.case_status[], public.case_priority, timestamptz, text)', 'execute')
-  and not has_function_privilege('anon', 'public.count_cases_by_status(text, public.case_priority, timestamptz, text)', 'execute')
-  and has_function_privilege('authenticated', 'public.search_cases(text, public.case_status[], public.case_priority, timestamptz, text)', 'execute'),
+  not has_function_privilege('anon', 'public.search_cases(text, public.case_status[], public.case_priority, timestamptz, text, public.case_priority[], timestamptz, timestamptz, boolean)', 'execute')
+  and not has_function_privilege('anon', 'public.count_cases_by_status(text, public.case_priority, timestamptz, text, public.case_status[], public.case_priority[], timestamptz, timestamptz, boolean)', 'execute')
+  and has_function_privilege('authenticated', 'public.search_cases(text, public.case_status[], public.case_priority, timestamptz, text, public.case_priority[], timestamptz, timestamptz, boolean)', 'execute'),
   'anon no puede buscar casos'
 );
 
