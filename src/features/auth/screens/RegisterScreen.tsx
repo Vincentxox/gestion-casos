@@ -82,12 +82,13 @@ export function RegisterScreen({ navigation }: Props) {
                 autoCapitalize="words"
                 autoComplete="name"
                 error={errors.fullName?.message}
+                highContrastBorder
                 label="Nombre completo"
                 onBlur={onBlur}
                 onChangeText={onChange}
                 placeholder="Nombre y apellido"
                 value={value}
-                variant="filled"
+                variant="outlined"
               />
             )}
           />
@@ -100,13 +101,14 @@ export function RegisterScreen({ navigation }: Props) {
                 autoCapitalize="none"
                 autoComplete="email"
                 error={errors.email?.message}
+                highContrastBorder
                 keyboardType="email-address"
                 label="Correo electrónico"
                 onBlur={onBlur}
                 onChangeText={onChange}
                 placeholder="nombre@empresa.com"
                 value={value}
-                variant="filled"
+                variant="outlined"
               />
             )}
           />
@@ -119,13 +121,14 @@ export function RegisterScreen({ navigation }: Props) {
                 autoCapitalize="none"
                 autoComplete="new-password"
                 error={errors.password?.message}
+                highContrastBorder
                 label="Contraseña"
                 onBlur={onBlur}
                 onChangeText={onChange}
                 placeholder="Mínimo 8 caracteres"
                 secureTextEntry
                 value={value}
-                variant="filled"
+                variant="outlined"
               />
             )}
           />
@@ -138,6 +141,7 @@ export function RegisterScreen({ navigation }: Props) {
                 autoCapitalize="none"
                 autoComplete="new-password"
                 error={errors.passwordConfirmation?.message}
+                highContrastBorder
                 label="Confirmar contraseña"
                 onBlur={onBlur}
                 onChangeText={onChange}
@@ -146,7 +150,7 @@ export function RegisterScreen({ navigation }: Props) {
                 returnKeyType="done"
                 secureTextEntry
                 value={value}
-                variant="filled"
+                variant="outlined"
               />
             )}
           />

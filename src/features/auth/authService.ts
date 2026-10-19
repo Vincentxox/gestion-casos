@@ -13,6 +13,11 @@ export const googleAuthRedirectUrl = makeRedirectUri({
   path: 'auth/callback',
 })
 
+export const passwordResetRedirectUrl = makeRedirectUri({
+  scheme: 'gestion-casos',
+  path: 'auth/reset',
+})
+
 interface ProfileRow {
   id: string
   full_name: string
@@ -85,7 +90,10 @@ export async function signIn(email: string, password: string) {
   return data.session
 }
 
-function getOAuthTokens(callbackUrl: string) {
+export function getOAuthTokens(
+  callbackUrl: string,
+  invalidSessionMessage = 'Google no devolvió una sesión válida',
+) {
   const url = new URL(callbackUrl)
   const query = new URLSearchParams(url.search)
   const fragment = new URLSearchParams(url.hash.replace(/^#/, ''))
@@ -100,10 +108,30 @@ function getOAuthTokens(callbackUrl: string) {
   const refreshToken = params.get('refresh_token')
 
   if (!accessToken || !refreshToken) {
-    throw new Error('Google no devolvió una sesión válida')
+    throw new Error(invalidSessionMessage)
   }
 
   return { access_token: accessToken, refresh_token: refreshToken }
+}
+
+export async function requestPasswordReset(email: string) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+    redirectTo: passwordResetRedirectUrl,
+  })
+  if (error) throw error
+}
+
+export async function setPasswordRecoverySession(callbackUrl: string) {
+  const { data, error } = await supabase.auth.setSession(
+    getOAuthTokens(callbackUrl, 'El enlace venció o ya se usó. Pide uno nuevo.'),
+  )
+  if (error) throw error
+  return data.session
+}
+
+export async function updatePassword(password: string) {
+  const { error } = await supabase.auth.updateUser({ password })
+  if (error) throw error
 }
 
 export async function signInWithGoogle() {

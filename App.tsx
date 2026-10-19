@@ -10,7 +10,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { NavigationContainer } from '@react-navigation/native'
 import { StatusBar } from 'expo-status-bar'
 import { useCallback, useEffect, useState } from 'react'
-import { StyleSheet, View } from 'react-native'
+import { Linking, StyleSheet, View } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import { BrandIntroScreen } from '@/components/branding/BrandIntroScreen'
@@ -20,6 +20,7 @@ import { registerQueryLifecycle } from '@/config/queryLifecycle'
 import { AuthLoadingScreen } from '@/features/auth/screens/AuthLoadingScreen'
 import { InactiveOrganizationScreen } from '@/features/auth/screens/InactiveOrganizationScreen'
 import { PendingInvitationScreen } from '@/features/auth/screens/PendingInvitationScreen'
+import { ResetPasswordScreen } from '@/features/auth/screens/ResetPasswordScreen'
 import { getAuthenticatedRoute } from '@/features/auth/authRoute'
 import { useOrganizationLifecycle } from '@/features/auth/useOrganizationLifecycle'
 import { CompleteNameScreen } from '@/features/settings/CompleteNameScreen'
@@ -33,6 +34,9 @@ function RootContent({ fontsReady }: { fontsReady: boolean }) {
   const [showIntro, setShowIntro] = useState(true)
   const status = useAuthStore((state) => state.status)
   const profile = useAuthStore((state) => state.profile)
+  const passwordRecovery = useAuthStore((state) => state.passwordRecovery)
+  const session = useAuthStore((state) => state.session)
+  const handleRecoveryUrl = useAuthStore((state) => state.handleRecoveryUrl)
   const organizationId = profile?.organizationId
   const organizationActive = profile?.organizationActive
   const userId = profile?.id
@@ -62,6 +66,16 @@ function RootContent({ fontsReady }: { fontsReady: boolean }) {
       pendingCallbacks.forEach(clearTimeout)
     }
   }, [applySession, initialize])
+
+  useEffect(() => {
+    void Linking.getInitialURL()
+      .then((url) => {
+        if (url) void handleRecoveryUrl(url)
+      })
+      .catch(() => {})
+    const listener = Linking.addEventListener('url', ({ url }) => void handleRecoveryUrl(url))
+    return () => listener.remove()
+  }, [handleRecoveryUrl])
 
   useOrganizationLifecycle({
     userId,
@@ -93,7 +107,9 @@ function RootContent({ fontsReady }: { fontsReady: boolean }) {
 
   return (
     <NavigationContainer>
-      {status === 'authenticated' ? (
+      {passwordRecovery && session ? (
+        <ResetPasswordScreen />
+      ) : status === 'authenticated' ? (
         route === 'inactive' ? (
           <InactiveOrganizationScreen />
         ) : route === 'completeName' ? (

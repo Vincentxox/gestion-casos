@@ -2,6 +2,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack'
 
 import { LoginScreen } from '@/features/auth/screens/LoginScreen'
 import { RegisterScreen } from '@/features/auth/screens/RegisterScreen'
+import { ForgotPasswordScreen } from '@/features/auth/screens/ForgotPasswordScreen'
 import { colors } from '@/theme/tokens'
 
 import type { AuthStackParamList } from './types'
@@ -19,6 +20,11 @@ export function AuthNavigator() {
     >
       <Stack.Screen component={LoginScreen} name="Login" options={{ headerShown: false }} />
       <Stack.Screen component={RegisterScreen} name="Register" options={{ headerShown: false }} />
+      <Stack.Screen
+        component={ForgotPasswordScreen}
+        name="ForgotPassword"
+        options={{ headerShown: false }}
+      />
     </Stack.Navigator>
   )
 }

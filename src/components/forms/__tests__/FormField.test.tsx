@@ -82,4 +82,14 @@ describe('FormField', () => {
     const withError = fieldBox(screen.getByTestId('campo'))
     expect(withError.borderColor).toBe(colors.error)
   })
+
+  test('el campo de acceso mantiene borde contrastado y lo aumenta a 2 px al enfocar', async () => {
+    const screen = await render(
+      <FormField highContrastBorder label="Correo" onChangeText={jest.fn()} variant="outlined" />,
+    )
+    const input = screen.getByLabelText('Correo')
+    expect(fieldBox(input)).toMatchObject({ borderWidth: 1, borderColor: colors.inputBorder })
+    await fireEvent(input, 'focus')
+    expect(fieldBox(input)).toMatchObject({ borderWidth: 2, borderColor: colors.primary })
+  })
 })

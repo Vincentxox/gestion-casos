@@ -1,12 +1,12 @@
 import { z } from 'zod'
 
-const email = z
+export const email = z
   .string()
   .trim()
   .min(1, 'El correo electrónico es obligatorio')
   .email('Ingresa un correo electrónico válido')
 
-const password = z
+export const password = z
   .string()
   .min(8, 'La contraseña debe tener al menos 8 caracteres')
   .regex(/[a-z]/, 'La contraseña debe incluir una letra minúscula')
@@ -18,6 +18,18 @@ export const loginSchema = z.object({
   email,
   password: z.string().min(1, 'La contraseña es obligatoria'),
 })
+
+export const forgotPasswordSchema = z.object({ email })
+
+export const resetPasswordSchema = z
+  .object({
+    password,
+    passwordConfirmation: z.string().min(1, 'Confirma tu contraseña'),
+  })
+  .refine((values) => values.password === values.passwordConfirmation, {
+    message: 'Las contraseñas no coinciden',
+    path: ['passwordConfirmation'],
+  })
 
 export const registrationSchema = z
   .object({
@@ -33,3 +45,5 @@ export const registrationSchema = z
 
 export type LoginInput = z.infer<typeof loginSchema>
 export type RegistrationInput = z.infer<typeof registrationSchema>
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>

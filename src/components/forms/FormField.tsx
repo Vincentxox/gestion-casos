@@ -11,6 +11,7 @@ interface FormFieldProps extends TextInputProps {
   showCharacterCount?: boolean
   /** `filled`: campo relleno sin borde, como en las pantallas de acceso. */
   variant?: 'outlined' | 'filled'
+  highContrastBorder?: boolean
 }
 
 export function FormField({
@@ -19,11 +20,14 @@ export function FormField({
   required = false,
   showCharacterCount = false,
   variant = 'outlined',
+  highContrastBorder = false,
   secureTextEntry,
   style,
+  onFocus,
   ...inputProps
 }: FormFieldProps) {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
+  const [isFocused, setIsFocused] = useState(false)
   const canTogglePassword = secureTextEntry === true
 
   return (
@@ -39,6 +43,8 @@ export function FormField({
         style={[
           styles.inputContainer,
           variant === 'filled' ? styles.inputContainerFilled : null,
+          variant === 'outlined' && highContrastBorder ? styles.inputContainerHighContrast : null,
+          variant === 'outlined' && isFocused ? styles.inputFocused : null,
           error ? styles.inputError : null,
         ]}
       >
@@ -49,6 +55,14 @@ export function FormField({
           }
           accessibilityHint={error}
           autoCorrect={canTogglePassword ? false : inputProps.autoCorrect}
+          onFocus={(event) => {
+            setIsFocused(true)
+            onFocus?.(event)
+          }}
+          onBlur={(event) => {
+            setIsFocused(false)
+            inputProps.onBlur?.(event)
+          }}
           secureTextEntry={canTogglePassword && !isPasswordVisible}
           style={[styles.input, style]}
           placeholderTextColor={colors.textMuted}
@@ -109,6 +123,8 @@ const styles = StyleSheet.create({
     borderColor: colors.surfaceMuted,
     backgroundColor: colors.surfaceMuted,
   },
+  inputContainerHighContrast: { borderColor: colors.inputBorder },
+  inputFocused: { borderWidth: 2, borderColor: colors.primary },
   input: {
     ...typography.body,
     minHeight: 48,
