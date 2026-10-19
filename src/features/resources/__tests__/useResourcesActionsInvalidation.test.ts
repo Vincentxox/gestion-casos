@@ -19,5 +19,6 @@ test.each([useAddCaseUsage, useUpdateCaseUsage, useDeleteCaseUsage])(
     const options = (useMutation as jest.Mock).mock.calls.at(-1)?.[0]
     await options.onSuccess()
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['cases', 'case-1'] })
+    expect(invalidateQueries).not.toHaveBeenCalledWith({ queryKey: ['cases', 'next-steps'] })
   },
 )

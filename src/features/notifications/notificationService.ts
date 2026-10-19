@@ -10,7 +10,9 @@ export interface AppNotification {
   action: Database['public']['Enums']['case_action']
   caseNumber: string | null
   caseTitle: string | null
+  actorId: string | null
   actorName: string | null
+  comment: string | null
   createdAt: string
   readAt: string | null
 }
@@ -19,7 +21,7 @@ export async function listNotifications(): Promise<AppNotification[]> {
   const { data, error } = await supabase
     .from('notifications')
     .select(
-      'id,case_id,title,body,action,created_at,read_at,case:cases!notifications_case_id_fkey(case_number,title),event:case_events!notifications_event_id_fkey(actor_id,actor:profiles!case_events_actor_id_fkey(full_name))',
+      'id,case_id,title,body,action,created_at,read_at,case:cases!notifications_case_id_fkey(case_number,title),event:case_events!notifications_event_id_fkey(actor_id,comment,actor:profiles!case_events_actor_id_fkey(full_name))',
     )
     .order('created_at', { ascending: false })
     .limit(100)
@@ -35,6 +37,7 @@ export async function listNotifications(): Promise<AppNotification[]> {
     action: row.action,
     caseNumber: row.case?.case_number ?? null,
     caseTitle: row.case?.title ?? null,
+    actorId: row.event?.actor_id ?? null,
     actorName: row.event?.actor_id
       ? memberDisplayName(
           row.event.actor_id,
@@ -43,6 +46,7 @@ export async function listNotifications(): Promise<AppNotification[]> {
           'Usuario sin nombre',
         )
       : null,
+    comment: row.event?.comment ?? null,
     createdAt: row.created_at,
     readAt: row.read_at,
   }))

@@ -17,7 +17,7 @@ test('lee solo los campos necesarios de los avisos visibles por RLS', async () =
         body: 'Texto',
         action: 'reasignar',
         case: { case_number: 'CAS-2026-00001', title: 'Fuga' },
-        event: { actor_id: 'former', actor: null },
+        event: { actor_id: 'former', comment: 'Trabajo reasignado', actor: null },
         created_at: '2026-10-14',
         read_at: null,
       },
@@ -34,11 +34,13 @@ test('lee solo los campos necesarios de los avisos visibles por RLS', async () =
       readAt: null,
       action: 'reasignar',
       caseNumber: 'CAS-2026-00001',
+      actorId: 'former',
       actorName: 'Marta Díaz (dado de baja)',
+      comment: 'Trabajo reasignado',
     },
   ])
   expect(select).toHaveBeenCalledWith(
-    'id,case_id,title,body,action,created_at,read_at,case:cases!notifications_case_id_fkey(case_number,title),event:case_events!notifications_event_id_fkey(actor_id,actor:profiles!case_events_actor_id_fkey(full_name))',
+    'id,case_id,title,body,action,created_at,read_at,case:cases!notifications_case_id_fkey(case_number,title),event:case_events!notifications_event_id_fkey(actor_id,comment,actor:profiles!case_events_actor_id_fkey(full_name))',
   )
 })
 

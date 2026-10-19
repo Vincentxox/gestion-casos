@@ -4,57 +4,60 @@ import { useFocusEffect } from '@react-navigation/native'
 import { useCallback, useState } from 'react'
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import Svg, { Circle } from 'react-native-svg'
 
 import { NexoLogo } from '@/components/branding/NexoLogo'
-import { StatTile } from '@/components/stats/StatTile'
-import { Button } from '@/components/ui/Button'
-import { Card } from '@/components/ui/Card'
-import { Chip } from '@/components/ui/Chip'
-import { Icon } from '@/components/ui/Icon'
-import { EmptyState } from '@/components/feedback/EmptyState'
 import { OfflineBanner } from '@/components/feedback/OfflineBanner'
-import { ROLE_LABELS } from '@/features/auth/types'
-import { useCases } from '@/features/cases/useCases'
-import { ACTIVE_CASE_STATUSES } from '@/features/cases/caseSearch'
-import { CaseCard } from '@/features/cases/components/CaseCard'
-import { SectionHeader } from '@/components/ui/SectionHeader'
-import { SkeletonList } from '@/components/ui/SkeletonList'
+import { RequestState } from '@/components/feedback/RequestState'
+import { Icon } from '@/components/ui/Icon'
+import { Avatar } from '@/components/ui/Avatar'
+import { OPEN_CASE_STATUSES } from '@/features/cases/caseSearch'
+import { useCaseCounts } from '@/features/cases/useCases'
+import { notificationTimeLabel } from '@/features/notifications/notificationPresentation'
+import { useNotifications } from '@/features/notifications/useNotifications'
 import type { MainTabParamList, RootStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
-import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
+import { colors, fonts, phaseColors, radius, spacing, typography } from '@/theme/tokens'
 
 import {
-  getAdminAlerts,
   getGreeting,
-  getHomeHero,
-  getHomeRecentCases,
-  getHomeTileTarget,
-  getHomeTiles,
+  getHomeCaseCards,
+  getHomeCaseView,
+  getTodayNotifications,
+  NEXT_STEP_BUTTON_LABELS,
+  NEXT_STEP_LABELS,
+  NEXT_STEP_VISUALS,
+  nextStepDeadlineLabel,
+  nextStepDueMeta,
 } from './homePresentation'
+import { useFirstSteps } from './useFirstSteps'
 import { useHomeSummary } from './useHomeSummary'
-import { useCaseIndicators } from './useIndicators'
+import { useNextSteps } from './useNextSteps'
 
 type Props = BottomTabScreenProps<MainTabParamList, 'Home'>
 
+const RING_CIRCUMFERENCE = 2 * Math.PI * 25
+const CARD_TONES = {
+  danger: colors.error,
+  new: phaseColors.nueva.fg,
+  course: phaseColors.curso.fg,
+  review: phaseColors.revision.fg,
+} as const
+
 export function HomeScreen({ navigation }: Props) {
   const profile = useAuthStore((state) => state.profile)
-  const summary = useHomeSummary(Boolean(profile?.organizationId))
-  const canSeeIndicators = Boolean(
-    profile?.organizationId && ['administrador', 'jefe_area', 'auditor'].includes(profile.role),
-  )
-  const indicators = useCaseIndicators(canSeeIndicators)
-  const showRecent = Boolean(profile?.organizationId)
-  const cases = useCases(
+  const enabled = Boolean(profile?.organizationId)
+  const summary = useHomeSummary(enabled)
+  const nextSteps = useNextSteps(enabled)
+  const notifications = useNotifications()
+  const homeCaseView = profile
+    ? getHomeCaseView(profile.role, summary.data?.area_kind ?? null)
+    : null
+  const countScope = homeCaseView?.scope
+  const counts = useCaseCounts(
     {
-      scope:
-        profile?.role === 'tecnico'
-          ? 'mis_trabajos'
-          : profile?.role === 'solicitante'
-            ? 'mias'
-            : profile?.role === 'jefe_area'
-              ? 'mi_area'
-              : 'todas',
-      statuses: ACTIVE_CASE_STATUSES,
+      scope: countScope ?? 'todas',
+      statuses: OPEN_CASE_STATUSES,
       priorities: null,
       createdFrom: null,
       createdTo: null,
@@ -63,37 +66,64 @@ export function HomeScreen({ navigation }: Props) {
       searchText: null,
       sort: 'recientes',
     },
-    showRecent,
+    enabled && Boolean(countScope),
   )
-  const [today] = useState(() => new Date())
+  const firstSteps = useFirstSteps(profile?.id)
+  const [nextIndex, setNextIndex] = useState(0)
+  const [now, setNow] = useState(() => new Date())
   const refetchSummary = summary.refetch
-  const refetchCases = cases.refetch
-  const refetchIndicators = indicators.refetch
+  const refetchNext = nextSteps.refetch
+  const refetchCounts = counts.refetch
+  const refetchNotifications = notifications.refetch
   useFocusEffect(
     useCallback(() => {
-      void refetchSummary()
-      if (showRecent) void refetchCases()
-      if (canSeeIndicators) void refetchIndicators()
-    }, [refetchSummary, refetchCases, refetchIndicators, canSeeIndicators, showRecent]),
+      setNow(new Date())
+      if (enabled) {
+        void refetchSummary()
+        void refetchNext()
+        if (countScope) void refetchCounts()
+        void refetchNotifications()
+      }
+    }, [enabled, countScope, refetchSummary, refetchNext, refetchCounts, refetchNotifications]),
   )
   if (!profile) return null
 
-  const alerts = summary.data?.admin ? getAdminAlerts(summary.data.admin) : []
-  const tiles = summary.data ? getHomeTiles(profile, summary.data).slice(0, 4) : []
-  const hero = summary.data ? getHomeHero(profile, summary.data) : null
+  const openNotifications = () =>
+    navigation
+      .getParent<NativeStackNavigationProp<RootStackParamList>>()
+      ?.navigate('NotificationsFlow')
+  const items = nextSteps.data?.items ?? []
+  const currentIndex = items.length ? nextIndex % items.length : 0
+  const currentStep = nextSteps.isError ? undefined : items[currentIndex]
+  const caseCards = getHomeCaseCards(counts.data ?? [])
+  const noNextStep = !nextSteps.isLoading && !nextSteps.isError && !currentStep
+  const today = getTodayNotifications(notifications.data ?? [], now)
   const rawFirstName = profile.fullName.trim().split(/\s+/)[0] || 'usuario'
   const firstName = rawFirstName.charAt(0).toLocaleUpperCase('es-GT') + rawFirstName.slice(1)
-  const rawDateLabel = new Intl.DateTimeFormat('es-GT', {
+  const dateLabel = new Intl.DateTimeFormat('es-GT', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
-  }).format(today)
-  const dateLabel = rawDateLabel.charAt(0).toLocaleUpperCase('es-GT') + rawDateLabel.slice(1)
-  const recentCases = getHomeRecentCases(
-    profile,
-    summary.data?.area_kind ?? null,
-    cases.data?.pages.flat() ?? [],
-  )
+  }).format(now)
+  const firstStepItems = [
+    { id: 'profile', label: 'Revisa tu perfil', action: () => navigation.navigate('Profile') },
+    {
+      id: 'cases',
+      label: 'Explora Solicitudes',
+      action: () => navigation.navigate('CasesTab', { screen: 'Cases' }),
+    },
+    { id: 'notices', label: 'Conoce tus avisos', action: openNotifications },
+    { id: 'help', label: 'Descubre la ayuda', action: () => navigation.navigate('Help') },
+    {
+      id: 'start',
+      label: profile.role === 'administrador' ? 'Configura tu empresa' : 'Consulta una solicitud',
+      action: () =>
+        profile.role === 'administrador'
+          ? navigation.navigate('Administration', { screen: 'AdministrationHome' })
+          : navigation.navigate('CasesTab', { screen: 'Cases' }),
+    },
+  ]
+  const nextFirstStep = firstStepItems.find((step) => !firstSteps.completed.includes(step.id))
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
@@ -104,8 +134,9 @@ export function HomeScreen({ navigation }: Props) {
             refreshing={summary.isRefetching}
             onRefresh={() => {
               void summary.refetch()
-              if (showRecent) void cases.refetch()
-              if (canSeeIndicators) void indicators.refetch()
+              void nextSteps.refetch()
+              if (countScope) void counts.refetch()
+              void notifications.refetch()
             }}
           />
         }
@@ -117,228 +148,336 @@ export function HomeScreen({ navigation }: Props) {
           </View>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Avisos, ${summary.data?.notificaciones_sin_leer ?? 0} sin leer`}
-            onPress={() =>
-              navigation
-                .getParent<NativeStackNavigationProp<RootStackParamList>>()
-                ?.navigate('NotificationsFlow')
+            accessibilityLabel={
+              summary.isError
+                ? 'Avisos, conteo no disponible'
+                : `Avisos, ${summary.data?.notificaciones_sin_leer ?? 0} sin leer`
             }
+            onPress={openNotifications}
             style={styles.bell}
           >
             <Icon name="notifications-outline" color={colors.text} size={21} />
             {(summary.data?.notificaciones_sin_leer ?? 0) > 0 ? (
-              <Text style={styles.bellCount}>
-                {(summary.data?.notificaciones_sin_leer ?? 0) > 99
-                  ? '99+'
-                  : summary.data?.notificaciones_sin_leer}
-              </Text>
+              <Text style={styles.bellCount}>{summary.data?.notificaciones_sin_leer}</Text>
             ) : null}
           </Pressable>
         </View>
 
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>{dateLabel}</Text>
+          <Text style={styles.eyebrow}>
+            {dateLabel.charAt(0).toLocaleUpperCase('es-GT') + dateLabel.slice(1)}
+          </Text>
           <Text accessibilityRole="header" style={styles.title}>
-            {getGreeting(today.getHours())}, {firstName}
+            {getGreeting(now.getHours())}, {firstName}
           </Text>
-          <Text style={styles.subtitle}>
-            {ROLE_LABELS[profile.role]} · {profile.areaName || 'Sin área asignada'}
-          </Text>
+          <View style={styles.areaRow}>
+            <Text style={styles.subtitle}>{profile.areaName || 'Sin área asignada'}</Text>
+            {noNextStep ? <Text style={styles.upToDate}>✓ Estás al día</Text> : null}
+          </View>
         </View>
 
         <OfflineBanner />
-
-        {summary.isLoading ? <SkeletonList count={2} /> : null}
-        {summary.isError ? (
-          <View style={styles.notice}>
-            <Text style={styles.noticeTitle}>No pudimos cargar el Inicio</Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => void summary.refetch()}
-              style={styles.link}
-            >
-              <Text style={styles.linkText}>Reintentar</Text>
-            </Pressable>
-          </View>
-        ) : null}
-
-        {!summary.isLoading && hero ? (
-          hero.count > 0 ? (
-            <View style={styles.hero}>
-              <View accessibilityElementsHidden importantForAccessibility="no" style={styles.line}>
-                <View style={styles.lineStart} />
-                <View style={styles.lineTrack} />
-                <View style={styles.lineEnd} />
-              </View>
-              <Text style={styles.heroTitle}>{hero.title}</Text>
-              {hero.supportingText ? (
-                <Text style={styles.message}>{hero.supportingText}</Text>
-              ) : null}
-              {hero.detail.length > 0 ? (
-                <View style={styles.heroDetails}>
-                  {hero.detail.map((part) => (
-                    <Chip
-                      key={part.id}
-                      label={part.label}
-                      onPress={() =>
-                        navigation.navigate('CasesTab', {
-                          screen: 'Cases',
-                          params: getHomeTileTarget(profile, part.id),
-                        })
-                      }
-                    />
-                  ))}
-                </View>
-              ) : null}
+        {firstSteps.loaded && !firstSteps.hidden ? (
+          <View style={styles.firstStepsCard}>
+            <View style={styles.sectionTitleRow}>
+              <Text accessibilityRole="header" style={styles.sectionTitle}>
+                Primeros pasos
+              </Text>
               <Pressable
                 accessibilityRole="button"
-                onPress={() =>
-                  navigation.navigate('CasesTab', { screen: 'Cases', params: hero.target })
-                }
-                style={styles.link}
+                accessibilityLabel="Ocultar Primeros pasos"
+                onPress={firstSteps.hide}
+                style={styles.smallAction}
               >
-                <Text style={styles.linkText}>{hero.actionLabel}</Text>
-                <Icon name="arrow-forward" size="inline" color={colors.primary} />
+                <Icon name="close" color={colors.textMuted} size={20} />
               </Pressable>
             </View>
-          ) : (
-            <EmptyState
-              title="Todo al día"
-              message="No tienes solicitudes pendientes en este momento."
-              variant="allDone"
-              compact
-            />
-          )
-        ) : null}
-
-        {alerts.length > 0 ? (
-          <View style={styles.section}>
-            <SectionHeader title="Completa la configuración" />
-            {alerts.map((alert) => (
-              <Pressable
-                accessibilityRole="button"
-                key={`${alert.screen}-${alert.label}`}
-                onPress={() => navigation.navigate('Administration', { screen: alert.screen })}
-                style={styles.alertRow}
+            <View style={styles.firstStepsBody}>
+              <View
+                accessibilityLabel={`${firstSteps.completed.length} de 5 pasos completados`}
+                style={styles.progressRing}
               >
-                <Icon name="alert-circle-outline" size="inline" color={colors.warning} />
-                <Text style={styles.alertText}>{alert.label}</Text>
-                <Icon name="chevron-forward" size="inline" color={colors.textMuted} />
-              </Pressable>
-            ))}
+                <Svg width={60} height={60} viewBox="0 0 60 60">
+                  <Circle
+                    cx={30}
+                    cy={30}
+                    r={25}
+                    stroke={colors.track}
+                    strokeWidth={5}
+                    fill="none"
+                  />
+                  <Circle
+                    cx={30}
+                    cy={30}
+                    r={25}
+                    stroke={colors.sky}
+                    strokeWidth={5}
+                    strokeDasharray={`${(RING_CIRCUMFERENCE * firstSteps.completed.length) / 5} ${RING_CIRCUMFERENCE}`}
+                    strokeLinecap="round"
+                    rotation={-90}
+                    origin="30, 30"
+                    fill="none"
+                  />
+                </Svg>
+                <Text style={styles.progressText}>{firstSteps.completed.length}/5</Text>
+              </View>
+              <View style={styles.firstStepsCopy}>
+                <Text style={styles.bodyText}>
+                  {nextFirstStep ? 'Conoce Nexo Casos paso a paso.' : '¡Ya conoces lo esencial!'}
+                </Text>
+                {nextFirstStep ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={nextFirstStep.label}
+                    onPress={() => {
+                      firstSteps.complete(nextFirstStep.id)
+                      nextFirstStep.action()
+                    }}
+                    style={styles.inlineAction}
+                  >
+                    <Text style={styles.actionText}>{nextFirstStep.label}</Text>
+                    <Icon name="arrow-forward" size="inline" color={colors.primary} />
+                  </Pressable>
+                ) : null}
+              </View>
+            </View>
           </View>
         ) : null}
 
-        {!summary.isLoading && tiles.length > 0 ? (
+        {nextSteps.isLoading || nextSteps.isError || currentStep ? (
           <View style={styles.section}>
-            <SectionHeader title="Tus números" />
-            <View style={styles.tileGrid}>
-              {tiles.map((tile) => (
-                <StatTile
-                  key={tile.id}
-                  {...tile}
+            <Text accessibilityRole="header" style={styles.sectionTitle}>
+              Tu siguiente paso
+            </Text>
+            {nextSteps.isLoading ? (
+              <RequestState kind="loading" title="Buscando tu siguiente paso…" />
+            ) : null}
+            {nextSteps.isError ? (
+              <RequestState
+                kind="error"
+                title="No pudimos cargar tu siguiente paso"
+                onRetry={() => void nextSteps.refetch()}
+              />
+            ) : null}
+            {currentStep ? (
+              <View style={items.length > 1 ? styles.stackBack : undefined}>
+                <View style={styles.stackCard}>
+                  <View style={styles.nextTop}>
+                    <Text style={styles.stepCounter}>
+                      {currentIndex + 1} de {nextSteps.data?.total ?? items.length}
+                    </Text>
+                    <Text style={[styles.deadline, currentStep.overdueStage && styles.overdue]}>
+                      {nextStepDeadlineLabel(currentStep, now)}
+                    </Text>
+                  </View>
+                  <View style={styles.nextActionRow}>
+                    <View
+                      style={[
+                        styles.stepIcon,
+                        {
+                          backgroundColor:
+                            phaseColors[NEXT_STEP_VISUALS[currentStep.action].phase].bg,
+                        },
+                      ]}
+                    >
+                      <Icon
+                        name={NEXT_STEP_VISUALS[currentStep.action].icon}
+                        color={phaseColors[NEXT_STEP_VISUALS[currentStep.action].phase].fg}
+                      />
+                    </View>
+                    <Text style={styles.nextAction}>{NEXT_STEP_LABELS[currentStep.action]}</Text>
+                  </View>
+                  <Text style={styles.nextCase}>{currentStep.title}</Text>
+                  <Text style={styles.nextMeta}>
+                    {currentStep.caseNumber} · prioridad {currentStep.priority} ·{' '}
+                    {nextStepDueMeta(currentStep, now)}
+                  </Text>
+                  <View style={styles.nextActions}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Luego"
+                      onPress={() => setNextIndex((value) => value + 1)}
+                      style={styles.secondaryAction}
+                    >
+                      <Text style={styles.secondaryText}>Luego</Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`${NEXT_STEP_BUTTON_LABELS[currentStep.action]} ${currentStep.caseNumber}, abre el detalle`}
+                      onPress={() =>
+                        navigation.navigate('CasesTab', {
+                          screen: 'CaseDetail',
+                          params: { caseId: currentStep.id },
+                          initial: false,
+                        })
+                      }
+                      style={styles.primaryAction}
+                    >
+                      <Text style={styles.primaryText}>
+                        {NEXT_STEP_BUTTON_LABELS[currentStep.action]}
+                      </Text>
+                      <Icon name="arrow-forward" size="inline" color={colors.white} />
+                    </Pressable>
+                  </View>
+                </View>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
+        <View style={styles.section}>
+          <View style={styles.sectionTitleRow}>
+            <Text accessibilityRole="header" style={styles.sectionTitle}>
+              {homeCaseView?.title ?? 'Solicitudes'}
+            </Text>
+            {homeCaseView ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Ver todas las solicitudes abiertas"
+                onPress={() =>
+                  navigation.navigate('CasesTab', {
+                    screen: 'Cases',
+                    params: { scope: homeCaseView.scope, status: 'abiertas' },
+                  })
+                }
+                style={styles.smallAction}
+              >
+                <Text style={styles.actionText}>Ver todas</Text>
+              </Pressable>
+            ) : null}
+          </View>
+          {!homeCaseView && summary.isError ? (
+            <RequestState
+              kind="error"
+              title="No pudimos cargar tus solicitudes"
+              onRetry={() => void summary.refetch()}
+            />
+          ) : !homeCaseView || counts.isLoading ? (
+            <RequestState kind="loading" title="Cargando tus solicitudes…" />
+          ) : null}
+          {counts.isError ? (
+            <RequestState
+              kind="error"
+              title="No pudimos cargar tus solicitudes"
+              onRetry={() => void counts.refetch()}
+            />
+          ) : null}
+          {homeCaseView && !counts.isLoading && !counts.isError ? (
+            <View style={styles.caseGrid}>
+              {caseCards.map((card) => (
+                <Pressable
+                  key={card.key}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${card.label}, ${card.count} ${card.count === 1 ? 'solicitud' : 'solicitudes'}`}
                   onPress={() =>
                     navigation.navigate('CasesTab', {
                       screen: 'Cases',
-                      params: getHomeTileTarget(profile, tile.id),
+                      params: {
+                        scope: homeCaseView.scope,
+                        status: 'abiertas',
+                        ...card.filter,
+                      },
                     })
                   }
-                />
+                  style={[
+                    styles.caseTile,
+                    card.key === 'vencidas' && card.count > 0 && styles.caseTileOverdue,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.caseCount,
+                      card.key === 'vencidas' && card.count > 0 && styles.caseCountOverdue,
+                    ]}
+                  >
+                    {card.count}
+                  </Text>
+                  <View style={styles.caseTileLabel}>
+                    <View style={[styles.caseDot, { backgroundColor: CARD_TONES[card.tone] }]} />
+                    <Text style={styles.caseLabel}>{card.label}</Text>
+                  </View>
+                </Pressable>
               ))}
             </View>
-          </View>
-        ) : null}
+          ) : null}
+        </View>
 
-        {canSeeIndicators ? (
-          <View style={styles.section}>
-            <SectionHeader title="Indicadores" />
-            {indicators.isLoading ? <SkeletonList count={1} /> : null}
-            {indicators.isError ? (
-              <Pressable accessibilityRole="button" onPress={() => void indicators.refetch()}>
-                <Text style={styles.linkText}>
-                  No fue posible cargar los indicadores. Reintentar
-                </Text>
-              </Pressable>
-            ) : null}
-            {indicators.data ? (
-              <Card contentStyle={styles.indicatorCard}>
-                <Text style={styles.indicatorTitle}>{indicators.data.total} solicitudes</Text>
-                <Text style={styles.message}>
-                  Vencidas ahora: {indicators.data.vencidas_hoy.aceptacion} por aceptación ·{' '}
-                  {indicators.data.vencidas_hoy.resolucion} por resolución
-                </Text>
-                <Text style={styles.message}>
-                  Fuera de plazo: {indicators.data.fuera_de_plazo.aceptacion} aceptadas ·{' '}
-                  {indicators.data.fuera_de_plazo.resolucion} resueltas
-                </Text>
-                <Text style={styles.message}>
-                  Prioridad: {indicators.data.por_prioridad.alta ?? 0} alta ·{' '}
-                  {indicators.data.por_prioridad.media ?? 0} media ·{' '}
-                  {indicators.data.por_prioridad.baja ?? 0} baja
-                </Text>
-                <Text style={styles.message}>
-                  Promedios: {indicators.data.tiempos_promedio_horas.aceptacion ?? '—'} h para
-                  aceptar · {indicators.data.tiempos_promedio_horas.resolucion ?? '—'} h para
-                  resolver
-                </Text>
-                <Button
-                  label="Ver todos los indicadores"
-                  variant="text"
-                  onPress={() => navigation.navigate('CasesTab', { screen: 'Indicators' })}
-                />
-              </Card>
-            ) : null}
-          </View>
-        ) : null}
-
-        {!profile.areaId && profile.role !== 'administrador' && profile.role !== 'auditor' ? (
-          <View style={styles.notice}>
-            <Text style={styles.noticeTitle}>Área pendiente de asignación</Text>
-            <Text style={styles.message}>
-              Tu administrador aún no te asignó un área. Sin área no puedes crear solicitudes.
+        <View style={styles.section}>
+          <View style={styles.sectionTitleRow}>
+            <Text accessibilityRole="header" style={styles.sectionTitle}>
+              Hoy
             </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Ver todos los avisos"
+              onPress={openNotifications}
+              style={styles.smallAction}
+            >
+              <Text style={styles.actionText}>Ver todo</Text>
+            </Pressable>
           </View>
-        ) : null}
-        {showRecent ? (
-          <View style={styles.section}>
-            <View style={styles.recentHeading}>
-              <SectionHeader title="Lo que te toca hoy" />
-              <Button
-                label="Ver todo"
-                variant="text"
-                onPress={() => navigation.navigate('CasesTab', { screen: 'Cases' })}
-              />
-            </View>
-            {cases.isError ? (
-              <Pressable accessibilityRole="button" onPress={() => void cases.refetch()}>
-                <Text style={styles.linkText}>No fue posible cargar la lista. Reintentar</Text>
-              </Pressable>
-            ) : cases.isLoading ? (
-              <SkeletonList count={3} />
-            ) : recentCases.length === 0 ? (
-              <EmptyState
-                title="Sin solicitudes recientes"
-                message="Aquí aparecerán las solicitudes que puedas consultar."
-                variant="allDone"
-                compact
-              />
-            ) : (
-              recentCases.map((item) => (
-                <CaseCard
-                  key={item.id}
-                  item={item}
-                  onPress={() =>
-                    navigation.navigate('CasesTab', {
-                      screen: 'CaseDetail',
-                      params: { caseId: item.id },
-                      initial: false,
-                    })
-                  }
-                />
-              ))
-            )}
-          </View>
-        ) : null}
+          {notifications.isLoading ? (
+            <RequestState kind="loading" title="Cargando novedades…" />
+          ) : null}
+          {notifications.isError ? (
+            <RequestState
+              kind="error"
+              title="No pudimos cargar las novedades"
+              onRetry={() => void notifications.refetch()}
+            />
+          ) : null}
+          {!notifications.isLoading && !notifications.isError && today.length === 0 ? (
+            <Text style={styles.quietEmpty}>Sin novedades hoy</Text>
+          ) : null}
+          {today.map((item) => (
+            <Pressable
+              key={item.id}
+              accessibilityRole="button"
+              accessibilityLabel={`${item.title}, ${item.caseNumber ?? 'solicitud'}`}
+              onPress={() =>
+                navigation.navigate('CasesTab', {
+                  screen: 'CaseDetail',
+                  params: { caseId: item.caseId },
+                  initial: false,
+                })
+              }
+              style={styles.todayRow}
+            >
+              {item.actorName ? (
+                <Avatar name={item.actorName} id={item.actorId ?? item.actorName} size={44} />
+              ) : (
+                <View style={styles.todayIcon}>
+                  <Icon
+                    name={
+                      item.action === 'mensaje' ? 'chatbubble-outline' : 'notifications-outline'
+                    }
+                    size={20}
+                    color={colors.primary}
+                  />
+                </View>
+              )}
+              <View style={styles.todayCopy}>
+                <Text style={styles.todayTitle}>
+                  {item.action === 'mensaje' && item.actorName
+                    ? `${item.actorName} escribió en ${item.caseNumber ?? item.caseTitle ?? 'una solicitud'}`
+                    : item.title}
+                </Text>
+                {item.comment ? (
+                  <Text numberOfLines={2} style={styles.todayComment}>
+                    «{item.comment}»
+                  </Text>
+                ) : null}
+                <Text style={styles.todayMeta}>
+                  {item.action === 'mensaje' && item.actorName
+                    ? ''
+                    : `${item.caseNumber ?? item.caseTitle ?? 'Solicitud'} · `}
+                  {notificationTimeLabel(item.createdAt, now)}
+                </Text>
+              </View>
+              <Icon name="chevron-forward" size="inline" color={colors.textMuted} />
+            </Pressable>
+          ))}
+        </View>
       </ScrollView>
     </SafeAreaView>
   )
@@ -350,16 +489,11 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
     paddingHorizontal: spacing.compact,
     paddingTop: spacing.sm,
-    paddingBottom: spacing.xl,
+    paddingBottom: spacing.xl * 3,
   },
-  brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginRight: -spacing.sm,
-  },
+  brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brand: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  wordmark: { fontFamily: fonts.extrabold, fontSize: 19, letterSpacing: -0.4, color: colors.ink },
+  wordmark: { fontFamily: fonts.extrabold, fontSize: 19, color: colors.ink },
   bell: {
     width: 44,
     height: 44,
@@ -373,10 +507,9 @@ const styles = StyleSheet.create({
     top: 2,
     right: 0,
     minWidth: 18,
-    paddingHorizontal: 3,
     textAlign: 'center',
-    overflow: 'hidden',
     borderRadius: radius.pill,
+    overflow: 'hidden',
     backgroundColor: colors.sky,
     color: colors.white,
     ...typography.caption,
@@ -384,39 +517,132 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   header: { gap: spacing.xs },
-  eyebrow: { ...typography.body, fontFamily: fonts.medium, fontSize: 14, color: colors.textMuted },
-  title: {
-    ...typography.display,
-    fontSize: 36,
-    lineHeight: 40,
-    letterSpacing: -1.1,
-    color: colors.ink,
-  },
-  subtitle: { color: colors.textMuted, ...typography.caption },
-  hero: { gap: spacing.base },
-  line: { flexDirection: 'row', alignItems: 'center' },
-  lineStart: { width: 14, height: 14, borderRadius: radius.pill, backgroundColor: colors.ink },
-  lineTrack: { flex: 1, height: 6, marginHorizontal: -2, backgroundColor: colors.primary },
-  lineEnd: {
-    width: 14,
-    height: 14,
+  eyebrow: { ...typography.caption, color: colors.textMuted },
+  title: { ...typography.display, fontSize: 34, lineHeight: 40, color: colors.ink },
+  areaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
+  subtitle: { ...typography.caption, color: colors.textMuted },
+  upToDate: {
+    ...typography.caption,
+    color: colors.success,
+    backgroundColor: colors.successSoft,
     borderRadius: radius.pill,
-    borderWidth: 3,
-    borderColor: colors.sky,
-    backgroundColor: colors.background,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
   },
-  heroTitle: { ...typography.title, fontFamily: fonts.extrabold, color: colors.ink },
-  heroDetails: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   section: { gap: spacing.sm },
-  indicatorCard: { gap: spacing.sm },
-  indicatorTitle: { ...typography.heading, color: colors.text },
-  tileGrid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: spacing.md },
-  recentHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  notice: { gap: spacing.sm },
-  noticeTitle: { color: colors.text, ...typography.heading },
-  message: { color: colors.textMuted, ...typography.body },
-  alertRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  alertText: { flex: 1, color: colors.text, ...typography.body },
-  link: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  linkText: { ...typography.body, fontFamily: fonts.bold, color: colors.primary },
+  sectionTitleRow: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sectionTitle: { ...typography.title, color: colors.ink },
+  smallAction: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  actionText: { ...typography.caption, fontFamily: fonts.bold, color: colors.primary },
+  firstStepsCard: {
+    borderRadius: radius.lg,
+    backgroundColor: colors.primarySoft,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  firstStepsBody: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  progressRing: {
+    width: 60,
+    height: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressText: { ...typography.heading, color: colors.ink, position: 'absolute' },
+  firstStepsCopy: { flex: 1, gap: spacing.xs },
+  bodyText: { ...typography.body, color: colors.text },
+  inlineAction: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  quietEmpty: { ...typography.body, color: colors.textMuted, paddingVertical: spacing.sm },
+  stackBack: {
+    paddingBottom: spacing.sm,
+    paddingHorizontal: spacing.xs,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primarySoft,
+  },
+  stackCard: {
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+  },
+  nextTop: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm },
+  stepCounter: { ...typography.caption, color: colors.textMuted },
+  deadline: { ...typography.caption, fontFamily: fonts.bold, color: colors.primary },
+  overdue: { color: colors.dangerText },
+  nextActionRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  stepIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nextAction: { ...typography.title, color: colors.ink },
+  nextCase: { ...typography.body, color: colors.text },
+  nextMeta: { ...typography.caption, color: colors.textMuted },
+  nextActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  secondaryAction: { minHeight: 44, paddingHorizontal: spacing.md, justifyContent: 'center' },
+  secondaryText: { ...typography.caption, color: colors.textMuted },
+  primaryAction: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.primary,
+  },
+  primaryText: { ...typography.caption, fontFamily: fonts.bold, color: colors.white },
+  caseGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  caseTile: {
+    flexBasis: '47%',
+    flexGrow: 1,
+    minHeight: 88,
+    padding: spacing.md,
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+  },
+  caseTileOverdue: { backgroundColor: colors.dangerSoft, borderColor: colors.dangerBorder },
+  caseCount: { ...typography.display, color: colors.ink },
+  caseCountOverdue: { color: colors.error },
+  caseTileLabel: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  caseDot: { width: 8, height: 8, borderRadius: radius.pill },
+  caseLabel: { ...typography.caption, color: colors.textMuted },
+  todayRow: {
+    minHeight: 64,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+  },
+  todayIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primarySoft,
+  },
+  todayCopy: { flex: 1, gap: spacing.xs },
+  todayTitle: { ...typography.caption, fontFamily: fonts.bold, color: colors.text },
+  todayComment: { ...typography.caption, color: colors.text },
+  todayMeta: { ...typography.caption, color: colors.textMuted },
 })

@@ -59,4 +59,5 @@ test('al enviar un mensaje invalida historial, acciones y avisos', async () => {
   expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['cases', 'case-1', 'history'] })
   expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['cases', 'case-1', 'actions'] })
   expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['notifications'] })
+  expect(invalidateQueries).not.toHaveBeenCalledWith({ queryKey: ['cases', 'next-steps'] })
 })

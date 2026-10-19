@@ -28,7 +28,9 @@ const item: AppNotification = {
   action: 'enviar_reporte',
   caseNumber: 'CAS-2026-00002',
   caseTitle: 'Fuga de agua',
+  actorId: 'actor-ana',
   actorName: 'Ana (dado de baja)',
+  comment: null,
   createdAt: '2026-10-16T12:00:00Z',
   readAt: null,
 }
