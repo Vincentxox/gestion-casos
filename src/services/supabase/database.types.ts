@@ -1197,6 +1197,7 @@ export type Database = {
           thumb_path: string
         }[]
       }
+      clear_profile_photo: { Args: never; Returns: undefined }
       complete_push: {
         Args: { error_message?: string; notification_ids: number[] }
         Returns: number
@@ -1224,14 +1225,21 @@ export type Database = {
       }
       count_cases_by_status: {
         Args: {
+          created_from?: string
+          created_to?: string
+          overdue_only?: boolean
+          priorities?: Database['public']['Enums']['case_priority'][]
           priority_filter?: Database['public']['Enums']['case_priority']
           scope?: string
           search_text?: string
+          statuses?: Database['public']['Enums']['case_status'][]
           updated_since?: string
         }
         Returns: {
+          overdue: number
           status: Database['public']['Enums']['case_status']
           total: number
+          unassigned: number
         }[]
       }
       deactivate_member: {
@@ -1271,9 +1279,46 @@ export type Database = {
         }[]
       }
       get_organization_join_code: { Args: never; Returns: string }
+      list_next_steps: {
+        Args: never
+        Returns: {
+          accept_target_hours: number
+          accepted_at: string | null
+          assigned_at: string | null
+          assigned_to: string | null
+          case_number: string
+          category_id: string
+          closed_at: string | null
+          created_at: string
+          created_by: string
+          description: string
+          id: string
+          location: string
+          organization_id: string
+          priority: Database['public']['Enums']['case_priority']
+          requesting_area_id: string
+          resolve_target_hours: number
+          started_at: string | null
+          status: Database['public']['Enums']['case_status']
+          status_changed_at: string
+          target_area_id: string
+          title: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: '*'
+          to: 'cases'
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       mark_notifications_read: {
         Args: { notification_ids?: number[] }
         Returns: number
+      }
+      next_step: {
+        Args: { target_case: Database['public']['Tables']['cases']['Row'] }
+        Returns: string
       }
       overdue_stage: {
         Args: { target: Database['public']['Tables']['cases']['Row'] }
@@ -1338,6 +1383,10 @@ export type Database = {
       }
       search_cases: {
         Args: {
+          created_from?: string
+          created_to?: string
+          overdue_only?: boolean
+          priorities?: Database['public']['Enums']['case_priority'][]
           priority_filter?: Database['public']['Enums']['case_priority']
           scope?: string
           search_text?: string
@@ -1408,6 +1457,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      set_profile_photo: { Args: { photo_path: string }; Returns: undefined }
       submit_case_report: {
         Args: {
           accepts_terms: boolean

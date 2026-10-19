@@ -3,6 +3,7 @@ import { StyleSheet } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import type { Profile } from '@/features/auth/types'
+import { calendarDateBoundary } from '../caseSearch'
 import { CasesListScreen } from '../screens/CasesListScreen'
 import { useCaseCounts, useCases } from '../useCases'
 
@@ -77,34 +78,47 @@ beforeEach(() => {
   ;(useCases as jest.Mock).mockClear()
 })
 
-test('el administrador cambia Todas/Bandeja y ve cuatro pestañas con conteos', async () => {
+test('el administrador ve Todas y tres pestañas con conteos', async () => {
   const { screen } = await setup()
   expect(screen.getByRole('tab', { name: 'Todas' }).props.accessibilityState).toEqual({
     selected: true,
   })
-  expect(screen.getByRole('tab', { name: 'Pendientes, 3 solicitudes' })).toBeTruthy()
-  expect(screen.getByRole('tab', { name: 'En curso, 4 solicitudes' })).toBeTruthy()
+  expect(screen.queryByRole('tab', { name: 'Bandeja' })).toBeNull()
+  expect(screen.getByRole('tab', { name: 'Abiertas, 7 solicitudes' })).toBeTruthy()
   expect(screen.getByRole('tab', { name: 'Cerradas, 3 solicitudes' })).toBeTruthy()
   expect(
-    StyleSheet.flatten(screen.getByRole('tab', { name: 'Pendientes, 3 solicitudes' }).props.style),
+    StyleSheet.flatten(screen.getByRole('tab', { name: 'Abiertas, 7 solicitudes' }).props.style),
   ).toMatchObject({ minHeight: 44 })
   expect(
     StyleSheet.flatten(screen.getByRole('button', { name: 'Más filtros, 0 activos' }).props.style),
   ).toMatchObject({ width: 44, height: 44 })
 
-  await fireEvent.press(screen.getByRole('tab', { name: 'Bandeja' }))
-  expect(useCases).toHaveBeenLastCalledWith(expect.objectContaining({ scope: 'bandeja' }), true)
-  expect(screen.getByRole('tab', { name: 'Bandeja' }).props.accessibilityState).toEqual({
-    selected: true,
-  })
-  await fireEvent.press(screen.getByRole('tab', { name: 'En curso, 4 solicitudes' }))
+  await fireEvent.press(screen.getByRole('tab', { name: 'Abiertas, 7 solicitudes' }))
   expect(useCases).toHaveBeenLastCalledWith(
     expect.objectContaining({
-      scope: 'bandeja',
+      scope: 'todas',
       statuses: expect.arrayContaining(['en_ejecucion']),
     }),
     true,
   )
+})
+
+test.each(['administrador', 'jefe_area', 'auditor'] as const)(
+  '%s abre Indicadores desde el encabezado',
+  async (role) => {
+    mockProfile.role = role
+    const { screen, navigation } = await setup()
+    const button = screen.getByRole('button', { name: 'Abrir Indicadores' })
+    expect(StyleSheet.flatten(button.props.style)).toMatchObject({ minHeight: 44, minWidth: 44 })
+    await fireEvent.press(button)
+    expect(navigation.navigate).toHaveBeenCalledWith('Indicators')
+  },
+)
+
+test.each(['solicitante', 'tecnico'] as const)('%s no ve Indicadores', async (role) => {
+  mockProfile.role = role
+  const { screen } = await setup()
+  expect(screen.queryByRole('button', { name: 'Abrir Indicadores' })).toBeNull()
 })
 
 test('el auditor solo ve Todas porque no crea solicitudes', async () => {
@@ -127,26 +141,55 @@ test('el técnico recibe los dos alcances de trabajo y área', async () => {
   expect(useCases).toHaveBeenLastCalledWith(expect.objectContaining({ scope: 'mi_area' }), true)
 })
 
+test('el jefe técnico tiene Mi área/Todas y Sin asignar conserva Mi área', async () => {
+  mockProfile.role = 'jefe_area'
+  const { screen } = await setup()
+  expect(screen.getByRole('tab', { name: 'Mi área' }).props.accessibilityState).toEqual({
+    selected: true,
+  })
+  expect(screen.queryByRole('tab', { name: 'Bandeja' })).toBeNull()
+  await fireEvent.press(screen.getByRole('button', { name: 'Más filtros, 0 activos' }))
+  await fireEvent.press(screen.getByRole('button', { name: 'Sin asignar' }))
+  expect(useCases).toHaveBeenLastCalledWith(
+    expect.objectContaining({ scope: 'mi_area', statuses: ['aceptado'], unassignedOnly: true }),
+    true,
+  )
+  expect(useCaseCounts).toHaveBeenLastCalledWith(
+    expect.objectContaining({ scope: 'mi_area', statuses: ['aceptado'], unassignedOnly: true }),
+    true,
+  )
+})
+
 test('los filtros de Inicio son chips quitables, insignia y Limpiar', async () => {
   const { screen } = await setup({ scope: 'sin_asignar', exactStatus: 'aceptado' })
-  expect(screen.getByRole('button', { name: 'Más filtros, 2 activos' })).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Más filtros, 1 activo' })).toBeTruthy()
+  expect(useCases).toHaveBeenLastCalledWith(
+    expect.objectContaining({ scope: 'todas', statuses: ['aceptado'], unassignedOnly: true }),
+    true,
+  )
   expect(
-    screen.getByRole('button', { name: 'Quitar filtro Aceptada' }).props.accessibilityState,
+    screen.getByRole('button', { name: 'Quitar filtro Sin asignar' }).props.accessibilityState,
   ).toEqual({
     selected: true,
   })
-  await fireEvent.press(screen.getByRole('button', { name: 'Quitar filtro Aceptada' }))
+  await fireEvent.press(screen.getByRole('button', { name: 'Quitar filtro Sin asignar' }))
+  expect(screen.getByRole('button', { name: 'Más filtros, 0 activos' })).toBeTruthy()
+  await fireEvent.press(screen.getByRole('button', { name: 'Más filtros, 0 activos' }))
+  await fireEvent.press(screen.getByRole('button', { name: 'Vencidas' }))
   expect(screen.getByRole('button', { name: 'Más filtros, 1 activo' })).toBeTruthy()
   await fireEvent.press(screen.getByRole('button', { name: 'Limpiar filtros activos' }))
   expect(screen.getByRole('button', { name: 'Más filtros, 0 activos' })).toBeTruthy()
-  expect(useCases).toHaveBeenLastCalledWith(expect.objectContaining({ scope: 'bandeja' }), true)
+  expect(useCases).toHaveBeenLastCalledWith(
+    expect.objectContaining({ scope: 'todas', overdueOnly: false }),
+    true,
+  )
 })
 
 test('Inicio puede abrir Tus solicitudes filtradas por fase', async () => {
   mockProfile.role = 'solicitante'
   const { screen } = await setup({ scope: 'mias', status: 'en_curso' })
   expect(
-    screen.getByRole('tab', { name: 'En curso, 4 solicitudes' }).props.accessibilityState,
+    screen.getByRole('tab', { name: 'Abiertas, 7 solicitudes' }).props.accessibilityState,
   ).toEqual({
     selected: true,
   })
@@ -156,10 +199,39 @@ test('Inicio puede abrir Tus solicitudes filtradas por fase', async () => {
   )
 })
 
-test('el botón de filtros permite agregar y quitar filtros sin consultas nuevas', async () => {
+test('el botón de filtros permite combinar prioridades y fecha de creación', async () => {
   const { screen } = await setup()
   await fireEvent.press(screen.getByRole('button', { name: 'Más filtros, 0 activos' }))
   await fireEvent.press(screen.getByRole('button', { name: 'Alta' }))
   expect(screen.getByRole('button', { name: 'Más filtros, 1 activo' })).toBeTruthy()
-  expect(useCases).toHaveBeenLastCalledWith(expect.objectContaining({ priority: 'alta' }), true)
+  await fireEvent.press(screen.getByRole('button', { name: 'Media' }))
+  expect(useCases).toHaveBeenLastCalledWith(
+    expect.objectContaining({ priorities: ['alta', 'media'] }),
+    true,
+  )
+  await fireEvent.press(screen.getByRole('button', { name: 'Últimos 7 días' }))
+  expect(useCases).toHaveBeenLastCalledWith(
+    expect.objectContaining({ createdFrom: expect.any(String) }),
+    true,
+  )
+})
+
+test('el rango de creación termina al día siguiente y rechaza fechas invertidas', async () => {
+  const { screen } = await setup()
+  await fireEvent.press(screen.getByRole('button', { name: 'Más filtros, 0 activos' }))
+  await fireEvent.changeText(screen.getByLabelText('Fecha inicial de creación'), '2026-10-01')
+  await fireEvent.changeText(screen.getByLabelText('Fecha final de creación'), '2026-10-08')
+  await fireEvent.press(screen.getByRole('button', { name: 'Ver solicitudes' }))
+  expect(useCases).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      createdFrom: calendarDateBoundary('2026-10-01'),
+      createdTo: calendarDateBoundary('2026-10-08', true),
+    }),
+    true,
+  )
+  await fireEvent.press(screen.getByRole('button', { name: 'Más filtros, 1 activo' }))
+  await fireEvent.changeText(screen.getByLabelText('Fecha final de creación'), '2026-09-30')
+  expect(screen.getByRole('alert').props.children).toBe(
+    'La fecha final debe ser posterior a la inicial',
+  )
 })

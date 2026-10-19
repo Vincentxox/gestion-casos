@@ -69,14 +69,11 @@ test('ofrece los alcances adecuados a cada rol', () => {
 })
 
 test('el selector compacto ofrece dos alcances útiles según el rol', () => {
-  expect(getPrimaryScopeOptions({ ...profile, role: 'administrador' }, null)).toEqual([
-    'todas',
-    'bandeja',
-  ])
+  expect(getPrimaryScopeOptions({ ...profile, role: 'administrador' }, null)).toEqual(['todas'])
   expect(getPrimaryScopeOptions(profile, 'tecnica')).toEqual(['mis_trabajos', 'mi_area'])
   expect(getPrimaryScopeOptions({ ...profile, role: 'jefe_area' }, 'tecnica')).toEqual([
-    'bandeja',
     'mi_area',
+    'todas',
   ])
   expect(getPrimaryScopeOptions({ ...profile, role: 'jefe_area' }, 'solicitante')).toEqual([
     'mi_area',

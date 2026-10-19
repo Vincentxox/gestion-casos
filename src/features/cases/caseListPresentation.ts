@@ -10,7 +10,8 @@ export type ScopeFilter =
   | 'por_aceptar'
   | 'sin_asignar'
   | 'en_curso'
-export type StatusFilter = 'todos' | 'pendientes' | 'en_curso' | 'cerradas'
+// Los valores anteriores siguen aceptándose en enlaces de Inicio ya publicados.
+export type StatusFilter = 'todos' | 'pendientes' | 'en_curso' | 'abiertas' | 'todas' | 'cerradas'
 
 export function getScopeOptions(profile: Profile, areaKind: 'solicitante' | 'tecnica' | null) {
   if (profile.role === 'solicitante') return [] as ScopeFilter[]
@@ -28,9 +29,9 @@ export function getPrimaryScopeOptions(
   profile: Profile,
   areaKind: 'solicitante' | 'tecnica' | null,
 ): readonly [ScopeFilter] | readonly [ScopeFilter, ScopeFilter] {
-  if (profile.role === 'administrador') return ['todas', 'bandeja']
+  if (profile.role === 'administrador') return ['todas']
   if (profile.role === 'tecnico') return ['mis_trabajos', 'mi_area']
-  if (profile.role === 'jefe_area' && areaKind === 'tecnica') return ['bandeja', 'mi_area']
+  if (profile.role === 'jefe_area' && areaKind === 'tecnica') return ['mi_area', 'todas']
   if (profile.role === 'jefe_area') return ['mi_area', 'mias']
   if (profile.role === 'auditor') return ['todas']
   return ['todas', 'mias']

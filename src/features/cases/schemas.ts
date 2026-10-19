@@ -15,6 +15,12 @@ export const caseSearchTextSchema = z
   .trim()
   .max(100, 'La búsqueda no puede exceder 100 caracteres')
 
+export const caseCreatedRangeSchema = z
+  .object({ createdFrom: z.iso.datetime().nullable(), createdTo: z.iso.datetime().nullable() })
+  .refine(({ createdFrom, createdTo }) => !createdFrom || !createdTo || createdTo > createdFrom, {
+    message: 'La fecha final debe ser posterior a la inicial',
+  })
+
 export const reassignmentReasonSchema = z
   .string()
   .trim()

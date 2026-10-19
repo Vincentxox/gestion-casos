@@ -27,6 +27,7 @@ const rpc = supabase.rpc as jest.Mock
 const query = {
   select: jest.fn(),
   eq: jest.fn(),
+  is: jest.fn(),
   order: jest.fn(),
   range: jest.fn(),
   limit: jest.fn(),
@@ -61,10 +62,13 @@ const row = {
 const filters = {
   scope: 'mi_area' as const,
   statuses: ['solicitado' as const],
-  priority: 'alta' as const,
-  updatedSince: '2026-10-10T00:00:00.000Z',
+  priorities: ['alta' as const, 'media' as const],
+  createdFrom: '2026-10-10T00:00:00.000Z',
+  createdTo: null,
+  overdueOnly: true,
+  unassignedOnly: false,
   searchText: '  energía  ',
-  sortPending: true,
+  sort: 'prioridad' as const,
 }
 
 beforeEach(() => {
@@ -72,7 +76,7 @@ beforeEach(() => {
   ;(listFormerMemberNames as jest.Mock).mockResolvedValue(new Map())
   from.mockReturnValue(query)
   rpc.mockReturnValue(query)
-  for (const method of ['select', 'eq', 'order', 'insert', 'update', 'in'] as const)
+  for (const method of ['select', 'eq', 'is', 'order', 'insert', 'update', 'in'] as const)
     query[method].mockReturnValue(query)
   query.single.mockResolvedValue({ data: row, error: null })
   query.limit.mockResolvedValue({ data: [row], error: null })
@@ -129,8 +133,10 @@ test('pagina y ordena solicitudes en el servidor y conserva los nombres de relac
   expect(rpc).toHaveBeenCalledWith('search_cases', {
     scope: 'mi_area',
     statuses: ['solicitado'],
-    priority_filter: 'alta',
-    updated_since: '2026-10-10T00:00:00.000Z',
+    priorities: ['alta', 'media'],
+    created_from: '2026-10-10T00:00:00.000Z',
+    created_to: null,
+    overdue_only: true,
     search_text: 'energía',
   })
   expect(query.range).toHaveBeenCalledWith(60, 89)
@@ -142,17 +148,42 @@ test('pagina y ordena solicitudes en el servidor y conserva los nombres de relac
   expect(query.select.mock.calls[0]?.[0]).toContain('due_at, overdue_stage')
 })
 
-test('sin pendientes ordena por fecha e id y cuenta sin restringir estados', async () => {
-  await listCases({ ...filters, sortPending: false }, 0)
+test('ordena por fecha e id y cuenta con los filtros nuevos', async () => {
+  await listCases({ ...filters, sort: 'recientes' }, 0)
   expect(query.order.mock.calls.map(([field]) => field)).toEqual(['created_at', 'id'])
-  rpc.mockResolvedValue({ data: [{ status: 'solicitado', total: 4 }], error: null })
-  await expect(countCasesByStatus(filters)).resolves.toEqual([{ status: 'solicitado', total: 4 }])
+  rpc.mockResolvedValue({
+    data: [{ status: 'solicitado', total: 4, overdue: 2, unassigned: 4 }],
+    error: null,
+  })
+  await expect(countCasesByStatus(filters)).resolves.toEqual([
+    { status: 'solicitado', total: 4, overdue: 2, unassigned: 4 },
+  ])
   expect(rpc).toHaveBeenLastCalledWith('count_cases_by_status', {
     scope: 'mi_area',
-    priority_filter: 'alta',
-    updated_since: '2026-10-10T00:00:00.000Z',
+    statuses: ['solicitado'],
+    priorities: ['alta', 'media'],
+    created_from: '2026-10-10T00:00:00.000Z',
+    created_to: null,
+    overdue_only: true,
     search_text: 'energía',
   })
+})
+
+test('Sin asignar conserva el alcance y usa la columna unassigned de aceptadas', async () => {
+  const unassigned = { ...filters, statuses: ['aceptado' as const], unassignedOnly: true }
+  await listCases(unassigned, 0)
+  expect(query.is).toHaveBeenCalledWith('assigned_to', null)
+  expect(rpc).toHaveBeenCalledWith(
+    'search_cases',
+    expect.objectContaining({ scope: 'mi_area', statuses: ['aceptado'] }),
+  )
+  rpc.mockResolvedValue({
+    data: [{ status: 'aceptado', total: 5, overdue: 1, unassigned: 2 }],
+    error: null,
+  })
+  await expect(countCasesByStatus(unassigned)).resolves.toEqual([
+    { status: 'aceptado', total: 2, overdue: 1, unassigned: 2 },
+  ])
 })
 
 test('una página conserva los nombres históricos de integrantes dados de baja', async () => {

@@ -28,25 +28,41 @@ import { useAuthStore } from '@/store/authStore'
 import { statusMeta } from '@/theme/statusMeta'
 import { colors, elevation, fonts, radius, spacing, typography } from '@/theme/tokens'
 
-import { CASE_STATUSES, type CaseRecord } from '../types'
+import type { CasePriority, CaseRecord } from '../types'
 import { groupCasesByDay } from '../caseDateGroups'
 import { CaseCard } from '../components/CaseCard'
 import { useCaseCounts, useCases } from '../useCases'
+import { getPrimaryScopeOptions, type ScopeFilter } from '../caseListPresentation'
 import {
-  getPrimaryScopeOptions,
-  getScopeOptions,
-  type ScopeFilter,
-  type StatusFilter,
-} from '../caseListPresentation'
-import { buildCaseSearchFilters, getCaseSegments } from '../caseSearch'
+  buildCaseSearchFilters,
+  CLOSED_CASE_STATUSES,
+  getCaseSegments,
+  validateCreatedRange,
+  type CaseListTab,
+  type CaseSort,
+  type QuickStatusFilter,
+} from '../caseSearch'
 
 type Props = NativeStackScreenProps<MainStackParamList, 'Cases'>
 
-const STATUS_LABELS: Record<StatusFilter, string> = {
-  todos: 'Todas',
-  pendientes: 'Pendientes',
-  en_curso: 'En curso',
+const STATUS_LABELS: Record<CaseListTab, string> = {
+  abiertas: 'Abiertas',
   cerradas: 'Cerradas',
+  todas: 'Todas',
+}
+
+const QUICK_LABELS: Record<QuickStatusFilter, string> = {
+  por_aceptar: 'Por aceptar',
+  sin_asignar: 'Sin asignar',
+  en_ejecucion: 'En ejecución',
+  en_espera: 'En espera',
+  en_revision: 'En revisión',
+}
+const SORT_LABELS: Record<CaseSort, string> = {
+  recientes: 'Más recientes',
+  antiguas: 'Más antiguas',
+  vencen_antes: 'Vencen antes',
+  prioridad: 'Prioridad',
 }
 
 const SCOPE_LABELS: Record<ScopeFilter, string> = {
@@ -70,6 +86,8 @@ export function CasesListScreen({ navigation, route }: Props) {
   }, [search])
   const [animateInitialList, setAnimateInitialList] = useState(true)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [fromDateDraft, setFromDateDraft] = useState('')
+  const [toDateDraft, setToDateDraft] = useState('')
   const reduceMotion = useReducedMotion()
   const [filterNow, setFilterNow] = useState(() => Date.now())
   useEffect(() => {
@@ -79,41 +97,113 @@ export function CasesListScreen({ navigation, route }: Props) {
   const routeKey = JSON.stringify(route.params ?? {})
   const [selection, setSelection] = useState<{
     key: string
-    status?: StatusFilter
+    status?: CaseListTab
     scope?: ScopeFilter
+    quickStatus?: QuickStatusFilter | null
     exactStatus?: CaseRecord['status'] | null
-    priority?: 'alta' | null
+    legacyStatuses?: CaseRecord['status'][] | null
+    priorities?: CasePriority[]
     sinceDays?: number | null
-    activeOnly?: boolean
+    fromDate?: string | null
+    toDate?: string | null
+    overdueOnly?: boolean
+    sort?: CaseSort
   } | null>(null)
   const routeFilters = selection?.key === routeKey ? selection : route.params
-  const status = routeFilters?.status ?? 'todos'
+  const legacyStatus = route.params?.status
+  const routeLegacyStatuses: CaseRecord['status'][] | null =
+    legacyStatus === 'pendientes'
+      ? ['solicitado', 'aceptado']
+      : legacyStatus === 'en_curso'
+        ? ['asignado', 'en_ejecucion', 'en_espera', 'reporte_enviado', 'validado']
+        : null
+  const initialTab: CaseListTab =
+    legacyStatus === 'cerradas' ||
+    (route.params?.exactStatus && CLOSED_CASE_STATUSES.includes(route.params.exactStatus))
+      ? 'cerradas'
+      : legacyStatus === 'pendientes' ||
+          legacyStatus === 'en_curso' ||
+          legacyStatus === 'abiertas' ||
+          route.params?.activeOnly ||
+          route.params?.scope === 'bandeja' ||
+          route.params?.scope === 'por_aceptar' ||
+          route.params?.scope === 'sin_asignar' ||
+          Boolean(route.params?.exactStatus)
+        ? 'abiertas'
+        : 'todas'
+  const status = selection?.key === routeKey ? (selection.status ?? initialTab) : initialTab
   const scope = routeFilters?.scope ?? null
   const exactStatus = routeFilters?.exactStatus ?? null
-  const priority = routeFilters?.priority ?? null
+  const legacyStatuses =
+    selection?.key === routeKey ? (selection.legacyStatuses ?? null) : routeLegacyStatuses
+  const priority = route.params?.priority ?? null
+  const priorities =
+    selection?.key === routeKey
+      ? (selection.priorities ?? (priority ? [priority] : []))
+      : priority
+        ? [priority]
+        : []
   const sinceDays = routeFilters?.sinceDays ?? null
-  const activeOnly = routeFilters?.activeOnly ?? false
+  const fromDate = selection?.key === routeKey ? (selection.fromDate ?? null) : null
+  const toDate = selection?.key === routeKey ? (selection.toDate ?? null) : null
+  const overdueOnly = selection?.key === routeKey ? (selection.overdueOnly ?? false) : false
+  const sort = selection?.key === routeKey ? (selection.sort ?? 'recientes') : 'recientes'
+  const routeQuickStatus: QuickStatusFilter | null =
+    scope === 'por_aceptar' || (scope === 'bandeja' && exactStatus === 'solicitado')
+      ? 'por_aceptar'
+      : scope === 'sin_asignar' || (scope === 'bandeja' && exactStatus === 'aceptado')
+        ? 'sin_asignar'
+        : null
+  const quickStatus =
+    selection?.key === routeKey ? (selection.quickStatus ?? null) : routeQuickStatus
+  const dateError = validateCreatedRange(fromDateDraft.trim() || null, toDateDraft.trim() || null)
   function changeFilters(patch: Partial<NonNullable<typeof selection>>) {
-    setSelection({ key: routeKey, ...routeFilters, ...patch })
+    setSelection({
+      key: routeKey,
+      status,
+      scope: scope ?? undefined,
+      quickStatus,
+      exactStatus,
+      legacyStatuses,
+      priorities,
+      sinceDays,
+      fromDate,
+      toDate,
+      overdueOnly,
+      sort,
+      ...patch,
+    })
   }
   const canCreate = hasPermission(profile?.role, 'cases.create') && Boolean(profile?.areaId)
-  const scopes = profile ? getScopeOptions(profile, home.data?.area_kind ?? null) : []
+  const canViewIndicators =
+    profile?.role === 'administrador' ||
+    profile?.role === 'jefe_area' ||
+    profile?.role === 'auditor'
   const primaryScopes = profile
     ? getPrimaryScopeOptions(profile, home.data?.area_kind ?? null)
-    : (['todas', 'mias'] as const)
-  const specialScope = scope === 'por_aceptar' || scope === 'sin_asignar' ? scope : null
-  const effectiveScope = scope ?? primaryScopes[0]
-  const selectedScope = specialScope ? 'bandeja' : effectiveScope
-  const filters = buildCaseSearchFilters({
-    status,
-    scope: specialScope ?? effectiveScope,
-    exactStatus,
-    priority,
+    : (['todas'] as const)
+  const effectiveScope =
+    scope === 'bandeja' || scope === 'por_aceptar' || scope === 'sin_asignar'
+      ? primaryScopes[0]
+      : (scope ?? primaryScopes[0])
+  const selectedScope = effectiveScope
+  const filterInput = {
+    tab: status,
+    scope: effectiveScope,
+    quickStatus,
+    exactStatus: quickStatus ? null : exactStatus,
+    legacyStatuses,
+    priorities,
     sinceDays,
-    activeOnly,
+    fromDate,
+    toDate,
+    overdueOnly,
     searchText: debouncedSearch,
+    sort,
     now: filterNow,
-  })
+  }
+  const filters = buildCaseSearchFilters(filterInput)
+  const countFilters = buildCaseSearchFilters({ ...filterInput, tab: 'todas' })
   const {
     data,
     error,
@@ -126,7 +216,7 @@ export function CasesListScreen({ navigation, route }: Props) {
     isFetchNextPageError,
   } = useCases(filters, Boolean(profile?.organizationId))
   const requestNextPage = () => void fetchNextPage()
-  const counts = useCaseCounts(filters, Boolean(profile?.organizationId))
+  const counts = useCaseCounts(countFilters, Boolean(profile?.organizationId))
   const filteredCases = data?.pages.flat() ?? []
   const firstEntryOrder = new Map(filteredCases.slice(0, 8).map((item, index) => [item.id, index]))
   useEffect(() => {
@@ -135,43 +225,73 @@ export function CasesListScreen({ navigation, route }: Props) {
     return () => clearTimeout(timeout)
   }, [animateInitialList, isLoading, error, filteredCases.length])
   const segmentCounts = counts.data ? getCaseSegments(counts.data) : null
-  const segments = (Object.keys(STATUS_LABELS) as StatusFilter[]).map((value) => ({
+  const segments = (Object.keys(STATUS_LABELS) as CaseListTab[]).map((value) => ({
     value,
     label: STATUS_LABELS[value],
     count: segmentCounts?.[value],
   }))
-  const extraScope = scope && !primaryScopes.includes(scope) ? scope : null
+  const extraScope = scope && !primaryScopes.includes(scope) && !routeQuickStatus ? scope : null
   const chips = [
-    ...(exactStatus ? [{ key: 'exactStatus', label: statusMeta[exactStatus].label }] : []),
+    ...(quickStatus ? [{ key: 'quickStatus', label: QUICK_LABELS[quickStatus] }] : []),
+    ...(exactStatus && !quickStatus
+      ? [{ key: 'exactStatus', label: statusMeta[exactStatus].label }]
+      : []),
     ...(extraScope ? [{ key: 'scope', label: SCOPE_LABELS[extraScope] }] : []),
-    ...(priority ? [{ key: 'priority', label: 'Prioridad alta' }] : []),
+    ...(priorities.length
+      ? [{ key: 'priorities', label: `Prioridad: ${priorities.join(', ')}` }]
+      : []),
     ...(sinceDays ? [{ key: 'sinceDays', label: `Últimos ${sinceDays} días` }] : []),
-    ...(activeOnly ? [{ key: 'activeOnly', label: 'Solo activas' }] : []),
+    ...(fromDate || toDate
+      ? [{ key: 'dates', label: `Creación: ${fromDate ?? '…'} a ${toDate ?? '…'}` }]
+      : []),
+    ...(overdueOnly ? [{ key: 'overdueOnly', label: 'Vencidas' }] : []),
+    ...(sort !== 'recientes' ? [{ key: 'sort', label: SORT_LABELS[sort] }] : []),
   ] as const
-  const hasFilters = Boolean(search || status !== 'todos' || chips.length || scope)
+  const hasFilters = Boolean(search || status !== 'todas' || chips.length || scope)
   function clearChips() {
     changeFilters({
+      quickStatus: null,
       exactStatus: null,
-      scope: extraScope ? (specialScope ? 'bandeja' : undefined) : (scope ?? undefined),
-      priority: null,
+      legacyStatuses: null,
+      scope: extraScope ? primaryScopes[0] : effectiveScope,
+      priorities: [],
       sinceDays: null,
-      activeOnly: false,
+      fromDate: null,
+      toDate: null,
+      overdueOnly: false,
+      sort: 'recientes',
     })
   }
   function removeChip(key: (typeof chips)[number]['key']) {
+    if (key === 'quickStatus')
+      changeFilters({ quickStatus: null, scope: effectiveScope, exactStatus: null })
     if (key === 'exactStatus') changeFilters({ exactStatus: null })
-    if (key === 'scope') changeFilters({ scope: specialScope ? 'bandeja' : undefined })
-    if (key === 'priority') changeFilters({ priority: null })
+    if (key === 'scope') changeFilters({ scope: primaryScopes[0] })
+    if (key === 'priorities') changeFilters({ priorities: [] })
     if (key === 'sinceDays') changeFilters({ sinceDays: null })
-    if (key === 'activeOnly') changeFilters({ activeOnly: false })
+    if (key === 'dates') changeFilters({ fromDate: null, toDate: null })
+    if (key === 'overdueOnly') changeFilters({ overdueOnly: false })
+    if (key === 'sort') changeFilters({ sort: 'recientes' })
   }
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
       <View style={styles.container}>
-        <Text accessibilityRole="header" style={styles.heading}>
-          Solicitudes
-        </Text>
+        <View style={styles.headingRow}>
+          <Text accessibilityRole="header" style={styles.heading}>
+            Solicitudes
+          </Text>
+          {canViewIndicators ? (
+            <Pressable
+              accessibilityLabel="Abrir Indicadores"
+              accessibilityRole="button"
+              onPress={() => navigation.navigate('Indicators')}
+              style={styles.indicatorsButton}
+            >
+              <Text style={styles.indicatorsButtonText}>Indicadores</Text>
+            </Pressable>
+          ) : null}
+        </View>
         <OfflineBanner />
         <View style={styles.searchRow}>
           <View style={styles.toolbar}>
@@ -189,7 +309,11 @@ export function CasesListScreen({ navigation, route }: Props) {
           <Pressable
             accessibilityLabel={`Más filtros, ${chips.length} ${chips.length === 1 ? 'activo' : 'activos'}`}
             accessibilityRole="button"
-            onPress={() => setFiltersOpen(true)}
+            onPress={() => {
+              setFromDateDraft(fromDate ?? '')
+              setToDateDraft(toDate ?? '')
+              setFiltersOpen(true)
+            }}
             style={styles.filterButton}
           >
             <Icon name="options-outline" size={20} color={colors.text} />
@@ -208,7 +332,7 @@ export function CasesListScreen({ navigation, route }: Props) {
               accessibilityLabel={SCOPE_LABELS[value]}
               accessibilityRole="tab"
               accessibilityState={{ selected: selectedScope === value }}
-              onPress={() => changeFilters({ scope: value, exactStatus: null })}
+              onPress={() => changeFilters({ scope: value })}
               style={[styles.scopeTab, selectedScope === value && styles.scopeTabSelected]}
             >
               <Text style={[styles.scopeText, selectedScope === value && styles.scopeTextSelected]}>
@@ -225,7 +349,7 @@ export function CasesListScreen({ navigation, route }: Props) {
               accessibilityLabel={`${segment.label}, ${segment.count ?? 'cargando'} solicitudes`}
               accessibilityRole="tab"
               accessibilityState={{ selected: status === segment.value }}
-              onPress={() => changeFilters({ status: segment.value, exactStatus: null })}
+              onPress={() => changeFilters({ status: segment.value, legacyStatuses: null })}
               style={[styles.statusTab, status === segment.value && styles.statusTabSelected]}
             >
               <Text
@@ -291,11 +415,7 @@ export function CasesListScreen({ navigation, route }: Props) {
         ) : (
           <SectionList
             contentContainerStyle={filteredCases.length ? styles.list : styles.emptyList}
-            sections={
-              filters.sortPending && filteredCases.length
-                ? [{ title: 'Pendientes', data: filteredCases }]
-                : groupCasesByDay(filteredCases)
-            }
+            sections={groupCasesByDay(filteredCases)}
             keyExtractor={(item) => item.id}
             onEndReached={() => {
               if (hasNextPage && !isFetchingNextPage) requestNextPage()
@@ -329,12 +449,17 @@ export function CasesListScreen({ navigation, route }: Props) {
                     ? () => {
                         setSearch('')
                         changeFilters({
-                          status: 'todos',
+                          status: 'todas',
+                          scope: primaryScopes[0],
+                          quickStatus: null,
                           exactStatus: null,
-                          priority: null,
+                          legacyStatuses: null,
+                          priorities: [],
                           sinceDays: null,
-                          activeOnly: false,
-                          scope: undefined,
+                          fromDate: null,
+                          toDate: null,
+                          overdueOnly: false,
+                          sort: 'recientes',
                         })
                       }
                     : canCreate
@@ -375,69 +500,116 @@ export function CasesListScreen({ navigation, route }: Props) {
       </View>
       <BottomSheet
         visible={filtersOpen}
-        title="Más filtros"
+        title="Filtros"
         onClose={() => setFiltersOpen(false)}
-        footerAction={{ label: 'Ver solicitudes', onPress: () => setFiltersOpen(false) }}
+        footerAction={{
+          label: 'Ver solicitudes',
+          onPress: () => {
+            if (dateError) return
+            changeFilters({
+              fromDate: fromDateDraft.trim() || null,
+              toDate: toDateDraft.trim() || null,
+              sinceDays: fromDateDraft.trim() || toDateDraft.trim() ? null : sinceDays,
+            })
+            setFiltersOpen(false)
+          },
+        }}
       >
-        <Text style={styles.sheetHeading}>Estado exacto</Text>
+        <Text style={styles.sheetHeading}>Accesos rápidos</Text>
         <View style={styles.sheetChoices}>
-          {CASE_STATUSES.map((value) => (
+          <Chip
+            label="Vencidas"
+            selected={overdueOnly}
+            onPress={() => changeFilters({ overdueOnly: !overdueOnly, status: 'abiertas' })}
+          />
+          {(Object.keys(QUICK_LABELS) as QuickStatusFilter[]).map((value) => (
             <Chip
               key={value}
-              label={statusMeta[value].label}
-              selected={exactStatus === value}
+              label={QUICK_LABELS[value]}
+              selected={quickStatus === value}
               onPress={() =>
                 changeFilters({
-                  exactStatus: exactStatus === value ? null : value,
-                  status: 'todos',
+                  quickStatus: quickStatus === value ? null : value,
+                  exactStatus: null,
+                  legacyStatuses: null,
+                  scope: effectiveScope,
+                  status: 'abiertas',
                 })
               }
             />
           ))}
         </View>
-        {scopes.some((value) => !primaryScopes.includes(value)) ? (
-          <>
-            <Text style={styles.sheetHeading}>Otros alcances</Text>
-            <View style={styles.sheetChoices}>
-              {scopes
-                .filter((value) => !primaryScopes.includes(value))
-                .map((value) => (
-                  <Chip
-                    key={value}
-                    label={SCOPE_LABELS[value]}
-                    selected={scope === value}
-                    onPress={() => changeFilters({ scope: scope === value ? undefined : value })}
-                  />
-                ))}
-            </View>
-          </>
-        ) : null}
-        <Text style={styles.sheetHeading}>Prioridad</Text>
+        <Text style={styles.sheetHeading}>Prioridades</Text>
         <View style={styles.sheetChoices}>
-          <Chip
-            label="Alta"
-            selected={priority === 'alta'}
-            onPress={() => changeFilters({ priority: priority === 'alta' ? null : 'alta' })}
-          />
+          {(['alta', 'media', 'baja'] as CasePriority[]).map((value) => (
+            <Chip
+              key={value}
+              label={value.charAt(0).toUpperCase() + value.slice(1)}
+              selected={priorities.includes(value)}
+              onPress={() =>
+                changeFilters({
+                  priorities: priorities.includes(value)
+                    ? priorities.filter((priorityValue) => priorityValue !== value)
+                    : [...priorities, value],
+                })
+              }
+            />
+          ))}
         </View>
-        <Text style={styles.sheetHeading}>Actualizadas</Text>
+        <Text style={styles.sheetHeading}>Fecha de creación</Text>
         <View style={styles.sheetChoices}>
           {[7, 30].map((days) => (
             <Chip
               key={days}
               label={`Últimos ${days} días`}
               selected={sinceDays === days}
-              onPress={() => changeFilters({ sinceDays: sinceDays === days ? null : days })}
+              onPress={() => {
+                setFromDateDraft('')
+                setToDateDraft('')
+                changeFilters({
+                  sinceDays: sinceDays === days ? null : days,
+                  fromDate: null,
+                  toDate: null,
+                })
+              }}
             />
           ))}
         </View>
-        <Text style={styles.sheetHeading}>Actividad</Text>
-        <View style={styles.sheetChoices}>
-          <Chip
-            label="Solo activas"
-            selected={activeOnly}
-            onPress={() => changeFilters({ activeOnly: !activeOnly })}
+        <View style={styles.dateRow}>
+          <TextInput
+            accessibilityLabel="Fecha inicial de creación"
+            keyboardType="numbers-and-punctuation"
+            placeholder="Desde AAAA-MM-DD"
+            placeholderTextColor={colors.textMuted}
+            value={fromDateDraft}
+            onChangeText={setFromDateDraft}
+            style={styles.dateInput}
           />
+          <TextInput
+            accessibilityLabel="Fecha final de creación"
+            keyboardType="numbers-and-punctuation"
+            placeholder="Hasta AAAA-MM-DD"
+            placeholderTextColor={colors.textMuted}
+            value={toDateDraft}
+            onChangeText={setToDateDraft}
+            style={styles.dateInput}
+          />
+        </View>
+        {dateError ? (
+          <Text accessibilityRole="alert" style={styles.dateError}>
+            {dateError}
+          </Text>
+        ) : null}
+        <Text style={styles.sheetHeading}>Orden</Text>
+        <View style={styles.sheetChoices}>
+          {(Object.keys(SORT_LABELS) as CaseSort[]).map((value) => (
+            <Chip
+              key={value}
+              label={SORT_LABELS[value]}
+              selected={sort === value}
+              onPress={() => changeFilters({ sort: value })}
+            />
+          ))}
         </View>
       </BottomSheet>
     </SafeAreaView>
@@ -458,6 +630,23 @@ const styles = StyleSheet.create({
     lineHeight: 32,
     letterSpacing: -0.6,
     color: colors.ink,
+  },
+  headingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  indicatorsButton: {
+    minHeight: 44,
+    minWidth: 44,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.sm,
+  },
+  indicatorsButtonText: {
+    ...typography.caption,
+    fontFamily: fonts.bold,
+    color: colors.primary,
   },
   sectionTitle: {
     ...typography.caption,
@@ -559,6 +748,18 @@ const styles = StyleSheet.create({
   clearText: { ...typography.caption, fontFamily: fonts.bold, color: colors.primary },
   sheetHeading: { ...typography.heading, color: colors.ink },
   sheetChoices: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  dateRow: { flexDirection: 'row', gap: spacing.sm },
+  dateInput: {
+    ...typography.body,
+    color: colors.text,
+    flex: 1,
+    minHeight: 44,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm,
+  },
+  dateError: { ...typography.caption, color: colors.dangerText },
   list: { gap: spacing.xs, paddingBottom: spacing.xl * 3 + spacing.lg },
   emptyList: { flexGrow: 1 },
 })
