@@ -6,6 +6,8 @@ export type ScopeFilter =
   | 'mias'
   | 'mis_trabajos'
   | 'mi_area'
+  | 'area_atiende'
+  | 'area_envia'
   | 'bandeja'
   | 'por_aceptar'
   | 'sin_asignar'
@@ -15,23 +17,22 @@ export type StatusFilter = 'todos' | 'pendientes' | 'en_curso' | 'abiertas' | 't
 
 export function getScopeOptions(profile: Profile, areaKind: 'solicitante' | 'tecnica' | null) {
   if (profile.role === 'solicitante') return [] as ScopeFilter[]
-  // "Todas" incluye también casos firmados o asignados antes de cambiar de área.
-  if (profile.role === 'tecnico') return ['mis_trabajos', 'mi_area', 'todas'] as ScopeFilter[]
+  if (profile.role === 'tecnico') return ['mis_trabajos', 'mi_area'] as ScopeFilter[]
   if (profile.role === 'jefe_area' && areaKind === 'tecnica')
-    return ['bandeja', 'mi_area', 'todas'] as ScopeFilter[]
-  if (profile.role === 'jefe_area') return ['mi_area', 'mias', 'todas'] as ScopeFilter[]
+    return ['area_atiende', 'area_envia'] as ScopeFilter[]
+  if (profile.role === 'jefe_area') return ['mi_area', 'mias'] as ScopeFilter[]
   if (profile.role === 'auditor') return ['todas'] as ScopeFilter[]
-  return ['todas', 'bandeja'] as ScopeFilter[]
+  return ['todas'] as ScopeFilter[]
 }
 
-/** Los dos alcances principales de la pantalla, sin perder los accesos especiales de Inicio. */
+/** Alcances visibles en el selector; los valores anteriores siguen admitidos en enlaces. */
 export function getPrimaryScopeOptions(
   profile: Profile,
   areaKind: 'solicitante' | 'tecnica' | null,
 ): readonly [ScopeFilter] | readonly [ScopeFilter, ScopeFilter] {
   if (profile.role === 'administrador') return ['todas']
   if (profile.role === 'tecnico') return ['mis_trabajos', 'mi_area']
-  if (profile.role === 'jefe_area' && areaKind === 'tecnica') return ['mi_area', 'todas']
+  if (profile.role === 'jefe_area' && areaKind === 'tecnica') return ['area_atiende', 'area_envia']
   if (profile.role === 'jefe_area') return ['mi_area', 'mias']
   if (profile.role === 'auditor') return ['todas']
   return ['todas', 'mias']
@@ -45,6 +46,10 @@ export function matchesCaseScope(item: CaseRecord, scope: ScopeFilter, profile: 
       return item.assignedTo === profile.id
     case 'mi_area':
       return item.requestingAreaId === profile.areaId || item.targetAreaId === profile.areaId
+    case 'area_atiende':
+      return item.targetAreaId === profile.areaId
+    case 'area_envia':
+      return item.requestingAreaId === profile.areaId
     case 'bandeja':
       return (
         (profile.role === 'administrador' || item.targetAreaId === profile.areaId) &&
