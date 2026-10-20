@@ -1,6 +1,6 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   KeyboardAvoidingView,
   Platform,
@@ -25,11 +25,12 @@ import { ReportSummary } from '@/features/reports/components/ReportSummary'
 import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
 import { priorityMeta, statusMeta } from '@/theme/statusMeta'
-import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
+import { colors, fonts, phaseColors, radius, spacing, typography } from '@/theme/tokens'
 import { getErrorMessage } from '@/utils/errorMessage'
 
-import { CaseConversation } from '../components/CaseConversation'
-import { CaseProgressDots } from '../components/CaseProgressDots'
+import { CaseMessages } from '../components/CaseMessages'
+import { CaseTracking } from '../components/CaseTracking'
+import { getCaseTrackingSteps } from '../caseTracking'
 import { getCaseActionMeta } from '../caseActionPresentation'
 import { refreshCaseDetail } from '../refreshCaseDetail'
 import { caseMessageSchema } from '../schemas'
@@ -81,6 +82,13 @@ export function CaseDetailScreen({ navigation, route }: Props) {
   const [refreshing, setRefreshing] = useState(false)
   const [messageDraft, setMessageDraft] = useState('')
   const [messageError, setMessageError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'tracking' | 'messages'>('tracking')
+  const scrollRef = useRef<ScrollView>(null)
+  const messageCount = (history.data ?? []).filter((event) => event.action === 'mensaje').length
+
+  useEffect(() => {
+    if (activeTab === 'messages') scrollRef.current?.scrollToEnd({ animated: false })
+  }, [activeTab, messageCount])
 
   async function submitMessage() {
     if (sendMessage.isPending) return
@@ -93,6 +101,7 @@ export function CaseDetailScreen({ navigation, route }: Props) {
     try {
       await sendMessage.mutateAsync(parsed.data)
       setMessageDraft('')
+      scrollRef.current?.scrollToEnd({ animated: true })
     } catch (error) {
       setMessageError(
         getErrorMessage(error, 'No fue posible enviar el mensaje. Inténtalo de nuevo.'),
@@ -147,16 +156,15 @@ export function CaseDetailScreen({ navigation, route }: Props) {
   )
   const metaFor = (action: CaseAction) => getCaseActionMeta(action, item.assignedTo)
 
-  const menu: SheetAction<MenuId>[] = [
-    ...(reportStep && primaryAction ? [primaryAction] : []),
-    ...caseActionsAllowed.filter((action) => action !== primaryAction),
-  ].map((action) => ({
-    id: action,
-    label: metaFor(action).label,
-    description: metaFor(action).description,
-    icon: metaFor(action).icon,
-    destructive: ['rechazar', 'cancelar'].includes(action),
-  }))
+  const menu: SheetAction<MenuId>[] = caseActionsAllowed
+    .filter((action) => Boolean(reportStep) || action !== primaryAction)
+    .map((action) => ({
+      id: action,
+      label: metaFor(action).label,
+      description: metaFor(action).description,
+      icon: metaFor(action).icon,
+      destructive: ['rechazar', 'cancelar'].includes(action),
+    }))
   if (allowed('editar_datos'))
     menu.push({
       id: 'editar',
@@ -164,13 +172,6 @@ export function CaseDetailScreen({ navigation, route }: Props) {
       description: 'Corrige el título, la descripción o la ubicación',
       icon: 'create-outline',
     })
-
-  const quick = menu[0]
-  const nextStep = reportStep
-    ? reportStep.next
-    : primaryAction
-      ? `Te toca: ${metaFor(primaryAction).label}`
-      : WAITING[item.status]
 
   function runMenu(id: MenuId) {
     if (id === 'editar') navigation.navigate('EditCase', { caseId })
@@ -187,6 +188,11 @@ export function CaseDetailScreen({ navigation, route }: Props) {
   }
 
   const primaryLabel = reportStep?.label ?? (primaryAction ? metaFor(primaryAction).label : null)
+  const trackingSteps = getCaseTrackingSteps(
+    item,
+    history.data ?? [],
+    primaryLabel ? 'Pendiente · te toca a ti' : WAITING[item.status],
+  )
   const overdue =
     item.overdueStage === 'aceptacion'
       ? 'Vencida · aceptación'
@@ -197,6 +203,7 @@ export function CaseDetailScreen({ navigation, route }: Props) {
     { label: 'Solicita', value: item.requestingAreaName },
     { label: 'Atiende', value: item.targetAreaName },
     { label: 'Servicio', value: item.category },
+    { label: 'Descripción', value: item.description },
     { label: 'Ubicación', value: item.location },
     {
       label: 'Prioridad',
@@ -209,14 +216,19 @@ export function CaseDetailScreen({ navigation, route }: Props) {
   ]
 
   return (
-    <SafeAreaView edges={['bottom']} style={styles.safeArea}>
+    <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardArea}
       >
         <ScrollView
+          ref={scrollRef}
+          testID="case-detail-scroll"
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
+          onContentSizeChange={() => {
+            if (activeTab === 'messages') scrollRef.current?.scrollToEnd({ animated: false })
+          }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={() => void refreshDetail()} />
           }
@@ -225,12 +237,20 @@ export function CaseDetailScreen({ navigation, route }: Props) {
             <View style={styles.toolbar}>
               <Pressable
                 accessibilityRole="button"
+                accessibilityLabel="Volver"
+                onPress={() => navigation.goBack()}
+                style={({ pressed }) => [styles.round, pressed && styles.pressed]}
+              >
+                <Icon name="arrow-back" size={24} color={colors.primary} />
+              </Pressable>
+              <Text style={styles.caseNumber}>{item.caseNumber}</Text>
+              <Pressable
+                accessibilityRole="button"
                 accessibilityLabel="Datos del caso"
                 onPress={() => setDataVisible(true)}
-                style={({ pressed }) => [styles.pill, pressed && styles.pressed]}
+                style={({ pressed }) => [styles.round, pressed && styles.pressed]}
               >
-                <Icon name="information-circle-outline" size={18} color={colors.text} />
-                <Text style={styles.pillText}>Datos del caso</Text>
+                <Icon name="information-circle-outline" size={22} color={colors.ink} />
               </Pressable>
               {menu.length > 0 ? (
                 <Pressable
@@ -246,34 +266,81 @@ export function CaseDetailScreen({ navigation, route }: Props) {
             <Text accessibilityRole="header" style={styles.title}>
               {item.title}
             </Text>
-            {item.status === 'rechazado' || item.status === 'cancelado' ? null : (
-              <CaseProgressDots status={item.status} />
-            )}
-            <Text style={styles.meta}>
-              {item.caseNumber} · {statusMeta[item.status].label}
-              {item.priority === 'alta' ? ' · Prioridad alta' : ''}
-              {overdue ? <Text style={styles.overdue}> · {overdue}</Text> : null}
-            </Text>
+            <View style={styles.metaRow}>
+              <View
+                style={[
+                  styles.statusChip,
+                  { backgroundColor: phaseColors[statusMeta[item.status].phase].bg },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.statusChipText,
+                    { color: phaseColors[statusMeta[item.status].phase].fg },
+                  ]}
+                >
+                  {statusMeta[item.status].label}
+                </Text>
+              </View>
+              <Text style={styles.meta}>
+                {item.requestingAreaName} · {item.category}
+              </Text>
+            </View>
+            {overdue ? <Text style={styles.overdue}>{overdue}</Text> : null}
+            {primaryLabel ? (
+              <View style={styles.turnBanner}>
+                <Icon name="time-outline" size={22} color={colors.primary} />
+                <Text style={styles.turnText}>Te toca: {primaryLabel.toLowerCase()}</Text>
+              </View>
+            ) : null}
           </View>
 
           <OfflineBanner />
 
-          <CaseConversation
-            item={item}
-            events={history.data ?? []}
-            nextStep={nextStep}
-            currentUserId={profile?.id}
-          >
-            {history.isLoading ? <SkeletonList count={2} /> : null}
-            {history.error ? (
+          <View style={styles.tabs}>
+            <Pressable
+              accessibilityRole="tab"
+              accessibilityLabel="Seguimiento"
+              accessibilityState={{ selected: activeTab === 'tracking' }}
+              onPress={() => setActiveTab('tracking')}
+              style={[styles.tab, activeTab === 'tracking' && styles.tabSelected]}
+            >
+              <Text style={[styles.tabText, activeTab === 'tracking' && styles.tabTextSelected]}>
+                Seguimiento
+              </Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="tab"
+              accessibilityLabel={`Mensajes${messageCount ? `, ${messageCount}` : ''}`}
+              accessibilityState={{ selected: activeTab === 'messages' }}
+              onPress={() => setActiveTab('messages')}
+              style={[styles.tab, activeTab === 'messages' && styles.tabSelected]}
+            >
+              <Text style={[styles.tabText, activeTab === 'messages' && styles.tabTextSelected]}>
+                Mensajes
+              </Text>
+              {messageCount ? <Text style={styles.messageBadge}>{messageCount}</Text> : null}
+            </Pressable>
+          </View>
+          {history.isLoading ? (
+            <SkeletonList count={2} />
+          ) : history.error ? (
+            <View>
               <Text style={styles.error}>No fue posible cargar el historial.</Text>
-            ) : null}
-            {REPORT_STATUSES.includes(item.status) ? (
-              <View style={styles.reportRow}>
-                <View style={styles.reportIcon}>
-                  <Icon name="document-text-outline" size={16} color={colors.white} />
-                </View>
-                <View style={styles.reportBody}>
+              <Button
+                label="Reintentar historial"
+                onPress={() => void history.refetch()}
+                variant="secondary"
+              />
+            </View>
+          ) : activeTab === 'tracking' ? (
+            <CaseTracking
+              steps={trackingSteps}
+              events={history.data ?? []}
+              description={item.description}
+              location={item.location}
+              report={
+                REPORT_STATUSES.includes(item.status) ? (
                   <ReportSummary
                     item={item}
                     beforeEditable={allowed('fotos_antes')}
@@ -282,13 +349,15 @@ export function CaseDetailScreen({ navigation, route }: Props) {
                     onOpen={() => navigation.navigate('CaseReport', { caseId })}
                     onReview={() => navigation.navigate('ReportReview', { caseId })}
                   />
-                </View>
-              </View>
-            ) : null}
-          </CaseConversation>
+                ) : undefined
+              }
+            />
+          ) : (
+            <CaseMessages events={history.data ?? []} currentUserId={profile?.id} />
+          )}
         </ScrollView>
 
-        {allowed('mensaje') ? (
+        {activeTab === 'messages' && allowed('mensaje') ? (
           <View style={styles.composer}>
             <TextInput
               accessibilityLabel="Escribir mensaje"
@@ -318,22 +387,9 @@ export function CaseDetailScreen({ navigation, route }: Props) {
           </View>
         ) : null}
 
-        {primaryLabel || quick ? (
+        {activeTab === 'tracking' && primaryLabel ? (
           <View accessibilityRole="toolbar" style={styles.actionBar}>
-            {primaryLabel ? (
-              <View style={styles.primarySlot}>
-                <Button label={primaryLabel} onPress={runPrimary} />
-              </View>
-            ) : null}
-            {quick ? (
-              <View style={styles.secondarySlot}>
-                <Button
-                  label={menu.length > 1 ? 'Más' : quick.label}
-                  variant={menu.length === 1 && quick.destructive ? 'danger' : 'secondary'}
-                  onPress={() => (menu.length > 1 ? setMenuVisible(true) : runMenu(quick.id))}
-                />
-              </View>
-            ) : null}
+            <Button label={primaryLabel} onPress={runPrimary} />
           </View>
         ) : null}
       </KeyboardAvoidingView>
@@ -382,7 +438,8 @@ const styles = StyleSheet.create({
   keyboardArea: { flex: 1 },
   content: { gap: spacing.lg, padding: spacing.md, paddingBottom: spacing.xl },
   heading: { gap: spacing.base },
-  toolbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  toolbar: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  caseNumber: { ...typography.heading, color: colors.textMuted, flex: 1 },
   pill: {
     minHeight: 44,
     flexDirection: 'row',
@@ -410,6 +467,44 @@ const styles = StyleSheet.create({
     color: colors.ink,
   },
   meta: { ...typography.caption, color: colors.textMuted },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  statusChip: {
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+    overflow: 'hidden',
+  },
+  statusChipText: { ...typography.caption },
+  turnBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.base,
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primarySoft,
+  },
+  turnText: { ...typography.body, fontFamily: fonts.semibold, color: colors.ink },
+  tabs: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.border },
+  tab: {
+    flex: 1,
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    borderBottomWidth: 3,
+    borderBottomColor: 'transparent',
+  },
+  tabSelected: { borderBottomColor: colors.primary },
+  tabText: { ...typography.heading, color: colors.textMuted },
+  tabTextSelected: { color: colors.ink },
+  messageBadge: {
+    ...typography.caption,
+    color: colors.white,
+    backgroundColor: colors.primary,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
+  },
   overdue: { fontFamily: fonts.semibold, color: colors.error },
   reportRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.base },
   reportIcon: {
@@ -448,8 +543,6 @@ const styles = StyleSheet.create({
   sendButton: { minWidth: 82 },
   messageError: { ...typography.caption, color: colors.error, width: '100%' },
   actionBar: {
-    flexDirection: 'row',
-    gap: spacing.xs,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
@@ -457,8 +550,6 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     backgroundColor: colors.background,
   },
-  primarySlot: { flex: 2 },
-  secondarySlot: { flex: 1 },
   dataRow: {
     minHeight: 46,
     flexDirection: 'row',
