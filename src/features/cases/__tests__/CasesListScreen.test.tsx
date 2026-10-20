@@ -6,7 +6,7 @@ import type { Profile } from '@/features/auth/types'
 import { statusMeta } from '@/theme/statusMeta'
 import { colors } from '@/theme/tokens'
 import { calendarDateBoundary } from '../caseSearch'
-import { CASE_STATUSES } from '../types'
+import { CASE_STATUSES, type CaseRecord } from '../types'
 import { CasesListScreen } from '../screens/CasesListScreen'
 import { useCaseCounts, useCases } from '../useCases'
 
@@ -114,6 +114,75 @@ test('el administrador entra en Abiertas y ve los filtros rápidos con conteos',
     true,
   )
 })
+
+const sortedCase = (id: string, createdAt: string): CaseRecord =>
+  ({
+    id,
+    caseNumber: `CAS-${id}`,
+    title: `Solicitud ${id}`,
+    createdAt,
+    status: 'solicitado',
+    priority: 'media',
+    location: 'Oficina',
+    assigneeName: null,
+  }) as CaseRecord
+
+test('Más antiguas muestra primero el grupo del día más viejo', async () => {
+  const oldest = sortedCase('old', '2026-10-01T12:00:00Z')
+  const newest = sortedCase('new', '2026-10-16T12:00:00Z')
+  ;(useCases as jest.Mock).mockReturnValue({
+    data: { pages: [[oldest], [newest]] },
+    error: null,
+    isLoading: false,
+    isRefetching: false,
+    refetch: jest.fn(),
+    hasNextPage: false,
+    fetchNextPage: jest.fn(),
+    isFetchingNextPage: false,
+    isFetchNextPageError: false,
+  })
+  const { screen } = await setup()
+  await fireEvent.press(screen.getByRole('button', { name: 'Más filtros, 0 activos' }))
+  await fireEvent.press(screen.getByRole('button', { name: 'Más antiguas' }))
+  expect(
+    screen
+      .getAllByRole('button')
+      .filter(({ props }) => props.accessibilityLabel?.startsWith('CAS-'))
+      .map(({ props }) => props.accessibilityLabel?.split(',')[0]),
+  ).toEqual(['CAS-old', 'CAS-new'])
+  expect(
+    screen.getAllByText(/de octubre de 2026/).map(({ children }) => children.join('')),
+  ).toEqual(['1 de octubre de 2026', '16 de octubre de 2026'])
+})
+
+test.each(['Prioridad', 'Vencen antes'])(
+  '%s conserva el orden del servidor sin títulos de día',
+  async (label) => {
+    const first = sortedCase('first', '2026-10-01T12:00:00Z')
+    const second = sortedCase('second', '2026-10-16T12:00:00Z')
+    ;(useCases as jest.Mock).mockReturnValue({
+      data: { pages: [[first], [second]] },
+      error: null,
+      isLoading: false,
+      isRefetching: false,
+      refetch: jest.fn(),
+      hasNextPage: false,
+      fetchNextPage: jest.fn(),
+      isFetchingNextPage: false,
+      isFetchNextPageError: false,
+    })
+    const { screen } = await setup()
+    await fireEvent.press(screen.getByRole('button', { name: 'Más filtros, 0 activos' }))
+    await fireEvent.press(screen.getByRole('button', { name: label }))
+    expect(
+      screen
+        .getAllByRole('button')
+        .filter(({ props }) => props.accessibilityLabel?.startsWith('CAS-'))
+        .map(({ props }) => props.accessibilityLabel?.split(',')[0]),
+    ).toEqual(['CAS-first', 'CAS-second'])
+    expect(screen.queryByText(/de octubre de 2026/)).toBeNull()
+  },
+)
 
 test.each(['administrador', 'jefe_area'] as const)(
   '%s no ve Bandeja en Más alcances',

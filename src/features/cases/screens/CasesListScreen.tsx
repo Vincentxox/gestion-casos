@@ -585,7 +585,11 @@ export function CasesListScreen({ navigation, route }: Props) {
         ) : (
           <SectionList
             contentContainerStyle={filteredCases.length ? styles.list : styles.emptyList}
-            sections={groupCasesByDay(filteredCases)}
+            sections={
+              sort === 'recientes' || sort === 'antiguas'
+                ? groupCasesByDay(filteredCases)
+                : [{ title: '', data: filteredCases }]
+            }
             keyExtractor={(item) => item.id}
             onEndReached={() => {
               if (hasNextPage && !isFetchingNextPage) requestNextPage()
@@ -601,9 +605,9 @@ export function CasesListScreen({ navigation, route }: Props) {
                 <Button label="Reintentar carga" onPress={requestNextPage} />
               ) : null
             }
-            renderSectionHeader={({ section }) => (
-              <Text style={styles.sectionTitle}>{section.title}</Text>
-            )}
+            renderSectionHeader={({ section }) =>
+              section.title ? <Text style={styles.sectionTitle}>{section.title}</Text> : null
+            }
             ListEmptyComponent={
               <EmptyState
                 title={hasFilters ? 'Sin resultados' : 'Todo al día'}
