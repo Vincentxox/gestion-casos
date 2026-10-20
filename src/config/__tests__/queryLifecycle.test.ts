@@ -10,6 +10,9 @@ jest.mock('@react-native-community/netinfo', () => ({
 }))
 
 const addNetworkListener = NetInfo.addEventListener as jest.Mock
+const flushMicrotasks = async () => {
+  for (let index = 0; index < 10; index++) await Promise.resolve()
+}
 
 test('sincroniza conexión y foco de TanStack Query con el teléfono', () => {
   const unsubscribeNetwork = jest.fn()
@@ -44,4 +47,55 @@ test('sincroniza conexión y foco de TanStack Query con el teléfono', () => {
   setEventListener.mockRestore()
   setFocused.mockRestore()
   appListener.mockRestore()
+})
+
+test('espera la sesión antes de devolver el foco a las consultas', async () => {
+  const originalState = AppState.currentState
+  Object.defineProperty(AppState, 'currentState', { configurable: true, value: 'background' })
+  const setFocused = jest.spyOn(focusManager, 'setFocused')
+  const listener = jest
+    .spyOn(AppState, 'addEventListener')
+    .mockReturnValue({ remove: jest.fn() } as ReturnType<typeof AppState.addEventListener>)
+  let completeSession: () => void = () => undefined
+  const beforeFocus = jest.fn(() => new Promise<void>((resolve) => (completeSession = resolve)))
+  const unregister = registerQueryLifecycle(beforeFocus)
+  try {
+    const onChange = listener.mock.calls[0]![1]!
+    onChange('active')
+    expect(setFocused).toHaveBeenLastCalledWith(false)
+    await flushMicrotasks()
+    expect(beforeFocus).toHaveBeenCalledTimes(1)
+    completeSession()
+    await flushMicrotasks()
+    expect(setFocused).toHaveBeenLastCalledWith(true)
+  } finally {
+    unregister()
+    listener.mockRestore()
+    setFocused.mockRestore()
+    Object.defineProperty(AppState, 'currentState', { configurable: true, value: originalState })
+  }
+})
+
+test('devuelve el foco al cumplirse el tope aunque la sesión siga esperando', async () => {
+  const originalState = AppState.currentState
+  Object.defineProperty(AppState, 'currentState', { configurable: true, value: 'background' })
+  jest.useFakeTimers()
+  const setFocused = jest.spyOn(focusManager, 'setFocused')
+  const listener = jest
+    .spyOn(AppState, 'addEventListener')
+    .mockReturnValue({ remove: jest.fn() } as ReturnType<typeof AppState.addEventListener>)
+  const unregister = registerQueryLifecycle(() => new Promise(() => undefined))
+  try {
+    listener.mock.calls[0]![1]!('active')
+    await flushMicrotasks()
+    jest.advanceTimersByTime(10_000)
+    await flushMicrotasks()
+    expect(setFocused).toHaveBeenLastCalledWith(true)
+  } finally {
+    unregister()
+    listener.mockRestore()
+    setFocused.mockRestore()
+    jest.useRealTimers()
+    Object.defineProperty(AppState, 'currentState', { configurable: true, value: originalState })
+  }
 })

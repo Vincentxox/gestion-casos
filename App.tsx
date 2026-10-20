@@ -119,7 +119,7 @@ export default function App() {
     Onest_800ExtraBold,
   })
 
-  useEffect(() => registerQueryLifecycle(), [])
+  useEffect(() => registerQueryLifecycle(() => supabase.auth.getSession()), [])
 
   return (
     <SafeAreaProvider>
