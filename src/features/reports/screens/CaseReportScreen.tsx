@@ -4,7 +4,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { Keyboard, Platform, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { FormField } from '@/components/forms/FormField'
@@ -46,6 +46,7 @@ export function CaseReportScreen({ navigation, route }: Props) {
   const { mutateAsync: saveDraft } = saveMutation
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+  const [keyboardOpen, setKeyboardOpen] = useState(false)
   const saving = useRef<Promise<boolean>>(Promise.resolve(true))
   const initialized = useRef(false)
   const {
@@ -61,6 +62,17 @@ export function CaseReportScreen({ navigation, route }: Props) {
   const values = useWatch({ control })
   const canEdit = caseActions.data?.editar_reporte?.allowed === true
   const canSubmit = caseActions.data?.enviar_reporte?.allowed === true
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
+    const show = Keyboard.addListener(showEvent, () => setKeyboardOpen(true))
+    const hide = Keyboard.addListener(hideEvent, () => setKeyboardOpen(false))
+    return () => {
+      show.remove()
+      hide.remove()
+    }
+  }, [])
 
   useEffect(() => {
     if (!draft.isFetched || initialized.current) return
@@ -239,7 +251,7 @@ export function CaseReportScreen({ navigation, route }: Props) {
           />
         </Card>
       </KeyboardFormScrollView>
-      {canSubmit ? (
+      {!keyboardOpen && canSubmit ? (
         <View style={styles.sticky}>
           {requirements.map((missing) => (
             <Text key={missing} style={styles.muted}>
@@ -257,7 +269,7 @@ export function CaseReportScreen({ navigation, route }: Props) {
             }
           />
         </View>
-      ) : item.status === 'en_espera' ? (
+      ) : !keyboardOpen && item.status === 'en_espera' ? (
         <Text style={styles.stickyHint}>Reanuda el trabajo para enviar el reporte.</Text>
       ) : null}
     </SafeAreaView>
