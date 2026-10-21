@@ -16,6 +16,8 @@ const AUTH_ERROR_MESSAGES: Record<string, string> = {
   flow_state_not_found: 'No se encontró la solicitud de acceso. Inténtalo nuevamente.',
   over_email_send_rate_limit: 'Se enviaron demasiados correos. Espera unos minutos y reintenta.',
   over_request_rate_limit: 'Se realizaron demasiados intentos. Espera unos minutos y reintenta.',
+  same_password: 'La contraseña nueva debe ser distinta de la anterior.',
+  weak_password: 'La contraseña es muy débil. Usa una más larga y difícil de adivinar.',
 }
 
 function isNetworkError(error: unknown) {

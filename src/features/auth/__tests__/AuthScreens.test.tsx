@@ -171,6 +171,25 @@ test('un error al actualizar conserva la sesión y muestra un mensaje seguro', a
   feedback.mockRestore()
 })
 
+test('la contraseña repetida explica que debe ser distinta de la anterior', async () => {
+  jest.mocked(updatePassword).mockRejectedValue(new AuthApiError('same', 422, 'same_password'))
+  const finish = jest.fn()
+  useAuthStore.setState({ finishPasswordRecovery: finish })
+  const feedback = jest.spyOn(AppFeedback, 'show').mockImplementation(() => {})
+  const screen = await renderWithSafeArea(<ResetPasswordScreen />)
+  await fireEvent.changeText(screen.getByLabelText('Contraseña nueva'), 'Password1!')
+  await fireEvent.changeText(screen.getByLabelText('Confirmar contraseña'), 'Password1!')
+  await fireEvent.press(screen.getByRole('button', { name: 'Guardar contraseña' }))
+  await waitFor(() =>
+    expect(feedback).toHaveBeenCalledWith(
+      'No fue posible guardar la contraseña',
+      'La contraseña nueva debe ser distinta de la anterior.',
+    ),
+  )
+  expect(finish).not.toHaveBeenCalled()
+  feedback.mockRestore()
+})
+
 test('crear cuenta tiene su propio botón para volver y enlace a iniciar sesión', async () => {
   const props = {
     navigation,

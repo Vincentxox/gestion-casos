@@ -131,8 +131,25 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   async finishPasswordRecovery() {
     const session = get().session
-    set({ passwordRecovery: false, recoveryLinkError: null })
-    if (session) await get().applySession(session)
+    try {
+      const values = await getAuthValues(session, session, get().profile)
+      set({
+        ...values,
+        passwordRecovery: false,
+        recoveryLinkError: null,
+        initializationError: null,
+      })
+    } catch {
+      queryClient.clear()
+      set({
+        session: null,
+        profile: null,
+        status: 'unauthenticated',
+        initializationError: 'No fue posible cargar el perfil del usuario.',
+        passwordRecovery: false,
+        recoveryLinkError: null,
+      })
+    }
   },
 
   async initialize() {

@@ -19,6 +19,15 @@ describe('mensajes de errores de autenticación', () => {
     )
   })
 
+  test('explica por qué se rechazó la nueva contraseña', () => {
+    expect(
+      getAuthErrorMessage(new AuthApiError('same', 422, 'same_password'), 'Error inesperado'),
+    ).toBe('La contraseña nueva debe ser distinta de la anterior.')
+    expect(
+      getAuthErrorMessage(new AuthApiError('weak', 422, 'weak_password'), 'Error inesperado'),
+    ).toBe('La contraseña es muy débil. Usa una más larga y difícil de adivinar.')
+  })
+
   test('ofrece una acción comprensible ante fallos de red', () => {
     expect(getAuthErrorMessage(new TypeError('Network request failed'), 'Error inesperado')).toBe(
       'No hay conexión con el servicio. Revisa tu internet e inténtalo nuevamente.',

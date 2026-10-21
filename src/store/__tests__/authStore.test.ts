@@ -2,6 +2,7 @@ import type { Session } from '@supabase/supabase-js'
 import { Image } from 'expo-image'
 
 import { queryClient } from '@/config/queryClient'
+import { getAuthenticatedRoute } from '@/features/auth/authRoute'
 import {
   getCurrentSession,
   resolveSessionProfile,
@@ -115,6 +116,72 @@ describe('estado global de autenticación', () => {
       session,
       profile,
       status: 'authenticated',
+    })
+  })
+
+  test('mantiene recuperación hasta cargar el perfil y nunca pasa por Completa tu nombre', async () => {
+    let resolveProfile: (value: Profile) => void = () => undefined
+    mockResolveSessionProfile.mockImplementation(
+      () => new Promise<Profile>((resolve) => (resolveProfile = resolve)),
+    )
+    useAuthStore.setState({
+      session,
+      profile: null,
+      status: 'authenticated',
+      passwordRecovery: true,
+    })
+    const states: ReturnType<typeof useAuthStore.getState>[] = []
+    const unsubscribe = useAuthStore.subscribe((state) => states.push(state))
+
+    try {
+      const finishing = useAuthStore.getState().finishPasswordRecovery()
+      expect(useAuthStore.getState()).toMatchObject({
+        passwordRecovery: true,
+        profile: null,
+      })
+
+      resolveProfile(profile)
+      await finishing
+
+      expect(useAuthStore.getState()).toMatchObject({
+        passwordRecovery: false,
+        profile,
+        status: 'authenticated',
+      })
+      expect(
+        states.some(
+          (state) =>
+            !state.passwordRecovery &&
+            state.status === 'authenticated' &&
+            getAuthenticatedRoute({
+              organizationId: state.profile?.organizationId ?? null,
+              organizationActive: state.profile?.organizationActive ?? null,
+              fullName: state.profile?.fullName ?? '',
+            }) === 'completeName',
+        ),
+      ).toBe(false)
+    } finally {
+      unsubscribe()
+    }
+  })
+
+  test('si falla el perfil después de cambiar la contraseña vuelve al acceso sin mostrar el nombre', async () => {
+    useAuthStore.setState({
+      session,
+      profile: null,
+      status: 'authenticated',
+      passwordRecovery: true,
+    })
+    mockResolveSessionProfile.mockRejectedValue(new Error('network'))
+
+    await useAuthStore.getState().finishPasswordRecovery()
+
+    expect(useAuthStore.getState()).toMatchObject({
+      session: null,
+      profile: null,
+      status: 'unauthenticated',
+      passwordRecovery: false,
+      initializationError: 'No fue posible cargar el perfil del usuario.',
     })
   })
 
