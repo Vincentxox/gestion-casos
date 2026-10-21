@@ -29,14 +29,5 @@ export function groupCasesByDay(cases: CaseRecord[], now = new Date()): CaseDate
     if (!groups.has(key)) groups.set(key, { title, data: [] })
     groups.get(key)?.data.push(item)
   }
-  return [...groups.values()].sort((a, b) => {
-    const newest = (group: CaseDateGroup) =>
-      Math.max(
-        ...group.data.map((item) => {
-          const time = new Date(item.createdAt).getTime()
-          return Number.isNaN(time) ? 0 : time
-        }),
-      )
-    return newest(b) - newest(a)
-  })
+  return [...groups.values()]
 }
