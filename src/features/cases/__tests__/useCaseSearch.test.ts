@@ -1,9 +1,10 @@
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query'
 
 import { countCasesByStatus, listCases } from '../caseService'
 import { useCaseCounts, useCases } from '../useCases'
 
 jest.mock('@tanstack/react-query', () => ({
+  keepPreviousData: jest.requireActual('@tanstack/react-query').keepPreviousData,
   useInfiniteQuery: jest.fn(),
   useQuery: jest.fn(),
   useMutation: jest.fn(),
@@ -33,6 +34,7 @@ test('usa páginas de 30 y separa la clave por filtros', async () => {
   const options = (useInfiniteQuery as jest.Mock).mock.calls[0]?.[0]
   expect(options.queryKey).toEqual(['cases', 'search', filters])
   expect(options.initialPageParam).toBe(0)
+  expect(options.placeholderData).toBe(keepPreviousData)
   expect(options.getNextPageParam(new Array(30).fill({}), [new Array(30).fill({})])).toBe(1)
   expect(options.getNextPageParam([{}], [new Array(30).fill({}), [{}]])).toBeUndefined()
   await options.queryFn({ pageParam: 1 })
@@ -54,6 +56,7 @@ test('los conteos respetan estados y filtros, pero no el orden', async () => {
     false,
     'motor',
   ])
+  expect(options.placeholderData).toBe(keepPreviousData)
   await options.queryFn()
   expect(countCasesByStatus).toHaveBeenCalledWith(filters)
 })

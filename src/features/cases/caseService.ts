@@ -1,4 +1,5 @@
 import { supabase } from '@/services/supabase/client'
+import { isExpiredAuthError } from '@/config/queryClient'
 import { listFormerMemberNames, memberDisplayName } from '@/services/supabase/formerMembers'
 import { statusMeta } from '@/theme/statusMeta'
 import { CASE_ACTION_NAMES } from './types'
@@ -107,6 +108,17 @@ async function mapCases(values: unknown[]): Promise<CaseRecord[]> {
 
 export const CASE_PAGE_SIZE = 30
 
+async function withSessionRetry<T>(request: () => Promise<T>): Promise<T> {
+  try {
+    return await request()
+  } catch (error) {
+    if (!isExpiredAuthError(error)) throw error
+    const { data, error: refreshError } = await supabase.auth.refreshSession()
+    if (refreshError || !data.session) throw error
+    return request()
+  }
+}
+
 function searchArgs(filters: CaseSearchFilters) {
   caseCreatedRangeSchema.parse({ createdFrom: filters.createdFrom, createdTo: filters.createdTo })
   return {
@@ -123,24 +135,27 @@ function searchArgs(filters: CaseSearchFilters) {
 
 export async function listCases(filters: CaseSearchFilters, page: number): Promise<CaseRecord[]> {
   const from = page * CASE_PAGE_SIZE
-  let query = supabase.rpc('search_cases', searchArgs(filters)).select(caseSelection)
-  if (filters.unassignedOnly) query = query.is('assigned_to', null)
-  if (filters.sort === 'prioridad') query = query.order('priority', { ascending: true })
-  if (filters.sort === 'vencen_antes')
-    query = query.order('due_at', { ascending: true, nullsFirst: false })
-  if (filters.sort === 'antiguas') query = query.order('created_at', { ascending: true })
-  if (filters.sort === 'recientes' || filters.sort === 'prioridad')
-    query = query.order('created_at', { ascending: false })
-  const { data, error } = await query
-    .order('id', { ascending: false })
-    .range(from, from + CASE_PAGE_SIZE - 1)
-  if (error) throw error
-  return mapCases(data)
+  const args = searchArgs(filters)
+  return withSessionRetry(async () => {
+    let query = supabase.rpc('search_cases', args).select(caseSelection)
+    if (filters.unassignedOnly) query = query.is('assigned_to', null)
+    if (filters.sort === 'prioridad') query = query.order('priority', { ascending: true })
+    if (filters.sort === 'vencen_antes')
+      query = query.order('due_at', { ascending: true, nullsFirst: false })
+    if (filters.sort === 'antiguas') query = query.order('created_at', { ascending: true })
+    if (filters.sort === 'recientes' || filters.sort === 'prioridad')
+      query = query.order('created_at', { ascending: false })
+    const { data, error } = await query
+      .order('id', { ascending: false })
+      .range(from, from + CASE_PAGE_SIZE - 1)
+    if (error) throw error
+    return mapCases(data)
+  })
 }
 
 export async function countCasesByStatus(filters: CaseSearchFilters): Promise<CaseStatusCount[]> {
   caseCreatedRangeSchema.parse({ createdFrom: filters.createdFrom, createdTo: filters.createdTo })
-  const { data, error } = await supabase.rpc('count_cases_by_status', {
+  const args = {
     scope: filters.scope,
     statuses: filters.statuses,
     priorities: filters.priorities,
@@ -149,9 +164,12 @@ export async function countCasesByStatus(filters: CaseSearchFilters): Promise<Ca
     overdue_only: filters.overdueOnly,
     search_text:
       filters.searchText === null ? null : caseSearchTextSchema.parse(filters.searchText),
+  }
+  return withSessionRetry(async () => {
+    const { data, error } = await supabase.rpc('count_cases_by_status', args)
+    if (error) throw error
+    return filters.unassignedOnly ? data.map((row) => ({ ...row, total: row.unassigned })) : data
   })
-  if (error) throw error
-  return filters.unassignedOnly ? data.map((row) => ({ ...row, total: row.unassigned })) : data
 }
 
 export async function getCase(caseId: string): Promise<CaseRecord> {

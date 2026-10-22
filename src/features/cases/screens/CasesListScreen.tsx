@@ -1,6 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
+import { useFocusEffect } from '@react-navigation/native'
 import DateTimePicker from '@react-native-community/datetimepicker'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Animated, { FadeInDown, useReducedMotion } from 'react-native-reanimated'
 import {
   SectionList,
@@ -34,6 +35,7 @@ import { CASE_STATUSES, type CasePriority, type CaseRecord } from '../types'
 import { groupCasesByDay } from '../caseDateGroups'
 import { CaseCard } from '../components/CaseCard'
 import { useCaseCounts, useCases } from '../useCases'
+import { useCasePullRefresh } from '../useCasePullRefresh'
 import { getPrimaryScopeOptions, type ScopeFilter } from '../caseListPresentation'
 import {
   buildCaseSearchFilters,
@@ -141,10 +143,6 @@ export function CasesListScreen({ navigation, route }: Props) {
   const [exactStatusOpen, setExactStatusOpen] = useState(false)
   const reduceMotion = useReducedMotion()
   const [filterNow, setFilterNow] = useState(() => Date.now())
-  useEffect(() => {
-    const interval = setInterval(() => setFilterNow(Date.now()), 60_000)
-    return () => clearInterval(interval)
-  }, [])
   const routeKey = JSON.stringify(route.params ?? {})
   const [selection, setSelection] = useState<{
     key: string
@@ -196,6 +194,13 @@ export function CasesListScreen({ navigation, route }: Props) {
         ? [priority]
         : []
   const sinceDays = routeFilters?.sinceDays ?? null
+  const focusedOnce = useRef(false)
+  useFocusEffect(
+    useCallback(() => {
+      if (focusedOnce.current && sinceDays) setFilterNow(Date.now())
+      focusedOnce.current = true
+    }, [sinceDays]),
+  )
   const fromDate = selection?.key === routeKey ? (selection.fromDate ?? null) : null
   const toDate = selection?.key === routeKey ? (selection.toDate ?? null) : null
   const overdueOnly =
@@ -284,7 +289,7 @@ export function CasesListScreen({ navigation, route }: Props) {
     data,
     error,
     isLoading,
-    isRefetching,
+    isPlaceholderData,
     refetch,
     hasNextPage,
     fetchNextPage,
@@ -293,6 +298,14 @@ export function CasesListScreen({ navigation, route }: Props) {
   } = useCases(filters, Boolean(profile?.organizationId))
   const requestNextPage = () => void fetchNextPage()
   const counts = useCaseCounts(countFilters, Boolean(profile?.organizationId))
+  const { refreshing: pullRefreshing, refresh: refreshList } = useCasePullRefresh(
+    refetch,
+    counts.refetch,
+    () => {
+      if (sinceDays) setFilterNow(Date.now())
+    },
+  )
+  const showingPreviousFilters = isPlaceholderData || counts.isPlaceholderData
   const filteredCases = data?.pages.flat() ?? []
   const firstEntryOrder = new Map(filteredCases.slice(0, 8).map((item, index) => [item.id, index]))
   useEffect(() => {
@@ -572,9 +585,21 @@ export function CasesListScreen({ navigation, route }: Props) {
           </View>
         ) : null}
 
-        {isLoading ? (
+        {showingPreviousFilters ? (
+          <View accessibilityRole="progressbar" style={styles.updatingNotice}>
+            <ActivityIndicator color={colors.primary} size="small" />
+            <Text style={styles.updatingText}>Actualizando solicitudes…</Text>
+          </View>
+        ) : null}
+        {error && data ? (
+          <View accessibilityRole="alert" style={styles.refreshError}>
+            <Text style={styles.refreshErrorText}>No se pudo actualizar.</Text>
+            <Button label="Reintentar" variant="text" onPress={() => void refetch()} />
+          </View>
+        ) : null}
+        {isLoading && !data ? (
           <SkeletonList />
-        ) : error ? (
+        ) : error && !data ? (
           <EmptyState
             title="No fue posible cargar las solicitudes"
             message="Comprueba tu conexión e inténtalo de nuevo."
@@ -584,6 +609,7 @@ export function CasesListScreen({ navigation, route }: Props) {
           />
         ) : (
           <SectionList
+            style={showingPreviousFilters ? styles.updatingList : undefined}
             contentContainerStyle={filteredCases.length ? styles.list : styles.emptyList}
             sections={
               sort === 'recientes' || sort === 'antiguas'
@@ -644,11 +670,8 @@ export function CasesListScreen({ navigation, route }: Props) {
             }
             refreshControl={
               <RefreshControl
-                onRefresh={() => {
-                  void refetch()
-                  void counts.refetch()
-                }}
-                refreshing={isRefetching}
+                onRefresh={() => void refreshList()}
+                refreshing={pullRefreshing}
                 tintColor={colors.primary}
               />
             }
@@ -1045,4 +1068,16 @@ const styles = StyleSheet.create({
   exactStatusValue: { ...typography.caption, color: colors.textMuted },
   list: { gap: spacing.xs, paddingBottom: spacing.xl * 3 + spacing.lg },
   emptyList: { flexGrow: 1 },
+  updatingNotice: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  updatingText: { ...typography.caption, color: colors.textMuted },
+  updatingList: { opacity: 0.6 },
+  refreshError: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: radius.sm,
+    backgroundColor: colors.dangerSoft,
+    paddingHorizontal: spacing.sm,
+  },
+  refreshErrorText: { ...typography.caption, color: colors.dangerText },
 })

@@ -1,4 +1,10 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 
 import {
   assignCase,
@@ -29,6 +35,7 @@ export function useCases(filters: CaseSearchFilters, enabled = true) {
     initialPageParam: 0,
     getNextPageParam: (lastPage, pages) =>
       lastPage.length === CASE_PAGE_SIZE ? pages.length : undefined,
+    placeholderData: keepPreviousData,
     enabled,
   })
 }
@@ -48,6 +55,7 @@ export function useCaseCounts(filters: CaseSearchFilters, enabled = true) {
       filters.searchText,
     ],
     queryFn: () => countCasesByStatus(filters),
+    placeholderData: keepPreviousData,
     enabled,
   })
 }

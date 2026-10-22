@@ -16,7 +16,9 @@ import {
   updateCase,
 } from '../caseService'
 
-jest.mock('@/services/supabase/client', () => ({ supabase: { from: jest.fn(), rpc: jest.fn() } }))
+jest.mock('@/services/supabase/client', () => ({
+  supabase: { from: jest.fn(), rpc: jest.fn(), auth: { refreshSession: jest.fn() } },
+}))
 jest.mock('@/services/supabase/formerMembers', () => ({
   listFormerMemberNames: jest.fn(),
   memberDisplayName: jest.requireActual('@/services/supabase/formerMembers').memberDisplayName,
@@ -24,6 +26,7 @@ jest.mock('@/services/supabase/formerMembers', () => ({
 
 const from = supabase.from as jest.Mock
 const rpc = supabase.rpc as jest.Mock
+const refreshSession = supabase.auth.refreshSession as jest.Mock
 const query = {
   select: jest.fn(),
   eq: jest.fn(),
@@ -76,6 +79,7 @@ beforeEach(() => {
   ;(listFormerMemberNames as jest.Mock).mockResolvedValue(new Map())
   from.mockReturnValue(query)
   rpc.mockReturnValue(query)
+  refreshSession.mockResolvedValue({ data: { session: {} }, error: null })
   for (const method of ['select', 'eq', 'is', 'order', 'insert', 'update', 'in'] as const)
     query[method].mockReturnValue(query)
   query.single.mockResolvedValue({ data: row, error: null })
@@ -344,6 +348,37 @@ test('propaga errores del listado y del detalle', async () => {
   await expect(listCases(filters, 0)).rejects.toBe(error)
   query.single.mockResolvedValue({ data: null, error })
   await expect(getCase('case-1')).rejects.toBe(error)
+})
+
+test.each([401, 'PGRST301', 'PGRST303'])(
+  'renueva la sesión una vez y reintenta una vez el listado con error %s',
+  async (failure) => {
+    const error = typeof failure === 'number' ? { status: failure } : { code: failure }
+    query.range
+      .mockResolvedValueOnce({ data: null, error })
+      .mockResolvedValueOnce({ data: [row], error: null })
+    await expect(listCases(filters, 0)).resolves.toHaveLength(1)
+    expect(refreshSession).toHaveBeenCalledTimes(1)
+    expect(rpc).toHaveBeenCalledTimes(2)
+    expect(query.range).toHaveBeenCalledTimes(2)
+  },
+)
+
+test('no vuelve a intentar si el JWT sigue fallando después de renovar', async () => {
+  const error = { code: 'PGRST303', message: 'JWT expired' }
+  query.range.mockResolvedValue({ data: null, error })
+  await expect(listCases(filters, 0)).rejects.toBe(error)
+  expect(refreshSession).toHaveBeenCalledTimes(1)
+  expect(query.range).toHaveBeenCalledTimes(2)
+})
+
+test('no reintenta el conteo si falla la renovación de sesión', async () => {
+  const error = { status: 401, message: 'JWT expired' }
+  rpc.mockResolvedValue({ data: null, error })
+  refreshSession.mockResolvedValueOnce({ data: { session: null }, error: new Error('offline') })
+  await expect(countCasesByStatus(filters)).rejects.toBe(error)
+  expect(refreshSession).toHaveBeenCalledTimes(1)
+  expect(rpc).toHaveBeenCalledTimes(1)
 })
 
 test('propaga errores de conteo y no envía búsquedas de más de 100 caracteres', async () => {

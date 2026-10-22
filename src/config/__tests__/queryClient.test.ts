@@ -1,4 +1,4 @@
-import { shouldRetryQuery } from '../queryClient'
+import { isExpiredAuthError, queryClient, shouldRetryQuery } from '../queryClient'
 
 describe('reintentos de consultas', () => {
   test('no repite errores HTTP 4xx ni errores de permisos de Postgres', () => {
@@ -7,6 +7,7 @@ describe('reintentos de consultas', () => {
     expect(shouldRetryQuery(0, { context: { status: 401 } })).toBe(false)
     expect(shouldRetryQuery(0, { code: '42501' })).toBe(false)
     expect(shouldRetryQuery(0, { code: 'PGRST116' })).toBe(false)
+    expect(shouldRetryQuery(0, { code: 'PGRST303' })).toBe(false)
     expect(shouldRetryQuery(0, { message: 'permission denied for table cases' })).toBe(false)
   })
 
@@ -15,4 +16,12 @@ describe('reintentos de consultas', () => {
     expect(shouldRetryQuery(2, { status: 503 })).toBe(true)
     expect(shouldRetryQuery(3, { status: 503 })).toBe(false)
   })
+})
+
+test('la sesión vencida se detecta y las consultas recientes conservan 30 segundos', () => {
+  expect(isExpiredAuthError({ status: 401 })).toBe(true)
+  expect(isExpiredAuthError({ code: 'PGRST301' })).toBe(true)
+  expect(isExpiredAuthError({ code: 'PGRST303' })).toBe(true)
+  expect(isExpiredAuthError({ status: 403 })).toBe(false)
+  expect(queryClient.getDefaultOptions().queries?.staleTime).toBe(30_000)
 })

@@ -1,4 +1,4 @@
-import { fireEvent, render } from '@testing-library/react-native'
+import { act, fireEvent, render } from '@testing-library/react-native'
 import { Platform, StyleSheet } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
@@ -34,6 +34,11 @@ jest.mock('@react-native-community/netinfo', () => ({
   useNetInfo: () => ({ isConnected: true, isInternetReachable: true }),
 }))
 jest.mock('@react-native-community/datetimepicker', () => 'DateTimePicker')
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useFocusEffect: (callback: () => void) =>
+    jest.requireActual<typeof import('react')>('react').useEffect(callback, [callback]),
+}))
 jest.mock('../useCases', () => ({
   useCases: jest.fn(),
   useCaseCounts: jest.fn(),
@@ -574,4 +579,61 @@ test('Inicio puede abrir filtros rápidos, vencidas y estados exactos nuevos', a
     }),
     true,
   )
+})
+
+test('un error de recarga conserva los casos y muestra un aviso para reintentar', async () => {
+  const refetch = jest.fn()
+  ;(useCases as jest.Mock).mockReturnValue({
+    data: { pages: [[sortedCase('old', '2026-10-16T12:00:00Z')]] },
+    error: new Error('Sin conexión'),
+    isLoading: false,
+    isPlaceholderData: false,
+    refetch,
+    hasNextPage: false,
+    fetchNextPage: jest.fn(),
+    isFetchingNextPage: false,
+    isFetchNextPageError: false,
+  })
+  const { screen } = await setup()
+  expect(screen.getByRole('button', { name: /CAS-old/ })).toBeTruthy()
+  expect(screen.getByText('No se pudo actualizar.')).toBeTruthy()
+  expect(screen.queryByText('No fue posible cargar las solicitudes')).toBeNull()
+  await fireEvent.press(screen.getByRole('button', { name: 'Reintentar' }))
+  expect(refetch).toHaveBeenCalledTimes(1)
+})
+
+test('al cambiar de pestaña conserva la lista anterior con indicador, sin esqueleto', async () => {
+  const previousData = { pages: [[sortedCase('old', '2026-10-16T12:00:00Z')]] }
+  const baseResult = {
+    data: previousData,
+    error: null,
+    isLoading: false,
+    refetch: jest.fn(),
+    hasNextPage: false,
+    fetchNextPage: jest.fn(),
+    isFetchingNextPage: false,
+    isFetchNextPageError: false,
+  }
+  ;(useCases as jest.Mock).mockReturnValue({ ...baseResult, isPlaceholderData: false })
+  const { screen } = await setup()
+  ;(useCases as jest.Mock).mockReturnValue({ ...baseResult, isPlaceholderData: true })
+  await fireEvent.press(screen.getByRole('tab', { name: 'Cerradas, 3 solicitudes' }))
+  expect(screen.getByRole('button', { name: /CAS-old/ })).toBeTruthy()
+  expect(screen.getByText('Actualizando solicitudes…')).toBeTruthy()
+  expect(screen.queryByLabelText('Cargando lista')).toBeNull()
+})
+
+test('Últimos 7 días no cambia la consulta al pasar un minuto', async () => {
+  const { screen } = await setup({ sinceDays: 7 })
+  const callCount = (useCases as jest.Mock).mock.calls.length
+  jest.useFakeTimers()
+  try {
+    await act(async () => jest.advanceTimersByTime(60_000))
+    expect((useCases as jest.Mock).mock.calls.length).toBe(callCount)
+    expect(
+      screen.getByRole('button', { name: 'Quitar filtro Creadas: últimos 7 días' }),
+    ).toBeTruthy()
+  } finally {
+    jest.useRealTimers()
+  }
 })
