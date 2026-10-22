@@ -434,7 +434,7 @@ export function CasesListScreen({ navigation, route }: Props) {
             </Pressable>
           ) : null}
         </View>
-        <OfflineBanner />
+        <OfflineBanner message="Sin conexión · Mostrando lo último que se cargó." />
         <View style={styles.searchRow}>
           <View style={styles.toolbar}>
             <Icon name="search" size="inline" color={colors.textMuted} />

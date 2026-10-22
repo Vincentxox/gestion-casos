@@ -14,6 +14,14 @@ test('muestra el aviso sin conexión', async () => {
   expect(screen.getByText('Los cambios se enviarán al reconectar.')).toBeTruthy()
 })
 
+test('permite un mensaje específico para la lista de Solicitudes', async () => {
+  const screen = await render(
+    <OfflineBanner message="Sin conexión · Mostrando lo último que se cargó." />,
+  )
+  expect(screen.getByText('Sin conexión · Mostrando lo último que se cargó.')).toBeTruthy()
+  expect(screen.queryByText('Los cambios se enviarán al reconectar.')).toBeNull()
+})
+
 test('oculta el aviso cuando vuelve la red', async () => {
   mockNetwork = { isConnected: true, isInternetReachable: true }
   const screen = await render(<OfflineBanner />)
