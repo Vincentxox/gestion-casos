@@ -13,10 +13,11 @@ export const googleAuthRedirectUrl = makeRedirectUri({
   path: 'auth/callback',
 })
 
-export const passwordResetRedirectUrl = makeRedirectUri({
-  scheme: 'gestion-casos',
-  path: 'auth/reset',
-})
+/**
+ * Página web intermedia: en el teléfono reenvía a gestion-casos://auth/reset con el token, y en la
+ * computadora pide abrir el enlace en el teléfono (fuente en la rama gh-pages).
+ */
+export const passwordResetRedirectUrl = 'https://vincentxox.github.io/gestion-casos/auth/reset/'
 
 interface ProfileRow {
   id: string
