@@ -2,6 +2,7 @@ import type { Session } from '@supabase/supabase-js'
 import { Image } from 'expo-image'
 
 import { queryClient } from '@/config/queryClient'
+import { getAuthenticatedRoute } from '@/features/auth/authRoute'
 import {
   getCurrentSession,
   resolveSessionProfile,
@@ -10,6 +11,7 @@ import {
   signOut,
   signUp,
   retryPendingInvitation,
+  setPasswordRecoverySession,
 } from '@/features/auth/authService'
 import type { Profile } from '@/features/auth/types'
 
@@ -23,6 +25,7 @@ jest.mock('@/features/auth/authService', () => ({
   signOut: jest.fn(),
   signUp: jest.fn(),
   retryPendingInvitation: jest.fn(),
+  setPasswordRecoverySession: jest.fn(),
 }))
 
 jest.mock('expo-image', () => ({
@@ -39,6 +42,7 @@ const mockSignInWithGoogle = jest.mocked(signInWithGoogle)
 const mockSignOut = jest.mocked(signOut)
 const mockSignUp = jest.mocked(signUp)
 const mockRetryPendingInvitation = jest.mocked(retryPendingInvitation)
+const mockSetPasswordRecoverySession = jest.mocked(setPasswordRecoverySession)
 const mockClearMemoryCache = jest.mocked(Image.clearMemoryCache)
 const mockClearDiskCache = jest.mocked(Image.clearDiskCache)
 
@@ -68,6 +72,8 @@ describe('estado global de autenticación', () => {
       profile: null,
       status: 'initializing',
       initializationError: null,
+      passwordRecovery: false,
+      recoveryLinkError: null,
     })
   })
 
@@ -83,6 +89,123 @@ describe('estado global de autenticación', () => {
       status: 'authenticated',
       initializationError: null,
     })
+  })
+
+  test('el enlace válido activa recuperación antes de aplicar la sesión', async () => {
+    mockSetPasswordRecoverySession.mockImplementation(async () => {
+      expect(useAuthStore.getState().passwordRecovery).toBe(true)
+      return session
+    })
+    await useAuthStore
+      .getState()
+      .handleRecoveryUrl('gestion-casos://auth/reset#access_token=a&refresh_token=r&type=recovery')
+    expect(useAuthStore.getState()).toMatchObject({
+      session,
+      passwordRecovery: true,
+      status: 'authenticated',
+    })
+    expect(mockResolveSessionProfile).not.toHaveBeenCalled()
+  })
+
+  test('al guardar la contraseña sale de recuperación y conserva la sesión', async () => {
+    useAuthStore.setState({ session, status: 'authenticated', passwordRecovery: true })
+    mockResolveSessionProfile.mockResolvedValue(profile)
+    await useAuthStore.getState().finishPasswordRecovery()
+    expect(useAuthStore.getState()).toMatchObject({
+      passwordRecovery: false,
+      session,
+      profile,
+      status: 'authenticated',
+    })
+  })
+
+  test('mantiene recuperación hasta cargar el perfil y nunca pasa por Completa tu nombre', async () => {
+    let resolveProfile: (value: Profile) => void = () => undefined
+    mockResolveSessionProfile.mockImplementation(
+      () => new Promise<Profile>((resolve) => (resolveProfile = resolve)),
+    )
+    useAuthStore.setState({
+      session,
+      profile: null,
+      status: 'authenticated',
+      passwordRecovery: true,
+    })
+    const states: ReturnType<typeof useAuthStore.getState>[] = []
+    const unsubscribe = useAuthStore.subscribe((state) => states.push(state))
+
+    try {
+      const finishing = useAuthStore.getState().finishPasswordRecovery()
+      expect(useAuthStore.getState()).toMatchObject({
+        passwordRecovery: true,
+        profile: null,
+      })
+
+      resolveProfile(profile)
+      await finishing
+
+      expect(useAuthStore.getState()).toMatchObject({
+        passwordRecovery: false,
+        profile,
+        status: 'authenticated',
+      })
+      expect(
+        states.some(
+          (state) =>
+            !state.passwordRecovery &&
+            state.status === 'authenticated' &&
+            getAuthenticatedRoute({
+              organizationId: state.profile?.organizationId ?? null,
+              organizationActive: state.profile?.organizationActive ?? null,
+              fullName: state.profile?.fullName ?? '',
+            }) === 'completeName',
+        ),
+      ).toBe(false)
+    } finally {
+      unsubscribe()
+    }
+  })
+
+  test('si falla el perfil después de cambiar la contraseña vuelve al acceso sin mostrar el nombre', async () => {
+    useAuthStore.setState({
+      session,
+      profile: null,
+      status: 'authenticated',
+      passwordRecovery: true,
+    })
+    mockResolveSessionProfile.mockRejectedValue(new Error('network'))
+
+    await useAuthStore.getState().finishPasswordRecovery()
+
+    expect(useAuthStore.getState()).toMatchObject({
+      session: null,
+      profile: null,
+      status: 'unauthenticated',
+      passwordRecovery: false,
+      initializationError: 'No fue posible cargar el perfil del usuario.',
+    })
+  })
+
+  test('el enlace vencido vuelve al acceso sin llamar a Supabase', async () => {
+    useAuthStore.setState({ session, profile, status: 'authenticated' })
+    await useAuthStore
+      .getState()
+      .handleRecoveryUrl('gestion-casos://auth/reset#error_code=otp_expired')
+    expect(useAuthStore.getState()).toMatchObject({
+      session: null,
+      profile: null,
+      status: 'unauthenticated',
+      passwordRecovery: false,
+      recoveryLinkError: 'El enlace venció o ya se usó. Pide uno nuevo.',
+    })
+    expect(mockSignOut).toHaveBeenCalledTimes(1)
+    expect(mockSetPasswordRecoverySession).not.toHaveBeenCalled()
+  })
+
+  test('ignora la URL de Google', async () => {
+    await useAuthStore
+      .getState()
+      .handleRecoveryUrl('gestion-casos://auth/callback#access_token=a&refresh_token=r')
+    expect(mockSetPasswordRecoverySession).not.toHaveBeenCalled()
   })
 
   test('continúa sin autenticar cuando falla la recuperación inicial', async () => {

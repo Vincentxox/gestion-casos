@@ -6,6 +6,7 @@ import type { QuickStatusFilter } from '@/features/cases/caseSearch'
 export type AuthStackParamList = {
   Login: undefined
   Register: undefined
+  ForgotPassword: { email?: string } | undefined
 }
 
 export type MainStackParamList = {

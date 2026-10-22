@@ -8,7 +8,7 @@ import { colors, fonts, spacing, typography } from '@/theme/tokens'
 export function AuthBrand() {
   return (
     <View accessibilityLabel="Nexo Casos" accessible style={styles.brand}>
-      <NexoLogo size={56} check />
+      <NexoLogo size={48} check />
       <View>
         <Text style={styles.wordmark}>nexo</Text>
         <Text style={styles.wordmarkSub}>casos</Text>
@@ -49,9 +49,6 @@ const styles = StyleSheet.create({
   heading: { gap: spacing.sm },
   title: {
     ...typography.display,
-    fontSize: 36,
-    lineHeight: 40,
-    letterSpacing: -1.1,
     color: colors.ink,
   },
   subtitle: { ...typography.body, fontSize: 16, lineHeight: 23, color: colors.textMuted },

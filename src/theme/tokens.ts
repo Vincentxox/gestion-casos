@@ -13,6 +13,7 @@ export const colors = {
   text: '#13203A',
   textMuted: '#5A6780',
   border: '#E4E9F0',
+  inputBorder: '#8793A8',
   error: '#B42318',
   success: '#16803B',
   successSoft: '#E8F5EE',

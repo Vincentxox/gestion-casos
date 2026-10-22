@@ -8,6 +8,10 @@ import {
   resolveSessionProfile,
   signIn,
   signInWithGoogle,
+  requestPasswordReset,
+  setPasswordRecoverySession,
+  updatePassword,
+  passwordResetRedirectUrl,
   signOut,
   signUp,
 } from '../authService'
@@ -21,6 +25,8 @@ jest.mock('@/services/supabase/client', () => ({
       setSession: jest.fn(),
       signUp: jest.fn(),
       signOut: jest.fn(),
+      resetPasswordForEmail: jest.fn(),
+      updateUser: jest.fn(),
     },
     from: jest.fn(),
     rpc: jest.fn(),
@@ -28,7 +34,7 @@ jest.mock('@/services/supabase/client', () => ({
 }))
 
 jest.mock('expo-auth-session', () => ({
-  makeRedirectUri: jest.fn(() => 'gestion-casos://auth/callback'),
+  makeRedirectUri: jest.fn(({ path }: { path: string }) => `gestion-casos://${path}`),
 }))
 
 jest.mock('expo-web-browser', () => ({
@@ -47,6 +53,8 @@ const auth = supabase.auth as unknown as {
   setSession: jest.Mock
   signUp: jest.Mock
   signOut: jest.Mock
+  resetPasswordForEmail: jest.Mock
+  updateUser: jest.Mock
 }
 const from = supabase.from as unknown as jest.Mock
 const rpc = supabase.rpc as unknown as jest.Mock
@@ -81,6 +89,28 @@ describe('servicio de autenticación', () => {
       email: 'user@example.com',
       password: 'Password1!',
     })
+  })
+
+  test('solicita el enlace de recuperación con el redirect de la app', async () => {
+    auth.resetPasswordForEmail.mockResolvedValue({ error: null })
+    await requestPasswordReset(' USER@EXAMPLE.COM ')
+    expect(passwordResetRedirectUrl).toBe('gestion-casos://auth/reset')
+    expect(auth.resetPasswordForEmail).toHaveBeenCalledWith('user@example.com', {
+      redirectTo: 'gestion-casos://auth/reset',
+    })
+  })
+
+  test('recupera sesión de la URL y actualiza contraseña', async () => {
+    auth.setSession.mockResolvedValue({ data: { session }, error: null })
+    auth.updateUser.mockResolvedValue({ error: null })
+    await expect(
+      setPasswordRecoverySession(
+        'gestion-casos://auth/reset#access_token=a&refresh_token=r&type=recovery',
+      ),
+    ).resolves.toBe(session)
+    expect(auth.setSession).toHaveBeenCalledWith({ access_token: 'a', refresh_token: 'r' })
+    await updatePassword('Password1!')
+    expect(auth.updateUser).toHaveBeenCalledWith({ password: 'Password1!' })
   })
 
   test('propaga errores de inicio de sesión', async () => {
