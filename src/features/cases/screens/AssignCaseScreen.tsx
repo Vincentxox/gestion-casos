@@ -89,7 +89,7 @@ export function AssignCaseScreen({ navigation, route }: Props) {
       <KeyboardFormScrollView contentContainerStyle={styles.content}>
         <Text style={styles.instructions}>
           {isReassignment
-            ? `${detail.data.caseNumber} · Elige a quién pasarle la solicitud. La persona actual dejará de verla en «Mis trabajos».`
+            ? `${detail.data.caseNumber} · Elige a quién pasarle la solicitud. La persona actual deja de estar a cargo, pero la seguirá viendo en «Mis trabajos».`
             : `${detail.data.caseNumber} · Elige a la persona responsable de la solicitud.`}
         </Text>
         {detail.data.assignedTo ? (
