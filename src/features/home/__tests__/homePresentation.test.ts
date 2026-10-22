@@ -1,7 +1,6 @@
 import type { AppNotification } from '@/features/notifications/notificationService'
 import {
   getAdminAlerts,
-  getGreeting,
   getHomeCaseCards,
   getHomeCaseView,
   getTodayNotifications,
@@ -12,14 +11,6 @@ import {
   nextStepDueMeta,
 } from '../homePresentation'
 import type { HomeSummary } from '../homeService'
-
-test('el saludo depende de la hora local', () => {
-  expect([getGreeting(8), getGreeting(15), getGreeting(21)]).toEqual([
-    'Buenos días',
-    'Buenas tardes',
-    'Buenas noches',
-  ])
-})
 
 test('cada acción principal tiene texto, botón e ícono de fase', () => {
   expect(NEXT_STEP_LABELS).toEqual({

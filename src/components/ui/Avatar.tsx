@@ -31,7 +31,7 @@ export function Avatar({
 }: {
   name: string
   id: string
-  size?: 24 | 28 | 44 | 72 | 76
+  size?: 24 | 28 | 36 | 44 | 72 | 76
   tone?: 'default' | 'neutral'
   avatarPath?: string | null
 }) {
