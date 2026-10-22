@@ -54,4 +54,45 @@ describe('HelpScreen', () => {
     const screen = await render(<HelpScreen />)
     expect(screen.toJSON()).toBeNull()
   })
+
+  test('todos los roles ven la guía y el enlace puede abrirla directamente', async () => {
+    for (const role of ['solicitante', 'tecnico', 'jefe_area', 'administrador', 'auditor']) {
+      mockRole = role
+      const screen = await render(
+        <HelpScreen route={{ key: 'Help', name: 'Help', params: { section: 'case-card' } }} />,
+      )
+      expect(screen.getByText('Cómo leer una solicitud')).toBeTruthy()
+      expect(screen.getByText('Fuga de agua en baño 2do piso')).toBeTruthy()
+      expect(screen.getByText('Por aceptar')).toBeTruthy()
+      expect(screen.getByText('Cerrada')).toBeTruthy()
+      expect(screen.getByText('9:40')).toBeTruthy()
+      expect(
+        screen.getByTestId('case-guide-marker-1', { includeHiddenElements: true }),
+      ).toBeTruthy()
+      await screen.unmount()
+    }
+  })
+
+  test('buscar oculta la guía directa y al salir limpia el parámetro', async () => {
+    const setParams = jest.fn()
+    let onBlur: () => void = () => undefined
+    const navigation = {
+      addListener: jest.fn((_event: string, callback: () => void) => {
+        onBlur = callback
+        return jest.fn()
+      }),
+      setParams,
+    }
+    const screen = await render(
+      <HelpScreen
+        route={{ key: 'Help', name: 'Help', params: { section: 'case-card' } }}
+        navigation={navigation as never}
+      />,
+    )
+    expect(screen.getByText('Cómo leer una solicitud')).toBeTruthy()
+    await fireEvent.changeText(screen.getByLabelText('Buscar en la ayuda'), 'repuesto')
+    expect(screen.queryByText('Cómo leer una solicitud')).toBeNull()
+    onBlur()
+    expect(setParams).toHaveBeenCalledWith({ section: undefined })
+  })
 })

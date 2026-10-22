@@ -1,5 +1,38 @@
 import type { AppRole } from '@/features/auth/types'
 
+export const CASE_CARD_GUIDE_LEGEND = [
+  {
+    label: 'Por aceptar',
+    phase: 'nueva',
+    status: 'solicitado',
+    meaning: 'Nueva: el área técnica todavía no la acepta.',
+  },
+  {
+    label: 'En curso',
+    phase: 'curso',
+    status: 'en_ejecucion',
+    meaning: 'Aceptada, asignada o en ejecución.',
+  },
+  {
+    label: 'En espera',
+    phase: 'detenida',
+    status: 'en_espera',
+    meaning: 'Pausada, por ejemplo por un repuesto.',
+  },
+  {
+    label: 'En revisión',
+    phase: 'revision',
+    status: 'reporte_enviado',
+    meaning: 'Reporte enviado; falta validar y aprobar.',
+  },
+  {
+    label: 'Cerrada',
+    phase: 'cerrada',
+    status: 'aprobado',
+    meaning: 'Aprobada. También hay rechazadas y canceladas.',
+  },
+] as const
+
 export interface TutorialStep {
   id: string
   title: string

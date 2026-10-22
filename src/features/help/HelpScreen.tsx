@@ -1,18 +1,45 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Icon } from '@/components/ui/Icon'
+import { CaseCard } from '@/features/cases/components/CaseCard'
+import type { CaseRecord } from '@/features/cases/types'
+import type { MainTabParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
-import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
+import { statusMeta } from '@/theme/statusMeta'
+import { colors, fonts, phaseColors, radius, spacing, typography } from '@/theme/tokens'
+import type { RouteProp } from '@react-navigation/native'
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs'
 
-import { getFaqFor, getTutorialFor, TUTORIAL_TITLES } from './helpContent'
+import { CASE_CARD_GUIDE_LEGEND, getFaqFor, getTutorialFor, TUTORIAL_TITLES } from './helpContent'
 
-export function HelpScreen() {
+const EXAMPLE_CASE = {
+  id: 'guide-example',
+  caseNumber: 'CAS-2026-00001',
+  title: 'Fuga de agua en baño 2do piso',
+  status: 'en_ejecucion',
+  priority: 'media',
+  location: 'Edificio B',
+  assigneeName: 'Brandon',
+  assignedTo: 'guide-assignee',
+} as CaseRecord
+
+export function HelpScreen({
+  route,
+  navigation,
+}: {
+  route?: RouteProp<MainTabParamList, 'Help'>
+  navigation?: BottomTabNavigationProp<MainTabParamList, 'Help'>
+} = {}) {
   const role = useAuthStore((state) => state.profile?.role)
   const [query, setQuery] = useState('')
   const [openStep, setOpenStep] = useState<string | null>(null)
   const [openFaq, setOpenFaq] = useState<string | null>(null)
+  useEffect(() => {
+    if (!navigation) return
+    return navigation.addListener('blur', () => navigation.setParams({ section: undefined }))
+  }, [navigation])
   if (!role) return null
 
   const steps = getTutorialFor(role, query)
@@ -25,6 +52,7 @@ export function HelpScreen() {
         <Text accessibilityRole="header" style={styles.title}>
           Ayuda
         </Text>
+        {route?.params?.section === 'case-card' && !query.trim() ? <CaseCardGuide /> : null}
         <View style={styles.search}>
           <Icon name="search" size="inline" color={colors.textMuted} />
           <TextInput
@@ -45,6 +73,8 @@ export function HelpScreen() {
             No encontramos nada sobre «{query.trim()}». Prueba con otra palabra.
           </Text>
         ) : null}
+
+        {route?.params?.section !== 'case-card' && !query.trim() ? <CaseCardGuide /> : null}
 
         {steps.length > 0 ? (
           <View style={styles.section}>
@@ -126,6 +156,40 @@ export function HelpScreen() {
         </View>
       </ScrollView>
     </SafeAreaView>
+  )
+}
+
+function CaseCardGuide() {
+  const exampleDate = new Date()
+  exampleDate.setHours(9, 40, 0, 0)
+  return (
+    <View accessibilityLabel="Cómo leer una solicitud" style={styles.guide}>
+      <Text accessibilityRole="header" style={styles.sectionTitle}>
+        Cómo leer una solicitud
+      </Text>
+      <CaseCard item={{ ...EXAMPLE_CASE, createdAt: exampleDate.toISOString() }} guideMarkers />
+      <Text style={styles.guideCopy}>
+        <Text style={styles.guideNumber}>1</Text> Qué se pidió y cuándo.{' '}
+        <Text style={styles.guideNumber}>2</Text> En qué va y dónde es.{' '}
+        <Text style={styles.guideNumber}>3</Text> Cuánto falta: los 5 pasos son pedir, aceptar,
+        hacer el trabajo, revisar y aprobar. <Text style={styles.guideNumber}>4</Text> Quién la
+        atiende.
+      </Text>
+      <View style={styles.legend}>
+        {CASE_CARD_GUIDE_LEGEND.map((entry) => {
+          const phase = phaseColors[entry.phase]
+          return (
+            <View key={entry.phase} style={styles.legendRow}>
+              <View style={[styles.legendBadge, { backgroundColor: phase.bg }]}>
+                <Icon name={statusMeta[entry.status].icon} color={phase.fg} size={14} />
+                <Text style={[styles.legendBadgeText, { color: phase.fg }]}>{entry.label}</Text>
+              </View>
+              <Text style={styles.legendMeaning}>{entry.meaning}</Text>
+            </View>
+          )
+        })}
+      </View>
+    </View>
   )
 }
 
@@ -233,4 +297,31 @@ const styles = StyleSheet.create({
   contactCopy: { flex: 1, gap: 2 },
   contactTitle: { ...typography.body, fontFamily: fonts.bold, fontSize: 16, color: colors.text },
   contactText: { ...typography.body, color: colors.textMuted },
+  guide: { gap: spacing.base },
+  guideCopy: { ...typography.body, color: colors.textMuted },
+  guideNumber: { fontFamily: fonts.bold, color: colors.textMuted },
+  legend: {
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.xl,
+    backgroundColor: colors.surface,
+  },
+  legendRow: {
+    minHeight: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.track,
+  },
+  legendBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+  },
+  legendBadgeText: { ...typography.caption, fontFamily: fonts.bold },
+  legendMeaning: { ...typography.body, flex: 1, fontSize: 14, color: colors.textMuted },
 })

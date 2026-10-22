@@ -1,11 +1,13 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { useFocusEffect } from '@react-navigation/native'
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Animated, { FadeInDown, useReducedMotion } from 'react-native-reanimated'
 import {
   SectionList,
   ActivityIndicator,
+  Modal,
   Platform,
   Pressable,
   RefreshControl,
@@ -14,6 +16,7 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -26,7 +29,7 @@ import { Icon } from '@/components/ui/Icon'
 import { SkeletonList } from '@/components/ui/SkeletonList'
 import { hasPermission } from '@/features/auth/permissions'
 import { useHomeSummary } from '@/features/home/useHomeSummary'
-import type { MainStackParamList } from '@/navigation/types'
+import type { MainStackParamList, MainTabParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
 import { statusMeta } from '@/theme/statusMeta'
 import { colors, elevation, fonts, radius, spacing, typography } from '@/theme/tokens'
@@ -36,6 +39,7 @@ import { groupCasesByDay } from '../caseDateGroups'
 import { CaseCard } from '../components/CaseCard'
 import { useCaseCounts, useCases } from '../useCases'
 import { useCasePullRefresh } from '../useCasePullRefresh'
+import { useCaseListGuide } from '../useCaseListGuide'
 import { getPrimaryScopeOptions, type ScopeFilter } from '../caseListPresentation'
 import {
   buildCaseSearchFilters,
@@ -127,6 +131,10 @@ function dateChipLabel(from: string | null, to: string | null) {
 
 export function CasesListScreen({ navigation, route }: Props) {
   const profile = useAuthStore((state) => state.profile)
+  const caseGuide = useCaseListGuide(profile?.id)
+  const { height: windowHeight } = useWindowDimensions()
+  const firstRowRef = useRef<View>(null)
+  const [firstRowY, setFirstRowY] = useState<number | null>(null)
   const home = useHomeSummary(Boolean(profile?.organizationId))
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -203,7 +211,7 @@ export function CasesListScreen({ navigation, route }: Props) {
   )
   const fromDate = selection?.key === routeKey ? (selection.fromDate ?? null) : null
   const toDate = selection?.key === routeKey ? (selection.toDate ?? null) : null
-  const overdueOnly =
+  const rawOverdueOnly =
     selection?.key === routeKey
       ? (selection.overdueOnly ?? false)
       : (route.params?.overdueOnly ?? false)
@@ -220,10 +228,12 @@ export function CasesListScreen({ navigation, route }: Props) {
       (routeQuickStatus === 'sin_asignar' && routeExactStatus === 'aceptado'))
       ? null
       : routeExactStatus
-  const quickStatus =
+  const rawQuickStatus =
     selection?.key === routeKey
       ? (selection.quickStatus ?? null)
       : (route.params?.quick ?? routeQuickStatus)
+  const quickStatus = status === 'cerradas' ? null : rawQuickStatus
+  const overdueOnly = status === 'cerradas' ? false : rawOverdueOnly
   const dateError = customDate
     ? validateCreatedRange(fromDateDraft || null, toDateDraft || null)
     : null
@@ -307,6 +317,15 @@ export function CasesListScreen({ navigation, route }: Props) {
   )
   const showingPreviousFilters = isPlaceholderData || counts.isPlaceholderData
   const filteredCases = data?.pages.flat() ?? []
+  const firstCase = filteredCases[0]
+  const showGuide =
+    caseGuide.show && Boolean(firstCase) && firstRowY !== null && !isLoading && !error
+  function openCaseGuide() {
+    void caseGuide.markSeen()
+    navigation.getParent<BottomTabNavigationProp<MainTabParamList>>()?.navigate('Help', {
+      section: 'case-card',
+    })
+  }
   const firstEntryOrder = new Map(filteredCases.slice(0, 8).map((item, index) => [item.id, index]))
   useEffect(() => {
     if (!animateInitialList || isLoading || error || !filteredCases.length) return
@@ -479,7 +498,15 @@ export function CasesListScreen({ navigation, route }: Props) {
               accessibilityLabel={`${segment.label}, ${segment.count ?? 'cargando'} solicitudes`}
               accessibilityRole="tab"
               accessibilityState={{ selected: status === segment.value }}
-              onPress={() => changeFilters({ status: segment.value, legacyStatuses: null })}
+              onPress={() =>
+                changeFilters({
+                  status: segment.value,
+                  legacyStatuses: null,
+                  ...(segment.value === 'cerradas'
+                    ? { quickStatus: null, overdueOnly: false }
+                    : {}),
+                })
+              }
               style={[styles.statusTab, status === segment.value && styles.statusTabSelected]}
             >
               <Text
@@ -498,52 +525,54 @@ export function CasesListScreen({ navigation, route }: Props) {
             </Pressable>
           ))}
         </View>
-        <ScrollView
-          accessibilityLabel="Filtros rápidos"
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.quickFilterScroll}
-          contentContainerStyle={styles.quickFilters}
-        >
-          {quickChips.map((chip) => {
-            const selected = chip.key === 'vencidas' ? overdueOnly : quickStatus === chip.key
-            const overdue = chip.key === 'vencidas'
-            return (
-              <Pressable
-                key={chip.key}
-                accessibilityLabel={`${chip.label}, ${chip.count ?? 'cargando'} ${chip.count === 1 ? 'solicitud' : 'solicitudes'}`}
-                accessibilityRole="button"
-                accessibilityState={{ selected }}
-                onPress={() => toggleQuickFilter(chip.key)}
-                style={[
-                  styles.quickChip,
-                  overdue && styles.quickChipOverdue,
-                  selected &&
-                    (overdue ? styles.quickChipOverdueSelected : styles.quickChipSelected),
-                ]}
-              >
-                <Text
+        {status !== 'cerradas' ? (
+          <ScrollView
+            accessibilityLabel="Filtros rápidos"
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.quickFilterScroll}
+            contentContainerStyle={styles.quickFilters}
+          >
+            {quickChips.map((chip) => {
+              const selected = chip.key === 'vencidas' ? overdueOnly : quickStatus === chip.key
+              const overdue = chip.key === 'vencidas'
+              return (
+                <Pressable
+                  key={chip.key}
+                  accessibilityLabel={`${chip.label}, ${chip.count ?? 'cargando'} ${chip.count === 1 ? 'solicitud' : 'solicitudes'}`}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  onPress={() => toggleQuickFilter(chip.key)}
                   style={[
-                    styles.quickChipText,
-                    overdue && styles.quickChipOverdueText,
-                    selected && styles.quickChipSelectedText,
+                    styles.quickChip,
+                    overdue && styles.quickChipOverdue,
+                    selected &&
+                      (overdue ? styles.quickChipOverdueSelected : styles.quickChipSelected),
                   ]}
                 >
-                  {chip.label}
-                </Text>
-                <Text
-                  style={[
-                    styles.quickChipCount,
-                    overdue && styles.quickChipOverdueText,
-                    selected && styles.quickChipSelectedText,
-                  ]}
-                >
-                  {chip.count ?? '…'}
-                </Text>
-              </Pressable>
-            )
-          })}
-        </ScrollView>
+                  <Text
+                    style={[
+                      styles.quickChipText,
+                      overdue && styles.quickChipOverdueText,
+                      selected && styles.quickChipSelectedText,
+                    ]}
+                  >
+                    {chip.label}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.quickChipCount,
+                      overdue && styles.quickChipOverdueText,
+                      selected && styles.quickChipSelectedText,
+                    ]}
+                  >
+                    {chip.count ?? '…'}
+                  </Text>
+                </Pressable>
+              )
+            })}
+          </ScrollView>
+        ) : null}
         {counts.isError ? (
           <Button label="Reintentar conteos" variant="text" onPress={() => void counts.refetch()} />
         ) : null}
@@ -679,8 +708,18 @@ export function CasesListScreen({ navigation, route }: Props) {
               const order = firstEntryOrder.get(item.id)
               return (
                 <Animated.View
+                  testID={item.id === firstCase?.id ? 'first-case-row' : undefined}
+                  ref={item.id === firstCase?.id ? firstRowRef : undefined}
+                  onLayout={
+                    item.id === firstCase?.id
+                      ? (event) => {
+                          setFirstRowY(event.nativeEvent.layout.y + 160)
+                          firstRowRef.current?.measureInWindow((_x, y) => setFirstRowY(y))
+                        }
+                      : undefined
+                  }
                   entering={
-                    animateInitialList && !reduceMotion && order !== undefined
+                    animateInitialList && !reduceMotion && !caseGuide.show && order !== undefined
                       ? FadeInDown.duration(220).delay(order * 40)
                       : undefined
                   }
@@ -695,6 +734,55 @@ export function CasesListScreen({ navigation, route }: Props) {
           />
         )}
       </View>
+      <Modal
+        animationType={reduceMotion ? 'none' : 'fade'}
+        onRequestClose={() => void caseGuide.markSeen()}
+        transparent
+        visible={showGuide}
+      >
+        <View style={styles.guideOverlay}>
+          <View style={styles.guideBackdrop} />
+          {firstCase ? (
+            <View
+              style={[
+                styles.guideHighlight,
+                {
+                  top: Math.max(80, Math.min(firstRowY ?? 180, windowHeight - 390)),
+                },
+              ]}
+              pointerEvents="none"
+            >
+              <CaseCard item={firstCase} />
+            </View>
+          ) : null}
+          <View style={styles.guideSheet}>
+            <Text accessibilityRole="header" style={styles.guideTitle}>
+              Así se lee cada solicitud
+            </Text>
+            <Text style={styles.guideText}>
+              La etiqueta dice en qué va. La barra muestra cuántos de los 5 pasos lleva, y a la
+              derecha está quién la atiende.
+            </Text>
+            <Text style={styles.guideText}>«Vencida» aparece en rojo cuando se pasó el plazo.</Text>
+            <View style={styles.guideActions}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={openCaseGuide}
+                style={styles.guideAction}
+              >
+                <Text style={styles.guideLink}>Ver guía</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => void caseGuide.markSeen()}
+                style={[styles.guideAction, styles.guideDone]}
+              >
+                <Text style={styles.guideDoneText}>Entendido</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
       <BottomSheet
         visible={filtersOpen}
         title="Filtros"
@@ -883,9 +971,10 @@ export function CasesListScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
+  safeArea: { flex: 1, backgroundColor: colors.surfaceMuted },
   container: {
     flex: 1,
+    backgroundColor: colors.surfaceMuted,
     paddingHorizontal: spacing.compact,
     paddingTop: spacing.md,
     gap: spacing.base,
@@ -918,7 +1007,7 @@ const styles = StyleSheet.create({
     ...typography.caption,
     fontFamily: fonts.bold,
     color: colors.textMuted,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surfaceMuted,
     paddingTop: spacing.md,
     paddingBottom: spacing.xs,
   },
@@ -1080,4 +1169,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
   },
   refreshErrorText: { ...typography.caption, color: colors.dangerText },
+  guideOverlay: { flex: 1, justifyContent: 'flex-end' },
+  guideBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: colors.modalBackdrop },
+  guideHighlight: {
+    position: 'absolute',
+    left: spacing.compact,
+    right: spacing.compact,
+    borderRadius: radius.xl,
+    overflow: 'hidden',
+  },
+  guideSheet: {
+    margin: spacing.compact,
+    padding: spacing.compact,
+    gap: spacing.base,
+    borderRadius: radius.xl,
+    backgroundColor: colors.surface,
+  },
+  guideTitle: { ...typography.heading, fontFamily: fonts.bold, color: colors.ink },
+  guideText: { ...typography.body, color: colors.textMuted },
+  guideActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  guideAction: {
+    minHeight: 44,
+    minWidth: 44,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.sm,
+  },
+  guideLink: { ...typography.body, fontFamily: fonts.bold, color: colors.primary },
+  guideDone: { borderRadius: radius.pill, backgroundColor: colors.primary },
+  guideDoneText: { ...typography.body, fontFamily: fonts.bold, color: colors.white },
 })

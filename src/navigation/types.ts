@@ -55,7 +55,7 @@ export type AdministrationStackParamList = {
 export type MainTabParamList = {
   Home: undefined
   CasesTab: NavigatorScreenParams<MainStackParamList> | undefined
-  Help: undefined
+  Help: { section?: 'case-card' } | undefined
   Profile: undefined
   Administration: NavigatorScreenParams<AdministrationStackParamList> | undefined
 }
