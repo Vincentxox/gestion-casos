@@ -91,12 +91,12 @@ describe('servicio de autenticación', () => {
     })
   })
 
-  test('solicita el enlace de recuperación con el redirect de la app', async () => {
+  test('solicita el enlace de recuperación con la página web que abre la app', async () => {
     auth.resetPasswordForEmail.mockResolvedValue({ error: null })
     await requestPasswordReset(' USER@EXAMPLE.COM ')
-    expect(passwordResetRedirectUrl).toBe('gestion-casos://auth/reset')
+    expect(passwordResetRedirectUrl).toBe('https://vincentxox.github.io/gestion-casos/auth/reset/')
     expect(auth.resetPasswordForEmail).toHaveBeenCalledWith('user@example.com', {
-      redirectTo: 'gestion-casos://auth/reset',
+      redirectTo: 'https://vincentxox.github.io/gestion-casos/auth/reset/',
     })
   })
 
