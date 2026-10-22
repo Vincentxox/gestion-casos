@@ -72,7 +72,8 @@ begin
         where case scope_name
           when 'todas' then true
           when 'mias' then c.created_by = me.id
-          when 'mis_trabajos' then c.assigned_to = me.id
+          -- Desde C-021 también suma los casos en los que participó (5.4).
+          when 'mis_trabajos' then c.assigned_to = me.id or c.id in (select private.participated_case_ids())
           when 'mi_area' then c.requesting_area_id = me.area_id or c.target_area_id = me.area_id
           when 'bandeja' then (me.role = 'administrador' or c.target_area_id = me.area_id)
             and (c.status = 'solicitado' or (c.status = 'aceptado' and c.assigned_to is null))
