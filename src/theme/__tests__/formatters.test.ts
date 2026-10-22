@@ -1,5 +1,6 @@
 import {
   formatCurrency,
+  formatCaseCardDate,
   formatNumber,
   formatQuetzales,
   formatRelativeDate,
@@ -10,6 +11,15 @@ test('elige el singular solo para una unidad', () => {
   expect(plural(1, 'solicitud', 'solicitudes')).toBe('solicitud')
   expect(plural(0, 'solicitud', 'solicitudes')).toBe('solicitudes')
   expect(plural(2, 'solicitud', 'solicitudes')).toBe('solicitudes')
+})
+
+test('fecha corta de la tarjeta según el día local', () => {
+  const today = new Date(2026, 9, 21, 12).getTime()
+  expect(formatCaseCardDate(new Date(2026, 9, 21, 9, 40).toISOString(), today)).toBe('9:40')
+  expect(formatCaseCardDate(new Date(2026, 9, 20, 18).toISOString(), today)).toBe('Ayer')
+  expect(formatCaseCardDate(new Date(2026, 9, 15, 18).toISOString(), today)).toBe('15 oct')
+  expect(formatCaseCardDate(new Date(2025, 9, 15, 18).toISOString(), today)).toBe('15 oct 2025')
+  expect(formatCaseCardDate('no-date', today)).toBe('Fecha no disponible')
 })
 
 test('formatea números y montos de forma consistente', () => {

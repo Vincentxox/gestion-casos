@@ -1,4 +1,5 @@
-import { act, fireEvent, render } from '@testing-library/react-native'
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Platform, StyleSheet } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
@@ -9,6 +10,14 @@ import { calendarDateBoundary } from '../caseSearch'
 import { CASE_STATUSES, type CaseRecord } from '../types'
 import { CasesListScreen } from '../screens/CasesListScreen'
 import { useCaseCounts, useCases } from '../useCases'
+
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  __esModule: true,
+  default: {
+    getItem: jest.fn().mockResolvedValue('seen'),
+    setItem: jest.fn().mockResolvedValue(undefined),
+  },
+}))
 
 const mockProfile: Profile = {
   id: 'admin',
@@ -45,7 +54,8 @@ jest.mock('../useCases', () => ({
 }))
 
 async function setup(params?: Parameters<typeof CasesListScreen>[0]['route']['params']) {
-  const navigation = { navigate: jest.fn() }
+  const parent = { navigate: jest.fn() }
+  const navigation = { navigate: jest.fn(), getParent: jest.fn(() => parent) }
   const screen = await render(
     <SafeAreaProvider
       initialMetrics={{
@@ -59,10 +69,12 @@ async function setup(params?: Parameters<typeof CasesListScreen>[0]['route']['pa
       />
     </SafeAreaProvider>,
   )
-  return { screen, navigation }
+  return { screen, navigation, parent }
 }
 
 beforeEach(() => {
+  ;(AsyncStorage.getItem as jest.Mock).mockResolvedValue('seen')
+  ;(AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined)
   mockProfile.role = 'administrador'
   mockAreaKind = 'tecnica'
   ;(useCases as jest.Mock).mockReturnValue({
@@ -87,6 +99,47 @@ beforeEach(() => {
     refetch: jest.fn(),
   })
   ;(useCases as jest.Mock).mockClear()
+})
+
+test('Cerradas oculta los chips rápidos y quita el filtro activo', async () => {
+  const { screen } = await setup()
+  await fireEvent.press(screen.getByRole('button', { name: 'Vencidas, 3 solicitudes' }))
+  await fireEvent.press(screen.getByRole('tab', { name: /Cerradas, \d+ solicitudes/ }))
+  expect(screen.queryByRole('button', { name: 'Vencidas, 3 solicitudes' })).toBeNull()
+  expect(screen.queryByLabelText('Filtros rápidos')).toBeNull()
+  expect(useCases).toHaveBeenLastCalledWith(
+    expect.objectContaining({ overdueOnly: false, statuses: expect.arrayContaining(['aprobado']) }),
+    true,
+  )
+})
+
+test('el aviso aparece con una fila, Entendido lo guarda y Ver guía abre Ayuda', async () => {
+  ;(AsyncStorage.getItem as jest.Mock).mockResolvedValue(null)
+  ;(useCases as jest.Mock).mockReturnValue({
+    data: { pages: [[sortedCase('first', '2026-10-16T12:00:00Z')]] },
+    error: null,
+    isLoading: false,
+    refetch: jest.fn(),
+    hasNextPage: false,
+    fetchNextPage: jest.fn(),
+    isFetchingNextPage: false,
+    isFetchNextPageError: false,
+  })
+  const { screen, parent } = await setup()
+  await fireEvent(screen.getByTestId('first-case-row'), 'layout', {
+    nativeEvent: { layout: { y: 20 } },
+  })
+  await waitFor(() => expect(screen.getByText('Así se lee cada solicitud')).toBeTruthy())
+  await fireEvent.press(screen.getByRole('button', { name: 'Ver guía' }))
+  expect(parent.navigate).toHaveBeenCalledWith('Help', { section: 'case-card' })
+  expect(AsyncStorage.setItem).toHaveBeenCalledWith('case-list-guide:admin', 'seen')
+  expect(screen.queryByText('Así se lee cada solicitud')).toBeNull()
+})
+
+test('sin filas no aparece el aviso inicial', async () => {
+  ;(AsyncStorage.getItem as jest.Mock).mockResolvedValue(null)
+  const { screen } = await setup()
+  expect(screen.queryByText('Así se lee cada solicitud')).toBeNull()
 })
 
 test('el administrador entra en Abiertas y ve los filtros rápidos con conteos', async () => {
