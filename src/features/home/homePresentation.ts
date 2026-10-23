@@ -148,12 +148,6 @@ export function getTodayNotifications(items: AppNotification[], now: Date) {
     .slice(0, 3)
 }
 
-export function getGreeting(hour: number) {
-  if (hour < 12) return 'Buenos días'
-  if (hour < 18) return 'Buenas tardes'
-  return 'Buenas noches'
-}
-
 export function getAdminAlerts(admin: NonNullable<HomeSummary['admin']>) {
   return [
     ...(admin.conformidades_sin_firmante > 0

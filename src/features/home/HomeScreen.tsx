@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import Svg, { Circle } from 'react-native-svg'
 
 import { NexoLogo } from '@/components/branding/NexoLogo'
+import { ROLE_LABELS } from '@/features/auth/types'
 import { OfflineBanner } from '@/components/feedback/OfflineBanner'
 import { RequestState } from '@/components/feedback/RequestState'
 import { Icon } from '@/components/ui/Icon'
@@ -20,15 +21,11 @@ import { useAuthStore } from '@/store/authStore'
 import { colors, fonts, phaseColors, radius, spacing, typography } from '@/theme/tokens'
 
 import {
-  getGreeting,
   getHomeCaseCards,
   getHomeCaseView,
   getTodayNotifications,
   NEXT_STEP_BUTTON_LABELS,
   NEXT_STEP_LABELS,
-  NEXT_STEP_VISUALS,
-  nextStepDeadlineLabel,
-  nextStepDueMeta,
 } from './homePresentation'
 import { useFirstSteps } from './useFirstSteps'
 import { useHomeSummary } from './useHomeSummary'
@@ -69,7 +66,6 @@ export function HomeScreen({ navigation }: Props) {
     enabled && Boolean(countScope),
   )
   const firstSteps = useFirstSteps(profile?.id)
-  const [nextIndex, setNextIndex] = useState(0)
   const [now, setNow] = useState(() => new Date())
   const refetchSummary = summary.refetch
   const refetchNext = nextSteps.refetch
@@ -93,18 +89,17 @@ export function HomeScreen({ navigation }: Props) {
       .getParent<NativeStackNavigationProp<RootStackParamList>>()
       ?.navigate('NotificationsFlow')
   const items = nextSteps.data?.items ?? []
-  const currentIndex = items.length ? nextIndex % items.length : 0
-  const currentStep = nextSteps.isError ? undefined : items[currentIndex]
+  const currentStep = items[0]
   const caseCards = getHomeCaseCards(counts.data ?? [])
-  const noNextStep = !nextSteps.isLoading && !nextSteps.isError && !currentStep
+  const overdueCount = caseCards.find((card) => card.key === 'vencidas')?.count ?? 0
+  const inProgressCount = caseCards.find((card) => card.key === 'en_curso')?.count ?? 0
+  const attentionLoading = homeCaseView
+    ? counts.isLoading || nextSteps.isLoading
+    : summary.isLoading
+  const attentionError = counts.isError || nextSteps.isError || (!homeCaseView && summary.isError)
+  const attentionReady = Boolean(homeCaseView) && !attentionLoading && !attentionError
   const today = getTodayNotifications(notifications.data ?? [], now)
-  const rawFirstName = profile.fullName.trim().split(/\s+/)[0] || 'usuario'
-  const firstName = rawFirstName.charAt(0).toLocaleUpperCase('es-GT') + rawFirstName.slice(1)
-  const dateLabel = new Intl.DateTimeFormat('es-GT', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  }).format(now)
+  const areaName = profile.areaName || 'Administración'
   const firstStepItems = [
     { id: 'profile', label: 'Revisa tu perfil', action: () => navigation.navigate('Profile') },
     {
@@ -144,40 +139,150 @@ export function HomeScreen({ navigation }: Props) {
         <View style={styles.brandRow}>
           <View style={styles.brand}>
             <NexoLogo size={30} />
-            <Text style={styles.wordmark}>nexo</Text>
+            <View>
+              <Text accessibilityRole="header" style={styles.areaName}>
+                {areaName}
+              </Text>
+              <Text style={styles.roleName}>{ROLE_LABELS[profile.role]}</Text>
+            </View>
           </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={
-              summary.isError
-                ? 'Avisos, conteo no disponible'
-                : `Avisos, ${summary.data?.notificaciones_sin_leer ?? 0} sin leer`
-            }
-            onPress={openNotifications}
-            style={styles.bell}
-          >
-            <Icon name="notifications-outline" color={colors.text} size={21} />
-            {(summary.data?.notificaciones_sin_leer ?? 0) > 0 ? (
-              <Text style={styles.bellCount}>{summary.data?.notificaciones_sin_leer}</Text>
-            ) : null}
-          </Pressable>
-        </View>
-
-        <View style={styles.header}>
-          <Text style={styles.eyebrow}>
-            {dateLabel.charAt(0).toLocaleUpperCase('es-GT') + dateLabel.slice(1)}
-          </Text>
-          <Text accessibilityRole="header" style={styles.title}>
-            {getGreeting(now.getHours())}, {firstName}
-          </Text>
-          <View style={styles.areaRow}>
-            <Text style={styles.subtitle}>{profile.areaName || 'Sin área asignada'}</Text>
-            {noNextStep ? <Text style={styles.upToDate}>✓ Estás al día</Text> : null}
+          <View style={styles.headerActions}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={
+                summary.isError
+                  ? 'Avisos, conteo no disponible'
+                  : `Avisos, ${summary.data?.notificaciones_sin_leer ?? 0} sin leer`
+              }
+              onPress={openNotifications}
+              style={styles.bell}
+            >
+              <Icon name="notifications-outline" color={colors.text} size={21} />
+              {(summary.data?.notificaciones_sin_leer ?? 0) > 0 ? (
+                <Text style={styles.bellCount}>{summary.data?.notificaciones_sin_leer}</Text>
+              ) : null}
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Abrir perfil"
+              onPress={() => navigation.navigate('Profile')}
+              style={styles.profileAction}
+            >
+              <Avatar
+                name={profile.fullName}
+                id={profile.id}
+                avatarPath={profile.avatarUrl}
+                size={36}
+              />
+            </Pressable>
           </View>
         </View>
 
         <OfflineBanner />
-        {firstSteps.loaded && !firstSteps.hidden ? (
+        {attentionLoading && !attentionError ? (
+          <View accessibilityLabel="Cargando atención de Inicio" style={styles.attentionLoading} />
+        ) : null}
+        {attentionReady && overdueCount > 0 ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${overdueCount} ${overdueCount === 1 ? 'solicitud vencida' : 'solicitudes vencidas'}. Pasaron su plazo; atiéndelas primero. Ver`}
+            onPress={() =>
+              navigation.navigate('CasesTab', {
+                screen: 'Cases',
+                params: { scope: homeCaseView!.scope, status: 'abiertas', overdueOnly: true },
+              })
+            }
+            style={[styles.attentionCard, styles.attentionDanger]}
+          >
+            <View style={[styles.attentionIcon, styles.attentionDangerIcon]}>
+              <Icon name="warning-outline" color={colors.dangerText} size={22} />
+            </View>
+            <View style={styles.attentionCopy}>
+              <Text style={[styles.attentionTitle, styles.attentionDangerText]}>
+                {overdueCount} {overdueCount === 1 ? 'solicitud vencida' : 'solicitudes vencidas'}
+              </Text>
+              <Text style={styles.attentionDescription}>Pasaron su plazo; atiéndelas primero</Text>
+            </View>
+            <Text style={[styles.attentionLink, styles.attentionDangerText]}>Ver ›</Text>
+          </Pressable>
+        ) : null}
+        {attentionReady && overdueCount === 0 && currentStep ? (
+          <View style={styles.attentionGroup}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${NEXT_STEP_LABELS[currentStep.action]}. ${currentStep.title}. ${NEXT_STEP_BUTTON_LABELS[currentStep.action]}, abre el detalle`}
+              onPress={() =>
+                navigation.navigate('CasesTab', {
+                  screen: 'CaseDetail',
+                  params: { caseId: currentStep.id },
+                  initial: false,
+                })
+              }
+              style={[styles.attentionCard, styles.attentionInfo]}
+            >
+              <View style={[styles.attentionIcon, styles.attentionInfoIcon]}>
+                <Icon name="arrow-forward-circle-outline" color={colors.primary} size={22} />
+              </View>
+              <View style={styles.attentionCopy}>
+                <Text style={[styles.attentionTitle, styles.attentionInfoText]}>
+                  {NEXT_STEP_LABELS[currentStep.action]}
+                </Text>
+                <Text style={styles.attentionDescription} numberOfLines={2}>
+                  {currentStep.title}
+                </Text>
+              </View>
+              <Text style={[styles.attentionLink, styles.attentionInfoText]}>
+                {NEXT_STEP_BUTTON_LABELS[currentStep.action]} ›
+              </Text>
+            </Pressable>
+            {(nextSteps.data?.total ?? items.length) > 1 ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Ver ${(nextSteps.data?.total ?? items.length) - 1} ${(nextSteps.data?.total ?? items.length) === 2 ? 'paso' : 'pasos'} más en Solicitudes`}
+                onPress={() =>
+                  navigation.navigate('CasesTab', {
+                    screen: 'Cases',
+                    params: { scope: homeCaseView!.scope, status: 'abiertas' },
+                  })
+                }
+                style={styles.moreSteps}
+              >
+                <Text style={styles.actionText}>
+                  y {(nextSteps.data?.total ?? items.length) - 1} más ›
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
+        {attentionReady && overdueCount === 0 && !currentStep ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Todo a tiempo. ${inProgressCount === 0 ? 'Nada en curso' : `${inProgressCount} ${inProgressCount === 1 ? 'trabajo en curso' : 'trabajos en curso'}, ninguno vencido`}. Ver`}
+            onPress={() =>
+              navigation.navigate('CasesTab', {
+                screen: 'Cases',
+                params: { scope: homeCaseView!.scope, status: 'abiertas' },
+              })
+            }
+            style={[styles.attentionCard, styles.attentionSuccess]}
+          >
+            <View style={[styles.attentionIcon, styles.attentionSuccessIcon]}>
+              <Icon name="checkmark" color={colors.success} size={22} />
+            </View>
+            <View style={styles.attentionCopy}>
+              <Text style={[styles.attentionTitle, styles.attentionSuccessText]}>
+                Todo a tiempo
+              </Text>
+              <Text style={styles.attentionDescription}>
+                {inProgressCount === 0
+                  ? 'Nada en curso'
+                  : `${inProgressCount} ${inProgressCount === 1 ? 'trabajo en curso' : 'trabajos en curso'}, ninguno vencido`}
+              </Text>
+            </View>
+            <Text style={[styles.attentionLink, styles.attentionSuccessText]}>Ver ›</Text>
+          </Pressable>
+        ) : null}
+        {firstSteps.loaded && !firstSteps.hidden && firstSteps.completed.length < 5 ? (
           <View style={styles.firstStepsCard}>
             <View style={styles.sectionTitleRow}>
               <Text accessibilityRole="header" style={styles.sectionTitle}>
@@ -244,87 +349,6 @@ export function HomeScreen({ navigation }: Props) {
           </View>
         ) : null}
 
-        {nextSteps.isLoading || nextSteps.isError || currentStep ? (
-          <View style={styles.section}>
-            <Text accessibilityRole="header" style={styles.sectionTitle}>
-              Tu siguiente paso
-            </Text>
-            {nextSteps.isLoading ? (
-              <RequestState kind="loading" title="Buscando tu siguiente paso…" />
-            ) : null}
-            {nextSteps.isError ? (
-              <RequestState
-                kind="error"
-                title="No pudimos cargar tu siguiente paso"
-                onRetry={() => void nextSteps.refetch()}
-              />
-            ) : null}
-            {currentStep ? (
-              <View style={items.length > 1 ? styles.stackBack : undefined}>
-                <View style={styles.stackCard}>
-                  <View style={styles.nextTop}>
-                    <Text style={styles.stepCounter}>
-                      {currentIndex + 1} de {nextSteps.data?.total ?? items.length}
-                    </Text>
-                    <Text style={[styles.deadline, currentStep.overdueStage && styles.overdue]}>
-                      {nextStepDeadlineLabel(currentStep, now)}
-                    </Text>
-                  </View>
-                  <View style={styles.nextActionRow}>
-                    <View
-                      style={[
-                        styles.stepIcon,
-                        {
-                          backgroundColor:
-                            phaseColors[NEXT_STEP_VISUALS[currentStep.action].phase].bg,
-                        },
-                      ]}
-                    >
-                      <Icon
-                        name={NEXT_STEP_VISUALS[currentStep.action].icon}
-                        color={phaseColors[NEXT_STEP_VISUALS[currentStep.action].phase].fg}
-                      />
-                    </View>
-                    <Text style={styles.nextAction}>{NEXT_STEP_LABELS[currentStep.action]}</Text>
-                  </View>
-                  <Text style={styles.nextCase}>{currentStep.title}</Text>
-                  <Text style={styles.nextMeta}>
-                    {currentStep.caseNumber} · prioridad {currentStep.priority} ·{' '}
-                    {nextStepDueMeta(currentStep, now)}
-                  </Text>
-                  <View style={styles.nextActions}>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Luego"
-                      onPress={() => setNextIndex((value) => value + 1)}
-                      style={styles.secondaryAction}
-                    >
-                      <Text style={styles.secondaryText}>Luego</Text>
-                    </Pressable>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`${NEXT_STEP_BUTTON_LABELS[currentStep.action]} ${currentStep.caseNumber}, abre el detalle`}
-                      onPress={() =>
-                        navigation.navigate('CasesTab', {
-                          screen: 'CaseDetail',
-                          params: { caseId: currentStep.id },
-                          initial: false,
-                        })
-                      }
-                      style={styles.primaryAction}
-                    >
-                      <Text style={styles.primaryText}>
-                        {NEXT_STEP_BUTTON_LABELS[currentStep.action]}
-                      </Text>
-                      <Icon name="arrow-forward" size="inline" color={colors.white} />
-                    </Pressable>
-                  </View>
-                </View>
-              </View>
-            ) : null}
-          </View>
-        ) : null}
-
         <View style={styles.section}>
           <View style={styles.sectionTitleRow}>
             <Text accessibilityRole="header" style={styles.sectionTitle}>
@@ -364,40 +388,32 @@ export function HomeScreen({ navigation }: Props) {
           ) : null}
           {homeCaseView && !counts.isLoading && !counts.isError ? (
             <View style={styles.caseGrid}>
-              {caseCards.map((card) => (
-                <Pressable
-                  key={card.key}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${card.label}, ${card.count} ${card.count === 1 ? 'solicitud' : 'solicitudes'}`}
-                  onPress={() =>
-                    navigation.navigate('CasesTab', {
-                      screen: 'Cases',
-                      params: {
-                        scope: homeCaseView.scope,
-                        status: 'abiertas',
-                        ...card.filter,
-                      },
-                    })
-                  }
-                  style={[
-                    styles.caseTile,
-                    card.key === 'vencidas' && card.count > 0 && styles.caseTileOverdue,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.caseCount,
-                      card.key === 'vencidas' && card.count > 0 && styles.caseCountOverdue,
-                    ]}
+              {caseCards
+                .filter((card) => card.key !== 'vencidas')
+                .map((card) => (
+                  <Pressable
+                    key={card.key}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${card.label}, ${card.count} ${card.count === 1 ? 'solicitud' : 'solicitudes'}`}
+                    onPress={() =>
+                      navigation.navigate('CasesTab', {
+                        screen: 'Cases',
+                        params: {
+                          scope: homeCaseView.scope,
+                          status: 'abiertas',
+                          ...card.filter,
+                        },
+                      })
+                    }
+                    style={styles.caseTile}
                   >
-                    {card.count}
-                  </Text>
-                  <View style={styles.caseTileLabel}>
-                    <View style={[styles.caseDot, { backgroundColor: CARD_TONES[card.tone] }]} />
-                    <Text style={styles.caseLabel}>{card.label}</Text>
-                  </View>
-                </Pressable>
-              ))}
+                    <Text style={styles.caseCount}>{card.count}</Text>
+                    <View style={styles.caseTileLabel}>
+                      <View style={[styles.caseDot, { backgroundColor: CARD_TONES[card.tone] }]} />
+                      <Text style={styles.caseLabel}>{card.label}</Text>
+                    </View>
+                  </Pressable>
+                ))}
             </View>
           ) : null}
         </View>
@@ -492,8 +508,11 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl * 3,
   },
   brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  brand: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  wordmark: { fontFamily: fonts.extrabold, fontSize: 19, color: colors.ink },
+  brand: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  areaName: { ...typography.heading, color: colors.ink },
+  roleName: { ...typography.caption, color: colors.textMuted },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  profileAction: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   bell: {
     width: 44,
     height: 44,
@@ -516,19 +535,42 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 18,
   },
-  header: { gap: spacing.xs },
-  eyebrow: { ...typography.caption, color: colors.textMuted },
-  title: { ...typography.display, fontSize: 34, lineHeight: 40, color: colors.ink },
-  areaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
-  subtitle: { ...typography.caption, color: colors.textMuted },
-  upToDate: {
-    ...typography.caption,
-    color: colors.success,
-    backgroundColor: colors.successSoft,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+  attentionLoading: {
+    minHeight: 100,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surfaceMuted,
   },
+  attentionGroup: { gap: spacing.xs },
+  attentionCard: {
+    minHeight: 100,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderRadius: radius.lg,
+  },
+  attentionDanger: { backgroundColor: colors.dangerSoft, borderColor: colors.dangerBorder },
+  attentionInfo: { backgroundColor: colors.primarySoft, borderColor: colors.primarySoft },
+  attentionSuccess: { backgroundColor: colors.successSoft, borderColor: colors.successSoft },
+  attentionIcon: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.pill,
+  },
+  attentionDangerIcon: { backgroundColor: colors.dangerBadge },
+  attentionInfoIcon: { backgroundColor: colors.surface },
+  attentionSuccessIcon: { backgroundColor: colors.surface },
+  attentionCopy: { flex: 1, gap: spacing.xs },
+  attentionTitle: { ...typography.heading },
+  attentionDangerText: { color: colors.dangerText },
+  attentionInfoText: { color: colors.primaryDark },
+  attentionSuccessText: { color: colors.success },
+  attentionDescription: { ...typography.caption, color: colors.textMuted },
+  attentionLink: { ...typography.caption, fontFamily: fonts.bold },
+  moreSteps: { minHeight: 44, alignSelf: 'flex-end', justifyContent: 'center' },
   section: { gap: spacing.sm },
   sectionTitleRow: {
     minHeight: 44,
@@ -557,56 +599,9 @@ const styles = StyleSheet.create({
   bodyText: { ...typography.body, color: colors.text },
   inlineAction: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   quietEmpty: { ...typography.body, color: colors.textMuted, paddingVertical: spacing.sm },
-  stackBack: {
-    paddingBottom: spacing.sm,
-    paddingHorizontal: spacing.xs,
-    borderRadius: radius.lg,
-    backgroundColor: colors.primarySoft,
-  },
-  stackCard: {
-    gap: spacing.sm,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
-  },
-  nextTop: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm },
-  stepCounter: { ...typography.caption, color: colors.textMuted },
-  deadline: { ...typography.caption, fontFamily: fonts.bold, color: colors.primary },
-  overdue: { color: colors.dangerText },
-  nextActionRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  stepIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  nextAction: { ...typography.title, color: colors.ink },
-  nextCase: { ...typography.body, color: colors.text },
-  nextMeta: { ...typography.caption, color: colors.textMuted },
-  nextActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  secondaryAction: { minHeight: 44, paddingHorizontal: spacing.md, justifyContent: 'center' },
-  secondaryText: { ...typography.caption, color: colors.textMuted },
-  primaryAction: {
-    minHeight: 44,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.primary,
-  },
-  primaryText: { ...typography.caption, fontFamily: fonts.bold, color: colors.white },
   caseGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   caseTile: {
-    flexBasis: '47%',
+    flexBasis: '30%',
     flexGrow: 1,
     minHeight: 88,
     padding: spacing.md,
@@ -616,9 +611,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: colors.surface,
   },
-  caseTileOverdue: { backgroundColor: colors.dangerSoft, borderColor: colors.dangerBorder },
   caseCount: { ...typography.display, color: colors.ink },
-  caseCountOverdue: { color: colors.error },
   caseTileLabel: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   caseDot: { width: 8, height: 8, borderRadius: radius.pill },
   caseLabel: { ...typography.caption, color: colors.textMuted },

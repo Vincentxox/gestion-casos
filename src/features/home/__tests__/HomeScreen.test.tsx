@@ -17,6 +17,9 @@ let mockNextItems: NextStepCase[] = []
 let mockNextError = false
 let mockNextLoading = false
 let mockSummaryError = false
+let mockSummaryLoading = false
+let mockCountsLoading = false
+let mockCountsError = false
 let mockNotices: AppNotification[] = []
 let mockCounts = [
   { status: 'solicitado', total: 2, overdue: 1, unassigned: 0 },
@@ -95,7 +98,7 @@ jest.mock('@/store/authStore', () => ({
 jest.mock('../useHomeSummary', () => ({
   useHomeSummary: () => ({
     data: mockSummary,
-    isLoading: false,
+    isLoading: mockSummaryLoading,
     isError: mockSummaryError,
     isRefetching: false,
     refetch: jest.fn(),
@@ -112,8 +115,8 @@ jest.mock('../useNextSteps', () => ({
 jest.mock('@/features/cases/useCases', () => ({
   useCaseCounts: jest.fn(() => ({
     data: mockCounts,
-    isLoading: false,
-    isError: false,
+    isLoading: mockCountsLoading,
+    isError: mockCountsError,
     refetch: jest.fn(),
   })),
 }))
@@ -146,8 +149,12 @@ beforeEach(() => {
   mockNextError = false
   mockNextLoading = false
   mockSummaryError = false
+  mockSummaryLoading = false
+  mockCountsLoading = false
+  mockCountsError = false
   mockSummary.area_kind = 'tecnica'
   mockProfile.role = 'jefe_area'
+  mockProfile.areaName = 'Mantenimiento'
   mockCounts = [
     { status: 'solicitado', total: 2, overdue: 1, unassigned: 0 },
     { status: 'aceptado', total: 1, overdue: 0, unassigned: 0 },
@@ -168,48 +175,92 @@ function renderHome() {
   return render(<HomeScreen {...props} />)
 }
 
-test('la tarjeta principal muestra la decisión, vencimiento y detalle; Luego solo cambia la tarjeta', async () => {
+test('las vencidas prevalecen aun cuando hay un siguiente paso', async () => {
   mockNextItems = [
     nextCase,
     { ...nextCase, id: 'case-2', caseNumber: 'CAS-2026-00002', action: 'asignar' },
   ]
   const screen = await renderHome()
+  expect(screen.getByText('3 solicitudes vencidas')).toBeTruthy()
+  expect(screen.queryByText('Aceptar solicitud')).toBeNull()
+})
+
+test('sin vencidas muestra el siguiente paso y el acceso a los demás', async () => {
+  mockCounts = mockCounts.map((row) => ({ ...row, overdue: 0 }))
+  mockNextItems = [nextCase, { ...nextCase, id: 'case-2' }]
+  const screen = await renderHome()
   expect(screen.getByText('Aceptar solicitud')).toBeTruthy()
-  expect(screen.getByText('Vencida')).toBeTruthy()
-  expect(screen.getByText('1 de 2')).toBeTruthy()
-  await fireEvent.press(screen.getByRole('button', { name: 'Luego' }))
-  expect(screen.getByText('Asignar técnico')).toBeTruthy()
-  expect(screen.getByText('2 de 2')).toBeTruthy()
-  expect(mockNavigate).not.toHaveBeenCalled()
+  expect(screen.getByText('Fuga de agua')).toBeTruthy()
   await fireEvent.press(
-    screen.getByRole('button', { name: 'Asignar CAS-2026-00002, abre el detalle' }),
+    screen.getByRole('button', {
+      name: 'Aceptar solicitud. Fuga de agua. Revisar, abre el detalle',
+    }),
   )
   expect(mockNavigate).toHaveBeenCalledWith('CasesTab', {
     screen: 'CaseDetail',
-    params: { caseId: 'case-2' },
+    params: { caseId: 'case-1' },
     initial: false,
+  })
+  await fireEvent.press(screen.getByRole('button', { name: 'Ver 1 paso más en Solicitudes' }))
+  expect(mockNavigate).toHaveBeenCalledWith('CasesTab', {
+    screen: 'Cases',
+    params: { scope: 'area_atiende', status: 'abiertas' },
   })
 })
 
-test('la cola vacía muestra Estás al día junto al área y oculta la sección', async () => {
+test('con vencidas y sin siguiente paso muestra la tarjeta roja y abre el filtro', async () => {
   const screen = await renderHome()
-  expect(screen.getByText('✓ Estás al día')).toBeTruthy()
+  const urgent = screen.getByRole('button', {
+    name: '3 solicitudes vencidas. Pasaron su plazo; atiéndelas primero. Ver',
+  })
+  expect(StyleSheet.flatten(urgent.props.style)).toMatchObject({
+    backgroundColor: colors.dangerSoft,
+  })
+  await fireEvent.press(urgent)
+  expect(mockNavigate).toHaveBeenCalledWith('CasesTab', {
+    screen: 'Cases',
+    params: { scope: 'area_atiende', status: 'abiertas', overdueOnly: true },
+  })
+  expect(screen.queryByText('✓ Estás al día')).toBeNull()
   expect(screen.queryByText('Tu siguiente paso')).toBeNull()
 })
 
-test('cuando hay siguiente paso conserva la sección y no muestra Estás al día', async () => {
-  mockNextItems = [nextCase]
+test('sin vencidas ni pasos muestra Todo a tiempo y el resumen de trabajos', async () => {
+  mockCounts = mockCounts.map((row) => ({ ...row, overdue: 0 }))
   const screen = await renderHome()
-  expect(screen.getByText('Tu siguiente paso')).toBeTruthy()
-  expect(screen.queryByText('✓ Estás al día')).toBeNull()
+  expect(screen.getByText('Todo a tiempo')).toBeTruthy()
+  expect(screen.getByText('6 trabajos en curso, ninguno vencido')).toBeTruthy()
+  expect(screen.queryByText(/Buenos días|Buenas tardes|Estás al día|Jueves/i)).toBeNull()
+  await fireEvent.press(screen.getByRole('button', { name: /Todo a tiempo.*Ver/ }))
+  expect(mockNavigate).toHaveBeenCalledWith('CasesTab', {
+    screen: 'Cases',
+    params: { scope: 'area_atiende', status: 'abiertas' },
+  })
 })
 
-test('un error de la cola ofrece reintento', async () => {
-  mockNextError = true
+test('el resumen de Todo a tiempo dice Nada en curso si el conteo es cero', async () => {
+  mockCounts = mockCounts.map((row) => ({ ...row, overdue: 0, total: 0 }))
   const screen = await renderHome()
-  expect(screen.getByText('No pudimos cargar tu siguiente paso')).toBeTruthy()
-  await fireEvent.press(screen.getByRole('button', { name: 'Reintentar' }))
-  expect(mockNextRefetch).toHaveBeenCalled()
+  expect(screen.getByText('Nada en curso')).toBeTruthy()
+})
+
+test('durante la carga o ante error no afirma que todo está a tiempo', async () => {
+  mockCounts = mockCounts.map((row) => ({ ...row, overdue: 0 }))
+  mockCountsLoading = true
+  let screen = await renderHome()
+  expect(screen.queryByText('Todo a tiempo')).toBeNull()
+  expect(screen.getByLabelText('Cargando atención de Inicio')).toBeTruthy()
+  await screen.unmount()
+  mockCountsLoading = false
+  mockNextError = true
+  screen = await renderHome()
+  expect(screen.queryByText('Todo a tiempo')).toBeNull()
+  expect(screen.queryByLabelText('Cargando atención de Inicio')).toBeNull()
+  await screen.unmount()
+  mockNextError = false
+  mockCountsError = true
+  screen = await renderHome()
+  expect(screen.queryByText('Todo a tiempo')).toBeNull()
 })
 
 test('un fallo del resumen no tapa Inicio y deja abrir Avisos', async () => {
@@ -220,7 +271,7 @@ test('un fallo del resumen no tapa Inicio y deja abrir Avisos', async () => {
   expect(mockRootNavigate).toHaveBeenCalledWith('NotificationsFlow')
 })
 
-test('Tu área muestra cuatro conteos y abre Solicitudes con el mismo alcance y filtro', async () => {
+test('Tu área muestra tres conteos y abre Solicitudes con el mismo alcance y filtro', async () => {
   const screen = await renderHome()
   expect(screen.getByText('Tu área')).toBeTruthy()
   expect(useCaseCounts).toHaveBeenCalledWith(
@@ -235,16 +286,10 @@ test('Tu área muestra cuatro conteos y abre Solicitudes con el mismo alcance y 
     }),
     true,
   )
-  const vencidas = screen.getByRole('button', { name: 'Vencidas, 3 solicitudes' })
-  expect(StyleSheet.flatten(vencidas.props.style)).toMatchObject({ minHeight: 88 })
-  expect(StyleSheet.flatten(vencidas.props.style)).toMatchObject({
-    backgroundColor: colors.dangerSoft,
-  })
-  await fireEvent.press(vencidas)
-  expect(mockNavigate).toHaveBeenCalledWith('CasesTab', {
-    screen: 'Cases',
-    params: { scope: 'area_atiende', status: 'abiertas', overdueOnly: true },
-  })
+  expect(screen.queryByRole('button', { name: /Vencidas, 3 solicitudes/ })).toBeNull()
+  expect(screen.getAllByRole('button', { name: /Por aceptar|En curso|En revisión/ })).toHaveLength(
+    3,
+  )
   await fireEvent.press(screen.getByRole('button', { name: 'Por aceptar, 2 solicitudes' }))
   expect(mockNavigate).toHaveBeenCalledWith('CasesTab', {
     screen: 'Cases',
@@ -271,14 +316,6 @@ test('Tu área muestra cuatro conteos y abre Solicitudes con el mismo alcance y 
   })
 })
 
-test('Vencidas no se tiñe cuando el conteo es cero', async () => {
-  mockCounts = mockCounts.map((row) => ({ ...row, overdue: 0 }))
-  const screen = await renderHome()
-  expect(
-    StyleSheet.flatten(screen.getByRole('button', { name: 'Vencidas, 0 solicitudes' }).props.style),
-  ).toMatchObject({ backgroundColor: colors.surface })
-})
-
 test.each([
   ['tecnico', 'tecnica', 'Tu área', 'mi_area'],
   ['jefe_area', 'solicitante', 'Tus solicitudes', 'mias'],
@@ -287,15 +324,36 @@ test.each([
   ['auditor', 'tecnica', 'Solicitudes', 'todas'],
 ] as const)('%s en área %s ve %s con alcance %s', async (role, areaKind, title, scope) => {
   mockProfile.role = role
+  if (role === 'administrador') mockProfile.areaName = null
   mockSummary.area_kind = areaKind
   const screen = await renderHome()
   expect(screen.getByRole('header', { name: title })).toBeTruthy()
   expect(useCaseCounts).toHaveBeenCalledWith(expect.objectContaining({ scope }), true)
+  if (role === 'administrador') expect(screen.getByText('Administración')).toBeTruthy()
+  expect(
+    screen.getByText(
+      role === 'jefe_area'
+        ? 'Jefe de área'
+        : role === 'tecnico'
+          ? 'Técnico'
+          : role === 'solicitante'
+            ? 'Solicitante'
+            : role === 'administrador'
+              ? 'Administrador'
+              : 'Auditor',
+    ),
+  ).toBeTruthy()
   await fireEvent.press(screen.getByRole('button', { name: 'Ver todas las solicitudes abiertas' }))
   expect(mockNavigate).toHaveBeenCalledWith('CasesTab', {
     screen: 'Cases',
     params: { scope, status: 'abiertas' },
   })
+})
+
+test('el avatar abre Perfil', async () => {
+  const screen = await renderHome()
+  await fireEvent.press(screen.getByRole('button', { name: 'Abrir perfil' }))
+  expect(mockNavigate).toHaveBeenCalledWith('Profile')
 })
 
 test('el recuadro del técnico navega con Mi área visible en Solicitudes', async () => {
@@ -318,6 +376,16 @@ test('el jefe no consulta con un alcance provisional mientras carga el tipo de �
   expect(useCaseCounts).toHaveBeenCalledWith(expect.objectContaining({ scope: 'todas' }), false)
   expect(screen.getByText('Cargando tus solicitudes…')).toBeTruthy()
   expect(screen.queryByRole('button', { name: 'Ver todas las solicitudes abiertas' })).toBeNull()
+})
+
+test('sin tipo de área y con resumen cargado no deja el bloque de atención en carga', async () => {
+  mockSummary.area_kind = null
+  mockNextLoading = true
+  mockCounts = mockCounts.map((row) => ({ ...row, overdue: 0 }))
+  const screen = await renderHome()
+  expect(screen.queryByLabelText('Cargando atención de Inicio')).toBeNull()
+  expect(screen.queryByText('Todo a tiempo')).toBeNull()
+  expect(screen.queryByRole('button', { name: /solicitudes vencidas/ })).toBeNull()
 })
 
 test('Hoy muestra el comentario del mensaje y Ver todo abre Avisos', async () => {
