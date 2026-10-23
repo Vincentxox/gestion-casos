@@ -32,6 +32,7 @@ import { CaseMessages } from '../components/CaseMessages'
 import { CaseTracking } from '../components/CaseTracking'
 import { getCaseTrackingSteps } from '../caseTracking'
 import { getCaseActionMeta } from '../caseActionPresentation'
+import { getNextWorkflowAction, getWaitingPresentation } from '../caseWorkflow'
 import { refreshCaseDetail } from '../refreshCaseDetail'
 import { caseMessageSchema } from '../schemas'
 import type { CaseAction, CaseActionName, CaseStatus } from '../types'
@@ -49,19 +50,6 @@ const REPORT_STATUSES: CaseStatus[] = [
   'validado',
   'aprobado',
 ]
-
-const WAITING: Record<CaseStatus, string> = {
-  solicitado: 'Esperando que el área técnica la acepte',
-  aceptado: 'Esperando que se asigne un técnico',
-  asignado: 'Esperando que el técnico inicie el trabajo',
-  en_ejecucion: 'Trabajo en curso',
-  en_espera: 'Trabajo en pausa',
-  reporte_enviado: 'Esperando la validación del reporte',
-  validado: 'Esperando la aprobación del reporte',
-  aprobado: 'Caso cerrado',
-  rechazado: 'Solicitud rechazada',
-  cancelado: 'Solicitud cancelada',
-}
 
 const REPORT_STEPS = {
   enviar_reporte: { label: 'Completar reporte', next: 'Te toca completar el reporte' },
@@ -147,17 +135,16 @@ export function CaseDetailScreen({ navigation, route }: Props) {
   const caseActionsAllowed = (
     ['aceptar', 'rechazar', 'cancelar', 'asignar', 'iniciar', 'pausar', 'reanudar'] as CaseAction[]
   ).filter((action) => allowed(action))
+  const workflowAction = getNextWorkflowAction(item.status)
   const reportKey = (['enviar_reporte', 'validar_reporte', 'aprobar_reporte'] as const).find(
-    (action) => allowed(action),
+    (action) => action === workflowAction && allowed(action),
   )
   const reportStep = reportKey ? REPORT_STEPS[reportKey] : null
-  const primaryAction = caseActionsAllowed.find(
-    (action) => !['rechazar', 'cancelar'].includes(action),
-  )
+  const primaryAction = caseActionsAllowed.find((action) => action === workflowAction)
   const metaFor = (action: CaseAction) => getCaseActionMeta(action, item.assignedTo)
 
   const menu: SheetAction<MenuId>[] = caseActionsAllowed
-    .filter((action) => Boolean(reportStep) || action !== primaryAction)
+    .filter((action) => action !== primaryAction)
     .map((action) => ({
       id: action,
       label: metaFor(action).label,
@@ -188,10 +175,11 @@ export function CaseDetailScreen({ navigation, route }: Props) {
   }
 
   const primaryLabel = reportStep?.label ?? (primaryAction ? metaFor(primaryAction).label : null)
+  const waiting = getWaitingPresentation(item)
   const trackingSteps = getCaseTrackingSteps(
     item,
     history.data ?? [],
-    primaryLabel ? 'Pendiente · te toca a ti' : WAITING[item.status],
+    primaryLabel ? 'Pendiente · te toca a ti' : (waiting?.tracking ?? ''),
   )
   const overdue =
     item.overdueStage === 'aceptacion'
@@ -199,6 +187,13 @@ export function CaseDetailScreen({ navigation, route }: Props) {
       : item.overdueStage === 'resolucion'
         ? 'Vencida · resolución'
         : null
+  const showOverdueReassign = Boolean(
+    item.overdueStage && allowed('asignar') && workflowAction !== 'asignar',
+  )
+  const deadlineText =
+    item.overdueStage === 'aceptacion'
+      ? 'Se pasó el plazo de aceptación'
+      : 'Se pasó el plazo de resolución'
   const dataRows = [
     { label: 'Solicita', value: item.requestingAreaName },
     { label: 'Atiende', value: item.targetAreaName },
@@ -291,6 +286,11 @@ export function CaseDetailScreen({ navigation, route }: Props) {
               <View style={styles.turnBanner}>
                 <Icon name="time-outline" size={22} color={colors.primary} />
                 <Text style={styles.turnText}>Te toca: {primaryLabel.toLowerCase()}</Text>
+              </View>
+            ) : waiting ? (
+              <View style={[styles.turnBanner, styles.waitingBanner]}>
+                <Icon name="time-outline" size={22} color={colors.textMuted} />
+                <Text style={styles.waitingText}>{waiting.banner}</Text>
               </View>
             ) : null}
           </View>
@@ -387,9 +387,21 @@ export function CaseDetailScreen({ navigation, route }: Props) {
           </View>
         ) : null}
 
-        {activeTab === 'tracking' && primaryLabel ? (
+        {activeTab === 'tracking' && (primaryLabel || showOverdueReassign) ? (
           <View accessibilityRole="toolbar" style={styles.actionBar}>
-            <Button label={primaryLabel} onPress={runPrimary} />
+            {showOverdueReassign ? (
+              <View style={styles.overdueReassign}>
+                <Text style={styles.deadlineText}>{deadlineText}</Text>
+                <Button
+                  label="Reasignar personal"
+                  icon="person"
+                  variant="secondary"
+                  style={styles.secondaryButton}
+                  onPress={() => runMenu('asignar')}
+                />
+              </View>
+            ) : null}
+            {primaryLabel ? <Button label={primaryLabel} onPress={runPrimary} /> : null}
           </View>
         ) : null}
       </KeyboardAvoidingView>
@@ -484,6 +496,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primarySoft,
   },
   turnText: { ...typography.body, fontFamily: fonts.semibold, color: colors.ink },
+  waitingBanner: { backgroundColor: colors.surfaceMuted },
+  waitingText: { ...typography.body, color: colors.textMuted, flex: 1 },
   tabs: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.border },
   tab: {
     flex: 1,
@@ -550,6 +564,9 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     backgroundColor: colors.background,
   },
+  overdueReassign: { gap: spacing.sm },
+  deadlineText: { ...typography.caption, textAlign: 'center', color: colors.textMuted },
+  secondaryButton: { borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
   dataRow: {
     minHeight: 46,
     flexDirection: 'row',

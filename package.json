@@ -119,6 +119,7 @@
       "src/features/cases/caseSearch.ts",
       "src/features/cases/caseDateGroups.ts",
       "src/features/cases/caseTracking.ts",
+      "src/features/cases/caseWorkflow.ts",
       "src/features/cases/components/CaseTracking.tsx",
       "src/features/cases/components/CaseMessages.tsx",
       "src/features/cases/refreshCaseDetail.ts",

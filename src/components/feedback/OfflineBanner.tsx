@@ -3,21 +3,21 @@ import { StyleSheet, Text, View } from 'react-native'
 
 import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
 
-export function OfflineBanner() {
+export function OfflineBanner({ message }: { message?: string }) {
   const network = useNetInfo()
   const online = network.isConnected === true && network.isInternetReachable !== false
   if (online || network.isConnected === null) return null
 
   return (
     <View accessibilityRole="alert" style={styles.banner}>
-      <Text style={styles.title}>Sin conexión</Text>
+      <Text style={styles.title}>{message ?? 'Sin conexión'}</Text>
       <View accessibilityElementsHidden importantForAccessibility="no" style={styles.line}>
         <View style={styles.start} />
         <View style={styles.progress} />
         <View style={styles.rest} />
         <View style={styles.end} />
       </View>
-      <Text style={styles.text}>Los cambios se enviarán al reconectar.</Text>
+      {!message ? <Text style={styles.text}>Los cambios se enviarán al reconectar.</Text> : null}
     </View>
   )
 }

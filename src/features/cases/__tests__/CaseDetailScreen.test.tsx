@@ -154,6 +154,90 @@ test('el reporte pendiente es la acción principal y Editar queda en el menú', 
   expect(navigate).toHaveBeenCalledWith('EditCase', { caseId: 'case-1' })
 })
 
+test('administrador con solo reasignar espera al técnico sin marcar que le toca', async () => {
+  mockCase = {
+    ...baseCase,
+    status: 'en_ejecucion',
+    assignedTo: 'u2',
+    assigneeName: 'Luis Pérez',
+  }
+  mockAllowed = ['asignar']
+  const screen = await renderScreen()
+  expect(screen.getByText('Esperando: Luis envía el reporte del trabajo')).toBeTruthy()
+  expect(screen.getByText('Trabajo en curso · Luis')).toBeTruthy()
+  expect(screen.queryByText(/te toca a ti/i)).toBeNull()
+  expect(screen.queryByRole('toolbar')).toBeNull()
+  await fireEvent.press(screen.getByRole('button', { name: 'Más acciones' }))
+  await fireEvent.press(await screen.findByText('Reasignar personal'))
+  expect(navigate).toHaveBeenCalledWith('AssignCase', { caseId: 'case-1' })
+})
+
+test('administrador con caso vencido ve reasignar como acción secundaria', async () => {
+  mockCase = {
+    ...baseCase,
+    status: 'en_ejecucion',
+    assignedTo: 'u2',
+    assigneeName: 'Luis Pérez',
+    overdueStage: 'resolucion',
+  }
+  mockAllowed = ['asignar']
+  const screen = await renderScreen()
+  expect(screen.getByText('Se pasó el plazo de resolución')).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Reasignar personal' })).toBeTruthy()
+  expect(screen.queryByText(/te toca a ti/i)).toBeNull()
+  await fireEvent.press(screen.getByRole('button', { name: 'Reasignar personal' }))
+  expect(navigate).toHaveBeenCalledWith('AssignCase', { caseId: 'case-1' })
+})
+
+test('técnico en ejecución con enviar reporte conserva el turno y la acción principal', async () => {
+  mockCase = { ...baseCase, status: 'en_ejecucion', assignedTo: 'u2' }
+  mockAllowed = ['enviar_reporte']
+  const screen = await renderScreen()
+  expect(screen.getByText('Te toca: completar reporte')).toBeTruthy()
+  await fireEvent.press(screen.getByRole('button', { name: 'Completar reporte' }))
+  expect(navigate).toHaveBeenCalledWith('CaseReport', { caseId: 'case-1' })
+})
+
+test('técnico en espera con permiso ve Reanudar como acción principal', async () => {
+  mockCase = {
+    ...baseCase,
+    status: 'en_espera',
+    assignedTo: 'u2',
+    assigneeName: 'Luis Pérez',
+  }
+  mockAllowed = ['reanudar']
+  const screen = await renderScreen()
+  expect(screen.getByText('Te toca: reanudar trabajo')).toBeTruthy()
+  expect(screen.getByText('Pendiente · te toca a ti')).toBeTruthy()
+  await fireEvent.press(screen.getByRole('button', { name: 'Reanudar trabajo' }))
+  expect(navigate).toHaveBeenCalledWith('ChangeCaseStatus', {
+    caseId: 'case-1',
+    action: 'reanudar',
+  })
+})
+
+test('otra persona sin permiso de reanudar ve a quién espera y no un botón principal', async () => {
+  mockCase = {
+    ...baseCase,
+    status: 'en_espera',
+    assignedTo: 'u2',
+    assigneeName: 'Luis Pérez',
+  }
+  const screen = await renderScreen()
+  expect(screen.getByText('Esperando: Luis reanuda el trabajo')).toBeTruthy()
+  expect(screen.getByText('Trabajo en pausa · Luis')).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Reanudar trabajo' })).toBeNull()
+  expect(screen.queryByRole('toolbar')).toBeNull()
+})
+
+test('jefe con aceptar en solicitado conserva el botón principal', async () => {
+  mockAllowed = ['aceptar']
+  const screen = await renderScreen()
+  expect(screen.getByText('Te toca: aceptar solicitud')).toBeTruthy()
+  await fireEvent.press(screen.getByRole('button', { name: 'Aceptar solicitud' }))
+  expect(navigate).toHaveBeenCalledWith('ChangeCaseStatus', { caseId: 'case-1', action: 'aceptar' })
+})
+
 test('sin acciones muestra en qué estado espera y no deja barra', async () => {
   mockCase = { ...baseCase, status: 'reporte_enviado' }
   const screen = await renderScreen()
