@@ -155,7 +155,10 @@
       "src/services/supabase/formerMembers.ts",
       "src/store/authStore.ts",
       "src/utils/errorMessage.ts",
-      "src/features/help/helpContent.ts"
+      "src/features/help/helpContent.ts",
+      "src/features/help/tour/useGuidedTour.ts",
+      "src/features/help/tour/TourTarget.tsx",
+      "src/features/help/tour/GuidedTourOverlay.tsx"
     ],
     "coverageThreshold": {
       "global": {

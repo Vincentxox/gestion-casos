@@ -1,50 +1,111 @@
-import { fireEvent, render } from '@testing-library/react-native'
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native'
 
 import { HelpScreen } from '../HelpScreen'
+import { useGuidedTour } from '../tour/useGuidedTour'
 
 let mockRole: string | undefined = 'jefe_area'
 
 jest.mock('@/store/authStore', () => ({
   useAuthStore: (selector: (state: unknown) => unknown) =>
-    selector({ profile: mockRole ? { role: mockRole } : null }),
+    selector({ profile: mockRole ? { id: 'person', role: mockRole, areaId: 'area' } : null }),
 }))
 jest.mock('react-native-safe-area-context', () => ({
   SafeAreaView: jest.requireActual<typeof import('react-native')>('react-native').View,
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }))
 
 describe('HelpScreen', () => {
   beforeEach(() => {
     mockRole = 'jefe_area'
+    useGuidedTour.setState({
+      userId: 'person',
+      ready: true,
+      seen: [],
+      autoShown: true,
+      active: false,
+      steps: [],
+      index: 0,
+      target: null,
+      rect: null,
+    })
   })
 
-  test('muestra el recorrido del rol y despliega cada paso', async () => {
+  test('muestra el recorrido del rol y Mostrarme inicia en ese paso', async () => {
     const screen = await render(<HelpScreen />)
-    expect(screen.getByText('Tu recorrido · jefe de área')).toBeTruthy()
-    expect(screen.queryByText(/acepta o rechaza cada solicitud/)).toBeNull()
-
-    await fireEvent.press(screen.getByLabelText('Paso 2: Acepta y asigna casos'))
-    expect(screen.getByText(/acepta o rechaza cada solicitud/)).toBeTruthy()
-    expect(
-      screen.getByLabelText('Paso 2: Acepta y asigna casos').props.accessibilityState,
-    ).toMatchObject({ expanded: true })
+    expect(screen.getByText('Aprende Nexo en 5 pasos')).toBeTruthy()
+    expect(screen.getByText('Tu recorrido')).toBeTruthy()
+    await fireEvent.press(screen.getByLabelText('Paso 2: Tu área en números'))
+    await waitFor(() => expect(useGuidedTour.getState().index).toBe(1))
+    expect(useGuidedTour.getState().active).toBe(true)
   })
+
+  test('Empieza aquí cambia entre Empezar, Continuar y Repetir', async () => {
+    const screen = await render(<HelpScreen />)
+    expect(screen.getByText('Empezar recorrido')).toBeTruthy()
+    await act(() => {
+      useGuidedTour.setState({ seen: ['inicio'] })
+    })
+    expect(screen.getByText('Continuar recorrido')).toBeTruthy()
+    await act(() => {
+      useGuidedTour.setState({ seen: ['inicio', 'tu-area', 'crear', 'decidir', 'indicadores'] })
+    })
+    expect(screen.getByText('Repetir recorrido')).toBeTruthy()
+    await fireEvent.press(screen.getByText('Repetir recorrido'))
+    await waitFor(() => expect(useGuidedTour.getState().seen).toEqual([]))
+  })
+
+  test('una guía abre la hoja y lleva a Solicitudes', async () => {
+    const navigate = jest.fn()
+    const screen = await render(
+      <HelpScreen
+        navigation={
+          { navigate, addListener: jest.fn(() => jest.fn()), setParams: jest.fn() } as never
+        }
+      />,
+    )
+    await fireEvent.press(screen.getByText('Aceptar y asignar'))
+    expect(screen.getByText(/Abre una solicitud «Por aceptar»/)).toBeTruthy()
+    await fireEvent.press(screen.getByText('Ir a Solicitudes'))
+    expect(navigate).toHaveBeenCalledWith('CasesTab', { screen: 'Cases', params: undefined })
+  })
+
+  test.each([
+    ['Crear una solicitud', 'Crear solicitud', 'CasesTab', 'CreateCase'],
+    ['Leer los indicadores', 'Abrir Indicadores', 'CasesTab', 'Indicators'],
+    ['Sumar a tu equipo', 'Ir a Invitaciones', 'Administration', 'Invitations'],
+  ])(
+    'la guía %s conserva una pantalla anterior para volver',
+    async (title, action, tab, screenName) => {
+      mockRole = 'administrador'
+      const navigate = jest.fn()
+      const screen = await render(
+        <HelpScreen
+          navigation={
+            { navigate, addListener: jest.fn(() => jest.fn()), setParams: jest.fn() } as never
+          }
+        />,
+      )
+      await fireEvent.press(screen.getByText(title))
+      await fireEvent.press(screen.getByText(action))
+      expect(navigate).toHaveBeenCalledWith(tab, { screen: screenName, initial: false })
+    },
+  )
 
   test('abre una pregunta a la vez', async () => {
     const screen = await render(<HelpScreen />)
     await fireEvent.press(screen.getByText('¿Qué es «En espera»?'))
-    expect(screen.getByText(/mientras llega un repuesto/)).toBeTruthy()
-
+    expect(screen.getByText(/El motivo queda en Seguimiento/)).toBeTruthy()
     await fireEvent.press(screen.getByText('¿Funciona sin internet?'))
-    expect(screen.queryByText(/mientras llega un repuesto/)).toBeNull()
+    expect(screen.queryByText(/El motivo queda en Seguimiento/)).toBeNull()
     expect(screen.getByText(/se suben solas/)).toBeTruthy()
   })
 
-  test('filtra con la búsqueda y avisa cuando no hay resultados', async () => {
+  test('la búsqueda filtra las tres secciones y oculta Empieza aquí', async () => {
     const screen = await render(<HelpScreen />)
     await fireEvent.changeText(screen.getByLabelText('Buscar en la ayuda'), 'repuesto')
     expect(screen.getByText('¿Qué es «En espera»?')).toBeTruthy()
-    expect(screen.queryByText('¿Funciona sin internet?')).toBeNull()
-
+    expect(screen.queryByText('EMPIEZA AQUÍ')).toBeNull()
+    expect(screen.queryByText('Cómo leer una solicitud')).toBeNull()
     await fireEvent.changeText(screen.getByLabelText('Buscar en la ayuda'), 'xyz')
     expect(screen.getByText(/No encontramos nada sobre «xyz»/)).toBeTruthy()
   })
@@ -55,7 +116,7 @@ describe('HelpScreen', () => {
     expect(screen.toJSON()).toBeNull()
   })
 
-  test('todos los roles ven la guía y el enlace puede abrirla directamente', async () => {
+  test('todos los roles ven la guía de la tarjeta con enlace directo', async () => {
     for (const role of ['solicitante', 'tecnico', 'jefe_area', 'administrador', 'auditor']) {
       mockRole = role
       const screen = await render(
@@ -66,9 +127,6 @@ describe('HelpScreen', () => {
       expect(screen.getByText('Por aceptar')).toBeTruthy()
       expect(screen.getByText('Cerrada')).toBeTruthy()
       expect(screen.getByText('9:40')).toBeTruthy()
-      expect(
-        screen.getByTestId('case-guide-marker-1', { includeHiddenElements: true }),
-      ).toBeTruthy()
       await screen.unmount()
     }
   })

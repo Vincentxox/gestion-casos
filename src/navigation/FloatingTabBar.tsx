@@ -4,6 +4,7 @@ import { Keyboard, Platform, Pressable, StyleSheet, Text, View } from 'react-nat
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { Icon, type IconName } from '@/components/ui/Icon'
+import { TourTarget } from '@/features/help/tour/TourTarget'
 import { colors, elevation, fonts, radius, spacing } from '@/theme/tokens'
 
 export const TAB_ICONS: Record<string, readonly [IconName, IconName]> = {
@@ -52,51 +53,62 @@ export function FloatingTabBar({
           const icons = TAB_ICONS[route.name] ?? (['ellipse-outline', 'ellipse'] as const)
           const color = focused ? colors.primaryDark : colors.textMuted
           return (
-            <Pressable
+            <TourTarget
               key={route.key}
-              accessibilityLabel={badge ? `${title}, ${badge} pendientes` : title}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: focused }}
-              onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
-              onPress={() => {
-                const event = navigation.emit({
-                  type: 'tabPress',
-                  target: route.key,
-                  canPreventDefault: true,
-                })
-                if (!focused && !event.defaultPrevented) navigation.navigate(route.name, undefined)
-              }}
-              style={[styles.tab, focused && styles.tabFocused]}
+              id={
+                `tab:${route.name}` as
+                  'tab:Home' | 'tab:CasesTab' | 'tab:Administration' | 'tab:Help' | 'tab:Profile'
+              }
+              style={styles.tabSlot}
             >
-              <View>
-                <Icon name={icons[focused ? 1 : 0]} color={color} size={21} />
-                {badge ? (
-                  <View
-                    style={[styles.badge, route.name === 'Administration' && styles.adminBadge]}
-                  >
-                    <Text style={styles.badgeText}>{badge}</Text>
-                  </View>
-                ) : null}
-              </View>
-              <Text
-                numberOfLines={1}
-                style={[styles.label, { color }, focused && styles.labelFocused]}
+              <Pressable
+                accessibilityLabel={badge ? `${title}, ${badge} pendientes` : title}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: focused }}
+                onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
+                onPress={() => {
+                  const event = navigation.emit({
+                    type: 'tabPress',
+                    target: route.key,
+                    canPreventDefault: true,
+                  })
+                  if (!focused && !event.defaultPrevented)
+                    navigation.navigate(route.name, undefined)
+                }}
+                style={[styles.tab, focused && styles.tabFocused]}
               >
-                {label}
-              </Text>
-            </Pressable>
+                <View>
+                  <Icon name={icons[focused ? 1 : 0]} color={color} size={21} />
+                  {badge ? (
+                    <View
+                      style={[styles.badge, route.name === 'Administration' && styles.adminBadge]}
+                    >
+                      <Text style={styles.badgeText}>{badge}</Text>
+                    </View>
+                  ) : null}
+                </View>
+                <Text
+                  numberOfLines={1}
+                  style={[styles.label, { color }, focused && styles.labelFocused]}
+                >
+                  {label}
+                </Text>
+              </Pressable>
+            </TourTarget>
           )
         })}
       </View>
       {onCreate ? (
-        <Pressable
-          accessibilityLabel="Nueva solicitud"
-          accessibilityRole="button"
-          onPress={onCreate}
-          style={({ pressed }) => [styles.create, pressed && styles.createPressed]}
-        >
-          <Icon name="add" color={colors.white} size={28} />
-        </Pressable>
+        <TourTarget id="tab:create">
+          <Pressable
+            accessibilityLabel="Nueva solicitud"
+            accessibilityRole="button"
+            onPress={onCreate}
+            style={({ pressed }) => [styles.create, pressed && styles.createPressed]}
+          >
+            <Icon name="add" color={colors.white} size={28} />
+          </Pressable>
+        </TourTarget>
       ) : null}
     </View>
   )
@@ -122,6 +134,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     ...elevation.md,
   },
+  tabSlot: { flex: 1, alignSelf: 'stretch' },
   tab: {
     flex: 1,
     minHeight: 50,

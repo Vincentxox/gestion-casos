@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 export function useCaseListGuide(userId: string | undefined) {
   const key = userId ? `case-list-guide:${userId}` : null
@@ -25,7 +25,7 @@ export function useCaseListGuide(userId: string | undefined) {
     }
   }, [key])
 
-  async function markSeen() {
+  const markSeen = useCallback(async () => {
     setState({ key, ready: true, seen: true })
     if (key) {
       try {
@@ -34,7 +34,7 @@ export function useCaseListGuide(userId: string | undefined) {
         /* No repetir en esta sesión. */
       }
     }
-  }
+  }, [key])
 
   return { show: Boolean(key && state.key === key && state.ready && !state.seen), markSeen }
 }

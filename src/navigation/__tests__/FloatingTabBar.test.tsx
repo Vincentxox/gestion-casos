@@ -1,6 +1,8 @@
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs'
 import { act, fireEvent, render } from '@testing-library/react-native'
-import { Keyboard } from 'react-native'
+import { Keyboard, StyleSheet } from 'react-native'
+
+import { colors } from '@/theme/tokens'
 
 import { FloatingTabBar } from '../FloatingTabBar'
 
@@ -38,6 +40,21 @@ describe('FloatingTabBar', () => {
     expect(screen.getByRole('tab', { name: 'Inicio' }).props.accessibilityState).toEqual({
       selected: true,
     })
+  })
+
+  test('el fondo y la zona táctil de la pestaña activa ocupan todo su espacio', async () => {
+    const { props } = setup()
+    const screen = await render(<FloatingTabBar {...props} />)
+    const activeTab = screen.getByRole('tab', { name: 'Inicio' })
+    const activeStyle = StyleSheet.flatten(activeTab.props.style)
+    const slotStyle = StyleSheet.flatten(activeTab.parent?.props.style)
+
+    expect(activeStyle.backgroundColor).toBe(colors.primarySoft)
+    expect(activeStyle.flex).toBe(1)
+    expect(activeStyle.minHeight).toBeGreaterThanOrEqual(44)
+    expect(slotStyle.flex).toBe(1)
+    expect(slotStyle.alignSelf).toBe('stretch')
+    expect(slotStyle.alignItems).toBeUndefined()
   })
 
   test('navega solo a pestañas distintas de la actual', async () => {

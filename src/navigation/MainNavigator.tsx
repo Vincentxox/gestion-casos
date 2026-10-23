@@ -1,5 +1,6 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
+import { useEffect } from 'react'
 import { Pressable } from 'react-native'
 import { Icon } from '@/components/ui/Icon'
 
@@ -24,6 +25,8 @@ import { AreasScreen } from '@/features/areas/screens/AreasScreen'
 import { hasPermission } from '@/features/auth/permissions'
 import { CategoriesScreen } from '@/features/categories/screens/CategoriesScreen'
 import { HelpScreen } from '@/features/help/HelpScreen'
+import { GuidedTourOverlay } from '@/features/help/tour/GuidedTourOverlay'
+import { useGuidedTour } from '@/features/help/tour/useGuidedTour'
 import { ProfileScreen } from '@/features/settings/ProfileScreen'
 import { ResourcesScreen } from '@/features/resources/screens/ResourcesScreen'
 import { CaseResourcesScreen } from '@/features/resources/screens/CaseResourcesScreen'
@@ -231,6 +234,11 @@ function AdministrationNavigator() {
 }
 
 export function MainNavigator() {
+  const userId = useAuthStore((state) => state.profile?.id)
+  const hydrateTour = useGuidedTour((state) => state.hydrate)
+  useEffect(() => {
+    void hydrateTour(userId)
+  }, [hydrateTour, userId])
   const role = useAuthStore((state) => state.profile?.role)
   const organizationId = useAuthStore((state) => state.profile?.organizationId)
   const home = useHomeSummary(Boolean(organizationId))
@@ -253,15 +261,18 @@ export function MainNavigator() {
     <Tab.Navigator
       screenOptions={{ headerShown: false }}
       tabBar={(props) => (
-        <FloatingTabBar
-          {...props}
-          onCreate={
-            canCreate
-              ? () =>
-                  props.navigation.navigate('CasesTab', { screen: 'CreateCase', initial: false })
-              : undefined
-          }
-        />
+        <>
+          <FloatingTabBar
+            {...props}
+            onCreate={
+              canCreate
+                ? () =>
+                    props.navigation.navigate('CasesTab', { screen: 'CreateCase', initial: false })
+                : undefined
+            }
+          />
+          <GuidedTourOverlay state={props.state} navigation={props.navigation} />
+        </>
       )}
     >
       <Tab.Screen component={HomeScreen} name="Home" options={{ title: 'Inicio' }} />
