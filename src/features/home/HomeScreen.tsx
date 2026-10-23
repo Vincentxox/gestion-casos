@@ -1,7 +1,7 @@
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useFocusEffect } from '@react-navigation/native'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Svg, { Circle } from 'react-native-svg'
@@ -9,11 +9,15 @@ import Svg, { Circle } from 'react-native-svg'
 import { NexoLogo } from '@/components/branding/NexoLogo'
 import { ROLE_LABELS } from '@/features/auth/types'
 import { OfflineBanner } from '@/components/feedback/OfflineBanner'
+import { useFeedbackDialogOpen } from '@/components/feedback/AppFeedback'
 import { RequestState } from '@/components/feedback/RequestState'
 import { Icon } from '@/components/ui/Icon'
 import { Avatar } from '@/components/ui/Avatar'
 import { OPEN_CASE_STATUSES } from '@/features/cases/caseSearch'
 import { useCaseCounts } from '@/features/cases/useCases'
+import { getTutorialFor } from '@/features/help/helpContent'
+import { TourTarget } from '@/features/help/tour/TourTarget'
+import { useGuidedTour } from '@/features/help/tour/useGuidedTour'
 import { notificationTimeLabel } from '@/features/notifications/notificationPresentation'
 import { useNotifications } from '@/features/notifications/useNotifications'
 import type { MainTabParamList, RootStackParamList } from '@/navigation/types'
@@ -43,6 +47,18 @@ const CARD_TONES = {
 
 export function HomeScreen({ navigation }: Props) {
   const profile = useAuthStore((state) => state.profile)
+  const feedbackDialogOpen = useFeedbackDialogOpen()
+  const [focused, setFocused] = useState(false)
+  useFocusEffect(
+    useCallback(() => {
+      setFocused(true)
+      return () => setFocused(false)
+    }, []),
+  )
+  const tourReady = useGuidedTour((state) => state.ready)
+  const tourAutoShown = useGuidedTour((state) => state.autoShown)
+  const tourSeen = useGuidedTour((state) => state.seen)
+  const startTour = useGuidedTour((state) => state.start)
   const enabled = Boolean(profile?.organizationId)
   const summary = useHomeSummary(enabled)
   const nextSteps = useNextSteps(enabled)
@@ -82,8 +98,6 @@ export function HomeScreen({ navigation }: Props) {
       }
     }, [enabled, countScope, refetchSummary, refetchNext, refetchCounts, refetchNotifications]),
   )
-  if (!profile) return null
-
   const openNotifications = () =>
     navigation
       .getParent<NativeStackNavigationProp<RootStackParamList>>()
@@ -98,6 +112,37 @@ export function HomeScreen({ navigation }: Props) {
     : summary.isLoading
   const attentionError = counts.isError || nextSteps.isError || (!homeCaseView && summary.isError)
   const attentionReady = Boolean(homeCaseView) && !attentionLoading && !attentionError
+  useEffect(() => {
+    if (!focused || !profile || !tourReady || tourAutoShown || feedbackDialogOpen) return
+    const steps = getTutorialFor(profile.role, '', Boolean(profile.areaId))
+    const launch = () =>
+      void startTour(
+        steps,
+        Math.max(
+          0,
+          steps.findIndex((step) => !tourSeen.includes(step.id)),
+        ),
+        false,
+        true,
+      )
+    if (!attentionLoading || attentionError) {
+      launch()
+      return
+    }
+    const timer = setTimeout(launch, 2000)
+    return () => clearTimeout(timer)
+  }, [
+    focused,
+    profile,
+    tourReady,
+    tourAutoShown,
+    tourSeen,
+    startTour,
+    attentionLoading,
+    attentionError,
+    feedbackDialogOpen,
+  ])
+  if (!profile) return null
   const today = getTodayNotifications(notifications.data ?? [], now)
   const areaName = profile.areaName || 'Administración'
   const firstStepItems = [
@@ -147,21 +192,23 @@ export function HomeScreen({ navigation }: Props) {
             </View>
           </View>
           <View style={styles.headerActions}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={
-                summary.isError
-                  ? 'Avisos, conteo no disponible'
-                  : `Avisos, ${summary.data?.notificaciones_sin_leer ?? 0} sin leer`
-              }
-              onPress={openNotifications}
-              style={styles.bell}
-            >
-              <Icon name="notifications-outline" color={colors.text} size={21} />
-              {(summary.data?.notificaciones_sin_leer ?? 0) > 0 ? (
-                <Text style={styles.bellCount}>{summary.data?.notificaciones_sin_leer}</Text>
-              ) : null}
-            </Pressable>
+            <TourTarget id="home-bell">
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={
+                  summary.isError
+                    ? 'Avisos, conteo no disponible'
+                    : `Avisos, ${summary.data?.notificaciones_sin_leer ?? 0} sin leer`
+                }
+                onPress={openNotifications}
+                style={styles.bell}
+              >
+                <Icon name="notifications-outline" color={colors.text} size={21} />
+                {(summary.data?.notificaciones_sin_leer ?? 0) > 0 ? (
+                  <Text style={styles.bellCount}>{summary.data?.notificaciones_sin_leer}</Text>
+                ) : null}
+              </Pressable>
+            </TourTarget>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Abrir perfil"
@@ -179,109 +226,116 @@ export function HomeScreen({ navigation }: Props) {
         </View>
 
         <OfflineBanner />
-        {attentionLoading && !attentionError ? (
-          <View accessibilityLabel="Cargando atención de Inicio" style={styles.attentionLoading} />
-        ) : null}
-        {attentionReady && overdueCount > 0 ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`${overdueCount} ${overdueCount === 1 ? 'solicitud vencida' : 'solicitudes vencidas'}. Pasaron su plazo; atiéndelas primero. Ver`}
-            onPress={() =>
-              navigation.navigate('CasesTab', {
-                screen: 'Cases',
-                params: { scope: homeCaseView!.scope, status: 'abiertas', overdueOnly: true },
-              })
-            }
-            style={[styles.attentionCard, styles.attentionDanger]}
-          >
-            <View style={[styles.attentionIcon, styles.attentionDangerIcon]}>
-              <Icon name="warning-outline" color={colors.dangerText} size={22} />
-            </View>
-            <View style={styles.attentionCopy}>
-              <Text style={[styles.attentionTitle, styles.attentionDangerText]}>
-                {overdueCount} {overdueCount === 1 ? 'solicitud vencida' : 'solicitudes vencidas'}
-              </Text>
-              <Text style={styles.attentionDescription}>Pasaron su plazo; atiéndelas primero</Text>
-            </View>
-            <Text style={[styles.attentionLink, styles.attentionDangerText]}>Ver ›</Text>
-          </Pressable>
-        ) : null}
-        {attentionReady && overdueCount === 0 && currentStep ? (
-          <View style={styles.attentionGroup}>
+        <TourTarget id="home-attention">
+          {attentionLoading && !attentionError ? (
+            <View
+              accessibilityLabel="Cargando atención de Inicio"
+              style={styles.attentionLoading}
+            />
+          ) : null}
+          {attentionReady && overdueCount > 0 ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`${NEXT_STEP_LABELS[currentStep.action]}. ${currentStep.title}. ${NEXT_STEP_BUTTON_LABELS[currentStep.action]}, abre el detalle`}
+              accessibilityLabel={`${overdueCount} ${overdueCount === 1 ? 'solicitud vencida' : 'solicitudes vencidas'}. Pasaron su plazo; atiéndelas primero. Ver`}
               onPress={() =>
                 navigation.navigate('CasesTab', {
-                  screen: 'CaseDetail',
-                  params: { caseId: currentStep.id },
-                  initial: false,
+                  screen: 'Cases',
+                  params: { scope: homeCaseView!.scope, status: 'abiertas', overdueOnly: true },
                 })
               }
-              style={[styles.attentionCard, styles.attentionInfo]}
+              style={[styles.attentionCard, styles.attentionDanger]}
             >
-              <View style={[styles.attentionIcon, styles.attentionInfoIcon]}>
-                <Icon name="arrow-forward-circle-outline" color={colors.primary} size={22} />
+              <View style={[styles.attentionIcon, styles.attentionDangerIcon]}>
+                <Icon name="warning-outline" color={colors.dangerText} size={22} />
               </View>
               <View style={styles.attentionCopy}>
-                <Text style={[styles.attentionTitle, styles.attentionInfoText]}>
-                  {NEXT_STEP_LABELS[currentStep.action]}
+                <Text style={[styles.attentionTitle, styles.attentionDangerText]}>
+                  {overdueCount} {overdueCount === 1 ? 'solicitud vencida' : 'solicitudes vencidas'}
                 </Text>
-                <Text style={styles.attentionDescription} numberOfLines={2}>
-                  {currentStep.title}
+                <Text style={styles.attentionDescription}>
+                  Pasaron su plazo; atiéndelas primero
                 </Text>
               </View>
-              <Text style={[styles.attentionLink, styles.attentionInfoText]}>
-                {NEXT_STEP_BUTTON_LABELS[currentStep.action]} ›
-              </Text>
+              <Text style={[styles.attentionLink, styles.attentionDangerText]}>Ver ›</Text>
             </Pressable>
-            {(nextSteps.data?.total ?? items.length) > 1 ? (
+          ) : null}
+          {attentionReady && overdueCount === 0 && currentStep ? (
+            <View style={styles.attentionGroup}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`Ver ${(nextSteps.data?.total ?? items.length) - 1} ${(nextSteps.data?.total ?? items.length) === 2 ? 'paso' : 'pasos'} más en Solicitudes`}
+                accessibilityLabel={`${NEXT_STEP_LABELS[currentStep.action]}. ${currentStep.title}. ${NEXT_STEP_BUTTON_LABELS[currentStep.action]}, abre el detalle`}
                 onPress={() =>
                   navigation.navigate('CasesTab', {
-                    screen: 'Cases',
-                    params: { scope: homeCaseView!.scope, status: 'abiertas' },
+                    screen: 'CaseDetail',
+                    params: { caseId: currentStep.id },
+                    initial: false,
                   })
                 }
-                style={styles.moreSteps}
+                style={[styles.attentionCard, styles.attentionInfo]}
               >
-                <Text style={styles.actionText}>
-                  y {(nextSteps.data?.total ?? items.length) - 1} más ›
+                <View style={[styles.attentionIcon, styles.attentionInfoIcon]}>
+                  <Icon name="arrow-forward-circle-outline" color={colors.primary} size={22} />
+                </View>
+                <View style={styles.attentionCopy}>
+                  <Text style={[styles.attentionTitle, styles.attentionInfoText]}>
+                    {NEXT_STEP_LABELS[currentStep.action]}
+                  </Text>
+                  <Text style={styles.attentionDescription} numberOfLines={2}>
+                    {currentStep.title}
+                  </Text>
+                </View>
+                <Text style={[styles.attentionLink, styles.attentionInfoText]}>
+                  {NEXT_STEP_BUTTON_LABELS[currentStep.action]} ›
                 </Text>
               </Pressable>
-            ) : null}
-          </View>
-        ) : null}
-        {attentionReady && overdueCount === 0 && !currentStep ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Todo a tiempo. ${inProgressCount === 0 ? 'Nada en curso' : `${inProgressCount} ${inProgressCount === 1 ? 'trabajo en curso' : 'trabajos en curso'}, ninguno vencido`}. Ver`}
-            onPress={() =>
-              navigation.navigate('CasesTab', {
-                screen: 'Cases',
-                params: { scope: homeCaseView!.scope, status: 'abiertas' },
-              })
-            }
-            style={[styles.attentionCard, styles.attentionSuccess]}
-          >
-            <View style={[styles.attentionIcon, styles.attentionSuccessIcon]}>
-              <Icon name="checkmark" color={colors.success} size={22} />
+              {(nextSteps.data?.total ?? items.length) > 1 ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Ver ${(nextSteps.data?.total ?? items.length) - 1} ${(nextSteps.data?.total ?? items.length) === 2 ? 'paso' : 'pasos'} más en Solicitudes`}
+                  onPress={() =>
+                    navigation.navigate('CasesTab', {
+                      screen: 'Cases',
+                      params: { scope: homeCaseView!.scope, status: 'abiertas' },
+                    })
+                  }
+                  style={styles.moreSteps}
+                >
+                  <Text style={styles.actionText}>
+                    y {(nextSteps.data?.total ?? items.length) - 1} más ›
+                  </Text>
+                </Pressable>
+              ) : null}
             </View>
-            <View style={styles.attentionCopy}>
-              <Text style={[styles.attentionTitle, styles.attentionSuccessText]}>
-                Todo a tiempo
-              </Text>
-              <Text style={styles.attentionDescription}>
-                {inProgressCount === 0
-                  ? 'Nada en curso'
-                  : `${inProgressCount} ${inProgressCount === 1 ? 'trabajo en curso' : 'trabajos en curso'}, ninguno vencido`}
-              </Text>
-            </View>
-            <Text style={[styles.attentionLink, styles.attentionSuccessText]}>Ver ›</Text>
-          </Pressable>
-        ) : null}
+          ) : null}
+          {attentionReady && overdueCount === 0 && !currentStep ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Todo a tiempo. ${inProgressCount === 0 ? 'Nada en curso' : `${inProgressCount} ${inProgressCount === 1 ? 'trabajo en curso' : 'trabajos en curso'}, ninguno vencido`}. Ver`}
+              onPress={() =>
+                navigation.navigate('CasesTab', {
+                  screen: 'Cases',
+                  params: { scope: homeCaseView!.scope, status: 'abiertas' },
+                })
+              }
+              style={[styles.attentionCard, styles.attentionSuccess]}
+            >
+              <View style={[styles.attentionIcon, styles.attentionSuccessIcon]}>
+                <Icon name="checkmark" color={colors.success} size={22} />
+              </View>
+              <View style={styles.attentionCopy}>
+                <Text style={[styles.attentionTitle, styles.attentionSuccessText]}>
+                  Todo a tiempo
+                </Text>
+                <Text style={styles.attentionDescription}>
+                  {inProgressCount === 0
+                    ? 'Nada en curso'
+                    : `${inProgressCount} ${inProgressCount === 1 ? 'trabajo en curso' : 'trabajos en curso'}, ninguno vencido`}
+                </Text>
+              </View>
+              <Text style={[styles.attentionLink, styles.attentionSuccessText]}>Ver ›</Text>
+            </Pressable>
+          ) : null}
+        </TourTarget>
         {firstSteps.loaded && !firstSteps.hidden && firstSteps.completed.length < 5 ? (
           <View style={styles.firstStepsCard}>
             <View style={styles.sectionTitleRow}>
@@ -387,7 +441,7 @@ export function HomeScreen({ navigation }: Props) {
             />
           ) : null}
           {homeCaseView && !counts.isLoading && !counts.isError ? (
-            <View style={styles.caseGrid}>
+            <TourTarget id="home-area-grid" style={styles.caseGrid}>
               {caseCards
                 .filter((card) => card.key !== 'vencidas')
                 .map((card) => (
@@ -414,7 +468,7 @@ export function HomeScreen({ navigation }: Props) {
                     </View>
                   </Pressable>
                 ))}
-            </View>
+            </TourTarget>
           ) : null}
         </View>
 

@@ -2,7 +2,12 @@ import { act, fireEvent, render } from '@testing-library/react-native'
 import { Pressable, Text } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
-import { AppFeedback, AppFeedbackProvider, useFeedback } from '../AppFeedback'
+import {
+  AppFeedback,
+  AppFeedbackProvider,
+  useFeedback,
+  useFeedbackDialogOpen,
+} from '../AppFeedback'
 
 jest.mock('@/store/authStore', () => ({
   useAuthStore: (selector: (state: unknown) => unknown) =>
@@ -11,8 +16,10 @@ jest.mock('@/store/authStore', () => ({
 
 function Harness({ onDecision }: { onDecision: (value: boolean) => void }) {
   const { confirm, alert, toast } = useFeedback()
+  const dialogOpen = useFeedbackDialogOpen()
   return (
     <>
+      <Text>{dialogOpen ? 'Diálogo abierto' : 'Sin diálogo'}</Text>
       <Pressable
         accessibilityLabel="Abrir confirmación"
         onPress={() => {
@@ -77,11 +84,14 @@ describe('AppFeedback', () => {
   test('resuelve confirmaciones y cancelaciones', async () => {
     const onDecision = jest.fn()
     const screen = await setup(onDecision)
+    expect(screen.getByText('Sin diálogo')).toBeTruthy()
 
     await fireEvent.press(screen.getByLabelText('Abrir confirmación'))
     expect(screen.getByText('¿Descartar?')).toBeTruthy()
+    expect(screen.getByText('Diálogo abierto')).toBeTruthy()
     await fireEvent.press(screen.getByText('Cancelar'))
     expect(onDecision).toHaveBeenLastCalledWith(false)
+    expect(screen.getByText('Sin diálogo')).toBeTruthy()
 
     await fireEvent.press(screen.getByLabelText('Abrir confirmación'))
     await fireEvent.press(screen.getByText('Confirmar'))

@@ -1,4 +1,5 @@
-import { fireEvent, render } from '@testing-library/react-native'
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native'
+import { useFocusEffect } from '@react-navigation/native'
 import { StyleSheet } from 'react-native'
 
 import type { Profile } from '@/features/auth/types'
@@ -7,6 +8,7 @@ import { colors } from '@/theme/tokens'
 import type { NextStepCase, HomeSummary } from '../homeService'
 import { HomeScreen } from '../HomeScreen'
 import { useCaseCounts } from '@/features/cases/useCases'
+import { useGuidedTour } from '@/features/help/tour/useGuidedTour'
 
 const mockNavigate = jest.fn()
 const mockRootNavigate = jest.fn()
@@ -165,6 +167,19 @@ beforeEach(() => {
     { status: 'validado', total: 1, overdue: 0, unassigned: 0 },
   ]
   ;(useCaseCounts as jest.Mock).mockClear()
+  ;(useFocusEffect as jest.Mock).mockClear()
+  useGuidedTour.setState({
+    userId: null,
+    ready: false,
+    active: false,
+    autoShown: false,
+    autoAllowed: false,
+    seen: [],
+    steps: [],
+    index: 0,
+    target: null,
+    rect: null,
+  })
 })
 
 function renderHome() {
@@ -174,6 +189,21 @@ function renderHome() {
   } as unknown as Parameters<typeof HomeScreen>[0]
   return render(<HomeScreen {...props} />)
 }
+
+test('lanza el recorrido una sola vez después de tener foco y atención lista', async () => {
+  useGuidedTour.setState({ userId: mockProfile.id, ready: true, autoAllowed: true })
+  await renderHome()
+  expect(useGuidedTour.getState().active).toBe(false)
+  await act(() => {
+    ;(useFocusEffect as jest.Mock).mock.calls[0]?.[0]()
+  })
+  await waitFor(() => expect(useGuidedTour.getState().active).toBe(true))
+  expect(useGuidedTour.getState().autoShown).toBe(true)
+  await act(async () => {
+    await useGuidedTour.getState().skip()
+  })
+  expect(useGuidedTour.getState().active).toBe(false)
+})
 
 test('las vencidas prevalecen aun cuando hay un siguiente paso', async () => {
   mockNextItems = [

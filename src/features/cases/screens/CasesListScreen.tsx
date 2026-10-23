@@ -29,6 +29,8 @@ import { Icon } from '@/components/ui/Icon'
 import { SkeletonList } from '@/components/ui/SkeletonList'
 import { hasPermission } from '@/features/auth/permissions'
 import { useHomeSummary } from '@/features/home/useHomeSummary'
+import { TourTarget } from '@/features/help/tour/TourTarget'
+import { useGuidedTour } from '@/features/help/tour/useGuidedTour'
 import type { MainStackParamList, MainTabParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
 import { statusMeta } from '@/theme/statusMeta'
@@ -132,6 +134,9 @@ function dateChipLabel(from: string | null, to: string | null) {
 export function CasesListScreen({ navigation, route }: Props) {
   const profile = useAuthStore((state) => state.profile)
   const caseGuide = useCaseListGuide(profile?.id)
+  const markCaseGuideSeen = caseGuide.markSeen
+  const tourActive = useGuidedTour((state) => state.active)
+  const tourTarget = useGuidedTour((state) => state.target)
   const { height: windowHeight } = useWindowDimensions()
   const firstRowRef = useRef<View>(null)
   const [firstRowY, setFirstRowY] = useState<number | null>(null)
@@ -319,7 +324,15 @@ export function CasesListScreen({ navigation, route }: Props) {
   const filteredCases = data?.pages.flat() ?? []
   const firstCase = filteredCases[0]
   const showGuide =
-    caseGuide.show && Boolean(firstCase) && firstRowY !== null && !isLoading && !error
+    caseGuide.show &&
+    !tourActive &&
+    Boolean(firstCase) &&
+    firstRowY !== null &&
+    !isLoading &&
+    !error
+  useEffect(() => {
+    if (tourActive && tourTarget?.startsWith('cases-')) void markCaseGuideSeen()
+  }, [tourActive, tourTarget, markCaseGuideSeen])
   function openCaseGuide() {
     void caseGuide.markSeen()
     navigation.getParent<BottomTabNavigationProp<MainTabParamList>>()?.navigate('Help', {
@@ -424,14 +437,16 @@ export function CasesListScreen({ navigation, route }: Props) {
             Solicitudes
           </Text>
           {canViewIndicators ? (
-            <Pressable
-              accessibilityLabel="Abrir Indicadores"
-              accessibilityRole="button"
-              onPress={() => navigation.navigate('Indicators')}
-              style={styles.indicatorsButton}
-            >
-              <Text style={styles.indicatorsButtonText}>Indicadores</Text>
-            </Pressable>
+            <TourTarget id="cases-indicators">
+              <Pressable
+                accessibilityLabel="Abrir Indicadores"
+                accessibilityRole="button"
+                onPress={() => navigation.navigate('Indicators')}
+                style={styles.indicatorsButton}
+              >
+                <Text style={styles.indicatorsButtonText}>Indicadores</Text>
+              </Pressable>
+            </TourTarget>
           ) : null}
         </View>
         <OfflineBanner message="Sin conexión · Mostrando lo último que se cargó." />
@@ -471,24 +486,26 @@ export function CasesListScreen({ navigation, route }: Props) {
         </View>
 
         {primaryScopes.length > 1 ? (
-          <View accessibilityLabel="Alcance" style={styles.scopeSelector}>
-            {primaryScopes.map((value) => (
-              <Pressable
-                key={value}
-                accessibilityLabel={SCOPE_LABELS[value]}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: selectedScope === value }}
-                onPress={() => changeFilters({ scope: value })}
-                style={[styles.scopeTab, selectedScope === value && styles.scopeTabSelected]}
-              >
-                <Text
-                  style={[styles.scopeText, selectedScope === value && styles.scopeTextSelected]}
+          <TourTarget id="cases-scope">
+            <View accessibilityLabel="Alcance" style={styles.scopeSelector}>
+              {primaryScopes.map((value) => (
+                <Pressable
+                  key={value}
+                  accessibilityLabel={SCOPE_LABELS[value]}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: selectedScope === value }}
+                  onPress={() => changeFilters({ scope: value })}
+                  style={[styles.scopeTab, selectedScope === value && styles.scopeTabSelected]}
                 >
-                  {SCOPE_LABELS[value]}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+                  <Text
+                    style={[styles.scopeText, selectedScope === value && styles.scopeTextSelected]}
+                  >
+                    {SCOPE_LABELS[value]}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </TourTarget>
         ) : null}
 
         <View accessibilityLabel="Estado" style={styles.statusTabs}>
@@ -724,10 +741,19 @@ export function CasesListScreen({ navigation, route }: Props) {
                       : undefined
                   }
                 >
-                  <CaseCard
-                    item={item}
-                    onPress={() => navigation.navigate('CaseDetail', { caseId: item.id })}
-                  />
+                  {item.id === firstCase?.id ? (
+                    <TourTarget id="cases-first-card">
+                      <CaseCard
+                        item={item}
+                        onPress={() => navigation.navigate('CaseDetail', { caseId: item.id })}
+                      />
+                    </TourTarget>
+                  ) : (
+                    <CaseCard
+                      item={item}
+                      onPress={() => navigation.navigate('CaseDetail', { caseId: item.id })}
+                    />
+                  )}
                 </Animated.View>
               )
             }}

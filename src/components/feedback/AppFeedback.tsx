@@ -92,6 +92,11 @@ export const AppFeedback = {
 type DialogState = ({ kind: 'confirm' } & ConfirmOptions) | ({ kind: 'alert' } & AlertOptions)
 
 const FeedbackContext = createContext<FeedbackApi | null>(null)
+const DialogOpenContext = createContext(false)
+
+export function useFeedbackDialogOpen() {
+  return useContext(DialogOpenContext)
+}
 
 export function useFeedback(): FeedbackApi {
   const context = useContext(FeedbackContext)
@@ -266,11 +271,13 @@ export function AppFeedbackProvider({ children }: { children: ReactNode }) {
 
   return (
     <FeedbackContext.Provider value={api}>
-      <View style={styles.root}>
-        {children}
-        <AppToast value={toastValue} onClose={() => setToastValue(null)} />
-        <AppDialog dialog={dialog} onClose={close} />
-      </View>
+      <DialogOpenContext.Provider value={dialog !== null}>
+        <View style={styles.root}>
+          {children}
+          <AppToast value={toastValue} onClose={() => setToastValue(null)} />
+          <AppDialog dialog={dialog} onClose={close} />
+        </View>
+      </DialogOpenContext.Provider>
     </FeedbackContext.Provider>
   )
 }

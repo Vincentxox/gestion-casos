@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import Svg, { Circle } from 'react-native-svg'
 
+import { BottomSheet } from '@/components/sheets/BottomSheet'
 import { Icon } from '@/components/ui/Icon'
+import { hasPermission } from '@/features/auth/permissions'
 import { CaseCard } from '@/features/cases/components/CaseCard'
 import type { CaseRecord } from '@/features/cases/types'
 import type { MainTabParamList } from '@/navigation/types'
@@ -12,7 +15,15 @@ import { colors, fonts, phaseColors, radius, spacing, typography } from '@/theme
 import type { RouteProp } from '@react-navigation/native'
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs'
 
-import { CASE_CARD_GUIDE_LEGEND, getFaqFor, getTutorialFor, TUTORIAL_TITLES } from './helpContent'
+import {
+  CASE_CARD_GUIDE_LEGEND,
+  getFaqFor,
+  getGuidesFor,
+  getTutorialFor,
+  TUTORIAL_TITLES,
+  type QuickGuide,
+} from './helpContent'
+import { useGuidedTour } from './tour/useGuidedTour'
 
 const EXAMPLE_CASE = {
   id: 'guide-example',
@@ -32,19 +43,49 @@ export function HelpScreen({
   route?: RouteProp<MainTabParamList, 'Help'>
   navigation?: BottomTabNavigationProp<MainTabParamList, 'Help'>
 } = {}) {
-  const role = useAuthStore((state) => state.profile?.role)
+  const profile = useAuthStore((state) => state.profile)
+  const role = profile?.role
   const [query, setQuery] = useState('')
-  const [openStep, setOpenStep] = useState<string | null>(null)
+  const [openGuide, setOpenGuide] = useState<QuickGuide | null>(null)
   const [openFaq, setOpenFaq] = useState<string | null>(null)
+  const seen = useGuidedTour((state) => state.seen)
+  const startTour = useGuidedTour((state) => state.start)
   useEffect(() => {
     if (!navigation) return
     return navigation.addListener('blur', () => navigation.setParams({ section: undefined }))
   }, [navigation])
   if (!role) return null
 
-  const steps = getTutorialFor(role, query)
+  const canCreate = hasPermission(role, 'cases.create') && Boolean(profile.areaId)
+  const allSteps = getTutorialFor(role, '', canCreate)
+  const steps = getTutorialFor(role, query, canCreate)
+  const guides = getGuidesFor(role, query, canCreate)
   const faqs = getFaqFor(role, query)
-  const nothingFound = query.trim().length > 0 && steps.length === 0 && faqs.length === 0
+  const seenCount = allSteps.filter((step) => seen.includes(step.id)).length
+  const nextIndex = allSteps.findIndex((step) => !seen.includes(step.id))
+  const nextStep = allSteps[nextIndex]
+  const nothingFound =
+    query.trim().length > 0 && steps.length === 0 && guides.length === 0 && faqs.length === 0
+  const start = (index = Math.max(0, nextIndex), repeat = false) =>
+    void startTour(allSteps, index, repeat)
+  const openDestination = (guide: QuickGuide) => {
+    setOpenGuide(null)
+    if (!navigation) return
+    if (guide.destination === 'invitations')
+      navigation.navigate('Administration', { screen: 'Invitations', initial: false })
+    else if (guide.destination === 'create')
+      navigation.navigate('CasesTab', { screen: 'CreateCase', initial: false })
+    else if (guide.destination === 'indicators')
+      navigation.navigate('CasesTab', { screen: 'Indicators', initial: false })
+    else
+      navigation.navigate('CasesTab', {
+        screen: 'Cases',
+        params:
+          guide.destination === 'my-work' && role === 'tecnico'
+            ? { scope: 'mis_trabajos' }
+            : undefined,
+      })
+  }
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
@@ -60,7 +101,7 @@ export function HelpScreen({
             autoCorrect={false}
             clearButtonMode="while-editing"
             onChangeText={setQuery}
-            placeholder="¿Qué necesitas saber?"
+            placeholder="¿Qué quieres hacer?"
             placeholderTextColor={colors.textMuted}
             returnKeyType="search"
             style={styles.searchInput}
@@ -74,46 +115,132 @@ export function HelpScreen({
           </Text>
         ) : null}
 
-        {route?.params?.section !== 'case-card' && !query.trim() ? <CaseCardGuide /> : null}
+        {!query.trim() ? (
+          <View style={styles.startCard}>
+            <View style={styles.startRow}>
+              <View style={styles.ring}>
+                <Svg height={58} width={58}>
+                  <Circle
+                    cx={29}
+                    cy={29}
+                    r={23}
+                    stroke={colors.textMuted}
+                    strokeWidth={5}
+                    fill="none"
+                  />
+                  <Circle
+                    cx={29}
+                    cy={29}
+                    r={23}
+                    stroke={colors.sky}
+                    strokeWidth={5}
+                    fill="none"
+                    strokeDasharray={`${(2 * Math.PI * 23 * seenCount) / allSteps.length} ${2 * Math.PI * 23}`}
+                    rotation={-90}
+                    origin="29,29"
+                  />
+                </Svg>
+                <Text style={styles.ringText}>
+                  {seenCount}/{allSteps.length}
+                </Text>
+              </View>
+              <View style={styles.startCopy}>
+                <Text style={styles.startOverline}>EMPIEZA AQUÍ</Text>
+                <Text style={styles.startTitle}>
+                  {seenCount === 0
+                    ? `Aprende Nexo en ${allSteps.length} pasos`
+                    : nextStep
+                      ? `Sigue: ${nextStep.title}`
+                      : 'Recorrido completado'}
+                </Text>
+                <Text style={styles.startSub}>
+                  {TUTORIAL_TITLES[role]} · {allSteps.length} pasos
+                </Text>
+              </View>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => start(nextStep ? nextIndex : 0, !nextStep)}
+              style={styles.startButton}
+            >
+              <Text style={styles.startButtonText}>
+                {seenCount === 0
+                  ? 'Empezar recorrido'
+                  : nextStep
+                    ? 'Continuar recorrido'
+                    : 'Repetir recorrido'}
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         {steps.length > 0 ? (
           <View style={styles.section}>
             <Text accessibilityRole="header" style={styles.sectionTitle}>
-              {TUTORIAL_TITLES[role]}
+              Tu recorrido
             </Text>
             <View>
-              <View style={styles.spine} />
-              {steps.map((step, index) => {
-                const open = openStep === step.id
+              {steps.map((step) => {
+                const index = allSteps.findIndex((entry) => entry.id === step.id)
+                const done = seen.includes(step.id)
+                const next = nextStep?.id === step.id
                 return (
                   <Pressable
                     key={step.id}
                     accessibilityRole="button"
-                    accessibilityState={{ expanded: open }}
                     accessibilityLabel={`Paso ${index + 1}: ${step.title}`}
-                    onPress={() => setOpenStep(open ? null : step.id)}
+                    onPress={() => start(index)}
                     style={styles.step}
                   >
-                    <View style={[styles.stepDot, index === 0 && styles.stepDotFirst]}>
-                      <Text style={[styles.stepNumber, index === 0 && styles.stepNumberFirst]}>
-                        {index + 1}
+                    <View
+                      style={[
+                        styles.stepDot,
+                        next && styles.stepDotFirst,
+                        done && styles.stepDotDone,
+                      ]}
+                    >
+                      <Text style={[styles.stepNumber, done && styles.stepNumberDone]}>
+                        {done ? '✓' : index + 1}
                       </Text>
                     </View>
                     <View style={styles.stepCopy}>
                       <Text style={styles.stepTitle}>{step.title}</Text>
-                      {open ? <Text style={styles.stepDetail}>{step.detail}</Text> : null}
+                      <Text style={styles.stepDetail}>{done ? 'Visto' : step.where}</Text>
                     </View>
-                    <Icon
-                      name={open ? 'chevron-up' : 'chevron-down'}
-                      size="inline"
-                      color={colors.textMuted}
-                    />
+                    {next ? <Text style={styles.showMe}>Mostrarme</Text> : null}
                   </Pressable>
                 )
               })}
             </View>
           </View>
         ) : null}
+
+        {guides.length > 0 ? (
+          <View style={styles.section}>
+            <Text accessibilityRole="header" style={styles.sectionTitle}>
+              Guías rápidas
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.guideCards}
+            >
+              {guides.map((guide) => (
+                <Pressable
+                  key={guide.id}
+                  accessibilityRole="button"
+                  onPress={() => setOpenGuide(guide)}
+                  style={styles.guideCard}
+                >
+                  <Text style={styles.guideCardTitle}>{guide.title}</Text>
+                  <Text style={styles.guideCardDuration}>{guide.duration}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
+
+        {route?.params?.section !== 'case-card' && !query.trim() ? <CaseCardGuide /> : null}
 
         {faqs.length > 0 ? (
           <View>
@@ -155,6 +282,30 @@ export function HelpScreen({
           </View>
         </View>
       </ScrollView>
+      {openGuide ? (
+        <BottomSheet
+          visible
+          title={openGuide.title}
+          subtitle={`${TUTORIAL_TITLES[role]} · ${openGuide.duration}`}
+          onClose={() => setOpenGuide(null)}
+          footerAction={{
+            label:
+              openGuide.destination === 'my-work' && role !== 'tecnico'
+                ? 'Ir a Solicitudes'
+                : openGuide.action,
+            onPress: () => openDestination(openGuide),
+          }}
+          fitContent
+          scrollable={false}
+        >
+          {openGuide.steps.map((step, index) => (
+            <View key={step} style={styles.guideRow}>
+              <Text style={styles.guideIndex}>{index + 1}</Text>
+              <Text style={styles.guideStep}>{step}</Text>
+            </View>
+          ))}
+        </BottomSheet>
+      ) : null}
     </SafeAreaView>
   )
 }
@@ -194,6 +345,68 @@ function CaseCardGuide() {
 }
 
 const styles = StyleSheet.create({
+  startCard: {
+    padding: spacing.md,
+    gap: spacing.md,
+    borderRadius: radius.xl,
+    backgroundColor: colors.ink,
+  },
+  startRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  ring: { width: 58, height: 58, alignItems: 'center', justifyContent: 'center' },
+  ringText: {
+    position: 'absolute',
+    ...typography.caption,
+    fontFamily: fonts.bold,
+    color: colors.white,
+  },
+  startCopy: { flex: 1, gap: spacing.xs },
+  startOverline: { ...typography.overline, color: colors.skySoft },
+  startTitle: { ...typography.heading, color: colors.white },
+  startSub: { ...typography.caption, color: colors.skySoft },
+  startButton: {
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+  },
+  startButtonText: { ...typography.body, fontFamily: fonts.bold, color: colors.ink },
+  stepDotDone: { borderColor: colors.primary, backgroundColor: colors.primary },
+  stepNumberDone: { color: colors.white },
+  showMe: {
+    ...typography.caption,
+    fontFamily: fonts.bold,
+    color: colors.primary,
+    backgroundColor: colors.primarySoft,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+  },
+  guideCards: { gap: spacing.sm },
+  guideCard: {
+    width: 140,
+    minHeight: 86,
+    borderRadius: radius.lg,
+    padding: spacing.base,
+    gap: spacing.sm,
+    backgroundColor: colors.surfaceMuted,
+    justifyContent: 'space-between',
+  },
+  guideCardTitle: { ...typography.caption, fontFamily: fonts.bold, color: colors.ink },
+  guideCardDuration: { ...typography.caption, color: colors.textMuted },
+  guideRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.base },
+  guideIndex: {
+    ...typography.caption,
+    fontFamily: fonts.bold,
+    color: colors.primary,
+    backgroundColor: colors.primarySoft,
+    width: 26,
+    height: 26,
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    borderRadius: radius.pill,
+  },
+  guideStep: { ...typography.body, flex: 1, color: colors.text },
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: {
     gap: spacing.roomy,
