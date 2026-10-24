@@ -719,6 +719,7 @@ export type Database = {
           body: string
           case_id: string
           created_at: string
+          dismissed_at: string | null
           event_id: number
           id: number
           organization_id: string
@@ -735,6 +736,7 @@ export type Database = {
           body: string
           case_id: string
           created_at?: string
+          dismissed_at?: string | null
           event_id: number
           id?: never
           organization_id: string
@@ -751,6 +753,7 @@ export type Database = {
           body?: string
           case_id?: string
           created_at?: string
+          dismissed_at?: string | null
           event_id?: number
           id?: never
           organization_id?: string
@@ -1250,6 +1253,10 @@ export type Database = {
         Args: { target_photo_id: string }
         Returns: undefined
       }
+      dismiss_notifications: {
+        Args: { notification_ids?: number[] }
+        Returns: number
+      }
       due_at: {
         Args: { target: Database['public']['Tables']['cases']['Row'] }
         Returns: string
@@ -1347,6 +1354,10 @@ export type Database = {
           target_case_id: string
         }
         Returns: Json
+      }
+      restore_notifications: {
+        Args: { notification_ids: number[] }
+        Returns: number
       }
       return_case_report: {
         Args: { return_reason: string; target_case_id: string }

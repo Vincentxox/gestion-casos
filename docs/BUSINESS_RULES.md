@@ -408,6 +408,11 @@ Reglas:
   persona que deja el trabajo; reporte validado → quienes pueden dar la conformidad
   (sección 5.6); pausa → jefes del área técnica; cancelada → jefes del área técnica.
   Precisado el 06/10/2026 para que coincida con el código.
+- **Borrar avisos** (aprobado por el responsable el 24/10/2026): cada persona puede quitar
+  de su lista los avisos que ya leyó, uno a uno o todos a la vez, y deshacerlo. Un aviso
+  sin leer no se puede quitar. Quitar un aviso no cambia la solicitud, su historial ni los
+  avisos de otras personas. Limpieza automática: los avisos quitados se borran del todo a
+  los 30 días, y cualquier aviso, leído o no, a los 180 días.
 - **Indicador del reporte**: tiempo entre el envío del reporte y la aprobación final.
 - **Tiempos por prioridad**: la empresa configura, por prioridad, el tiempo máximo para
   aceptar y para resolver. El caso muestra si está vencido (ver 9.2).
