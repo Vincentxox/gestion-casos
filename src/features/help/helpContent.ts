@@ -133,7 +133,8 @@ export const TUTORIAL_STEPS: Record<AppRole, TutorialStep[]> = {
     {
       id: 'avisos',
       title: 'Tus avisos',
-      detail: 'La campana te avisa cuando aceptan, asignan o terminan una solicitud tuya.',
+      detail:
+        'La campana te avisa cuando aceptan, asignan o terminan una solicitud tuya. Para quitar un aviso leído, deslízalo hacia la izquierda. Puedes deshacerlo durante unos segundos. Los avisos se borran solos con el tiempo.',
       where: 'Inicio',
       target: 'home-bell',
       tab: 'Home',
@@ -163,7 +164,8 @@ export const TUTORIAL_STEPS: Record<AppRole, TutorialStep[]> = {
     {
       id: 'avisos',
       title: 'Tus avisos',
-      detail: 'Te avisamos cuando te asignan un trabajo o devuelven un reporte.',
+      detail:
+        'Te avisamos cuando te asignan un trabajo o devuelven un reporte. Para quitar un aviso leído, deslízalo hacia la izquierda. Puedes deshacerlo durante unos segundos. Los avisos se borran solos con el tiempo.',
       where: 'Inicio',
       target: 'home-bell',
       tab: 'Home',
@@ -215,7 +217,8 @@ export const TUTORIAL_STEPS: Record<AppRole, TutorialStep[]> = {
     {
       id: 'avisos',
       title: 'Tus avisos',
-      detail: 'Te avisamos de solicitudes nuevas, vencidas y pedidos de acceso.',
+      detail:
+        'Te avisamos de solicitudes nuevas, vencidas y pedidos de acceso. Para quitar un aviso leído, deslízalo hacia la izquierda. Puedes deshacerlo durante unos segundos. Los avisos se borran solos con el tiempo.',
       where: 'Inicio',
       target: 'home-bell',
       tab: 'Home',

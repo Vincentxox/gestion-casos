@@ -12,6 +12,7 @@ import { StatusBar } from 'expo-status-bar'
 import { useCallback, useEffect, useState } from 'react'
 import { Linking, StyleSheet, View } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
 
 import { BrandIntroScreen } from '@/components/branding/BrandIntroScreen'
 import { AppFeedbackProvider } from '@/components/feedback/AppFeedback'
@@ -138,16 +139,18 @@ export default function App() {
   useEffect(() => registerQueryLifecycle(() => supabase.auth.getSession()), [])
 
   return (
-    <SafeAreaProvider>
-      <AppFeedbackProvider>
-        <QueryClientProvider client={queryClient}>
-          <View style={styles.container}>
-            <StatusBar style="dark" />
-            <RootContent fontsReady={fontsLoaded || Boolean(fontError)} />
-          </View>
-        </QueryClientProvider>
-      </AppFeedbackProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <AppFeedbackProvider>
+          <QueryClientProvider client={queryClient}>
+            <View style={styles.container}>
+              <StatusBar style="dark" />
+              <RootContent fontsReady={fontsLoaded || Boolean(fontError)} />
+            </View>
+          </QueryClientProvider>
+        </AppFeedbackProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   )
 }
 

@@ -1,9 +1,12 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
-import { useLayoutEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
+import { ActionSheet } from '@/components/actions/ActionSheet'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { RequestState } from '@/components/feedback/RequestState'
+import { UndoSnackbar } from '@/components/feedback/UndoSnackbar'
+import { useFeedback } from '@/components/feedback/AppFeedback'
 import { Icon } from '@/components/ui/Icon'
 import { ScreenContainer } from '@/components/ui/ScreenContainer'
 import type { MainStackParamList } from '@/navigation/types'
@@ -11,41 +14,112 @@ import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
 import {
   filterNotifications,
   groupNotifications,
-  notificationAppearance,
-  notificationTimeLabel,
   type NotificationFilter,
 } from './notificationPresentation'
-import { useMarkNotificationsRead, useNotifications } from './useNotifications'
+import { NotificationRow } from './NotificationRow'
+import {
+  useDismissNotifications,
+  useMarkNotificationsRead,
+  useNotifications,
+  useReadNotificationIds,
+  useRestoreNotifications,
+} from './useNotifications'
 
 type Props = NativeStackScreenProps<MainStackParamList, 'Notifications'>
 
 export function NotificationsScreen({ navigation }: Props) {
   const notifications = useNotifications()
+  const readIdsQuery = useReadNotificationIds()
   const { mutate: markRead, isPending: markPending } = useMarkNotificationsRead()
+  const dismiss = useDismissNotifications()
+  const restore = useRestoreNotifications()
+  const feedback = useFeedback()
   const [filter, setFilter] = useState<NotificationFilter>('all')
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [undoIds, setUndoIds] = useState<number[]>([])
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [now] = useState(() => new Date())
   const allItems = notifications.data ?? []
   const unreadCount = allItems.filter((item) => !item.readAt).length
+  const readCount = readIdsQuery.data?.length ?? allItems.filter((item) => item.readAt).length
   const visibleItems = filterNotifications(allItems, filter)
   const groups = groupNotifications(visibleItems, now)
+
+  useEffect(
+    () => () => {
+      if (undoTimer.current) clearTimeout(undoTimer.current)
+    },
+    [],
+  )
+
+  const offerUndo = (ids: number[]) => {
+    if (undoTimer.current) clearTimeout(undoTimer.current)
+    setUndoIds((previous) => [...new Set([...previous, ...ids])])
+    undoTimer.current = setTimeout(() => setUndoIds([]), 5000)
+  }
+
+  const deleteOne = async (id: number) => {
+    try {
+      if ((await dismiss.mutateAsync([id])) > 0) {
+        offerUndo([id])
+        return true
+      }
+    } catch {
+      /* The hook restores the cache and displays the error. */
+    }
+    return false
+  }
+
+  const deleteRead = async () => {
+    const result = await readIdsQuery.refetch()
+    const ids = result.data
+    if (result.isError || !ids) {
+      await feedback.alert({
+        title: 'No fue posible consultar los avisos',
+        message: 'Comprueba tu conexión e inténtalo de nuevo.',
+      })
+      return
+    }
+    if (!ids.length) return
+    const confirmed = await feedback.confirm({
+      tone: 'danger',
+      title: '¿Borrar los avisos leídos?',
+      message: `Se quitan ${ids.length} avisos de esta lista. Las solicitudes y su historial no cambian.`,
+      confirmLabel: 'Borrar',
+    })
+    if (!confirmed) return
+    try {
+      // Exact IDs keep Undo complete even if a new read notice arrives during confirmation.
+      if ((await dismiss.mutateAsync(ids)) > 0) offerUndo(ids)
+    } catch {
+      /* The hook restores the cache and displays the error. */
+    }
+  }
+
+  const undo = () => {
+    const ids = undoIds
+    if (undoTimer.current) clearTimeout(undoTimer.current)
+    setUndoIds([])
+    restore.mutate(ids)
+  }
 
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () =>
-        unreadCount > 0 ? (
+        unreadCount > 0 || readCount > 0 ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Leer todo"
-            accessibilityState={{ disabled: markPending }}
-            disabled={markPending}
-            onPress={() => markRead(null)}
+            accessibilityLabel="Más opciones"
+            accessibilityState={{ disabled: markPending || dismiss.isPending }}
+            disabled={markPending || dismiss.isPending}
+            onPress={() => setMenuOpen(true)}
             style={styles.headerAction}
           >
-            <Text style={styles.headerActionText}>Leer todo</Text>
+            <Icon name="ellipsis-vertical" color={colors.primary} />
           </Pressable>
         ) : null,
     })
-  }, [navigation, unreadCount, markPending, markRead])
+  }, [navigation, unreadCount, readCount, markPending, dismiss.isPending])
 
   return (
     <ScreenContainer padded={false} edges={['bottom']}>
@@ -99,68 +173,57 @@ export function NotificationsScreen({ navigation }: Props) {
               {group.title}
             </Text>
             <View style={styles.groupCard}>
-              {group.items.map((item, index) => {
-                const appearance = notificationAppearance(item.action)
-                const unread = !item.readAt
-                const caseLabel =
-                  item.caseNumber && item.caseTitle
-                    ? `${item.caseNumber} · ${item.caseTitle}`
-                    : item.body
-                return (
-                  <Pressable
-                    key={item.id}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${unread ? 'Sin leer. ' : ''}${item.title}. ${caseLabel}${item.actorName ? `. por ${item.actorName}` : ''}`}
-                    onPress={() => {
-                      if (unread) markRead([item.id])
-                      navigation.navigate('CaseDetail', { caseId: item.caseId })
-                    }}
-                    style={[
-                      styles.row,
-                      unread && styles.unreadRow,
-                      index < group.items.length - 1 && styles.rowDivider,
-                    ]}
-                  >
-                    <View style={[styles.iconBox, { backgroundColor: appearance.background }]}>
-                      <Icon name={appearance.icon} size={20} color={appearance.foreground} />
-                    </View>
-                    <View style={styles.rowBody}>
-                      <View style={styles.rowTop}>
-                        <Text
-                          numberOfLines={2}
-                          style={[styles.itemTitle, unread && styles.unreadTitle]}
-                        >
-                          {item.title}
-                        </Text>
-                        <Text style={styles.time}>
-                          {notificationTimeLabel(item.createdAt, now)}
-                        </Text>
-                      </View>
-                      <Text numberOfLines={2} style={styles.caseLabel}>
-                        {caseLabel}
-                      </Text>
-                      {item.actorName ? (
-                        <Text numberOfLines={1} style={styles.actor}>
-                          por {item.actorName}
-                        </Text>
-                      ) : null}
-                    </View>
-                    {unread ? <View style={styles.unreadDot} /> : null}
-                  </Pressable>
-                )
-              })}
+              {group.items.map((item, index) => (
+                <NotificationRow
+                  key={item.id}
+                  item={item}
+                  now={now}
+                  divider={index < group.items.length - 1}
+                  onOpen={() => {
+                    if (!item.readAt) markRead([item.id])
+                    navigation.navigate('CaseDetail', { caseId: item.caseId })
+                  }}
+                  onMarkRead={() => markRead([item.id])}
+                  onDelete={() => deleteOne(item.id)}
+                />
+              ))}
             </View>
           </View>
         ))}
       </ScrollView>
+      <UndoSnackbar count={undoIds.length} onUndo={undo} />
+      <ActionSheet
+        title="Opciones de avisos"
+        actions={[
+          ...(unreadCount > 0
+            ? [{ id: 'read' as const, label: 'Marcar todo como leído', icon: 'checkmark' as const }]
+            : []),
+          ...(readCount > 0
+            ? [
+                {
+                  id: 'delete' as const,
+                  label: `Borrar avisos leídos (${readCount})`,
+                  icon: 'trash-outline' as const,
+                  destructive: true,
+                },
+              ]
+            : []),
+        ]}
+        visible={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        onSelect={(id) => {
+          setMenuOpen(false)
+          if (id === 'read') markRead(null)
+          else void deleteRead()
+        }}
+      />
     </ScreenContainer>
   )
 }
 
 const styles = StyleSheet.create({
   content: { gap: spacing.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.lg },
-  headerAction: { minHeight: 44, justifyContent: 'center', paddingHorizontal: spacing.sm },
-  headerActionText: { ...typography.caption, color: colors.primary, fontFamily: fonts.bold },
+  headerAction: { minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center' },
   filters: {
     flexDirection: 'row',
     backgroundColor: colors.neutralSoft,
@@ -185,40 +248,5 @@ const styles = StyleSheet.create({
     borderColor: colors.cardBorder,
     borderWidth: 1,
     overflow: 'hidden',
-  },
-  row: {
-    flexDirection: 'row',
-    gap: spacing.base,
-    minHeight: 80,
-    padding: spacing.base,
-    alignItems: 'flex-start',
-  },
-  unreadRow: { backgroundColor: colors.primarySoft },
-  rowDivider: { borderBottomColor: colors.cardBorder, borderBottomWidth: 1 },
-  iconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rowBody: { flex: 1, gap: spacing.xs },
-  rowTop: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-  },
-  itemTitle: { ...typography.caption, color: colors.text, flex: 1 },
-  unreadTitle: { fontFamily: fonts.bold },
-  time: { ...typography.caption, color: colors.textMuted, fontSize: 11 },
-  caseLabel: { ...typography.caption, color: colors.textMuted },
-  actor: { ...typography.caption, color: colors.textMuted, fontSize: 11 },
-  unreadDot: {
-    width: 7,
-    height: 7,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primary,
-    marginTop: spacing.xs,
   },
 })

@@ -1,5 +1,11 @@
 import { supabase } from '@/services/supabase/client'
-import { listNotifications, markNotificationsRead } from '../notificationService'
+import {
+  dismissNotifications,
+  listReadNotificationIds,
+  listNotifications,
+  markNotificationsRead,
+  restoreNotifications,
+} from '../notificationService'
 
 jest.mock('@/services/supabase/client', () => ({ supabase: { from: jest.fn(), rpc: jest.fn() } }))
 jest.mock('@/services/supabase/formerMembers', () => ({
@@ -51,6 +57,33 @@ test('marca un aviso o todos mediante la función autorizada', async () => {
   await markNotificationsRead()
   expect(rpc).toHaveBeenNthCalledWith(1, 'mark_notifications_read', { notification_ids: [1] })
   expect(rpc).toHaveBeenNthCalledWith(2, 'mark_notifications_read', {})
+})
+
+test('oculta y restaura avisos con los argumentos de C-023', async () => {
+  const rpc = supabase.rpc as jest.Mock
+  rpc.mockReset().mockResolvedValue({ data: 2, error: null })
+  await expect(dismissNotifications([1, 2])).resolves.toBe(2)
+  await expect(dismissNotifications(null)).resolves.toBe(2)
+  await expect(restoreNotifications([1, 2])).resolves.toBe(2)
+  expect(rpc).toHaveBeenNthCalledWith(1, 'dismiss_notifications', { notification_ids: [1, 2] })
+  expect(rpc).toHaveBeenNthCalledWith(2, 'dismiss_notifications', {})
+  expect(rpc).toHaveBeenNthCalledWith(3, 'restore_notifications', { notification_ids: [1, 2] })
+})
+
+test('recupera todos los IDs leídos en páginas para poder deshacer el borrado masivo', async () => {
+  const first = Array.from({ length: 1000 }, (_, index) => ({ id: index + 1 }))
+  const range = jest
+    .fn()
+    .mockResolvedValueOnce({ data: first, error: null })
+    .mockResolvedValueOnce({ data: [{ id: 1001 }], error: null })
+  const order = jest.fn().mockReturnValue({ range })
+  const not = jest.fn().mockReturnValue({ order })
+  const select = jest.fn().mockReturnValue({ not })
+  ;(supabase.from as jest.Mock).mockReturnValue({ select })
+  await expect(listReadNotificationIds()).resolves.toHaveLength(1001)
+  expect(not).toHaveBeenCalledWith('read_at', 'is', null)
+  expect(range).toHaveBeenNthCalledWith(1, 0, 999)
+  expect(range).toHaveBeenNthCalledWith(2, 1000, 1999)
 })
 
 test('propaga errores de lectura y marcado', async () => {

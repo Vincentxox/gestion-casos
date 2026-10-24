@@ -1,4 +1,5 @@
-import { fireEvent, render } from '@testing-library/react-native'
+import { act, fireEvent, render } from '@testing-library/react-native'
+import { Animated } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import type { AppNotification } from '../notificationService'
@@ -8,6 +9,11 @@ const mockNavigate = jest.fn()
 const mockSetOptions = jest.fn()
 const mockMark = jest.fn()
 const mockRefetch = jest.fn()
+const mockDismiss = jest.fn().mockResolvedValue(1)
+const mockRestore = jest.fn()
+const mockConfirm = jest.fn().mockResolvedValue(false)
+const mockReadRefetch = jest.fn()
+let mockSheetSelect: ((id: string) => void) | null = null
 let mockItems: AppNotification[] = []
 
 jest.mock('../useNotifications', () => ({
@@ -18,7 +24,53 @@ jest.mock('../useNotifications', () => ({
     refetch: mockRefetch,
   }),
   useMarkNotificationsRead: () => ({ mutate: mockMark, isPending: false }),
+  useReadNotificationIds: () => ({
+    data: mockItems.filter((item) => item.readAt).map((item) => item.id),
+    refetch: mockReadRefetch,
+  }),
+  useDismissNotifications: () => ({ mutateAsync: mockDismiss, isPending: false }),
+  useRestoreNotifications: () => ({ mutate: mockRestore }),
 }))
+
+jest.mock('@/components/feedback/AppFeedback', () => ({
+  useFeedback: () => ({ confirm: mockConfirm }),
+}))
+
+jest.mock('@/components/actions/ActionSheet', () => {
+  const React = jest.requireActual('react')
+  const { Pressable, Text, View } = jest.requireActual('react-native')
+  return {
+    ActionSheet: ({
+      actions,
+      visible,
+      onSelect,
+    }: {
+      actions: { id: string; label: string }[]
+      visible: boolean
+      onSelect: (id: string) => void
+    }) => {
+      mockSheetSelect = onSelect
+      return visible
+        ? React.createElement(
+            View,
+            null,
+            actions.map((action) =>
+              React.createElement(
+                Pressable,
+                {
+                  key: action.id,
+                  accessibilityRole: 'button',
+                  accessibilityLabel: action.label,
+                  onPress: () => onSelect(action.id),
+                },
+                React.createElement(Text, null, action.label),
+              ),
+            ),
+          )
+        : null
+    },
+  }
+})
 
 const item: AppNotification = {
   id: 2,
@@ -57,6 +109,13 @@ beforeEach(() => {
   mockNavigate.mockClear()
   mockSetOptions.mockClear()
   mockMark.mockClear()
+  mockDismiss.mockClear()
+  mockRestore.mockClear()
+  mockConfirm.mockReset().mockResolvedValue(false)
+  mockReadRefetch.mockImplementation(async () => ({
+    data: mockItems.filter((item) => item.readAt).map((item) => item.id),
+    isError: false,
+  }))
 })
 
 test('abre detalle desde Avisos y marca solo el aviso seleccionado', async () => {
@@ -85,12 +144,17 @@ test('un aviso de mensaje abre el detalle por action, no por el título', async 
   expect(mockNavigate).toHaveBeenCalledWith('CaseDetail', { caseId: 'case-2' })
 })
 
-test('Leer todo solo existe en cabecera si quedan no leídos', async () => {
+test('el menú muestra solo las opciones aplicables', async () => {
   mockItems = [item]
   const firstScreen = await renderScreen()
   const unreadHeader = mockSetOptions.mock.lastCall?.[0].headerRight
   const action = await render(unreadHeader())
-  await fireEvent.press(action.getByRole('button', { name: 'Leer todo' }))
+  await fireEvent.press(action.getByRole('button', { name: 'Más opciones' }))
+  expect(firstScreen.getByText('Marcar todo como leído')).toBeTruthy()
+  expect(firstScreen.queryByText(/Borrar avisos leídos/)).toBeNull()
+  await act(async () => {
+    mockSheetSelect?.('read')
+  })
   expect(mockMark).toHaveBeenCalledWith(null)
   await action.unmount()
   await firstScreen.unmount()
@@ -98,7 +162,7 @@ test('Leer todo solo existe en cabecera si quedan no leídos', async () => {
   mockItems = [{ ...item, readAt: '2026-10-16T12:10:00Z' }]
   await renderScreen()
   const readHeader = mockSetOptions.mock.lastCall?.[0].headerRight
-  expect(readHeader()).toBeNull()
+  expect(readHeader()).not.toBeNull()
 })
 
 test('el filtro Sin leer muestra Estás al día cuando no hay pendientes', async () => {
@@ -116,4 +180,66 @@ test('omite el actor si el evento no lo tiene', async () => {
   mockItems = [{ ...item, actorName: null }]
   const screen = await renderScreen()
   expect(screen.queryByText(/por Ana/)).toBeNull()
+})
+
+test('la acción accesible borra un leído y Deshacer lo restaura', async () => {
+  mockItems = [{ ...item, readAt: '2026-10-16T12:10:00Z' }]
+  const animation = jest.spyOn(Animated, 'timing').mockImplementation(
+    () =>
+      ({
+        start: (callback?: (result: { finished: boolean }) => void) =>
+          callback?.({ finished: true }),
+      }) as Animated.CompositeAnimation,
+  )
+  const screen = await renderScreen()
+  const row = screen.getByRole('button', { name: /Reporte enviado/ })
+  expect(row.props.accessibilityActions).toEqual([{ name: 'delete', label: 'Borrar' }])
+  await fireEvent(row, 'accessibilityAction', { nativeEvent: { actionName: 'delete' } })
+  expect(mockDismiss).toHaveBeenCalledWith([2])
+  expect(await screen.findByText('Aviso borrado')).toBeTruthy()
+  await fireEvent.press(screen.getByRole('button', { name: 'Deshacer' }))
+  expect(mockRestore).toHaveBeenCalledWith([2])
+  animation.mockRestore()
+})
+
+test('un aviso sin leer ofrece Marcar como leído, nunca Borrar', async () => {
+  mockItems = [item]
+  const screen = await renderScreen()
+  const row = screen.getByRole('button', { name: /Sin leer. Reporte enviado/ })
+  expect(row.props.accessibilityActions).toEqual([{ name: 'markRead', label: 'Marcar como leído' }])
+  await fireEvent(row, 'accessibilityAction', { nativeEvent: { actionName: 'markRead' } })
+  expect(mockMark).toHaveBeenCalledWith([2])
+  expect(mockDismiss).not.toHaveBeenCalled()
+})
+
+test('borrar todos requiere confirmación y no ejecuta la RPC al cancelar', async () => {
+  mockItems = [{ ...item, readAt: '2026-10-16T12:10:00Z' }]
+  const screen = await renderScreen()
+  const header = mockSetOptions.mock.lastCall?.[0].headerRight
+  const action = await render(header())
+  await fireEvent.press(action.getByRole('button', { name: 'Más opciones' }))
+  expect(screen.queryByText('Marcar todo como leído')).toBeNull()
+  await act(async () => {
+    mockSheetSelect?.('delete')
+  })
+  expect(mockConfirm).toHaveBeenCalledWith(
+    expect.objectContaining({ tone: 'danger', confirmLabel: 'Borrar' }),
+  )
+  expect(mockDismiss).not.toHaveBeenCalled()
+  await action.unmount()
+})
+
+test('borrar todos conserva los IDs exactos para Deshacer', async () => {
+  mockItems = [{ ...item, readAt: '2026-10-16T12:10:00Z' }]
+  mockConfirm.mockResolvedValue(true)
+  const screen = await renderScreen()
+  const header = mockSetOptions.mock.lastCall?.[0].headerRight
+  const action = await render(header())
+  await fireEvent.press(action.getByRole('button', { name: 'Más opciones' }))
+  await act(async () => {
+    mockSheetSelect?.('delete')
+  })
+  expect(mockDismiss).toHaveBeenCalledWith([2])
+  expect(await screen.findByText('Aviso borrado')).toBeTruthy()
+  await action.unmount()
 })
