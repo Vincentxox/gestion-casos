@@ -313,11 +313,13 @@ select test.set('unreviewed_functions', (
     'confirm_case_photo(uuid)',
     'deactivate_member(uuid)',
     'delete_case_photo(uuid)',
+    'dismiss_notifications(bigint[])',
     'get_case_actions(uuid)',
     'get_case_indicators(timestamp with time zone, timestamp with time zone)',
     'mark_notifications_read(bigint[])',
     'reject_access_request(uuid, text)',
     'reserve_case_photo(uuid, photo_kind)',
+    'restore_notifications(bigint[])',
     'return_case_report(uuid, text)',
     'set_member_access(uuid, app_role, uuid)',
     'submit_case_report(uuid, text, boolean)',
@@ -531,6 +533,11 @@ select test.throws(
 select test.ok(
   public.mark_notifications_read(test.get('a_notifications')::bigint[]) = 0,
   'un administrador de C no marca como leídos los avisos de A'
+);
+select test.ok(
+  public.dismiss_notifications(test.get('a_notifications')::bigint[]) = 0
+  and public.restore_notifications(test.get('a_notifications')::bigint[]) = 0,
+  'un administrador de C no oculta ni devuelve avisos de A'
 );
 select test.ok(
   (public.get_case_indicators() ->> 'total')::integer

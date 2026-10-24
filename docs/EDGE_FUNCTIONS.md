@@ -95,6 +95,15 @@ select cron.schedule('nexo-cleanup-photos', '17 * * * *', $$
 $$);
 ```
 
+La limpieza de avisos (BUSINESS_RULES 9, contrato C-023) es SQL dentro de la base, sin
+Edge Function. Corre una vez al día:
+
+```sql
+select cron.schedule('nexo-purge-notifications', '43 3 * * *', $$
+  select private.purge_old_notifications();
+$$);
+```
+
 Comprobación: `select jobname, schedule, active from cron.job;` y, para ver las últimas
 ejecuciones, `select status, return_message, start_time from cron.job_run_details order by
 start_time desc limit 10;` (respuestas HTTP en `net._http_response`). Para detener una
