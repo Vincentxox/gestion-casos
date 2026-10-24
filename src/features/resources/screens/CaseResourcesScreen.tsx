@@ -1,18 +1,19 @@
 import { getErrorMessage } from '@/utils/errorMessage'
 import { AppFeedback } from '@/components/feedback/AppFeedback'
-import { Ionicons } from '@expo/vector-icons'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { useRef, useState } from 'react'
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { BottomSheet } from '@/components/sheets/BottomSheet'
+import { ActionSheet } from '@/components/actions/ActionSheet'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { RequestState } from '@/components/feedback/RequestState'
 import { SkeletonList } from '@/components/ui/SkeletonList'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { IconTile } from '@/components/ui/IconTile'
+import { Icon } from '@/components/ui/Icon'
 import { formatNumber, formatQuetzales, plural } from '@/theme/formatters'
 import { useAssignableProfiles, useCaseActions, useCaseDetail } from '@/features/cases/useCases'
 import type { MainStackParamList } from '@/navigation/types'
@@ -42,6 +43,7 @@ export function CaseResourcesScreen({ route }: Props) {
   const update = useUpdateCaseUsage(caseId)
   const remove = useDeleteCaseUsage(caseId)
   const [editing, setEditing] = useState<CaseUsageRecord | null>(null)
+  const [actionUsage, setActionUsage] = useState<CaseUsageRecord | null>(null)
   const [formVisible, setFormVisible] = useState(false)
   const formSubmit = useRef<(() => void) | null>(null)
 
@@ -188,30 +190,36 @@ export function CaseResourcesScreen({ route }: Props) {
                   {item.notes ? <Text style={styles.notes}>{item.notes}</Text> : null}
                 </View>
                 {canManage ? (
-                  <View style={styles.actions}>
-                    <Pressable
-                      accessibilityLabel="Corregir registro"
-                      accessibilityRole="button"
-                      onPress={() => openForm(item)}
-                      style={styles.iconButton}
-                    >
-                      <Ionicons color={colors.primary} name="pencil-outline" size={22} />
-                    </Pressable>
-                    <Pressable
-                      accessibilityLabel="Eliminar registro"
-                      accessibilityRole="button"
-                      onPress={() => confirmDelete(item)}
-                      style={styles.iconButton}
-                    >
-                      <Ionicons color={colors.error} name="trash-outline" size={22} />
-                    </Pressable>
-                  </View>
+                  <Pressable
+                    accessibilityLabel={`Opciones de ${item.resourceName || item.technicianName || 'registro'}`}
+                    accessibilityRole="button"
+                    onPress={() => setActionUsage(item)}
+                    style={styles.iconButton}
+                  >
+                    <Icon name="ellipsis-horizontal" color={colors.ink} size={22} />
+                  </Pressable>
                 ) : null}
               </Card>
             )}
           />
         )}
       </View>
+      <ActionSheet<'edit' | 'remove'>
+        title="Opciones del registro"
+        actions={[
+          { id: 'edit', label: 'Editar', icon: 'create-outline' },
+          { id: 'remove', label: 'Quitar', icon: 'trash-outline', destructive: true },
+        ]}
+        visible={actionUsage !== null}
+        onClose={() => setActionUsage(null)}
+        onSelect={(action) => {
+          const usage = actionUsage
+          setActionUsage(null)
+          if (!usage) return
+          if (action === 'edit') openForm(usage)
+          else confirmDelete(usage)
+        }}
+      />
       <BottomSheet
         title={editing ? 'Corregir uso' : 'Registrar uso'}
         visible={formVisible && canManage}
@@ -256,6 +264,5 @@ const styles = StyleSheet.create({
   name: { ...typography.heading, color: colors.text },
   meta: { ...typography.caption, color: colors.textMuted },
   notes: { color: colors.textMuted },
-  actions: { justifyContent: 'center', gap: spacing.sm },
   iconButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
 })

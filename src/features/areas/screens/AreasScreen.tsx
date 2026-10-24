@@ -1,15 +1,16 @@
 import { AppFeedback } from '@/components/feedback/AppFeedback'
+import { useNavigation } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
 import { useRef, useState } from 'react'
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
 
 import { BottomSheet } from '@/components/sheets/BottomSheet'
 import { CatalogActionSheet } from '@/components/actions/CatalogActionSheet'
-import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Chip } from '@/components/ui/Chip'
 import { IconTile } from '@/components/ui/IconTile'
 import { ScreenContainer } from '@/components/ui/ScreenContainer'
+import { ScreenHeader } from '@/components/ui/ScreenHeader'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { RequestState } from '@/components/feedback/RequestState'
 import { SkeletonList } from '@/components/ui/SkeletonList'
@@ -20,6 +21,7 @@ import type { AreaInput, AreaRecord } from '../types'
 import { useAreas, useCreateArea, useSetAreaActive, useUpdateArea } from '../useAreas'
 
 export function AreasScreen() {
+  const navigation = useNavigation()
   const { data = [], error, isLoading, isRefetching, refetch } = useAreas()
   const createMutation = useCreateArea()
   const updateMutation = useUpdateArea()
@@ -70,6 +72,11 @@ export function AreasScreen() {
 
   return (
     <ScreenContainer edges={['bottom']} padded={false}>
+      <ScreenHeader
+        title="Áreas"
+        onBack={() => navigation.goBack()}
+        action={{ label: 'Nueva área', icon: 'add', onPress: () => openForm() }}
+      />
       <View style={styles.container}>
         <Text style={styles.subtitle}>
           Organiza las áreas solicitantes y técnicas de tu empresa.
@@ -134,9 +141,6 @@ export function AreasScreen() {
             )}
           />
         )}
-        <View style={styles.floatingAction}>
-          <Button label="Nueva área" icon="add" onPress={() => openForm()} />
-        </View>
       </View>
 
       <CatalogActionSheet
@@ -173,10 +177,9 @@ export function AreasScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, gap: spacing.lg, padding: spacing.lg },
+  container: { flex: 1, gap: spacing.lg, padding: spacing.lg, paddingTop: spacing.md },
   subtitle: { ...typography.body, color: colors.textMuted },
-  floatingAction: { position: 'absolute', right: spacing.lg, bottom: spacing.lg },
-  list: { gap: spacing.md, paddingBottom: 96 },
+  list: { gap: spacing.md, paddingBottom: spacing.md },
   card: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -185,8 +188,8 @@ const styles = StyleSheet.create({
   },
   inactiveCard: { opacity: 0.7 },
   cardContent: { flex: 1, gap: spacing.sm },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  areaName: { ...typography.heading, color: colors.text, flex: 1, minWidth: 0 },
+  nameRow: { alignItems: 'flex-start', gap: spacing.xs },
+  areaName: { ...typography.heading, color: colors.text },
   description: { ...typography.caption, color: colors.textMuted },
   kind: { ...typography.caption, color: colors.textMuted },
   iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },

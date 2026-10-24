@@ -1,3 +1,5 @@
+const inputBorder = '#8793A8'
+
 export const colors = {
   primary: '#1366D6',
   primaryDark: '#0E4FA8',
@@ -13,7 +15,10 @@ export const colors = {
   text: '#13203A',
   textMuted: '#5A6780',
   border: '#E4E9F0',
-  inputBorder: '#8793A8',
+  inputBorder,
+  chipBorder: inputBorder,
+  disabledBg: '#E4E9F0',
+  disabledText: '#5A6780',
   error: '#B42318',
   success: '#16803B',
   successSoft: '#E8F5EE',
@@ -33,6 +38,14 @@ export const colors = {
   purpleSoft: '#F1EBFF',
   backdrop: '#00000088',
   modalBackdrop: 'rgba(10,20,38,0.48)',
+} as const
+
+export const tone = {
+  danger: { bg: colors.dangerSoft, border: colors.dangerBorder, text: colors.dangerText },
+  warning: { bg: colors.warningSoft, border: '#F5D98A', text: colors.warning },
+  info: { bg: colors.infoSoft, border: '#B9D3F5', text: colors.primary },
+  success: { bg: colors.successSoft, border: '#B5DEC6', text: colors.success },
+  neutral: { bg: colors.neutralSoft, border: '#E4E9F0', text: colors.neutral },
 } as const
 
 export const spacing = {
@@ -73,11 +86,12 @@ export const typography = {
   heading: { ...noLigatures, fontFamily: fonts.bold, fontSize: 17, lineHeight: 22 },
   body: { ...noLigatures, fontFamily: fonts.regular, fontSize: 15, lineHeight: 22 },
   caption: { ...noLigatures, fontFamily: fonts.medium, fontSize: 13, lineHeight: 18 },
+  label: { ...noLigatures, fontFamily: fonts.semibold, fontSize: 12, lineHeight: 16 },
   overline: {
     ...noLigatures,
     fontFamily: fonts.bold,
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 16,
     letterSpacing: 0.9,
     textTransform: 'uppercase' as const,
   },

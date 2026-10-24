@@ -1,8 +1,10 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
-import { createNativeStackNavigator } from '@react-navigation/native-stack'
+import {
+  createNativeStackNavigator,
+  type NativeStackHeaderProps,
+} from '@react-navigation/native-stack'
 import { useEffect } from 'react'
-import { Pressable } from 'react-native'
-import { Icon } from '@/components/ui/Icon'
+import { ScreenHeader } from '@/components/ui/ScreenHeader'
 
 import { CasesListScreen } from '@/features/cases/screens/CasesListScreen'
 import { CaseDetailScreen } from '@/features/cases/screens/CaseDetailScreen'
@@ -49,6 +51,16 @@ const RootStack = createNativeStackNavigator<RootStackParamList>()
 const AdministrationStack = createNativeStackNavigator<AdministrationStackParamList>()
 const Tab = createBottomTabNavigator<MainTabParamList>()
 
+function renderScreenHeader({ navigation, options }: NativeStackHeaderProps) {
+  return (
+    <ScreenHeader
+      title={typeof options.title === 'string' ? options.title : ''}
+      onBack={navigation.goBack}
+      right={options.headerRight?.({ tintColor: colors.primary, canGoBack: true })}
+    />
+  )
+}
+
 function CasesNavigator() {
   return (
     <Stack.Navigator
@@ -56,6 +68,7 @@ function CasesNavigator() {
         contentStyle: { backgroundColor: colors.background },
         headerShadowVisible: false,
         headerTintColor: colors.primary,
+        header: renderScreenHeader,
       }}
     >
       <Stack.Screen component={CasesListScreen} name="Cases" options={{ headerShown: false }} />
@@ -112,6 +125,7 @@ function NotificationsNavigator() {
         contentStyle: { backgroundColor: colors.background },
         headerShadowVisible: false,
         headerTintColor: colors.primary,
+        header: renderScreenHeader,
       }}
     >
       <Stack.Screen
@@ -119,15 +133,13 @@ function NotificationsNavigator() {
         name="Notifications"
         options={({ navigation }) => ({
           title: 'Avisos',
-          headerLeft: () => (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Volver a Inicio"
-              onPress={() => navigation.getParent()?.goBack()}
-              style={{ minHeight: 44, minWidth: 44, justifyContent: 'center' }}
-            >
-              <Icon name="arrow-back" color={colors.primary} />
-            </Pressable>
+          header: ({ options }) => (
+            <ScreenHeader
+              title="Avisos"
+              backLabel="Volver a Inicio"
+              onBack={() => navigation.getParent()?.goBack()}
+              right={options.headerRight?.({ tintColor: colors.primary, canGoBack: true })}
+            />
           ),
         })}
       />
@@ -182,6 +194,7 @@ function AdministrationNavigator() {
         contentStyle: { backgroundColor: colors.background },
         headerShadowVisible: false,
         headerTintColor: colors.primary,
+        header: renderScreenHeader,
       }}
     >
       <AdministrationStack.Screen
@@ -197,12 +210,12 @@ function AdministrationNavigator() {
       <AdministrationStack.Screen
         component={AreasScreen}
         name="Areas"
-        options={{ title: 'Áreas' }}
+        options={{ headerShown: false }}
       />
       <AdministrationStack.Screen
         component={CategoriesScreen}
         name="Categories"
-        options={{ title: 'Tipos de servicio' }}
+        options={{ headerShown: false }}
       />
       <AdministrationStack.Screen
         component={InvitationsScreen}
@@ -217,7 +230,7 @@ function AdministrationNavigator() {
       <AdministrationStack.Screen
         component={ResourcesScreen}
         name="Resources"
-        options={{ title: 'Recursos' }}
+        options={{ headerShown: false }}
       />
       <AdministrationStack.Screen
         component={AccessRequestsScreen}

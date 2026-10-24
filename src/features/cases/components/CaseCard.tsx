@@ -4,7 +4,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { Icon } from '@/components/ui/Icon'
 import { formatCaseCardDate } from '@/theme/formatters'
 import { priorityMeta, statusMeta } from '@/theme/statusMeta'
-import { colors, fonts, phaseColors, radius, spacing, typography } from '@/theme/tokens'
+import { colors, fonts, phaseColors, radius, spacing, tone, typography } from '@/theme/tokens'
 
 import { getCaseStep } from '../caseStep'
 import type { CaseRecord } from '../types'
@@ -147,8 +147,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
   },
   badgeText: { ...typography.caption, fontFamily: fonts.bold },
-  overdueBadge: { backgroundColor: colors.dangerSoft },
-  overdueText: { color: colors.dangerText },
+  overdueBadge: { backgroundColor: tone.danger.bg },
+  overdueText: { color: tone.danger.text },
   location: { ...typography.body, flex: 1, fontSize: 14, color: colors.textMuted },
   locationPart: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   footer: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },

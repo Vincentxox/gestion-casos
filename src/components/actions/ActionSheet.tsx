@@ -50,6 +50,7 @@ export function ActionSheet<T extends string>({
       {ordered.map((action, index) => (
         <Pressable
           key={action.id}
+          accessibilityLabel={action.label}
           accessibilityRole="button"
           onPress={() => onSelect(action.id)}
           style={({ pressed }) => [

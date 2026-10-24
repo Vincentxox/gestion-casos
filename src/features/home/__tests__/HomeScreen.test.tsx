@@ -241,7 +241,7 @@ test('sin vencidas muestra el siguiente paso y el acceso a los demás', async ()
 test('con vencidas y sin siguiente paso muestra la tarjeta roja y abre el filtro', async () => {
   const screen = await renderHome()
   const urgent = screen.getByRole('button', {
-    name: '3 solicitudes vencidas. Pasaron su plazo; atiéndelas primero. Ver',
+    name: '3 solicitudes vencidas. Pasaron su plazo; atiéndelas primero',
   })
   expect(StyleSheet.flatten(urgent.props.style)).toMatchObject({
     backgroundColor: colors.dangerSoft,
@@ -253,6 +253,12 @@ test('con vencidas y sin siguiente paso muestra la tarjeta roja y abre el filtro
   })
   expect(screen.queryByText('✓ Estás al día')).toBeNull()
   expect(screen.queryByText('Tu siguiente paso')).toBeNull()
+})
+
+test('al solicitante le explica que el área técnica ya fue avisada', async () => {
+  mockProfile.role = 'solicitante'
+  const screen = await renderHome()
+  expect(screen.getByText('Pasaron su plazo; el área técnica ya fue avisada')).toBeTruthy()
 })
 
 test('sin vencidas ni pasos muestra Todo a tiempo y el resumen de trabajos', async () => {

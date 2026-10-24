@@ -34,7 +34,7 @@ import { useGuidedTour } from '@/features/help/tour/useGuidedTour'
 import type { MainStackParamList, MainTabParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
 import { statusMeta } from '@/theme/statusMeta'
-import { colors, elevation, fonts, radius, spacing, typography } from '@/theme/tokens'
+import { colors, elevation, fonts, radius, spacing, tone, typography } from '@/theme/tokens'
 
 import { CASE_STATUSES, type CasePriority, type CaseRecord } from '../types'
 import { groupCasesByDay } from '../caseDateGroups'
@@ -494,6 +494,7 @@ export function CasesListScreen({ navigation, route }: Props) {
                   accessibilityLabel={SCOPE_LABELS[value]}
                   accessibilityRole="tab"
                   accessibilityState={{ selected: selectedScope === value }}
+                  hitSlop={4}
                   onPress={() => changeFilters({ scope: value })}
                   style={[styles.scopeTab, selectedScope === value && styles.scopeTabSelected]}
                 >
@@ -559,6 +560,7 @@ export function CasesListScreen({ navigation, route }: Props) {
                   accessibilityLabel={`${chip.label}, ${chip.count ?? 'cargando'} ${chip.count === 1 ? 'solicitud' : 'solicitudes'}`}
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
+                  hitSlop={4}
                   onPress={() => toggleQuickFilter(chip.key)}
                   style={[
                     styles.quickChip,
@@ -606,6 +608,7 @@ export function CasesListScreen({ navigation, route }: Props) {
                 accessibilityLabel={`Quitar filtro ${chip.label}`}
                 accessibilityRole="button"
                 accessibilityState={{ selected: true }}
+                hitSlop={4}
                 onPress={() => removeChip(chip.key)}
                 style={styles.activeChip}
               >
@@ -1068,17 +1071,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  filterBadgeText: { fontSize: 11, fontFamily: fonts.bold, color: colors.white },
+  filterBadgeText: { fontSize: 12, lineHeight: 16, fontFamily: fonts.bold, color: colors.white },
   scopeSelector: {
-    minHeight: 50,
+    minHeight: 40,
     flexDirection: 'row',
-    padding: spacing.xs,
+    padding: 2,
     borderRadius: radius.md,
     backgroundColor: colors.surfaceMuted,
   },
   scopeTab: {
     flex: 1,
-    minHeight: 44,
+    minHeight: 36,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radius.sm,
@@ -1110,7 +1113,7 @@ const styles = StyleSheet.create({
   quickFilterScroll: { flexGrow: 0, flexShrink: 0 },
   quickFilters: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   quickChip: {
-    minHeight: 44,
+    minHeight: 36,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
@@ -1119,11 +1122,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceMuted,
   },
   quickChipSelected: { backgroundColor: colors.primary },
-  quickChipOverdue: { backgroundColor: colors.dangerSoft },
+  quickChipOverdue: { backgroundColor: tone.danger.bg },
   quickChipOverdueSelected: { backgroundColor: colors.error },
   quickChipText: { ...typography.caption, fontFamily: fonts.semibold, color: colors.text },
   quickChipCount: { fontSize: 12, fontFamily: fonts.bold, color: colors.textMuted },
-  quickChipOverdueText: { color: colors.error },
+  quickChipOverdueText: { color: tone.danger.text },
   quickChipSelectedText: { color: colors.white },
   filterScroll: { flexGrow: 0, flexShrink: 0 },
   filters: {
@@ -1139,7 +1142,7 @@ const styles = StyleSheet.create({
   },
   filterSummaryText: { ...typography.caption, color: colors.textMuted },
   activeChip: {
-    minHeight: 44,
+    minHeight: 36,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
@@ -1191,10 +1194,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderRadius: radius.sm,
-    backgroundColor: colors.dangerSoft,
+    backgroundColor: tone.danger.bg,
     paddingHorizontal: spacing.sm,
   },
-  refreshErrorText: { ...typography.caption, color: colors.dangerText },
+  refreshErrorText: { ...typography.caption, color: tone.danger.text },
   guideOverlay: { flex: 1, justifyContent: 'flex-end' },
   guideBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: colors.modalBackdrop },
   guideHighlight: {

@@ -93,4 +93,35 @@ describe('FloatingTabBar', () => {
     await act(async () => listeners[hide!]?.())
     expect(screen.getByTestId('floating-tab-bar')).toBeTruthy()
   })
+
+  test('se oculta, junto con Nueva solicitud, en pantallas apiladas', async () => {
+    const { props } = setup(1)
+    const onCreate = jest.fn()
+    const root = await render(<FloatingTabBar {...props} onCreate={onCreate} />)
+    expect(root.getByTestId('floating-tab-bar')).toBeTruthy()
+
+    const nestedProps = {
+      ...props,
+      state: {
+        ...props.state,
+        routes: props.state.routes.map((route) =>
+          route.name === 'CasesTab'
+            ? { ...route, state: { index: 1, routes: [{ name: 'Cases' }, { name: 'CaseDetail' }] } }
+            : route,
+        ),
+      },
+    } as unknown as BottomTabBarProps
+    await root.rerender(<FloatingTabBar {...nestedProps} onCreate={onCreate} />)
+    expect(root.queryByTestId('floating-tab-bar')).toBeNull()
+    expect(root.queryByRole('button', { name: 'Nueva solicitud' })).toBeNull()
+  })
+
+  test('reserva más ancho para Solicitudes sin truncar su etiqueta', async () => {
+    const { props } = setup(1)
+    const screen = await render(<FloatingTabBar {...props} />)
+    const casesTab = screen.getByRole('tab', { name: 'Mis trabajos, 3 pendientes' })
+    const slotStyle = StyleSheet.flatten(casesTab.parent?.props.style)
+    expect(slotStyle.flex).toBeGreaterThan(1)
+    expect(screen.getByText('Solicitudes').props.numberOfLines).toBeUndefined()
+  })
 })

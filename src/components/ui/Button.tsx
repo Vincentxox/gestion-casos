@@ -45,17 +45,20 @@ export function Button({
   const pressedScale = useSharedValue(1)
   const reduceMotion = useReducedMotion()
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: pressedScale.value }] }))
-  const foreground = destructive
-    ? colors.error
-    : variant === 'primary'
-      ? colors.white
-      : variant === 'danger'
-        ? colors.dangerText
-        : variant === 'destructive'
+  const foreground =
+    inactive && variant !== 'text'
+      ? colors.disabledText
+      : destructive
+        ? colors.error
+        : variant === 'primary'
           ? colors.white
-          : variant === 'secondary'
-            ? colors.text
-            : colors.primary
+          : variant === 'danger'
+            ? colors.dangerText
+            : variant === 'destructive'
+              ? colors.white
+              : variant === 'secondary'
+                ? colors.text
+                : colors.primary
 
   return (
     <Animated.View style={[containerStyle, animatedStyle]}>
@@ -76,7 +79,7 @@ export function Button({
         style={({ pressed }) => [
           styles.button,
           styles[variant],
-          inactive && styles.disabled,
+          inactive && (variant === 'text' ? styles.disabledText : styles.disabled),
           pressed && !inactive && styles.pressed,
           typeof style === 'function' ? style({ pressed }) : style,
         ]}
@@ -106,7 +109,8 @@ const styles = StyleSheet.create({
   danger: { backgroundColor: colors.dangerBadge },
   destructive: { backgroundColor: colors.error },
   text: { backgroundColor: 'transparent' },
-  disabled: { opacity: 0.55 },
+  disabled: { backgroundColor: colors.disabledBg, opacity: 1 },
+  disabledText: { opacity: 0.55 },
   pressed: { opacity: 0.9 },
   label: { fontFamily: fonts.bold, fontSize: 15 },
 })

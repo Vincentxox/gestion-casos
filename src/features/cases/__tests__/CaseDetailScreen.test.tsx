@@ -126,7 +126,8 @@ test('abre Seguimiento con seis pasos y el resumen del reporte', async () => {
 test('una sola acción principal queda abajo y la secundaria en el menú', async () => {
   mockAllowed = ['aceptar', 'rechazar']
   const screen = await renderScreen()
-  expect(screen.getByText('Te toca: aceptar solicitud')).toBeTruthy()
+  expect(screen.getByText('Te toca a ti')).toBeTruthy()
+  expect(screen.queryByText('Te toca: aceptar solicitud')).toBeNull()
 
   await fireEvent.press(screen.getByRole('button', { name: 'Aceptar solicitud' }))
   expect(navigate).toHaveBeenCalledWith('ChangeCaseStatus', { caseId: 'case-1', action: 'aceptar' })
@@ -144,7 +145,7 @@ test('el reporte pendiente es la acción principal y Editar queda en el menú', 
   mockCase = { ...baseCase, status: 'en_ejecucion', assignedTo: 'u2' }
   mockAllowed = ['enviar_reporte', 'pausar', 'editar_datos']
   const screen = await renderScreen()
-  expect(screen.getByText('Te toca: completar reporte')).toBeTruthy()
+  expect(screen.getByText('Te toca a ti')).toBeTruthy()
 
   await fireEvent.press(screen.getByRole('button', { name: 'Completar reporte' }))
   expect(navigate).toHaveBeenCalledWith('CaseReport', { caseId: 'case-1' })
@@ -193,7 +194,7 @@ test('técnico en ejecución con enviar reporte conserva el turno y la acción p
   mockCase = { ...baseCase, status: 'en_ejecucion', assignedTo: 'u2' }
   mockAllowed = ['enviar_reporte']
   const screen = await renderScreen()
-  expect(screen.getByText('Te toca: completar reporte')).toBeTruthy()
+  expect(screen.getByText('Te toca a ti')).toBeTruthy()
   await fireEvent.press(screen.getByRole('button', { name: 'Completar reporte' }))
   expect(navigate).toHaveBeenCalledWith('CaseReport', { caseId: 'case-1' })
 })
@@ -207,7 +208,7 @@ test('técnico en espera con permiso ve Reanudar como acción principal', async 
   }
   mockAllowed = ['reanudar']
   const screen = await renderScreen()
-  expect(screen.getByText('Te toca: reanudar trabajo')).toBeTruthy()
+  expect(screen.getByText('Te toca a ti')).toBeTruthy()
   expect(screen.getByText('Pendiente · te toca a ti')).toBeTruthy()
   await fireEvent.press(screen.getByRole('button', { name: 'Reanudar trabajo' }))
   expect(navigate).toHaveBeenCalledWith('ChangeCaseStatus', {
@@ -233,7 +234,7 @@ test('otra persona sin permiso de reanudar ve a quién espera y no un botón pri
 test('jefe con aceptar en solicitado conserva el botón principal', async () => {
   mockAllowed = ['aceptar']
   const screen = await renderScreen()
-  expect(screen.getByText('Te toca: aceptar solicitud')).toBeTruthy()
+  expect(screen.getByText('Te toca a ti')).toBeTruthy()
   await fireEvent.press(screen.getByRole('button', { name: 'Aceptar solicitud' }))
   expect(navigate).toHaveBeenCalledWith('ChangeCaseStatus', { caseId: 'case-1', action: 'aceptar' })
 })

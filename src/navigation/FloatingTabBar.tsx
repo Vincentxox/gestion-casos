@@ -1,4 +1,5 @@
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs'
+import { getFocusedRouteNameFromRoute } from '@react-navigation/native'
 import { useEffect, useState } from 'react'
 import { Keyboard, Platform, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -36,7 +37,14 @@ export function FloatingTabBar({
     }
   }, [])
 
-  if (keyboardVisible) return null
+  const focusedRoute = state.routes[state.index]
+  const nestedRoute = focusedRoute ? getFocusedRouteNameFromRoute(focusedRoute) : undefined
+  const isRoot =
+    !nestedRoute ||
+    (focusedRoute?.name === 'CasesTab' && nestedRoute === 'Cases') ||
+    (focusedRoute?.name === 'Administration' && nestedRoute === 'AdministrationHome')
+
+  if (keyboardVisible || !isRoot) return null
 
   return (
     <View
@@ -59,7 +67,7 @@ export function FloatingTabBar({
                 `tab:${route.name}` as
                   'tab:Home' | 'tab:CasesTab' | 'tab:Administration' | 'tab:Help' | 'tab:Profile'
               }
-              style={styles.tabSlot}
+              style={[styles.tabSlot, route.name === 'CasesTab' && styles.casesTabSlot]}
             >
               <Pressable
                 accessibilityLabel={badge ? `${title}, ${badge} pendientes` : title}
@@ -80,17 +88,12 @@ export function FloatingTabBar({
                 <View>
                   <Icon name={icons[focused ? 1 : 0]} color={color} size={21} />
                   {badge ? (
-                    <View
-                      style={[styles.badge, route.name === 'Administration' && styles.adminBadge]}
-                    >
+                    <View style={styles.badge}>
                       <Text style={styles.badgeText}>{badge}</Text>
                     </View>
                   ) : null}
                 </View>
-                <Text
-                  numberOfLines={1}
-                  style={[styles.label, { color }, focused && styles.labelFocused]}
-                >
+                <Text style={[styles.label, { color }, focused && styles.labelFocused]}>
                   {label}
                 </Text>
               </Pressable>
@@ -135,6 +138,7 @@ const styles = StyleSheet.create({
     ...elevation.md,
   },
   tabSlot: { flex: 1, alignSelf: 'stretch' },
+  casesTabSlot: { flex: 1.5 },
   tab: {
     flex: 1,
     minHeight: 50,
@@ -144,7 +148,7 @@ const styles = StyleSheet.create({
     borderRadius: 26,
   },
   tabFocused: { backgroundColor: colors.primarySoft },
-  label: { fontFamily: fonts.semibold, fontSize: 11, lineHeight: 14 },
+  label: { fontFamily: fonts.semibold, fontSize: 12, lineHeight: 16 },
   labelFocused: { fontFamily: fonts.bold },
   badge: {
     position: 'absolute',
@@ -156,13 +160,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radius.pill,
-    backgroundColor: colors.sky,
+    backgroundColor: colors.primary,
   },
-  badgeText: { fontFamily: fonts.bold, fontSize: 11, lineHeight: 14, color: colors.white },
-  adminBadge: { backgroundColor: colors.warning },
+  badgeText: { fontFamily: fonts.bold, fontSize: 12, lineHeight: 16, color: colors.white },
   create: {
-    width: 62,
-    height: 62,
+    width: 56,
+    height: 56,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radius.pill,

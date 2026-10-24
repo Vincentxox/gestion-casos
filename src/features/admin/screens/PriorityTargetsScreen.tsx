@@ -91,9 +91,8 @@ export function PriorityTargetsScreen() {
   const organizationId = useAuthStore((state) => state.profile?.organizationId)
   const targets = usePriorityTargets(organizationId)
   return (
-    <ScreenContainer padded={false}>
+    <ScreenContainer edges={[]} padded={false}>
       <KeyboardFormScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.heading}>Plazos por prioridad</Text>
         <Text style={styles.note}>
           Los cambios se aplican solo a solicitudes nuevas. Los plazos de solicitudes existentes se
           conservan.
@@ -121,7 +120,7 @@ export function PriorityTargetsScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { gap: spacing.md, padding: spacing.lg },
+  content: { gap: spacing.md, padding: spacing.lg, paddingTop: spacing.md },
   card: { gap: spacing.md },
   heading: { ...typography.heading, color: colors.text },
   note: { ...typography.body, color: colors.textMuted },

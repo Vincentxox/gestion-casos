@@ -5,11 +5,12 @@ import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'rea
 
 import { BottomSheet } from '@/components/sheets/BottomSheet'
 import { CatalogActionSheet } from '@/components/actions/CatalogActionSheet'
-import { Button } from '@/components/ui/Button'
+import { useNavigation } from '@react-navigation/native'
 import { Card } from '@/components/ui/Card'
 import { Chip } from '@/components/ui/Chip'
 import { IconTile } from '@/components/ui/IconTile'
 import { ScreenContainer } from '@/components/ui/ScreenContainer'
+import { ScreenHeader } from '@/components/ui/ScreenHeader'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { RequestState } from '@/components/feedback/RequestState'
 import { SkeletonList } from '@/components/ui/SkeletonList'
@@ -26,6 +27,7 @@ import {
 } from '../useCategories'
 
 export function CategoriesScreen() {
+  const navigation = useNavigation()
   const categories = useCategories()
   const areas = useAreas()
   const createMutation = useCreateCategory()
@@ -87,6 +89,11 @@ export function CategoriesScreen() {
 
   return (
     <ScreenContainer edges={['bottom']} padded={false}>
+      <ScreenHeader
+        title="Tipos de servicio"
+        onBack={() => navigation.goBack()}
+        action={{ label: 'Nuevo', icon: 'add', onPress: () => openForm() }}
+      />
       <View style={styles.container}>
         <Text style={styles.subtitle}>Define los servicios que atiende cada área técnica.</Text>
 
@@ -175,9 +182,6 @@ export function CategoriesScreen() {
             )}
           />
         )}
-        <View style={styles.floatingAction}>
-          <Button label="Nuevo tipo de servicio" icon="add" onPress={() => openForm()} />
-        </View>
       </View>
 
       <CatalogActionSheet
@@ -215,12 +219,11 @@ export function CategoriesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, gap: spacing.md, padding: spacing.lg },
+  container: { flex: 1, gap: spacing.md, padding: spacing.lg, paddingTop: spacing.md },
   subtitle: { ...typography.body, color: colors.textMuted },
-  floatingAction: { position: 'absolute', right: spacing.lg, bottom: spacing.lg },
   filterList: { flexGrow: 0, flexShrink: 0, minHeight: 52 },
   filters: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xs },
-  list: { gap: spacing.md, paddingBottom: 96 },
+  list: { gap: spacing.md, paddingBottom: spacing.md },
   card: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -229,8 +232,8 @@ const styles = StyleSheet.create({
   },
   inactiveCard: { opacity: 0.7 },
   cardContent: { flex: 1, gap: spacing.xs },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  categoryName: { ...typography.heading, color: colors.text, flex: 1, minWidth: 0 },
+  nameRow: { alignItems: 'flex-start', gap: spacing.xs },
+  categoryName: { ...typography.heading, color: colors.text },
   areaName: { ...typography.caption, color: colors.textMuted },
   description: { ...typography.caption, color: colors.textMuted },
   iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },

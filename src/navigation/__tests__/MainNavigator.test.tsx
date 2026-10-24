@@ -1,5 +1,6 @@
 import { createNavigationContainerRef, NavigationContainer } from '@react-navigation/native'
-import { fireEvent, render, waitFor } from '@testing-library/react-native'
+import { fireEvent, render, waitFor, within } from '@testing-library/react-native'
+import type { ReactNode } from 'react'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import { MainRootNavigator } from '../MainNavigator'
@@ -89,20 +90,39 @@ jest.mock('@/features/home/HomeScreen', () => {
 })
 jest.mock('@/features/notifications/NotificationsScreen', () => {
   const { Pressable, Text } = jest.requireActual<typeof import('react-native')>('react-native')
+  const { useLayoutEffect } = jest.requireActual<typeof import('react')>('react')
   return {
     NotificationsScreen: ({
       navigation,
     }: {
-      navigation: { navigate: (screen: string, params: object) => void }
-    }) => (
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Abrir caso"
-        onPress={() => navigation.navigate('CaseDetail', { caseId: 'case-1' })}
-      >
-        <Text>Bandeja de prueba</Text>
-      </Pressable>
-    ),
+      navigation: {
+        navigate: (screen: string, params: object) => void
+        setOptions: (options: { headerRight: () => ReactNode }) => void
+      }
+    }) => {
+      useLayoutEffect(() => {
+        navigation.setOptions({
+          headerRight: () => (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Más opciones"
+              onPress={() => {}}
+            >
+              <Text>Más opciones</Text>
+            </Pressable>
+          ),
+        })
+      }, [navigation])
+      return (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Abrir caso"
+          onPress={() => navigation.navigate('CaseDetail', { caseId: 'case-1' })}
+        >
+          <Text>Bandeja de prueba</Text>
+        </Pressable>
+      )
+    },
   }
 })
 jest.mock('@/features/cases/screens/CaseDetailScreen', () => {
@@ -180,11 +200,14 @@ test('Editar también se muestra desde la pestaña Solicitudes', async () => {
   )
 
   await fireEvent.press(screen.getByRole('tab', { name: 'Solicitudes' }))
+  expect(screen.getByTestId('floating-tab-bar')).toBeTruthy()
   await fireEvent.press(await screen.findByRole('button', { name: 'Abrir solicitud' }))
+  await waitFor(() => expect(screen.queryByTestId('floating-tab-bar')).toBeNull())
   await fireEvent.press(await screen.findByRole('button', { name: 'Editar solicitud' }))
 
   await waitFor(() => expect(ref.getCurrentRoute()?.name).toBe('EditCase'))
   expect(screen.getByText('¿Qué necesitas?')).toBeTruthy()
+  expect(screen.queryByTestId('floating-tab-bar')).toBeNull()
 })
 
 test('Avisos se apila sobre las pestañas y el detalle regresa a Avisos', async () => {
@@ -216,6 +239,24 @@ test('Avisos se apila sobre las pestañas y el detalle regresa a Avisos', async 
   await waitFor(() =>
     expect(ref.getRootState()?.routes.map((route) => route.name)).toEqual(['MainTabs']),
   )
+})
+
+test('la cabecera de Avisos conserva la acción derecha configurada por la pantalla', async () => {
+  const screen = await render(
+    <SafeAreaProvider
+      initialMetrics={{
+        frame: { x: 0, y: 0, width: 400, height: 800 },
+        insets: { top: 0, right: 0, bottom: 0, left: 0 },
+      }}
+    >
+      <NavigationContainer>
+        <MainRootNavigator />
+      </NavigationContainer>
+    </SafeAreaProvider>,
+  )
+  await fireEvent.press(screen.getByRole('button', { name: 'Abrir Avisos' }))
+  const header = await screen.findByTestId('screen-header')
+  expect(within(header).getByRole('button', { name: 'Más opciones' })).toBeTruthy()
 })
 
 test('desde Avisos, Ir a Usuarios abre Administración cuando no hay personal', async () => {

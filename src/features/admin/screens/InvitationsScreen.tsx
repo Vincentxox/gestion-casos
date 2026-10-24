@@ -220,7 +220,7 @@ export function InvitationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { flexGrow: 1, gap: spacing.md, padding: spacing.lg },
+  content: { flexGrow: 1, gap: spacing.md, padding: spacing.lg, paddingTop: spacing.md },
   muted: { color: colors.textMuted, lineHeight: 21 },
   label: { ...typography.body, color: colors.text },
   sectionTitle: { ...typography.title, color: colors.text },
