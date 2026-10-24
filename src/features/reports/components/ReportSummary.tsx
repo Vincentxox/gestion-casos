@@ -11,7 +11,7 @@ import { Icon } from '@/components/ui/Icon'
 import type { CaseRecord } from '@/features/cases/types'
 import { PhotoGrid } from '@/features/photos/components/PhotoGrid'
 import { useCasePhotos } from '@/features/photos/usePhotos'
-import { colors, spacing, typography } from '@/theme/tokens'
+import { colors, spacing, tone, typography } from '@/theme/tokens'
 
 import { generateReportPdf, shareReportPdf } from '../reportService'
 import {
@@ -208,7 +208,7 @@ export function ReportSummary({
 const styles = StyleSheet.create({
   panel: { gap: spacing.md },
   heading: { ...typography.heading, color: colors.text },
-  returnNotice: { gap: spacing.xs, padding: spacing.sm, backgroundColor: colors.dangerBadge },
+  returnNotice: { gap: spacing.xs, padding: spacing.sm, backgroundColor: tone.danger.bg },
   requirements: { gap: spacing.xs },
   requirementRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   text: { ...typography.body, color: colors.text },

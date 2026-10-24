@@ -40,8 +40,8 @@ const styles = StyleSheet.create({
   },
   wordmarkSub: {
     fontFamily: fonts.semibold,
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 16,
     letterSpacing: 3,
     textTransform: 'uppercase',
     color: colors.primary,

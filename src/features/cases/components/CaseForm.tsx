@@ -1,5 +1,4 @@
-import React, { useState } from 'react'
-import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs'
+import { useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { Button } from '@/components/ui/Button'
@@ -39,7 +38,6 @@ export function CaseForm({
   submitLabel,
   markRequired = false,
 }: Props) {
-  const tabBarHeight = React.useContext(BottomTabBarHeightContext) ?? 0
   const [values, setValues] = useState(initialValues)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [categorySelectorOpen, setCategorySelectorOpen] = useState(false)
@@ -72,9 +70,7 @@ export function CaseForm({
   }
 
   return (
-    <KeyboardFormScrollView
-      contentContainerStyle={[styles.content, { paddingBottom: tabBarHeight + spacing.lg }]}
-    >
+    <KeyboardFormScrollView contentContainerStyle={styles.content}>
       <Text style={styles.sectionTitle}>¿Qué necesitas?</Text>
       <CategorySelectField
         categories={availableCategories}

@@ -6,11 +6,12 @@ import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'rea
 
 import { BottomSheet } from '@/components/sheets/BottomSheet'
 import { CatalogActionSheet } from '@/components/actions/CatalogActionSheet'
-import { Button } from '@/components/ui/Button'
+import { useNavigation } from '@react-navigation/native'
 import { Card } from '@/components/ui/Card'
 import { Chip } from '@/components/ui/Chip'
 import { IconTile } from '@/components/ui/IconTile'
 import { ScreenContainer } from '@/components/ui/ScreenContainer'
+import { ScreenHeader } from '@/components/ui/ScreenHeader'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { RequestState } from '@/components/feedback/RequestState'
 import { SkeletonList } from '@/components/ui/SkeletonList'
@@ -27,6 +28,7 @@ import {
 } from '../useResources'
 
 export function ResourcesScreen() {
+  const navigation = useNavigation()
   const resources = useResources()
   const create = useCreateResource()
   const update = useUpdateResource()
@@ -79,6 +81,11 @@ export function ResourcesScreen() {
 
   return (
     <ScreenContainer edges={['bottom']} padded={false}>
+      <ScreenHeader
+        title="Recursos"
+        onBack={() => navigation.goBack()}
+        action={{ label: 'Nuevo', icon: 'add', onPress: () => openForm() }}
+      />
       <View style={styles.container}>
         <Text style={styles.subtitle}>Materiales, herramientas y equipos de tu empresa.</Text>
         {resources.isLoading ? (
@@ -115,7 +122,7 @@ export function ResourcesScreen() {
                 <IconTile icon="cube-outline" />
                 <View style={styles.cardContent}>
                   <View style={styles.nameRow}>
-                    <Text numberOfLines={1} style={styles.name}>
+                    <Text numberOfLines={2} style={styles.name}>
                       {item.name}
                     </Text>
                     <Chip
@@ -144,9 +151,6 @@ export function ResourcesScreen() {
             )}
           />
         )}
-        <View style={styles.floatingAction}>
-          <Button label="Nuevo recurso" icon="add" onPress={() => openForm()} />
-        </View>
       </View>
       <CatalogActionSheet
         name={actionResource?.name ?? ''}
@@ -180,10 +184,9 @@ export function ResourcesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, gap: spacing.lg, padding: spacing.lg },
+  container: { flex: 1, gap: spacing.lg, padding: spacing.lg, paddingTop: spacing.md },
   subtitle: { ...typography.body, color: colors.textMuted },
-  floatingAction: { position: 'absolute', right: spacing.lg, bottom: spacing.lg },
-  list: { gap: spacing.md, paddingBottom: 96 },
+  list: { gap: spacing.md, paddingBottom: spacing.md },
   card: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -191,8 +194,8 @@ const styles = StyleSheet.create({
     minHeight: 88,
   },
   cardContent: { flex: 1, gap: spacing.xs },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  name: { ...typography.heading, color: colors.text, flex: 1 },
+  nameRow: { alignItems: 'flex-start', gap: spacing.xs },
+  name: { ...typography.heading, color: colors.text },
   meta: { ...typography.caption, color: colors.textMuted },
   description: { ...typography.caption, color: colors.textMuted },
   iconButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },

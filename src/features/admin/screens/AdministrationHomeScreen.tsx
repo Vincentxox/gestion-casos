@@ -11,7 +11,7 @@ import type { AdministrationStackParamList, MainTabParamList } from '@/navigatio
 import { useHomeSummary } from '@/features/home/useHomeSummary'
 import { useCaseIndicators } from '@/features/home/useIndicators'
 import { getAdminAlerts } from '@/features/home/homePresentation'
-import { colors, spacing, typography } from '@/theme/tokens'
+import { colors, spacing, tone, typography } from '@/theme/tokens'
 import { plural } from '@/theme/formatters'
 
 type Props = NativeStackScreenProps<AdministrationStackParamList, 'AdministrationHome'>
@@ -121,7 +121,7 @@ export function AdministrationHomeScreen({ navigation }: Props) {
               onPress={() => navigation.navigate(alert.screen)}
               style={styles.alertRow}
             >
-              <Icon name="alert-circle-outline" size="base" color={colors.warning} />
+              <Icon name="alert-circle-outline" size="base" color={tone.warning.text} />
               <Text style={styles.alertText}>{alert.label}</Text>
               <Icon name="chevron-forward" size="inline" color={colors.textMuted} />
             </Pressable>
@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingHorizontal: spacing.sm,
     borderRadius: spacing.sm,
-    backgroundColor: colors.warningSoft,
+    backgroundColor: tone.warning.bg,
   },
   alertText: { ...typography.body, flex: 1, color: colors.text },
   indicatorsStrip: {
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     padding: spacing.md,
     borderRadius: spacing.md,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: tone.info.bg,
   },
   indicatorsCopy: { flex: 1, gap: spacing.xs },
   stripTitle: { ...typography.heading, color: colors.ink },

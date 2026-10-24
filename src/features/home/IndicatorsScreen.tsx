@@ -26,11 +26,8 @@ export function IndicatorsScreen() {
   const result = useCaseIndicators(true, periodStart)
   const data = result.data
   return (
-    <ScreenContainer padded={false}>
+    <ScreenContainer edges={[]} padded={false}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text accessibilityRole="header" style={styles.title}>
-          Indicadores
-        </Text>
         <Text style={styles.note}>
           Datos de las solicitudes que puedes consultar. Los vencimientos actuales no dependen del
           filtro de creación.
@@ -138,8 +135,7 @@ export function IndicatorsScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { gap: spacing.md, padding: spacing.lg },
-  title: { ...typography.display, color: colors.text },
+  content: { gap: spacing.md, padding: spacing.lg, paddingTop: spacing.md },
   note: { ...typography.caption, color: colors.textMuted },
   filters: { flexDirection: 'row', gap: spacing.sm },
   card: { gap: spacing.sm },

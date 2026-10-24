@@ -198,8 +198,8 @@ export function CaseDetailScreen({ navigation, route }: Props) {
     { label: 'Solicita', value: item.requestingAreaName },
     { label: 'Atiende', value: item.targetAreaName },
     { label: 'Servicio', value: item.category },
-    { label: 'Descripción', value: item.description },
-    { label: 'Ubicación', value: item.location },
+    { label: 'Descripción', value: item.description, long: true },
+    { label: 'Ubicación', value: item.location, long: true },
     {
       label: 'Prioridad',
       value: overdue
@@ -219,7 +219,10 @@ export function CaseDetailScreen({ navigation, route }: Props) {
         <ScrollView
           ref={scrollRef}
           testID="case-detail-scroll"
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[
+            styles.content,
+            (primaryLabel || showOverdueReassign) && styles.contentWithFooter,
+          ]}
           keyboardShouldPersistTaps="handled"
           onContentSizeChange={() => {
             if (activeTab === 'messages') scrollRef.current?.scrollToEnd({ animated: false })
@@ -282,12 +285,7 @@ export function CaseDetailScreen({ navigation, route }: Props) {
               </Text>
             </View>
             {overdue ? <Text style={styles.overdue}>{overdue}</Text> : null}
-            {primaryLabel ? (
-              <View style={styles.turnBanner}>
-                <Icon name="time-outline" size={22} color={colors.primary} />
-                <Text style={styles.turnText}>Te toca: {primaryLabel.toLowerCase()}</Text>
-              </View>
-            ) : waiting ? (
+            {!primaryLabel && waiting ? (
               <View style={[styles.turnBanner, styles.waitingBanner]}>
                 <Icon name="time-outline" size={22} color={colors.textMuted} />
                 <Text style={styles.waitingText}>{waiting.banner}</Text>
@@ -401,7 +399,12 @@ export function CaseDetailScreen({ navigation, route }: Props) {
                 />
               </View>
             ) : null}
-            {primaryLabel ? <Button label={primaryLabel} onPress={runPrimary} /> : null}
+            {primaryLabel ? (
+              <>
+                <Text style={styles.yourTurn}>Te toca a ti</Text>
+                <Button label={primaryLabel} onPress={runPrimary} />
+              </>
+            ) : null}
           </View>
         ) : null}
       </KeyboardAvoidingView>
@@ -426,9 +429,9 @@ export function CaseDetailScreen({ navigation, route }: Props) {
         fitContent
       >
         {dataRows.map((row) => (
-          <View key={row.label} style={styles.dataRow}>
+          <View key={row.label} style={[styles.dataRow, row.long && styles.dataRowLong]}>
             <Text style={styles.dataLabel}>{row.label}</Text>
-            <Text style={styles.dataValue}>{row.value}</Text>
+            <Text style={[styles.dataValue, row.long && styles.dataValueLong]}>{row.value}</Text>
           </View>
         ))}
         <Button
@@ -449,6 +452,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   keyboardArea: { flex: 1 },
   content: { gap: spacing.lg, padding: spacing.md, paddingBottom: spacing.xl },
+  contentWithFooter: { paddingBottom: 96 },
   heading: { gap: spacing.base },
   toolbar: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   caseNumber: { ...typography.heading, color: colors.textMuted, flex: 1 },
@@ -495,7 +499,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     backgroundColor: colors.primarySoft,
   },
-  turnText: { ...typography.body, fontFamily: fonts.semibold, color: colors.ink },
   waitingBanner: { backgroundColor: colors.surfaceMuted },
   waitingText: { ...typography.body, color: colors.textMuted, flex: 1 },
   tabs: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.border },
@@ -564,6 +567,12 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     backgroundColor: colors.background,
   },
+  yourTurn: {
+    ...typography.label,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
   overdueReassign: { gap: spacing.sm },
   deadlineText: { ...typography.caption, textAlign: 'center', color: colors.textMuted },
   secondaryButton: { borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
@@ -576,6 +585,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
+  dataRowLong: { alignItems: 'flex-start', flexDirection: 'column', paddingVertical: spacing.sm },
   dataLabel: { ...typography.body, color: colors.textMuted },
   dataValue: {
     ...typography.body,
@@ -584,5 +594,6 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     textAlign: 'right',
   },
+  dataValueLong: { textAlign: 'left', alignSelf: 'stretch' },
   error: { ...typography.body, color: colors.error },
 })

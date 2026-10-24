@@ -292,7 +292,7 @@ function AreaOption({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, gap: spacing.lg, padding: spacing.lg },
+  container: { flex: 1, gap: spacing.lg, padding: spacing.lg, paddingTop: spacing.md },
   header: { gap: spacing.xs },
   subtitle: { ...typography.body, color: colors.textMuted },
   search: {

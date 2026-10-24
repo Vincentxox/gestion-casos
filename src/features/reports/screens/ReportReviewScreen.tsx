@@ -359,7 +359,7 @@ export function ReportReviewScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { gap: spacing.md, padding: spacing.lg, paddingBottom: spacing.xl },
+  content: { gap: spacing.md, padding: spacing.lg, paddingBottom: 96 },
   notice: { gap: spacing.sm },
   text: { ...typography.body, color: colors.text },
   muted: { ...typography.body, color: colors.textMuted },

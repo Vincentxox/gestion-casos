@@ -137,7 +137,7 @@ export function OrganizationScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { flexGrow: 1, gap: spacing.lg, padding: spacing.lg },
+  content: { flexGrow: 1, gap: spacing.lg, padding: spacing.lg, paddingTop: spacing.md },
   card: { gap: spacing.lg, padding: spacing.lg },
   codeTitle: { ...typography.heading, color: colors.text },
   code: { ...typography.display, color: colors.primary, letterSpacing: 2 },

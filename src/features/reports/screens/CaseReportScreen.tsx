@@ -278,7 +278,7 @@ export function CaseReportScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { gap: spacing.md, padding: spacing.lg, paddingBottom: spacing.xl },
+  content: { gap: spacing.md, padding: spacing.lg, paddingBottom: 96 },
   title: { ...typography.caption, color: colors.textMuted },
   sectionTitle: { ...typography.heading, color: colors.text },
   card: { gap: spacing.md },

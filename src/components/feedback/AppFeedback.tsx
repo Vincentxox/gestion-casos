@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Button } from '@/components/ui/Button'
 import { Icon, type IconName } from '@/components/ui/Icon'
 import { feedback } from '@/services/feedback'
-import { colors, elevation, fonts, radius, spacing, typography } from '@/theme/tokens'
+import { colors, elevation, fonts, radius, spacing, tone, typography } from '@/theme/tokens'
 
 type DialogTone = 'info' | 'warning' | 'danger'
 type ToastTone = 'success' | 'info'
@@ -107,11 +107,11 @@ export function useFeedback(): FeedbackApi {
 const toneMeta: Record<DialogTone, { icon: IconName; color: string; background: string }> = {
   info: {
     icon: 'information-circle-outline',
-    color: colors.primary,
-    background: colors.primarySoft,
+    color: tone.info.text,
+    background: tone.info.bg,
   },
-  warning: { icon: 'warning-outline', color: colors.warning, background: colors.warningSoft },
-  danger: { icon: 'warning-outline', color: colors.error, background: colors.dangerSoft },
+  warning: { icon: 'warning-outline', color: tone.warning.text, background: tone.warning.bg },
+  danger: { icon: 'warning-outline', color: tone.danger.text, background: tone.danger.bg },
 }
 
 function AppDialog({

@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
   },
   itemTitle: { ...typography.caption, color: colors.text, flex: 1 },
   unreadTitle: { fontFamily: fonts.bold },
-  time: { ...typography.caption, color: colors.textMuted, fontSize: 11 },
+  time: { ...typography.caption, color: colors.textMuted, fontSize: 12 },
   caseLabel: { ...typography.caption, color: colors.textMuted },
   actor: { ...typography.caption, color: colors.textMuted, fontSize: 11 },
   unreadDot: {

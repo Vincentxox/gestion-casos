@@ -22,7 +22,7 @@ import { notificationTimeLabel } from '@/features/notifications/notificationPres
 import { useNotifications } from '@/features/notifications/useNotifications'
 import type { MainTabParamList, RootStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
-import { colors, fonts, phaseColors, radius, spacing, typography } from '@/theme/tokens'
+import { colors, fonts, phaseColors, radius, spacing, tone, typography } from '@/theme/tokens'
 
 import {
   getHomeCaseCards,
@@ -143,6 +143,14 @@ export function HomeScreen({ navigation }: Props) {
     feedbackDialogOpen,
   ])
   if (!profile) return null
+  const overdueMessage =
+    profile.role === 'solicitante'
+      ? overdueCount === 1
+        ? 'Pasó su plazo; el área técnica ya fue avisada'
+        : 'Pasaron su plazo; el área técnica ya fue avisada'
+      : overdueCount === 1
+        ? 'Pasó su plazo; atiéndela primero'
+        : 'Pasaron su plazo; atiéndelas primero'
   const today = getTodayNotifications(notifications.data ?? [], now)
   const areaName = profile.areaName || 'Administración'
   const firstStepItems = [
@@ -236,7 +244,7 @@ export function HomeScreen({ navigation }: Props) {
           {attentionReady && overdueCount > 0 ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`${overdueCount} ${overdueCount === 1 ? 'solicitud vencida' : 'solicitudes vencidas'}. Pasaron su plazo; atiéndelas primero. Ver`}
+              accessibilityLabel={`${overdueCount} ${overdueCount === 1 ? 'solicitud vencida' : 'solicitudes vencidas'}. ${overdueMessage}`}
               onPress={() =>
                 navigation.navigate('CasesTab', {
                   screen: 'Cases',
@@ -252,11 +260,8 @@ export function HomeScreen({ navigation }: Props) {
                 <Text style={[styles.attentionTitle, styles.attentionDangerText]}>
                   {overdueCount} {overdueCount === 1 ? 'solicitud vencida' : 'solicitudes vencidas'}
                 </Text>
-                <Text style={styles.attentionDescription}>
-                  Pasaron su plazo; atiéndelas primero
-                </Text>
+                <Text style={styles.attentionDescription}>{overdueMessage}</Text>
               </View>
-              <Text style={[styles.attentionLink, styles.attentionDangerText]}>Ver ›</Text>
             </Pressable>
           ) : null}
           {attentionReady && overdueCount === 0 && currentStep ? (
@@ -284,9 +289,6 @@ export function HomeScreen({ navigation }: Props) {
                     {currentStep.title}
                   </Text>
                 </View>
-                <Text style={[styles.attentionLink, styles.attentionInfoText]}>
-                  {NEXT_STEP_BUTTON_LABELS[currentStep.action]} ›
-                </Text>
               </Pressable>
               {(nextSteps.data?.total ?? items.length) > 1 ? (
                 <Pressable
@@ -332,7 +334,6 @@ export function HomeScreen({ navigation }: Props) {
                     : `${inProgressCount} ${inProgressCount === 1 ? 'trabajo en curso' : 'trabajos en curso'}, ninguno vencido`}
                 </Text>
               </View>
-              <Text style={[styles.attentionLink, styles.attentionSuccessText]}>Ver ›</Text>
             </Pressable>
           ) : null}
         </TourTarget>
@@ -464,7 +465,9 @@ export function HomeScreen({ navigation }: Props) {
                     <Text style={styles.caseCount}>{card.count}</Text>
                     <View style={styles.caseTileLabel}>
                       <View style={[styles.caseDot, { backgroundColor: CARD_TONES[card.tone] }]} />
-                      <Text style={styles.caseLabel}>{card.label}</Text>
+                      <Text numberOfLines={1} style={styles.caseLabel}>
+                        {card.label}
+                      </Text>
                     </View>
                   </Pressable>
                 ))}
@@ -586,7 +589,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.sky,
     color: colors.white,
     ...typography.caption,
-    fontSize: 11,
+    fontSize: 12,
     lineHeight: 18,
   },
   attentionLoading: {
@@ -604,9 +607,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: radius.lg,
   },
-  attentionDanger: { backgroundColor: colors.dangerSoft, borderColor: colors.dangerBorder },
-  attentionInfo: { backgroundColor: colors.primarySoft, borderColor: colors.primarySoft },
-  attentionSuccess: { backgroundColor: colors.successSoft, borderColor: colors.successSoft },
+  attentionDanger: { backgroundColor: tone.danger.bg, borderColor: tone.danger.border },
+  attentionInfo: { backgroundColor: tone.info.bg, borderColor: tone.info.border },
+  attentionSuccess: { backgroundColor: tone.success.bg, borderColor: tone.success.border },
   attentionIcon: {
     width: 44,
     height: 44,
@@ -619,11 +622,10 @@ const styles = StyleSheet.create({
   attentionSuccessIcon: { backgroundColor: colors.surface },
   attentionCopy: { flex: 1, gap: spacing.xs },
   attentionTitle: { ...typography.heading },
-  attentionDangerText: { color: colors.dangerText },
-  attentionInfoText: { color: colors.primaryDark },
-  attentionSuccessText: { color: colors.success },
+  attentionDangerText: { color: tone.danger.text },
+  attentionInfoText: { color: tone.info.text },
+  attentionSuccessText: { color: tone.success.text },
   attentionDescription: { ...typography.caption, color: colors.textMuted },
-  attentionLink: { ...typography.caption, fontFamily: fonts.bold },
   moreSteps: { minHeight: 44, alignSelf: 'flex-end', justifyContent: 'center' },
   section: { gap: spacing.sm },
   sectionTitleRow: {
@@ -637,7 +639,7 @@ const styles = StyleSheet.create({
   actionText: { ...typography.caption, fontFamily: fonts.bold, color: colors.primary },
   firstStepsCard: {
     borderRadius: radius.lg,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: tone.info.bg,
     padding: spacing.md,
     gap: spacing.sm,
   },
@@ -657,7 +659,7 @@ const styles = StyleSheet.create({
   caseTile: {
     flexBasis: '30%',
     flexGrow: 1,
-    minHeight: 88,
+    height: 88,
     padding: spacing.md,
     gap: spacing.xs,
     borderWidth: 1,
@@ -668,7 +670,7 @@ const styles = StyleSheet.create({
   caseCount: { ...typography.display, color: colors.ink },
   caseTileLabel: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   caseDot: { width: 8, height: 8, borderRadius: radius.pill },
-  caseLabel: { ...typography.caption, color: colors.textMuted },
+  caseLabel: { ...typography.caption, color: colors.textMuted, flexShrink: 1 },
   todayRow: {
     minHeight: 64,
     flexDirection: 'row',

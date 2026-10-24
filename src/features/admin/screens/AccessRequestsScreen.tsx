@@ -225,7 +225,7 @@ export function AccessRequestsScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { flex: 1, padding: spacing.lg, gap: spacing.md },
+  content: { flex: 1, padding: spacing.lg, paddingTop: spacing.md, gap: spacing.md },
   card: { marginBottom: spacing.sm },
   cardContent: { gap: spacing.xs, padding: spacing.md },
   name: { color: colors.text, ...typography.heading },
