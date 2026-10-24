@@ -52,11 +52,44 @@ export async function listNotifications(): Promise<AppNotification[]> {
   }))
 }
 
+export async function listReadNotificationIds(): Promise<number[]> {
+  const ids: number[] = []
+  const pageSize = 1000
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('id')
+      .not('read_at', 'is', null)
+      .order('id', { ascending: true })
+      .range(offset, offset + pageSize - 1)
+    if (error) throw error
+    ids.push(...(data ?? []).map((row) => row.id))
+    if (!data || data.length < pageSize) return ids
+  }
+}
+
 export async function markNotificationsRead(ids: number[] | null = null): Promise<number> {
   const { data, error } = await supabase.rpc(
     'mark_notifications_read',
     ids === null ? {} : { notification_ids: ids },
   )
+  if (error) throw error
+  return data
+}
+
+export async function dismissNotifications(ids: number[] | null = null): Promise<number> {
+  const { data, error } = await supabase.rpc(
+    'dismiss_notifications',
+    ids === null ? {} : { notification_ids: ids },
+  )
+  if (error) throw error
+  return data
+}
+
+export async function restoreNotifications(ids: number[]): Promise<number> {
+  const { data, error } = await supabase.rpc('restore_notifications', {
+    notification_ids: ids,
+  })
   if (error) throw error
   return data
 }
