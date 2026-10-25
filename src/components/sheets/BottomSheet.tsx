@@ -1,15 +1,19 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import {
+  Animated,
+  Easing,
   Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
   type DimensionValue,
   type StyleProp,
   type ViewStyle,
 } from 'react-native'
+import { useReducedMotion } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
@@ -55,6 +59,47 @@ export function BottomSheet({
   contentStyle,
 }: BottomSheetProps) {
   const insets = useSafeAreaInsets()
+  const { height: windowHeight } = useWindowDimensions()
+  const reduceMotion = useReducedMotion()
+  const [mounted, setMounted] = useState(visible)
+  const [sheetHeight, setSheetHeight] = useState(0)
+  const [translateY] = useState(() => new Animated.Value(windowHeight))
+
+  useEffect(() => {
+    if (visible) {
+      // El Modal ya es visible; esperamos su layout antes de conservarlo para la salida.
+      if (!mounted) return
+      if (reduceMotion) {
+        translateY.setValue(0)
+        return
+      }
+      if (!sheetHeight) return
+      translateY.setValue(sheetHeight)
+      const animation = Animated.timing(translateY, {
+        toValue: 0,
+        duration: 250,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      })
+      animation.start()
+      return () => animation.stop()
+    }
+    if (!mounted) return
+    if (reduceMotion) {
+      const frame = requestAnimationFrame(() => setMounted(false))
+      return () => cancelAnimationFrame(frame)
+    }
+    const animation = Animated.timing(translateY, {
+      toValue: sheetHeight || windowHeight,
+      duration: 250,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    })
+    animation.start(({ finished }) => {
+      if (finished) setMounted(false)
+    })
+    return () => animation.stop()
+  }, [visible, mounted, reduceMotion, sheetHeight, translateY, windowHeight])
   const content = form ? (
     <KeyboardFormScrollView
       contentContainerStyle={[styles.content, contentStyle]}
@@ -78,7 +123,7 @@ export function BottomSheet({
   )
 
   return (
-    <Modal animationType="slide" onRequestClose={onClose} transparent visible={visible}>
+    <Modal animationType="fade" onRequestClose={onClose} transparent visible={visible || mounted}>
       <View style={styles.overlay}>
         <Pressable
           accessibilityLabel="Cerrar hoja"
@@ -87,9 +132,17 @@ export function BottomSheet({
           style={styles.backdrop}
           testID="bottom-sheet-backdrop"
         />
-        <View
+        <Animated.View
           accessibilityViewIsModal
-          style={[styles.sheet, { height: fitContent ? 'auto' : (height ?? '80%') }]}
+          onLayout={(event) => {
+            setSheetHeight(event.nativeEvent.layout.height)
+            if (visible && !mounted) setMounted(true)
+          }}
+          style={[
+            styles.sheet,
+            { height: fitContent ? 'auto' : (height ?? '80%') },
+            { transform: [{ translateY }] },
+          ]}
           testID="bottom-sheet"
         >
           <View style={styles.handle} />
@@ -139,7 +192,7 @@ export function BottomSheet({
           ) : (
             <View style={{ height: Math.max(insets.bottom, spacing.md) }} />
           )}
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   )

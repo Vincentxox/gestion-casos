@@ -80,8 +80,9 @@ export function CaseCard({
         )}
         <View style={styles.locationPart}>
           <Text numberOfLines={1} style={styles.location}>
-            {item.overdueStage ? `${status.label} · ` : '· '}
-            {item.location}
+            {item.overdueStage
+              ? `${status.label}${item.location ? ` · ${item.location}` : ''}`
+              : item.location}
           </Text>
           {guideMarkers ? <GuideMarker number={2} /> : null}
         </View>

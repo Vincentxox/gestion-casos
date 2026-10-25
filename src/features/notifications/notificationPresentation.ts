@@ -1,6 +1,7 @@
 import type { IconName } from '@/components/ui/Icon'
 import type { AppNotification } from './notificationService'
 import { colors, phaseColors } from '@/theme/tokens'
+import { formatCaseCardDate } from '@/theme/formatters'
 
 export type NotificationFilter = 'all' | 'unread'
 export type NotificationGroupName = 'Hoy' | 'Ayer' | 'Esta semana' | 'Anteriores'
@@ -93,23 +94,7 @@ export function notificationGroupName(createdAt: string, now: Date): Notificatio
 export function notificationTimeLabel(createdAt: string, now: Date): string {
   const date = new Date(createdAt)
   if (Number.isNaN(date.getTime())) return ''
-  const group = notificationGroupName(createdAt, now)
-  if (group === 'Hoy' || group === 'Ayer') {
-    return new Intl.DateTimeFormat('es-GT', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }).format(date)
-  }
-  if (group === 'Esta semana') {
-    return new Intl.DateTimeFormat('es-GT', { weekday: 'short' }).format(date)
-  }
-  const day = new Intl.DateTimeFormat('es-GT', { day: 'numeric' }).format(date)
-  const rawMonth = new Intl.DateTimeFormat('es-GT', { month: 'short' })
-    .format(date)
-    .replace(/\.$/, '')
-  const month = rawMonth === 'sept' ? 'sep' : rawMonth
-  return `${day} ${month}.`
+  return formatCaseCardDate(createdAt, now.getTime())
 }
 
 export function groupNotifications(items: AppNotification[], now: Date) {

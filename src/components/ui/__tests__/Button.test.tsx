@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react-native'
+import { fireEvent, render } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
 
 import { Button } from '../Button'
@@ -26,4 +26,17 @@ test('usa el fondo y texto neutros cuando está desactivado', async () => {
   expect(screen.getByText('Guardar').props.style).toEqual(
     expect.arrayContaining([expect.objectContaining({ color: colors.disabledText })]),
   )
+})
+
+test('una acción visualmente desactivada puede explicar qué falta sin ejecutar la acción', async () => {
+  const onPress = jest.fn()
+  const onDisabledPress = jest.fn()
+  const screen = await render(
+    <Button label="Revisar" disabled onPress={onPress} onDisabledPress={onDisabledPress} />,
+  )
+  const button = screen.getByRole('button', { name: 'Revisar' })
+  expect(StyleSheet.flatten(button.props.style).backgroundColor).toBe(colors.disabledBg)
+  await fireEvent.press(button)
+  expect(onDisabledPress).toHaveBeenCalledTimes(1)
+  expect(onPress).not.toHaveBeenCalled()
 })

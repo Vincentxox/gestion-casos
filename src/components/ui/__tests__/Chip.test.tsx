@@ -25,3 +25,14 @@ test('el chip informativo mide 28 px y usa el tono semántico', async () => {
     expect.objectContaining({ minHeight: 28, backgroundColor: colors.successSoft }),
   )
 })
+
+test('el chip pendiente tiene fondo blanco, borde y no muestra marca', async () => {
+  const screen = await render(<Chip label="Diagnóstico" outlined />)
+  const chip = screen.getByText('Diagnóstico').parent
+  expect(StyleSheet.flatten(chip?.props.style)).toMatchObject({
+    backgroundColor: colors.surface,
+    borderColor: colors.cardBorder,
+    borderWidth: 1,
+  })
+  expect(chip?.children).toHaveLength(1)
+})

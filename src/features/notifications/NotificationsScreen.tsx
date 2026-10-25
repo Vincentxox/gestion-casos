@@ -1,8 +1,16 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import {
+  AccessibilityInfo,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native'
 
-import { ActionSheet } from '@/components/actions/ActionSheet'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { RequestState } from '@/components/feedback/RequestState'
 import { UndoSnackbar } from '@/components/feedback/UndoSnackbar'
@@ -10,7 +18,7 @@ import { useFeedback } from '@/components/feedback/AppFeedback'
 import { Icon } from '@/components/ui/Icon'
 import { ScreenContainer } from '@/components/ui/ScreenContainer'
 import type { MainStackParamList } from '@/navigation/types'
-import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
+import { colors, elevation, fonts, radius, spacing, typography } from '@/theme/tokens'
 import {
   filterNotifications,
   groupNotifications,
@@ -34,8 +42,14 @@ export function NotificationsScreen({ navigation }: Props) {
   const dismiss = useDismissNotifications()
   const restore = useRestoreNotifications()
   const feedback = useFeedback()
+  const { width: windowWidth } = useWindowDimensions()
   const [filter, setFilter] = useState<NotificationFilter>('all')
   const [menuOpen, setMenuOpen] = useState(false)
+  const [menuPosition, setMenuPosition] = useState<{ top: number; right: number }>({
+    top: 56,
+    right: spacing.md,
+  })
+  const headerButton = useRef<View>(null)
   const [undoIds, setUndoIds] = useState<number[]>([])
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [now] = useState(() => new Date())
@@ -44,6 +58,10 @@ export function NotificationsScreen({ navigation }: Props) {
   const readCount = readIdsQuery.data?.length ?? allItems.filter((item) => item.readAt).length
   const visibleItems = filterNotifications(allItems, filter)
   const groups = groupNotifications(visibleItems, now)
+
+  useEffect(() => {
+    if (menuOpen) AccessibilityInfo.announceForAccessibility('Opciones de avisos, menú')
+  }, [menuOpen])
 
   useEffect(
     () => () => {
@@ -114,14 +132,23 @@ export function NotificationsScreen({ navigation }: Props) {
             accessibilityLabel="Más opciones"
             accessibilityState={{ disabled: markPending || dismiss.isPending }}
             disabled={markPending || dismiss.isPending}
-            onPress={() => setMenuOpen(true)}
+            ref={headerButton}
+            onPress={() => {
+              headerButton.current?.measureInWindow((x, y, width, height) => {
+                setMenuPosition({
+                  top: y + height,
+                  right: Math.max(spacing.md, windowWidth - x - width),
+                })
+              })
+              setMenuOpen(true)
+            }}
             style={styles.headerAction}
           >
-            <Icon name="ellipsis-vertical" color={colors.primary} />
+            <Icon name="ellipsis-horizontal" color={colors.primary} />
           </Pressable>
         ) : null,
     })
-  }, [navigation, unreadCount, readCount, markPending, dismiss.isPending])
+  }, [navigation, unreadCount, readCount, markPending, dismiss.isPending, windowWidth])
 
   return (
     <ScreenContainer padded={false} edges={['bottom']}>
@@ -194,31 +221,56 @@ export function NotificationsScreen({ navigation }: Props) {
         ))}
       </ScrollView>
       <UndoSnackbar count={undoIds.length} onUndo={undo} />
-      <ActionSheet
-        title="Opciones de avisos"
-        actions={[
-          ...(unreadCount > 0
-            ? [{ id: 'read' as const, label: 'Marcar todo como leído', icon: 'checkmark' as const }]
-            : []),
-          ...(readCount > 0
-            ? [
-                {
-                  id: 'delete' as const,
-                  label: `Borrar avisos leídos (${readCount})`,
-                  icon: 'trash-outline' as const,
-                  destructive: true,
-                },
-              ]
-            : []),
-        ]}
+      <Modal
+        transparent
+        statusBarTranslucent
+        animationType="fade"
         visible={menuOpen}
-        onClose={() => setMenuOpen(false)}
-        onSelect={(id) => {
-          setMenuOpen(false)
-          if (id === 'read') markRead(null)
-          else void deleteRead()
-        }}
-      />
+        onRequestClose={() => setMenuOpen(false)}
+      >
+        <View style={styles.menuOverlay}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Cerrar opciones de avisos"
+            onPress={() => setMenuOpen(false)}
+            style={StyleSheet.absoluteFill}
+          />
+          <View
+            accessibilityRole="menu"
+            accessibilityLabel="Opciones de avisos"
+            style={[styles.menu, menuPosition]}
+          >
+            {unreadCount > 0 ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Marcar todo como leído"
+                onPress={() => {
+                  setMenuOpen(false)
+                  markRead(null)
+                }}
+                style={styles.menuItem}
+              >
+                <Icon name="checkmark" color={colors.ink} size={20} />
+                <Text style={styles.menuText}>Marcar todo como leído</Text>
+              </Pressable>
+            ) : null}
+            {readCount > 0 ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Borrar avisos leídos (${readCount})`}
+                onPress={() => {
+                  setMenuOpen(false)
+                  void deleteRead()
+                }}
+                style={styles.menuItem}
+              >
+                <Icon name="trash-outline" color={colors.error} size={20} />
+                <Text style={styles.menuDestructiveText}>Borrar avisos leídos ({readCount})</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
+      </Modal>
     </ScreenContainer>
   )
 }
@@ -226,6 +278,24 @@ export function NotificationsScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   content: { gap: spacing.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.lg },
   headerAction: { minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center' },
+  menuOverlay: { flex: 1, backgroundColor: 'rgba(10,20,38,0.12)' },
+  menu: {
+    position: 'absolute',
+    minWidth: 250,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.xs,
+    ...elevation.md,
+  },
+  menuItem: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.base,
+    paddingHorizontal: spacing.md,
+  },
+  menuText: { ...typography.caption, color: colors.ink },
+  menuDestructiveText: { ...typography.caption, color: colors.error },
   filters: {
     flexDirection: 'row',
     backgroundColor: colors.neutralSoft,

@@ -49,6 +49,13 @@ export const tone = {
   neutral: { bg: colors.neutralSoft, border: '#E4E9F0', text: colors.neutral },
 } as const
 
+export const avatar = {
+  ink: colors.ink,
+  teal: '#0F766E',
+  indigo: '#4338CA',
+  slate: '#52627A',
+} as const
+
 export const spacing = {
   xs: 4,
   sm: 8,
@@ -87,7 +94,7 @@ export const typography = {
   heading: { ...noLigatures, fontFamily: fonts.bold, fontSize: 17, lineHeight: 22 },
   body: { ...noLigatures, fontFamily: fonts.regular, fontSize: 15, lineHeight: 22 },
   caption: { ...noLigatures, fontFamily: fonts.medium, fontSize: 13, lineHeight: 18 },
-  label: { ...noLigatures, fontFamily: fonts.semibold, fontSize: 12, lineHeight: 16 },
+  label: { ...noLigatures, fontFamily: fonts.semibold, fontSize: 13, lineHeight: 18 },
   overline: {
     ...noLigatures,
     fontFamily: fonts.bold,

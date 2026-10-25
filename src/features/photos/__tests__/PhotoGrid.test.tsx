@@ -131,7 +131,7 @@ test('la primera carga y una denegación ocultan agregar; la recarga conserva el
   await screen.rerender(
     inSafeArea(<PhotoGrid caseId="case" kind="despues" userId="tech" editable />),
   )
-  expect(screen.getAllByRole('button', { name: 'Agregar foto de después' })).toHaveLength(3)
+  expect(screen.getAllByRole('button', { name: 'Agregar foto de después' })).toHaveLength(1)
 
   mockCaseActionsResponse = {
     data: { fotos_despues: { allowed: false } },

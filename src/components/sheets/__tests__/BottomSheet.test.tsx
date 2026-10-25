@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
 import { fireEvent, render } from '@testing-library/react-native'
-import { Text } from 'react-native'
+import { Animated, StyleSheet, Text } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import * as Reanimated from 'react-native-reanimated'
 
 import { ActionSheet } from '@/components/actions/ActionSheet'
 
@@ -77,9 +78,7 @@ test('pone las acciones destructivas al final y separadas', async () => {
   const labels = screen
     .getAllByText(/Editar|Cancelar solicitud|Rechazar/)
     .map((node) => node.props.children)
-  expect(screen.getByTestId('bottom-sheet').props.style).toEqual(
-    expect.arrayContaining([expect.objectContaining({ height: 'auto' })]),
-  )
+  expect(StyleSheet.flatten(screen.getByTestId('bottom-sheet').props.style).height).toBe('auto')
   expect(labels.indexOf('Editar')).toBeLessThan(labels.indexOf('Cancelar solicitud'))
   expect(labels.indexOf('Cancelar solicitud')).toBeLessThan(labels.indexOf('Rechazar'))
 })
@@ -96,7 +95,48 @@ test('mantiene desplazable un menú de cuatro o más acciones', async () => {
       />,
     ),
   )
-  expect(screen.getByTestId('bottom-sheet').props.style).toEqual(
-    expect.arrayContaining([expect.objectContaining({ height: '55%' })]),
+  expect(StyleSheet.flatten(screen.getByTestId('bottom-sheet').props.style).height).toBe('55%')
+})
+
+test('el fondo aparece con fade y con movimiento reducido no desplaza la hoja', async () => {
+  const screen = await render(
+    withSafeArea(
+      <BottomSheet title="Firma de ejecución" visible onClose={jest.fn()}>
+        <Text>Firma</Text>
+      </BottomSheet>,
+    ),
   )
+  const sheet = screen.getByTestId('bottom-sheet')
+  expect(sheet.parent?.parent?.props.animationType).toBe('fade')
+  const translation = StyleSheet.flatten(sheet.props.style).transform[0].translateY
+  expect(translation).toBe(0)
+})
+
+test('sin reducción, solo la hoja entra y sale en 250 ms', async () => {
+  const reduced = jest.spyOn(Reanimated, 'useReducedMotion').mockReturnValue(false)
+  const timing = jest.spyOn(Animated, 'timing')
+  try {
+    const sheet = (visible: boolean) =>
+      withSafeArea(
+        <BottomSheet title="Firma de ejecución" visible={visible} onClose={jest.fn()}>
+          <Text>Firma</Text>
+        </BottomSheet>,
+      )
+    const screen = await render(sheet(true))
+    await fireEvent(screen.getByTestId('bottom-sheet'), 'layout', {
+      nativeEvent: { layout: { height: 320 } },
+    })
+    expect(timing).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ toValue: 0, duration: 250, useNativeDriver: true }),
+    )
+    await screen.rerender(sheet(false))
+    expect(timing).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ toValue: 320, duration: 250, useNativeDriver: true }),
+    )
+  } finally {
+    timing.mockRestore()
+    reduced.mockRestore()
+  }
 })

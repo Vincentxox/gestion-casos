@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import Svg, { Circle } from 'react-native-svg'
 
 import { BottomSheet } from '@/components/sheets/BottomSheet'
 import { Icon } from '@/components/ui/Icon'
+import { IconTile } from '@/components/ui/IconTile'
 import { hasPermission } from '@/features/auth/permissions'
 import { CaseCard } from '@/features/cases/components/CaseCard'
 import type { CaseRecord } from '@/features/cases/types'
@@ -24,6 +24,7 @@ import {
   type QuickGuide,
 } from './helpContent'
 import { useGuidedTour } from './tour/useGuidedTour'
+import { getTourProgress } from './tour/tourProgress'
 
 const EXAMPLE_CASE = {
   id: 'guide-example',
@@ -61,9 +62,7 @@ export function HelpScreen({
   const steps = getTutorialFor(role, query, canCreate)
   const guides = getGuidesFor(role, query, canCreate)
   const faqs = getFaqFor(role, query)
-  const seenCount = allSteps.filter((step) => seen.includes(step.id)).length
-  const nextIndex = allSteps.findIndex((step) => !seen.includes(step.id))
-  const nextStep = allSteps[nextIndex]
+  const { seenCount, nextIndex, nextStep } = getTourProgress(allSteps, seen)
   const nothingFound =
     query.trim().length > 0 && steps.length === 0 && guides.length === 0 && faqs.length === 0
   const start = (index = Math.max(0, nextIndex), repeat = false) =>
@@ -117,101 +116,56 @@ export function HelpScreen({
 
         {!query.trim() ? (
           <View style={styles.startCard}>
-            <View style={styles.startRow}>
-              <View style={styles.ring}>
-                <Svg height={58} width={58}>
-                  <Circle
-                    cx={29}
-                    cy={29}
-                    r={23}
-                    stroke={colors.textMuted}
-                    strokeWidth={5}
-                    fill="none"
-                  />
-                  <Circle
-                    cx={29}
-                    cy={29}
-                    r={23}
-                    stroke={colors.sky}
-                    strokeWidth={5}
-                    fill="none"
-                    strokeDasharray={`${(2 * Math.PI * 23 * seenCount) / allSteps.length} ${2 * Math.PI * 23}`}
-                    rotation={-90}
-                    origin="29,29"
-                  />
-                </Svg>
-                <Text style={styles.ringText}>
-                  {seenCount}/{allSteps.length}
-                </Text>
-              </View>
-              <View style={styles.startCopy}>
-                <Text style={styles.startOverline}>EMPIEZA AQUÍ</Text>
-                <Text style={styles.startTitle}>
-                  {seenCount === 0
-                    ? `Aprende Nexo en ${allSteps.length} pasos`
-                    : nextStep
-                      ? `Sigue: ${nextStep.title}`
-                      : 'Recorrido completado'}
-                </Text>
-                <Text style={styles.startSub}>
-                  {TUTORIAL_TITLES[role]} · {allSteps.length} pasos
-                </Text>
-              </View>
+            <View style={styles.startHeading}>
+              <Text style={styles.startTitle}>Aprende Nexo en {allSteps.length} pasos</Text>
+              <Text style={styles.startCount}>
+                {seenCount} de {allSteps.length}
+              </Text>
             </View>
+            {allSteps.map((step, index) => {
+              const done = seen.includes(step.id)
+              const current = nextStep?.id === step.id
+              return (
+                <View key={step.id} style={styles.tourStep}>
+                  <View
+                    style={[
+                      styles.tourCircle,
+                      done
+                        ? styles.tourCircleDone
+                        : current
+                          ? styles.tourCircleCurrent
+                          : styles.tourCirclePending,
+                    ]}
+                  >
+                    {done ? (
+                      <Icon name="checkmark" size={18} color={colors.ink} />
+                    ) : (
+                      <Text style={[styles.tourStepNumber, current && styles.tourStepCurrent]}>
+                        {index + 1}
+                      </Text>
+                    )}
+                  </View>
+                  <Text
+                    style={[
+                      styles.tourStepTitle,
+                      done && styles.tourStepDone,
+                      current && styles.tourStepCurrent,
+                    ]}
+                  >
+                    {step.title}
+                  </Text>
+                </View>
+              )
+            })}
             <Pressable
               accessibilityRole="button"
               onPress={() => start(nextStep ? nextIndex : 0, !nextStep)}
-              style={styles.startButton}
+              style={({ pressed }) => [styles.startButton, pressed && styles.startButtonPressed]}
             >
               <Text style={styles.startButtonText}>
-                {seenCount === 0
-                  ? 'Empezar recorrido'
-                  : nextStep
-                    ? 'Continuar recorrido'
-                    : 'Repetir recorrido'}
+                {nextStep ? `Continuar: ${nextStep.title}` : 'Repetir recorrido'}
               </Text>
             </Pressable>
-          </View>
-        ) : null}
-
-        {steps.length > 0 ? (
-          <View style={styles.section}>
-            <Text accessibilityRole="header" style={styles.sectionTitle}>
-              Tu recorrido
-            </Text>
-            <View>
-              {steps.map((step) => {
-                const index = allSteps.findIndex((entry) => entry.id === step.id)
-                const done = seen.includes(step.id)
-                const next = nextStep?.id === step.id
-                return (
-                  <Pressable
-                    key={step.id}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Paso ${index + 1}: ${step.title}`}
-                    onPress={() => start(index)}
-                    style={styles.step}
-                  >
-                    <View
-                      style={[
-                        styles.stepDot,
-                        next && styles.stepDotFirst,
-                        done && styles.stepDotDone,
-                      ]}
-                    >
-                      <Text style={[styles.stepNumber, done && styles.stepNumberDone]}>
-                        {done ? '✓' : index + 1}
-                      </Text>
-                    </View>
-                    <View style={styles.stepCopy}>
-                      <Text style={styles.stepTitle}>{step.title}</Text>
-                      <Text style={styles.stepDetail}>{done ? 'Visto' : step.where}</Text>
-                    </View>
-                    {next ? <Text style={styles.showMe}>Mostrarme</Text> : null}
-                  </Pressable>
-                )
-              })}
-            </View>
           </View>
         ) : null}
 
@@ -220,23 +174,26 @@ export function HelpScreen({
             <Text accessibilityRole="header" style={styles.sectionTitle}>
               Guías rápidas
             </Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.guideCards}
-            >
+            <View style={styles.guideCards}>
               {guides.map((guide) => (
                 <Pressable
                   key={guide.id}
                   accessibilityRole="button"
                   onPress={() => setOpenGuide(guide)}
-                  style={styles.guideCard}
+                  style={({ pressed }) => [styles.guideCard, pressed && styles.rowPressed]}
                 >
+                  <IconTile
+                    icon="play-circle-outline"
+                    size={40}
+                    backgroundColor={colors.surfaceMuted}
+                    iconColor={colors.ink}
+                  />
                   <Text style={styles.guideCardTitle}>{guide.title}</Text>
                   <Text style={styles.guideCardDuration}>{guide.duration}</Text>
+                  <Icon name="chevron-forward" color={colors.textMuted} size={18} />
                 </Pressable>
               ))}
-            </ScrollView>
+            </View>
           </View>
         ) : null}
 
@@ -255,15 +212,12 @@ export function HelpScreen({
                     accessibilityRole="button"
                     accessibilityState={{ expanded: open }}
                     onPress={() => setOpenFaq(open ? null : faq.id)}
-                    style={styles.faqQuestion}
+                    style={({ pressed }) => [styles.faqQuestion, pressed && styles.rowPressed]}
                   >
                     <Text style={styles.faqQuestionText}>{faq.question}</Text>
-                    <Text
-                      importantForAccessibility="no"
-                      style={[styles.faqSign, open && styles.faqSignOpen]}
-                    >
-                      +
-                    </Text>
+                    <View style={open && styles.faqChevronOpen}>
+                      <Icon name="chevron-down" color={colors.textMuted} size={18} />
+                    </View>
                   </Pressable>
                   {open ? <Text style={styles.faqAnswer}>{faq.answer}</Text> : null}
                 </View>
@@ -351,18 +305,25 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
     backgroundColor: colors.ink,
   },
-  startRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  ring: { width: 58, height: 58, alignItems: 'center', justifyContent: 'center' },
-  ringText: {
-    position: 'absolute',
-    ...typography.caption,
-    fontFamily: fonts.bold,
-    color: colors.white,
+  startHeading: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  startTitle: { ...typography.heading, color: colors.white, flex: 1 },
+  startCount: { ...typography.caption, fontFamily: fonts.semibold, color: colors.skySoft },
+  tourStep: { flexDirection: 'row', alignItems: 'center', gap: spacing.base, minHeight: 36 },
+  tourCircle: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.pill,
+    borderWidth: 1,
   },
-  startCopy: { flex: 1, gap: spacing.xs },
-  startOverline: { ...typography.overline, color: colors.skySoft },
-  startTitle: { ...typography.heading, color: colors.white },
-  startSub: { ...typography.caption, color: colors.skySoft },
+  tourCircleDone: { backgroundColor: colors.white, borderColor: colors.white },
+  tourCircleCurrent: { borderColor: colors.white, borderWidth: 2 },
+  tourCirclePending: { borderColor: `${colors.skySoft}80` },
+  tourStepNumber: { ...typography.caption, fontFamily: fonts.semibold, color: colors.skySoft },
+  tourStepTitle: { ...typography.body, flex: 1, color: colors.skySoft },
+  tourStepDone: { color: colors.skySoft, textDecorationLine: 'line-through' },
+  tourStepCurrent: { fontFamily: fonts.bold, color: colors.white },
   startButton: {
     minHeight: 48,
     alignItems: 'center',
@@ -371,29 +332,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   startButtonText: { ...typography.body, fontFamily: fonts.bold, color: colors.ink },
-  stepDotDone: { borderColor: colors.primary, backgroundColor: colors.primary },
-  stepNumberDone: { color: colors.white },
-  showMe: {
-    ...typography.caption,
-    fontFamily: fonts.bold,
-    color: colors.primary,
-    backgroundColor: colors.primarySoft,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.pill,
-  },
+  startButtonPressed: { backgroundColor: colors.surfaceMuted },
   guideCards: { gap: spacing.sm },
   guideCard: {
-    width: 140,
-    minHeight: 86,
-    borderRadius: radius.lg,
-    padding: spacing.base,
+    minHeight: 64,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.track,
     gap: spacing.sm,
-    backgroundColor: colors.surfaceMuted,
-    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
   },
-  guideCardTitle: { ...typography.caption, fontFamily: fonts.bold, color: colors.ink },
+  guideCardTitle: { ...typography.body, flex: 1, fontFamily: fonts.semibold, color: colors.ink },
   guideCardDuration: { ...typography.caption, color: colors.textMuted },
+  rowPressed: { backgroundColor: colors.surfaceMuted },
   guideRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.base },
   guideIndex: {
     ...typography.caption,
@@ -441,40 +393,6 @@ const styles = StyleSheet.create({
     color: colors.ink,
     paddingBottom: spacing.sm,
   },
-  spine: {
-    position: 'absolute',
-    left: 13,
-    top: 30,
-    bottom: 30,
-    width: 3,
-    borderRadius: radius.pill,
-    backgroundColor: colors.track,
-  },
-  step: {
-    minHeight: 60,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.base,
-    paddingVertical: spacing.sm,
-  },
-  stepDot: {
-    width: 29,
-    height: 29,
-    alignSelf: 'flex-start',
-    marginTop: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.pill,
-    borderWidth: 2,
-    borderColor: colors.track,
-    backgroundColor: colors.background,
-  },
-  stepDotFirst: { borderWidth: 3, borderColor: colors.sky },
-  stepNumber: { ...typography.caption, fontFamily: fonts.bold, color: colors.textMuted },
-  stepNumberFirst: { color: colors.ink },
-  stepCopy: { flex: 1, gap: spacing.xs },
-  stepTitle: { ...typography.body, fontFamily: fonts.semibold, fontSize: 16, color: colors.text },
-  stepDetail: { ...typography.body, color: colors.textMuted },
   faq: { borderBottomWidth: 1, borderBottomColor: colors.track },
   faqQuestion: {
     minHeight: 56,
@@ -490,8 +408,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
   },
-  faqSign: { fontFamily: fonts.regular, fontSize: 26, lineHeight: 28, color: colors.primary },
-  faqSignOpen: { transform: [{ rotate: '45deg' }] },
+  faqChevronOpen: { transform: [{ rotate: '180deg' }] },
   faqAnswer: {
     ...typography.body,
     color: colors.textMuted,

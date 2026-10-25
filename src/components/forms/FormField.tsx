@@ -9,6 +9,7 @@ interface FormFieldProps extends TextInputProps {
   error?: string
   required?: boolean
   showCharacterCount?: boolean
+  characterCountThreshold?: number
   /** `filled`: campo relleno sin borde, como en las pantallas de acceso. */
   variant?: 'outlined' | 'filled'
   highContrastBorder?: boolean
@@ -19,6 +20,7 @@ export function FormField({
   error,
   required = false,
   showCharacterCount = false,
+  characterCountThreshold = 0,
   variant = 'outlined',
   highContrastBorder = false,
   secureTextEntry,
@@ -83,7 +85,9 @@ export function FormField({
           </Pressable>
         ) : null}
       </View>
-      {showCharacterCount && inputProps.maxLength ? (
+      {showCharacterCount &&
+      inputProps.maxLength &&
+      (inputProps.value ?? '').length > inputProps.maxLength * characterCountThreshold ? (
         <Text style={styles.count}>
           {(inputProps.value ?? '').length} / {inputProps.maxLength}
         </Text>
@@ -113,7 +117,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.track,
+    borderColor: colors.cardBorder,
     borderRadius: radius.lg,
     backgroundColor: colors.surface,
   },

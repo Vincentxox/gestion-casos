@@ -47,8 +47,14 @@ jest.mock('../useCases', () => ({
   useSendCaseMessage: () => ({ mutateAsync: mockSendMessage, isPending: mockSendPending }),
 }))
 jest.mock('@/features/reports/components/ReportSummary', () => {
-  const { Text } = jest.requireActual<typeof import('react-native')>('react-native')
-  return { ReportSummary: () => <Text>Resumen del reporte</Text> }
+  const { Pressable, Text } = jest.requireActual<typeof import('react-native')>('react-native')
+  return {
+    ReportSummary: ({ onOpen }: { onOpen: () => void }) => (
+      <Pressable accessibilityRole="button" onPress={onOpen}>
+        <Text>Resumen del reporte</Text>
+      </Pressable>
+    ),
+  }
 })
 jest.mock('@/components/feedback/OfflineBanner', () => ({ OfflineBanner: () => null }))
 jest.mock('@/store/authStore', () => ({
@@ -114,14 +120,25 @@ test('abre Seguimiento con seis pasos y el resumen del reporte', async () => {
     true,
   )
   expect(screen.getByText('Solicitada')).toBeTruthy()
-  expect(screen.getByText('Asignar técnico')).toBeTruthy()
-  expect(screen.getByText(/Voy con el repuesto/)).toBeTruthy()
+  expect(screen.getByText('Personal asignado')).toBeTruthy()
+  expect(screen.queryByText(/Voy con el repuesto/)).toBeNull()
   expect(screen.getByText('Resumen del reporte')).toBeTruthy()
   expect(screen.getByText('Gotea debajo del lavamanos.')).toBeTruthy()
   expect(screen.getByText('Ubicación: Baño 2.º piso')).toBeTruthy()
-  expect(screen.getByText(/Trabajo en curso/)).toBeTruthy()
+  expect(screen.queryByText(/Trabajo en curso/)).toBeNull()
   expect(screen.getByTestId('case-tracking')).toBeTruthy()
 })
+
+test.each(['asignado', 'en_ejecucion', 'en_espera'] as const)(
+  'el técnico con fotos de antes puede abrir el reporte desde %s',
+  async (status) => {
+    mockCase = { ...baseCase, status, assignedTo: 'u1', assigneeName: 'Ana López' }
+    mockAllowed = ['fotos_antes']
+    const screen = await renderScreen()
+    await fireEvent.press(screen.getByRole('button', { name: 'Resumen del reporte' }))
+    expect(navigate).toHaveBeenCalledWith('CaseReport', { caseId: 'case-1' })
+  },
+)
 
 test('una sola acción principal queda abajo y la secundaria en el menú', async () => {
   mockAllowed = ['aceptar', 'rechazar']
@@ -164,8 +181,8 @@ test('administrador con solo reasignar espera al técnico sin marcar que le toca
   }
   mockAllowed = ['asignar']
   const screen = await renderScreen()
-  expect(screen.getByText('Esperando: Luis envía el reporte del trabajo')).toBeTruthy()
-  expect(screen.getByText('Trabajo en curso · Luis')).toBeTruthy()
+  expect(screen.queryByText('Esperando: Luis envía el reporte del trabajo')).toBeNull()
+  expect(screen.getAllByText('En ejecución').length).toBeGreaterThan(0)
   expect(screen.queryByText(/te toca a ti/i)).toBeNull()
   expect(screen.queryByRole('toolbar')).toBeNull()
   await fireEvent.press(screen.getByRole('button', { name: 'Más acciones' }))
@@ -209,7 +226,7 @@ test('técnico en espera con permiso ve Reanudar como acción principal', async 
   mockAllowed = ['reanudar']
   const screen = await renderScreen()
   expect(screen.getByText('Te toca a ti')).toBeTruthy()
-  expect(screen.getByText('Pendiente · te toca a ti')).toBeTruthy()
+  expect(screen.queryByText('Pendiente · te toca a ti')).toBeNull()
   await fireEvent.press(screen.getByRole('button', { name: 'Reanudar trabajo' }))
   expect(navigate).toHaveBeenCalledWith('ChangeCaseStatus', {
     caseId: 'case-1',
@@ -225,8 +242,8 @@ test('otra persona sin permiso de reanudar ve a quién espera y no un botón pri
     assigneeName: 'Luis Pérez',
   }
   const screen = await renderScreen()
-  expect(screen.getByText('Esperando: Luis reanuda el trabajo')).toBeTruthy()
-  expect(screen.getByText('Trabajo en pausa · Luis')).toBeTruthy()
+  expect(screen.queryByText('Esperando: Luis reanuda el trabajo')).toBeNull()
+  expect(screen.getByText('En ejecución')).toBeTruthy()
   expect(screen.queryByRole('button', { name: 'Reanudar trabajo' })).toBeNull()
   expect(screen.queryByRole('toolbar')).toBeNull()
 })
@@ -242,7 +259,8 @@ test('jefe con aceptar en solicitado conserva el botón principal', async () => 
 test('sin acciones muestra en qué estado espera y no deja barra', async () => {
   mockCase = { ...baseCase, status: 'reporte_enviado' }
   const screen = await renderScreen()
-  expect(screen.getByText('Esperando la validación del reporte')).toBeTruthy()
+  expect(screen.queryByText('Esperando la validación del reporte')).toBeNull()
+  expect(screen.getByText('Revisión y firmas')).toBeTruthy()
   expect(screen.queryByRole('toolbar')).toBeNull()
   expect(screen.getByRole('button', { name: 'Más acciones' })).toBeTruthy()
 })
@@ -309,7 +327,7 @@ test('Mensajes separa el chat del Seguimiento y reemplaza la acción principal',
   expect(screen.getByLabelText('Escribir mensaje')).toBeTruthy()
   expect(screen.queryByRole('button', { name: 'Aceptar solicitud' })).toBeNull()
   await fireEvent.changeText(screen.getByLabelText('Escribir mensaje'), '  Hola equipo  ')
-  await fireEvent.press(screen.getByRole('button', { name: 'Enviar' }))
+  await fireEvent.press(screen.getByRole('button', { name: 'Enviar mensaje' }))
   await waitFor(() => expect(mockSendMessage).toHaveBeenCalledWith('Hola equipo'))
   await waitFor(() => expect(screen.getByLabelText('Escribir mensaje').props.value).toBe(''))
 })
@@ -334,10 +352,10 @@ test('muestra validación y el error del servidor sin perder el borrador', async
   const screen = await renderScreen()
   await fireEvent.press(screen.getByRole('tab', { name: 'Mensajes' }))
   await fireEvent.changeText(screen.getByLabelText('Escribir mensaje'), ' ab ')
-  await fireEvent.press(screen.getByRole('button', { name: 'Enviar' }))
+  await fireEvent.press(screen.getByRole('button', { name: 'Enviar mensaje' }))
   expect(screen.getByText('El mensaje debe tener entre 3 y 500 caracteres')).toBeTruthy()
   await fireEvent.changeText(screen.getByLabelText('Escribir mensaje'), 'Mensaje válido')
-  await fireEvent.press(screen.getByRole('button', { name: 'Enviar' }))
+  await fireEvent.press(screen.getByRole('button', { name: 'Enviar mensaje' }))
   await waitFor(() => expect(screen.getByText('La solicitud está cerrada')).toBeTruthy())
   expect(screen.getByLabelText('Escribir mensaje').props.value).toBe('Mensaje válido')
 })
@@ -347,9 +365,9 @@ test('deshabilita Enviar durante el envío', async () => {
   mockSendPending = true
   const screen = await renderScreen()
   await fireEvent.press(screen.getByRole('tab', { name: 'Mensajes' }))
-  expect(screen.getByRole('button', { name: 'Enviar' }).props.accessibilityState.disabled).toBe(
-    true,
-  )
+  expect(
+    screen.getByRole('button', { name: 'Enviar mensaje' }).props.accessibilityState.disabled,
+  ).toBe(true)
 })
 
 test('un mensaje es burbuja con autor y hora sin línea de cambio de estado', async () => {
@@ -371,7 +389,8 @@ test('un mensaje es burbuja con autor y hora sin línea de cambio de estado', as
   await fireEvent.press(screen.getByRole('tab', { name: 'Mensajes, 1' }))
   expect(screen.getByTestId('case-message-9')).toBeTruthy()
   expect(screen.getByText('¿Cuándo pueden venir?')).toBeTruthy()
-  expect(screen.getByText(/Ana López · (Hoy|Ayer|\d{1,2} )/)).toBeTruthy()
+  expect(screen.queryByText('Ana López')).toBeNull()
+  expect(screen.getByText(/\d{2}:\d{2}/)).toBeTruthy()
   expect(screen.queryByText(/Ana López cambió el estado/)).toBeNull()
 })
 

@@ -180,7 +180,7 @@ test('Editar se muestra dentro de NotificationsFlow sin contexto de pestañas', 
   await fireEvent.press(await screen.findByRole('button', { name: 'Editar solicitud' }))
 
   await waitFor(() => expect(ref.getCurrentRoute()?.name).toBe('EditCase'))
-  expect(screen.getByText('¿Qué necesitas?')).toBeTruthy()
+  expect(screen.getByText('Qué necesitas')).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Guardar cambios' })).toBeTruthy()
 })
 
@@ -206,7 +206,7 @@ test('Editar también se muestra desde la pestaña Solicitudes', async () => {
   await fireEvent.press(await screen.findByRole('button', { name: 'Editar solicitud' }))
 
   await waitFor(() => expect(ref.getCurrentRoute()?.name).toBe('EditCase'))
-  expect(screen.getByText('¿Qué necesitas?')).toBeTruthy()
+  expect(screen.getByText('Qué necesitas')).toBeTruthy()
   expect(screen.queryByTestId('floating-tab-bar')).toBeNull()
 })
 
@@ -311,5 +311,5 @@ test('la barra flotante lleva a Ayuda y oculta el botón + sin área', async () 
   expect(screen.queryByRole('button', { name: 'Nueva solicitud' })).toBeNull()
   await fireEvent.press(screen.getByRole('tab', { name: 'Ayuda' }))
   await waitFor(() => expect(ref.getCurrentRoute()?.name).toBe('Help'))
-  expect(screen.getByText('Tu recorrido')).toBeTruthy()
+  expect(screen.getByText('Aprende Nexo en 5 pasos')).toBeTruthy()
 })

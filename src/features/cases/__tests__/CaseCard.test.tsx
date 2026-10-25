@@ -34,7 +34,7 @@ test('tarjeta pulsable con una etiqueta, lugar, avance y responsable', async () 
   await fireEvent.press(screen.getByRole('button'))
   expect(onPress).toHaveBeenCalledTimes(1)
   expect(screen.getByText('Asignada')).toBeTruthy()
-  expect(screen.getByText('· Oficina 1')).toBeTruthy()
+  expect(screen.getByText('Oficina 1')).toBeTruthy()
   expect(screen.getByText('Paso 2 de 5')).toBeTruthy()
   expect(screen.getByText('Ana')).toBeTruthy()
   expect(screen.queryByText(item.caseNumber)).toBeNull()
@@ -56,6 +56,14 @@ test('vencida usa una sola etiqueta de error y mantiene el estado en texto', asy
   expect(screen.getByText('Asignada · Oficina 1')).toBeTruthy()
   expect(screen.queryByText('Asignada')).toBeNull()
   expect(screen.getByRole('button').props.accessibilityLabel).toContain('vencida por resolucion')
+})
+
+test('no agrega separador cuando la tarjeta vencida no tiene lugar', async () => {
+  const screen = await render(
+    <CaseCard item={{ ...item, location: '', overdueStage: 'resolucion' }} />,
+  )
+  expect(screen.getByText('Asignada')).toBeTruthy()
+  expect(screen.queryByText(/Asignada ·/)).toBeNull()
 })
 
 test('aprobada completa la barra verde', async () => {
@@ -101,7 +109,7 @@ test('solo Ayuda coloca las cuatro marcas junto a la parte que explican', async 
   expect(
     within(
       guided.getByTestId('case-guide-marker-2', { includeHiddenElements: true }).parent!,
-    ).getByText('· Oficina 1'),
+    ).getByText('Oficina 1'),
   ).toBeTruthy()
   expect(
     within(

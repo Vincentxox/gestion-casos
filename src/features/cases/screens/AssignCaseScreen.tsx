@@ -7,6 +7,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Button } from '@/components/ui/Button'
+import { Icon } from '@/components/ui/Icon'
 import { FormField } from '@/components/forms/FormField'
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
 import { Avatar } from '@/components/ui/Avatar'
@@ -218,14 +219,22 @@ function ProfileOption({
       accessibilityRole="radio"
       accessibilityState={{ checked: selected }}
       onPress={onPress}
-      style={[styles.option, selected ? styles.optionSelected : null]}
+      style={({ pressed }) => [
+        styles.option,
+        selected ? styles.optionSelected : null,
+        pressed ? styles.optionPressed : null,
+      ]}
     >
       <Avatar name={label} id={id} avatarPath={avatarPath} size={44} />
       <View style={styles.optionContent}>
         <Text style={styles.optionTitle}>{label}</Text>
         <Text style={styles.optionSubtitle}>{subtitle}</Text>
       </View>
-      <View style={[styles.radio, selected ? styles.radioSelected : null]} />
+      {selected ? (
+        <Icon name="checkmark-circle" color={colors.primary} size={24} />
+      ) : (
+        <View style={styles.radio} />
+      )}
     </Pressable>
   )
 }
@@ -271,7 +280,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     padding: spacing.md,
   },
-  optionSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
+  optionSelected: {
+    borderColor: colors.primary,
+    borderWidth: 2,
+    backgroundColor: colors.primarySoft,
+  },
+  optionPressed: { backgroundColor: colors.surfaceMuted },
   reason: { minHeight: 100 },
   reasonHint: { ...typography.caption, color: colors.textMuted },
   optionContent: { flex: 1, gap: spacing.xs },
@@ -284,5 +298,4 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.pill,
   },
-  radioSelected: { borderWidth: 6, borderColor: colors.primary },
 })

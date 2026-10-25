@@ -1,7 +1,9 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { useState } from 'react'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { Icon } from '@/components/ui/Icon'
 import { describeEvent, formatEventMoment } from '@/features/cases/components/CaseConversation'
+import { formatTrackingMoment } from '@/theme/formatters'
 import { colors, fonts, phaseColors, radius, spacing, typography } from '@/theme/tokens'
 
 import type { TrackingStep } from '../caseTracking'
@@ -20,13 +22,15 @@ export function CaseTracking({
   location: string
   report?: React.ReactNode
 }) {
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false)
+  const canExpandDescription = description.length > 110
   const represented = new Set(steps.map((step) => step.event?.id))
   const otherEvents = events
     .filter((event) => event.action !== 'mensaje' && !represented.has(event.id))
     .reverse()
   return (
     <View style={styles.list} testID="case-tracking">
-      {steps.map((step, index) => (
+      {steps.map((step) => (
         <View key={step.key} style={styles.row}>
           <View style={styles.rail}>
             <View
@@ -48,32 +52,54 @@ export function CaseTracking({
                 <Icon name="remove" size={18} color={colors.white} />
               ) : null}
             </View>
-            {index < steps.length - 1 ? (
-              <View style={[styles.line, step.state === 'done' && styles.lineDone]} />
-            ) : null}
           </View>
           <View style={styles.body}>
-            <Text
-              style={[
-                styles.label,
-                step.state === 'current' && styles.labelCurrent,
-                step.state === 'pending' && styles.labelPending,
-                step.state === 'danger' && styles.labelDanger,
-                step.state === 'cancelled' && styles.labelCancelled,
-              ]}
-            >
-              {step.label}
-            </Text>
-            <Text style={styles.detail}>
-              {step.state === 'current'
-                ? `${step.detail}${step.event?.comment ? ` · ${step.event.comment}` : ''}`
-                : step.event
-                  ? `${formatEventMoment(step.event.createdAt)} · ${step.event.actorName}${step.event.comment ? ` · ${step.event.comment}` : ''}`
-                  : step.detail}
-            </Text>
+            <View style={styles.stepHeading}>
+              <Text
+                style={[
+                  styles.label,
+                  step.state === 'current' && styles.labelCurrent,
+                  step.state === 'pending' && styles.labelPending,
+                  step.state === 'danger' && styles.labelDanger,
+                  step.state === 'cancelled' && styles.labelCancelled,
+                ]}
+              >
+                {step.label}
+              </Text>
+              {step.state === 'done' && step.event ? (
+                <Text style={styles.doneDate}>{formatTrackingMoment(step.event.createdAt)}</Text>
+              ) : null}
+              {step.state === 'current' && step.event ? (
+                <Text style={styles.currentDate} numberOfLines={1}>
+                  Desde{' '}
+                  {formatTrackingMoment(step.event.createdAt)
+                    .replace(/^Hoy/, 'hoy')
+                    .replace(/^Ayer/, 'ayer')}
+                </Text>
+              ) : null}
+            </View>
+            {(step.state === 'danger' || step.state === 'cancelled') && step.event?.comment ? (
+              <Text style={styles.detail}>{step.event.comment}</Text>
+            ) : null}
             {step.key === 'solicitada' ? (
               <View style={styles.requestCard}>
-                <Text style={styles.requestDescription}>{description}</Text>
+                <Text
+                  style={styles.requestDescription}
+                  numberOfLines={descriptionExpanded ? undefined : 2}
+                >
+                  {description}
+                </Text>
+                {canExpandDescription ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => setDescriptionExpanded((value) => !value)}
+                    style={styles.moreButton}
+                  >
+                    <Text style={styles.moreText}>
+                      {descriptionExpanded ? 'Ver menos' : 'Ver más'}
+                    </Text>
+                  </Pressable>
+                ) : null}
                 <Text style={styles.requestLocation}>Ubicación: {location}</Text>
               </View>
             ) : null}
@@ -98,7 +124,7 @@ export function CaseTracking({
 
 const styles = StyleSheet.create({
   list: { gap: 0 },
-  row: { flexDirection: 'row', minHeight: 76, gap: spacing.md },
+  row: { flexDirection: 'row', minHeight: 54, gap: spacing.md },
   rail: { width: 38, alignItems: 'center' },
   dot: {
     width: 30,
@@ -117,10 +143,21 @@ const styles = StyleSheet.create({
     borderColor: phaseColors.cancelada.fg,
     backgroundColor: phaseColors.cancelada.fg,
   },
-  line: { flex: 1, width: 2, backgroundColor: colors.track },
-  lineDone: { backgroundColor: colors.ink },
   body: { flex: 1, paddingBottom: spacing.lg, gap: spacing.xs },
-  label: { ...typography.heading, color: colors.ink },
+  stepHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  doneDate: { ...typography.caption, color: colors.textMuted, flexShrink: 1 },
+  currentDate: {
+    ...typography.caption,
+    color: colors.textMuted,
+    flexShrink: 1,
+    textAlign: 'right',
+  },
+  label: { ...typography.heading, color: colors.ink, flexShrink: 1 },
   labelCurrent: { fontFamily: fonts.extrabold },
   labelPending: { color: colors.textMuted },
   labelDanger: { color: colors.error },
@@ -133,6 +170,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceMuted,
   },
   requestDescription: { ...typography.body, color: colors.text },
+  moreButton: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
+  moreText: { ...typography.body, fontFamily: fonts.semibold, color: colors.primary },
   requestLocation: { ...typography.caption, color: colors.textMuted },
   otherEvents: { gap: spacing.sm, paddingTop: spacing.md },
   otherTitle: { ...typography.heading, color: colors.ink },

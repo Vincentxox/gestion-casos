@@ -101,6 +101,24 @@ beforeEach(() => {
   ;(useCases as jest.Mock).mockClear()
 })
 
+test('el buscador y el botón de filtros contrastan con el fondo de Solicitudes', async () => {
+  const { screen } = await setup()
+  expect(
+    StyleSheet.flatten(screen.getByLabelText('Buscar solicitudes').parent!.props.style),
+  ).toMatchObject({
+    backgroundColor: colors.surface,
+    borderColor: colors.cardBorder,
+    borderWidth: 1,
+  })
+  expect(
+    StyleSheet.flatten(screen.getByRole('button', { name: /Más filtros/ }).props.style),
+  ).toMatchObject({
+    backgroundColor: colors.surface,
+    borderColor: colors.cardBorder,
+    borderWidth: 1,
+  })
+})
+
 test('Cerradas oculta los chips rápidos y quita el filtro activo', async () => {
   const { screen } = await setup()
   await fireEvent.press(screen.getByRole('button', { name: 'Vencidas, 3 solicitudes' }))
@@ -208,9 +226,7 @@ test('Más antiguas muestra primero el grupo del día más viejo', async () => {
       .filter(({ props }) => props.accessibilityLabel?.startsWith('CAS-'))
       .map(({ props }) => props.accessibilityLabel?.split(',')[0]),
   ).toEqual(['CAS-old', 'CAS-new'])
-  expect(
-    screen.getAllByText(/de octubre de 2026/).map(({ children }) => children.join('')),
-  ).toEqual(['1 de octubre de 2026', '16 de octubre de 2026'])
+  expect(screen.getByText('Antes')).toBeTruthy()
 })
 
 test.each(['Prioridad', 'Vencen antes'])(
@@ -358,7 +374,10 @@ test('Vencidas va primero, en rojo y conserva el estado seleccionado', async () 
   expect(overdueIndex).toBeGreaterThanOrEqual(0)
   expect(overdueIndex).toBeLessThan(acceptingIndex)
   const overdue = screen.getByRole('button', { name: 'Vencidas, 3 solicitudes' })
-  expect(StyleSheet.flatten(overdue.props.style).backgroundColor).toBe(colors.dangerSoft)
+  expect(StyleSheet.flatten(overdue.props.style)).toMatchObject({
+    backgroundColor: colors.surface,
+    borderColor: colors.error,
+  })
   await fireEvent.press(overdue)
   expect(
     screen.getByRole('button', { name: 'Vencidas, 3 solicitudes' }).props.accessibilityState,

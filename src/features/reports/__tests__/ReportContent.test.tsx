@@ -46,18 +46,20 @@ const content: FrozenReportContent = {
 test('ordena las secciones y muestra tiempos, recursos y fotos accesibles', async () => {
   const screen = await render(<ReportContent content={content} />)
   const labels = screen
-    .getAllByText(/Firmas · progreso|Trabajo realizado|Tiempos|Recursos y mano de obra|Fotografías/)
-    .map((node) => node.props.children)
+    .getAllByText(/Firmas · 0 de 3|Trabajo realizado|Tiempos|Recursos y mano de obra|Fotografías/)
+    .map((node) =>
+      Array.isArray(node.props.children) ? node.props.children.join('') : node.props.children,
+    )
   expect(labels).toEqual([
-    'Firmas · progreso',
+    'Firmas · 0 de 3',
     'Trabajo realizado',
     'Tiempos',
     'Recursos y mano de obra',
     'Fotografías',
   ])
   expect(screen.getByText('CAS-2026-00002 · Versión 1')).toBeTruthy()
-  expect(screen.getByText('Alta')).toBeTruthy()
-  expect(screen.getByLabelText('Prioridad: Alta')).toBeTruthy()
+  expect(screen.getByText('Prioridad alta')).toBeTruthy()
+  expect(screen.getByLabelText('Prioridad: alta')).toBeTruthy()
   expect(screen.getByText('Administración')).toBeTruthy()
   expect(screen.getByText('Ana')).toBeTruthy()
   expect(screen.getByText('Asignada')).toBeTruthy()
@@ -111,7 +113,7 @@ test('la prioridad media usa el distintivo común y un reporte firmado evidencia
       }}
     />,
   )
-  expect(screen.getByLabelText('Prioridad: Media')).toBeTruthy()
+  expect(screen.getByLabelText('Prioridad: media')).toBeTruthy()
   expect(screen.getByText('Sin recursos registrados')).toBeTruthy()
 })
 
@@ -138,6 +140,9 @@ test('el reporte aprobado muestra el número de firmas registradas sobre el tota
       ]}
     />,
   )
-  expect(screen.getByText('Firmas · 3 de 3')).toBeTruthy()
-  expect(screen.queryByText('Firmas registradas')).toBeNull()
+  expect(screen.getAllByText('Firmas · 3 de 3')).toHaveLength(1)
+  expect(screen.getByText('Técnico')).toBeTruthy()
+  expect(screen.getByText('Jefe del área técnica')).toBeTruthy()
+  expect(screen.getByText('Jefe del área solicitante')).toBeTruthy()
+  expect(screen.getByText('Firmas manuscritas')).toBeTruthy()
 })

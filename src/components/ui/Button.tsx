@@ -31,6 +31,8 @@ export function Button({
   style,
   onPressIn,
   onPressOut,
+  onPress,
+  onDisabledPress,
   ...props
 }: PressableProps & {
   label: string
@@ -39,6 +41,8 @@ export function Button({
   showLabelWhileLoading?: boolean
   icon?: IconName
   destructive?: boolean
+  /** Permite explicar por qué una acción visualmente desactivada aún no está disponible. */
+  onDisabledPress?: () => void
   containerStyle?: StyleProp<ViewStyle>
 }) {
   const inactive = disabled || loading
@@ -67,7 +71,11 @@ export function Button({
         accessibilityLabel={props.accessibilityLabel ?? label}
         accessibilityRole="button"
         accessibilityState={{ disabled: inactive, busy: loading }}
-        disabled={inactive}
+        disabled={loading || (Boolean(disabled) && !onDisabledPress)}
+        onPress={(event) => {
+          if (disabled) onDisabledPress?.()
+          else onPress?.(event)
+        }}
         onPressIn={(event) => {
           if (!reduceMotion && !inactive) pressedScale.set(withTiming(0.98, { duration: 120 }))
           onPressIn?.(event)
