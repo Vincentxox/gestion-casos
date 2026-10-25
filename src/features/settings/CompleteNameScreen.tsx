@@ -26,7 +26,9 @@ export function CompleteNameScreen() {
     try {
       applyOwnName(await updateOwnName(profile.id, name))
     } catch (error) {
-      AppFeedback.show('No fue posible guardar', getErrorMessage(error, 'Inténtalo de nuevo.'))
+      AppFeedback.show('No fue posible guardar', getErrorMessage(error, 'Inténtalo de nuevo.'), {
+        tone: 'error',
+      })
     } finally {
       setSaving(false)
     }

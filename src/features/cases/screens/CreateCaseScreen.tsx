@@ -22,6 +22,7 @@ export function CreateCaseScreen({ navigation }: Props) {
       AppFeedback.show(
         'Necesitas un área',
         'Pide al administrador que asigne tu área antes de crear solicitudes.',
+        { tone: 'warning' },
       )
       return
     }
@@ -29,11 +30,12 @@ export function CreateCaseScreen({ navigation }: Props) {
     try {
       const created = await mutation.mutateAsync(input)
       navigation.replace('CaseDetail', { caseId: created.id })
-      AppFeedback.toast(`${created.caseNumber} quedó registrada.`)
+      AppFeedback.toast(`${created.caseNumber} quedó registrada.`, { tone: 'success' })
     } catch {
       AppFeedback.show(
         'No fue posible crear la solicitud',
         'Comprueba tus permisos, el área y la conexión.',
+        { tone: 'error' },
       )
     }
   }

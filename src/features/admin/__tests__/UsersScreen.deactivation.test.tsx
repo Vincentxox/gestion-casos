@@ -71,7 +71,7 @@ test('pide confirmación antes de dar de baja y no ofrece la acción sobre sí m
       (useDeactivateMember as jest.Mock).mock.results[0]!.value.mutateAsync,
     ).toHaveBeenCalledWith('ana'),
   )
-  expect(AppFeedback.toast).toHaveBeenCalledWith('Se dio de baja a Ana')
+  expect(AppFeedback.toast).toHaveBeenCalledWith('Se dio de baja a Ana', { tone: 'success' })
 })
 
 test('muestra los números de casos que deben reasignarse antes de la baja', async () => {
@@ -87,6 +87,8 @@ test('muestra los números de casos que deben reasignarse antes de la baja', asy
   const destructive = actions.find((action: { style: string }) => action.style === 'destructive')
   await act(async () => destructive.onPress())
   await waitFor(() =>
-    expect(AppFeedback.show).toHaveBeenCalledWith('No fue posible dar de baja', message),
+    expect(AppFeedback.show).toHaveBeenCalledWith('No fue posible dar de baja', message, {
+      tone: 'error',
+    }),
   )
 })

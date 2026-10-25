@@ -52,7 +52,7 @@ export function InactiveOrganizationScreen() {
           <View style={styles.iconCircle}>
             <Icon color={colors.warning} name="pause-circle-outline" size={34} />
           </View>
-          <AuthHeading title="Tu empresa está inactiva">
+          <AuthHeading title="Tu empresa está inactiva" centered>
             Tu cuenta sigue activa, pero tu empresa no tiene acceso por ahora. Comunícate con el
             administrador de tu empresa o con Nexo Casos.
           </AuthHeading>
@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xl,
     paddingBottom: spacing.md,
   },
-  body: { flex: 1, justifyContent: 'center', gap: spacing.md + 2 },
+  body: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md + 2 },
   iconCircle: {
     width: 72,
     height: 72,
@@ -102,6 +102,7 @@ const styles = StyleSheet.create({
   message: {
     ...typography.body,
     color: colors.text,
+    textAlign: 'center',
     padding: spacing.md,
     borderRadius: radius.lg,
     backgroundColor: colors.surfaceMuted,

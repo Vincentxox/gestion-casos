@@ -50,6 +50,7 @@ export function LoginScreen({ navigation }: Props) {
           error,
           'No fue posible iniciar sesión. Verifica tus datos e inténtalo nuevamente.',
         ),
+        { tone: 'error' },
       )
     }
   })
@@ -65,6 +66,7 @@ export function LoginScreen({ navigation }: Props) {
           error,
           'Google no pudo completar el acceso. Verifica la configuración e inténtalo nuevamente.',
         ),
+        { tone: 'error' },
       )
     } finally {
       setIsGoogleSubmitting(false)

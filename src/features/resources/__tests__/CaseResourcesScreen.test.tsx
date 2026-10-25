@@ -36,6 +36,8 @@ jest.mock('../useResources', () => ({
   useDeleteCaseUsage: () => ({ isPending: false }),
 }))
 
+const setOptions = jest.fn()
+
 function renderScreen() {
   return render(
     <SafeAreaProvider
@@ -46,11 +48,21 @@ function renderScreen() {
     >
       <CaseResourcesScreen
         route={{ params: { caseId: 'case-1' } } as never}
-        navigation={{} as never}
+        navigation={{ setOptions } as never}
       />
     </SafeAreaProvider>,
   )
 }
+
+test('Registrar uso vive en la cabecera', async () => {
+  const screen = await renderScreen()
+  expect(setOptions).toHaveBeenCalledWith(
+    expect.objectContaining({ headerRight: expect.any(Function) }),
+  )
+  const headerRight = setOptions.mock.lastCall?.[0].headerRight
+  expect(headerRight().props.accessibilityLabel).toBe('Registrar uso')
+  expect(screen.queryByRole('button', { name: 'Registrar uso' })).toBeNull()
+})
 
 test('el recurso usado muestra un solo menú de 44 px con Editar y Quitar', async () => {
   const screen = await renderScreen()
@@ -71,6 +83,7 @@ test('Quitar pide confirmación antes de eliminar', async () => {
     'Eliminar registro',
     '¿Deseas quitar este uso de la solicitud?',
     expect.any(Array),
+    { tone: 'danger', icon: 'trash-outline' },
   )
   feedback.mockRestore()
 })

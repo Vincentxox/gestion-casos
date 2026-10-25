@@ -346,6 +346,7 @@ export function CasesListScreen({ navigation, route }: Props) {
     return () => clearTimeout(timeout)
   }, [animateInitialList, isLoading, error, filteredCases.length])
   const segmentCounts = counts.data ? getCaseSegments(counts.data, quickStatus, overdueOnly) : null
+  const firstUse = canCreate && segmentCounts?.todas === 0
   const quickCounts = counts.data ? getQuickFilterCounts(counts.data) : null
   const segments = (Object.keys(STATUS_LABELS) as CaseListTab[]).map((value) => ({
     value,
@@ -449,7 +450,7 @@ export function CasesListScreen({ navigation, route }: Props) {
             </TourTarget>
           ) : null}
         </View>
-        <OfflineBanner message="Sin conexión · Mostrando lo último que se cargó." />
+        <OfflineBanner message="Mostrando lo último que se cargó." />
         <View style={styles.searchRow}>
           <View style={styles.toolbar}>
             <Icon name="search" size="inline" color={colors.textMuted} />
@@ -685,14 +686,22 @@ export function CasesListScreen({ navigation, route }: Props) {
             }
             ListEmptyComponent={
               <EmptyState
-                title={hasFilters ? 'Sin resultados' : 'Todo al día'}
+                title={
+                  hasFilters
+                    ? 'Sin resultados'
+                    : firstUse
+                      ? 'Aún no tienes solicitudes'
+                      : 'Todo al día'
+                }
                 message={
                   hasFilters
                     ? 'Prueba con otra búsqueda o quita los filtros.'
-                    : 'Las solicitudes visibles para tu rol aparecerán aquí.'
+                    : firstUse
+                      ? 'Cuando pidas un servicio aparecerá aquí.'
+                      : 'No tienes pendientes en esta vista.'
                 }
-                variant={hasFilters ? 'noResults' : canCreate ? 'firstUse' : 'allDone'}
-                action={hasFilters ? 'Quitar filtros' : canCreate ? 'Nueva solicitud' : undefined}
+                variant={hasFilters ? 'noResults' : firstUse ? 'firstUse' : 'allDone'}
+                action={hasFilters ? 'Quitar filtros' : firstUse ? 'Nueva solicitud' : undefined}
                 onAction={
                   hasFilters
                     ? () => {
@@ -711,7 +720,7 @@ export function CasesListScreen({ navigation, route }: Props) {
                           sort: 'recientes',
                         })
                       }
-                    : canCreate
+                    : firstUse
                       ? () => navigation.navigate('CreateCase')
                       : undefined
                 }

@@ -46,6 +46,7 @@ export function AreasScreen() {
       AppFeedback.show(
         'No fue posible guardar el área',
         'Verifica que el nombre no esté repetido y vuelve a intentarlo.',
+        { tone: 'error' },
       )
     }
   }
@@ -63,10 +64,18 @@ export function AreasScreen() {
           onPress: () => {
             void activeMutation
               .mutateAsync({ areaId: area.id, isActive: !area.isActive })
-              .catch(() => AppFeedback.show('No fue posible actualizar el área.'))
+              .catch(() =>
+                AppFeedback.show('No fue posible actualizar el área.', undefined, {
+                  tone: 'error',
+                }),
+              )
           },
         },
       ],
+      {
+        tone: area.isActive ? 'danger' : 'warning',
+        icon: area.isActive ? 'pause-circle-outline' : undefined,
+      },
     )
   }
 

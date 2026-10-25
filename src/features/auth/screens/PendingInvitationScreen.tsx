@@ -52,12 +52,14 @@ export function PendingInvitationScreen() {
         AppFeedback.show(
           'Acceso aún pendiente',
           'Si te invitaron, usa el mismo correo con el que entraste.',
+          { tone: 'info' },
         )
       }
     } catch {
       AppFeedback.show(
         'No fue posible comprobar el acceso',
         'Comprueba tu conexión e inténtalo de nuevo.',
+        { tone: 'error' },
       )
     } finally {
       setBusy(false)
@@ -66,26 +68,36 @@ export function PendingInvitationScreen() {
 
   async function submitCode() {
     if (normalizeJoinCode(code).length !== 9) {
-      AppFeedback.show('Código incompleto', 'Escribe los ocho caracteres del código de tu empresa.')
+      AppFeedback.show(
+        'Código incompleto',
+        'Escribe los ocho caracteres del código de tu empresa.',
+        { tone: 'warning' },
+      )
       return
     }
     try {
       const result = await request.mutateAsync(code)
       if (result.status === 'codigo_invalido')
-        AppFeedback.show('Código no válido', 'Pídelo al administrador de tu empresa.')
+        AppFeedback.show('Código no válido', 'Pídelo al administrador de tu empresa.', {
+          tone: 'warning',
+        })
       else if (result.status === 'demasiados_intentos')
-        AppFeedback.show('Demasiados intentos', 'Vuelve a intentarlo en una hora.')
+        AppFeedback.show('Demasiados intentos', 'Vuelve a intentarlo en una hora.', {
+          tone: 'warning',
+        })
       else {
         setCode('')
         AppFeedback.show(
           'Solicitud enviada',
           `Solicitud enviada a ${result.organizationName || 'tu empresa'}. El administrador revisará tu acceso.`,
+          { tone: 'success' },
         )
       }
     } catch (error) {
       AppFeedback.show(
         'No fue posible enviar la solicitud',
         getErrorMessage(error, 'Comprueba tu conexión.'),
+        { tone: 'error' },
       )
     }
   }
@@ -95,7 +107,9 @@ export function PendingInvitationScreen() {
       await cancel.mutateAsync()
       AppFeedback.toast('Solicitud cancelada', { tone: 'info' })
     } catch (error) {
-      AppFeedback.show('No fue posible cancelar', getErrorMessage(error, 'Inténtalo de nuevo.'))
+      AppFeedback.show('No fue posible cancelar', getErrorMessage(error, 'Inténtalo de nuevo.'), {
+        tone: 'error',
+      })
     }
   }
 

@@ -32,6 +32,7 @@ export function useMarkNotificationsRead() {
       AppFeedback.show(
         'No fue posible marcar el aviso',
         'Comprueba tu conexión e inténtalo de nuevo.',
+        { tone: 'error' },
       ),
     onSuccess: async () => {
       await Promise.all([
@@ -68,6 +69,7 @@ export function useDismissNotifications() {
       AppFeedback.show(
         'No fue posible borrar el aviso',
         'Comprueba tu conexión e inténtalo de nuevo.',
+        { tone: 'error' },
       )
     },
     onSettled: async () => {
@@ -87,6 +89,7 @@ export function useRestoreNotifications() {
       AppFeedback.show(
         'No fue posible restaurar el aviso',
         'Comprueba tu conexión e inténtalo de nuevo.',
+        { tone: 'error' },
       ),
     onSettled: async () => {
       await Promise.all([

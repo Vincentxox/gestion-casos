@@ -55,11 +55,15 @@ export function UsersScreen() {
     if (!selectedProfile) return
 
     if ((role === 'tecnico' || role === 'jefe_area') && !areaId) {
-      AppFeedback.show('Selecciona un área', 'Este rol necesita un área asignada.')
+      AppFeedback.show('Selecciona un área', 'Este rol necesita un área asignada.', {
+        tone: 'warning',
+      })
       return
     }
     if (role === 'tecnico' && areas.data?.find((area) => area.id === areaId)?.kind !== 'tecnica') {
-      AppFeedback.show('Área inválida', 'Un técnico debe pertenecer a un área técnica.')
+      AppFeedback.show('Área inválida', 'Un técnico debe pertenecer a un área técnica.', {
+        tone: 'warning',
+      })
       return
     }
 
@@ -72,6 +76,7 @@ export function UsersScreen() {
       AppFeedback.show(
         'No fue posible guardar el acceso',
         getErrorMessage(error, 'Comprueba tus permisos y la conexión.'),
+        { tone: 'error' },
       )
     }
   }
@@ -80,11 +85,12 @@ export function UsersScreen() {
     try {
       await deactivation.mutateAsync(profile.id)
       setSelectedProfile(null)
-      AppFeedback.toast(`Se dio de baja a ${profile.fullName}`)
+      AppFeedback.toast(`Se dio de baja a ${profile.fullName}`, { tone: 'success' })
     } catch (error) {
       AppFeedback.show(
         'No fue posible dar de baja',
         getErrorMessage(error, 'Comprueba tus permisos y la conexión.'),
+        { tone: 'error' },
       )
     }
   }
@@ -97,6 +103,7 @@ export function UsersScreen() {
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Dar de baja', style: 'destructive', onPress: () => void deactivate(profile) },
       ],
+      { tone: 'danger', icon: 'person-remove-outline' },
     )
   }
 
@@ -191,7 +198,7 @@ export function UsersScreen() {
                     <Text style={styles.areaName}>{item.areaName || 'Sin área asignada'}</Text>
                   </View>
                 </View>
-                <Ionicons color={colors.primary} name="chevron-forward" size={23} />
+                <Ionicons color={colors.textMuted} name="chevron-forward" size={23} />
               </Card>
             )}
           />

@@ -18,13 +18,23 @@ export function AuthBrand() {
 }
 
 /** Título grande y explicación de las pantallas de acceso. */
-export function AuthHeading({ title, children }: { title: string; children?: ReactNode }) {
+export function AuthHeading({
+  title,
+  children,
+  centered = false,
+}: {
+  title: string
+  children?: ReactNode
+  centered?: boolean
+}) {
   return (
     <View style={styles.heading}>
-      <Text accessibilityRole="header" style={styles.title}>
+      <Text accessibilityRole="header" style={[styles.title, centered && styles.centered]}>
         {title}
       </Text>
-      {children ? <Text style={styles.subtitle}>{children}</Text> : null}
+      {children ? (
+        <Text style={[styles.subtitle, centered && styles.centered]}>{children}</Text>
+      ) : null}
     </View>
   )
 }
@@ -52,4 +62,5 @@ const styles = StyleSheet.create({
     color: colors.ink,
   },
   subtitle: { ...typography.body, fontSize: 16, lineHeight: 23, color: colors.textMuted },
+  centered: { textAlign: 'center' },
 })

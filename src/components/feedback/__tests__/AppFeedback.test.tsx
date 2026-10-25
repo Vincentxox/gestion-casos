@@ -1,6 +1,7 @@
 import { act, fireEvent, render } from '@testing-library/react-native'
-import { Pressable, Text } from 'react-native'
+import { Pressable, StyleSheet, Text } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { colors, tone } from '@/theme/tokens'
 
 import {
   AppFeedback,
@@ -12,6 +13,12 @@ import {
 jest.mock('@/store/authStore', () => ({
   useAuthStore: (selector: (state: unknown) => unknown) =>
     selector({ status: 'authenticated', profile: { organizationId: 'org-1' } }),
+}))
+jest.mock('@/components/ui/Icon', () => ({
+  Icon: ({ name }: { name: string }) => {
+    const { Text } = jest.requireActual<typeof import('react-native')>('react-native')
+    return <Text testID={`icon-${name}`}>{name}</Text>
+  },
 }))
 
 function Harness({ onDecision }: { onDecision: (value: boolean) => void }) {
@@ -162,5 +169,48 @@ describe('AppFeedback', () => {
     expect(screen.getByText('La solicitud ya se encuentra actualizada.')).toBeTruthy()
     await fireEvent.press(screen.getByLabelText('Cerrar aviso'))
     expect(screen.queryByTestId('app-toast')).toBeNull()
+  })
+
+  test.each([
+    ['info', 'information-circle-outline', tone.info.bg],
+    ['success', 'checkmark-circle-outline', tone.success.bg],
+    ['warning', 'warning-outline', tone.warning.bg],
+    ['error', 'close-circle-outline', tone.danger.bg],
+  ] as const)('show usa tono explícito %s e icono propio', async (dialogTone, icon, background) => {
+    const screen = await setup()
+    await act(async () => AppFeedback.show('Aviso', 'Mensaje', { tone: dialogTone }))
+    expect(screen.getByTestId(`icon-${icon}`)).toBeTruthy()
+    expect(
+      StyleSheet.flatten(screen.getByTestId('app-dialog-icon').props.style).backgroundColor,
+    ).toBe(background)
+    await fireEvent.press(screen.getByText('Entendido'))
+  })
+
+  test('la confirmación destructiva usa el icono indicado y botón rojo', async () => {
+    const screen = await setup()
+    await act(async () =>
+      AppFeedback.show(
+        'Eliminar',
+        'No se puede deshacer.',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Eliminar', style: 'destructive' },
+        ],
+        { tone: 'danger', icon: 'trash-outline' },
+      ),
+    )
+    expect(screen.getByTestId('icon-trash-outline')).toBeTruthy()
+    expect(
+      StyleSheet.flatten(screen.getByRole('button', { name: 'Eliminar' }).props.style)
+        .backgroundColor,
+    ).toBe(colors.error)
+  })
+
+  test('el círculo del aviso de éxito usa el tono verde', async () => {
+    const screen = await setup()
+    await fireEvent.press(screen.getByLabelText('Mostrar éxito'))
+    expect(
+      StyleSheet.flatten(screen.getByTestId('app-toast-icon').props.style).backgroundColor,
+    ).toBe(tone.success.text)
   })
 })

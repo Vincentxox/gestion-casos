@@ -244,7 +244,7 @@ test('sin acciones muestra en qué estado espera y no deja barra', async () => {
   const screen = await renderScreen()
   expect(screen.getByText('Esperando la validación del reporte')).toBeTruthy()
   expect(screen.queryByRole('toolbar')).toBeNull()
-  expect(screen.queryByRole('button', { name: 'Más acciones' })).toBeNull()
+  expect(screen.getByRole('button', { name: 'Más acciones' })).toBeTruthy()
 })
 
 test('Datos del caso abre la hoja con los datos y los recursos', async () => {
@@ -252,7 +252,8 @@ test('Datos del caso abre la hoja con los datos y los recursos', async () => {
   const screen = await renderScreen()
   expect(screen.getByText(/Vencida · aceptación/)).toBeTruthy()
 
-  await fireEvent.press(screen.getByRole('button', { name: 'Datos del caso' }))
+  await fireEvent.press(screen.getByRole('button', { name: 'Más acciones' }))
+  await fireEvent.press(await screen.findByText('Ver datos del caso'))
   expect(await screen.findByText('Mantenimiento')).toBeTruthy()
   expect(screen.getByText('Alta · vencida · aceptación')).toBeTruthy()
   expect(screen.getByText('Descripción')).toBeTruthy()
@@ -260,6 +261,19 @@ test('Datos del caso abre la hoja con los datos y los recursos', async () => {
 
   await fireEvent.press(screen.getByRole('button', { name: 'Ver recursos y mano de obra' }))
   expect(navigate).toHaveBeenCalledWith('CaseResources', { caseId: 'case-1' })
+})
+
+test.each([
+  ['solicitante', []],
+  ['jefe de área', ['aceptar']],
+  ['técnico', ['iniciar']],
+  ['administrador', ['aceptar', 'asignar']],
+] as const)('%s encuentra Ver datos del caso en Más acciones', async (_role, actions) => {
+  mockAllowed = [...actions]
+  const screen = await renderScreen()
+  expect(screen.queryByRole('button', { name: 'Datos del caso' })).toBeNull()
+  await fireEvent.press(screen.getByRole('button', { name: 'Más acciones' }))
+  expect(await screen.findByRole('button', { name: 'Ver datos del caso' })).toBeTruthy()
 })
 
 test('un caso rechazado no muestra avance y muestra el motivo como mensaje', async () => {
@@ -366,6 +380,7 @@ test('cabecera permite volver y abre información sin perder las pestañas', asy
   expect(screen.getByText('CAS-0142')).toBeTruthy()
   await fireEvent.press(screen.getByRole('button', { name: 'Volver' }))
   expect(goBack).toHaveBeenCalled()
-  await fireEvent.press(screen.getByRole('button', { name: 'Datos del caso' }))
+  await fireEvent.press(screen.getByRole('button', { name: 'Más acciones' }))
+  await fireEvent.press(await screen.findByText('Ver datos del caso'))
   expect(await screen.findByText('Mantenimiento')).toBeTruthy()
 })

@@ -10,6 +10,7 @@ import { FormField } from '@/components/forms/FormField'
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
 import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
+import { AuthBrand } from '@/features/auth/components/AuthHeading'
 import type { AuthStackParamList } from '@/navigation/types'
 import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
 
@@ -60,41 +61,43 @@ export function ForgotPasswordScreen({ navigation, route }: Props) {
         >
           <Icon name="chevron-back" size={24} color={colors.ink} />
         </Pressable>
-        <Text accessibilityRole="header" style={styles.title}>
-          Recupera tu contraseña
-        </Text>
-        <Text style={styles.description}>
-          Escribe el correo de tu cuenta y te enviaremos un enlace para crear una nueva.
-        </Text>
-        <Controller
-          control={control}
-          name="email"
-          render={({ field: { onBlur, onChange, value } }) => (
-            <FormField
-              autoCapitalize="none"
-              autoComplete="email"
-              error={errors.email?.message}
-              highContrastBorder
-              keyboardType="email-address"
-              label="Correo electrónico"
-              onBlur={onBlur}
-              onChangeText={onChange}
-              placeholder="nombre@empresa.com"
-              value={value}
-              variant="outlined"
-            />
-          )}
-        />
-        <Button label="Enviar enlace" loading={isSubmitting} onPress={() => void submit()} />
-        {notice ? (
-          <View
-            accessibilityLiveRegion="polite"
-            style={[styles.notice, rateLimited && styles.rateNotice]}
-          >
-            <Text style={[styles.noticeText, rateLimited && styles.rateText]}>{notice}</Text>
-          </View>
-        ) : null}
-        <View style={styles.spacer} />
+        <View style={styles.main}>
+          <AuthBrand />
+          <Text accessibilityRole="header" style={styles.title}>
+            Recupera tu contraseña
+          </Text>
+          <Text style={styles.description}>
+            Escribe el correo de tu cuenta y te enviaremos un enlace para crear una nueva.
+          </Text>
+          <Controller
+            control={control}
+            name="email"
+            render={({ field: { onBlur, onChange, value } }) => (
+              <FormField
+                autoCapitalize="none"
+                autoComplete="email"
+                error={errors.email?.message}
+                highContrastBorder
+                keyboardType="email-address"
+                label="Correo electrónico"
+                onBlur={onBlur}
+                onChangeText={onChange}
+                placeholder="nombre@empresa.com"
+                value={value}
+                variant="outlined"
+              />
+            )}
+          />
+          <Button label="Enviar enlace" loading={isSubmitting} onPress={() => void submit()} />
+          {notice ? (
+            <View
+              accessibilityLiveRegion="polite"
+              style={[styles.notice, rateLimited && styles.rateNotice]}
+            >
+              <Text style={[styles.noticeText, rateLimited && styles.rateText]}>{notice}</Text>
+            </View>
+          ) : null}
+        </View>
         <Text style={styles.note}>
           Si entras con Google, tu contraseña la administra Google; no hace falta recuperarla aquí.
         </Text>
@@ -119,6 +122,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
     gap: spacing.lg,
   },
+  main: { flex: 1, justifyContent: 'center', gap: spacing.lg },
   back: {
     width: 44,
     height: 44,
@@ -133,7 +137,6 @@ const styles = StyleSheet.create({
   noticeText: { ...typography.body, color: colors.success },
   rateNotice: { backgroundColor: colors.warningSoft },
   rateText: { color: colors.warning },
-  spacer: { flex: 1 },
   note: { ...typography.caption, color: colors.textMuted },
   loginLink: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   loginText: { ...typography.body, color: colors.primary, fontFamily: fonts.semibold },

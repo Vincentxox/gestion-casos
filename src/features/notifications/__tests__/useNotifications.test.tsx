@@ -69,6 +69,7 @@ test('quita optimistamente solo los leídos y los repone al fallar', async () =>
   expect(AppFeedback.show).toHaveBeenCalledWith(
     'No fue posible borrar el aviso',
     expect.any(String),
+    { tone: 'error' },
   )
   await waitFor(() => expect(result.current.isPending).toBe(false))
   await unmount()

@@ -3,7 +3,7 @@ import type { CaseRecord, CaseStatus, CaseStatusHistoryRecord } from './types'
 export type TrackingStep = {
   key: string
   label: string
-  state: 'done' | 'current' | 'pending' | 'danger'
+  state: 'done' | 'current' | 'pending' | 'danger' | 'cancelled'
   detail: string
   event?: CaseStatusHistoryRecord
 }
@@ -95,7 +95,7 @@ export function getCaseTrackingSteps(
     steps.push({
       key: item.status,
       label: item.status === 'rechazado' ? 'Rechazada' : 'Cancelada',
-      state: 'danger',
+      state: item.status === 'cancelado' ? 'cancelled' : 'danger',
       detail: item.status === 'rechazado' ? 'Solicitud rechazada' : 'Solicitud cancelada',
       event: terminalEvent,
     })

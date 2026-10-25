@@ -14,7 +14,7 @@ const variantMeta: Record<Variant, { icon: IconName; foreground: string; backgro
   },
   noResults: { icon: 'search-outline', foreground: colors.neutral, background: colors.neutralSoft },
   allDone: {
-    icon: 'sparkles-outline',
+    icon: 'checkmark-done-outline',
     foreground: phaseColors.cerrada.fg,
     background: phaseColors.cerrada.bg,
   },

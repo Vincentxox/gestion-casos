@@ -53,6 +53,7 @@ export function ResourcesScreen() {
       AppFeedback.show(
         'No fue posible guardar el recurso',
         getErrorMessage(error, 'Comprueba la conexión y los datos.'),
+        { tone: 'error' },
       )
     }
   }
@@ -72,10 +73,12 @@ export function ResourcesScreen() {
                 AppFeedback.show(
                   'No fue posible actualizar el recurso',
                   getErrorMessage(error, 'Comprueba la conexión.'),
+                  { tone: 'error' },
                 ),
               ),
         },
       ],
+      { tone: 'warning' },
     )
   }
 

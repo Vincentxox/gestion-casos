@@ -10,7 +10,7 @@ import { Icon } from '@/components/ui/Icon'
 import { FormField } from '@/components/forms/FormField'
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
 import { getAuthErrorMessage } from '@/features/auth/authErrors'
-import { AuthHeading } from '@/features/auth/components/AuthHeading'
+import { AuthBrand, AuthHeading } from '@/features/auth/components/AuthHeading'
 import { registrationSchema, type RegistrationInput } from '@/features/auth/schemas'
 import type { AuthStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
@@ -43,6 +43,7 @@ export function RegisterScreen({ navigation }: Props) {
           'Confirma tu correo',
           'Enviamos un enlace de verificación a tu correo electrónico.',
           [{ text: 'Entendido', onPress: () => navigation.navigate('Login') }],
+          { tone: 'success' },
         )
       }
     } catch (error) {
@@ -52,6 +53,7 @@ export function RegisterScreen({ navigation }: Props) {
           error,
           'No fue posible crear la cuenta. Revisa los datos e inténtalo nuevamente.',
         ),
+        { tone: 'error' },
       )
     }
   })
@@ -69,101 +71,103 @@ export function RegisterScreen({ navigation }: Props) {
           <Icon color={colors.text} name="chevron-back" size={24} />
         </Pressable>
 
-        <AuthHeading title="Crea tu cuenta">
-          Usa el correo al que recibiste la invitación. El administrador definirá tu rol y tu área.
-        </AuthHeading>
+        <View style={styles.main}>
+          <AuthBrand />
+          <AuthHeading title="Crea tu cuenta">
+            Usa el correo al que recibiste la invitación. El administrador definirá tu rol y tu
+            área.
+          </AuthHeading>
 
-        <View style={styles.form}>
-          <Controller
-            control={control}
-            name="fullName"
-            render={({ field: { onBlur, onChange, value } }) => (
-              <FormField
-                autoCapitalize="words"
-                autoComplete="name"
-                error={errors.fullName?.message}
-                highContrastBorder
-                label="Nombre completo"
-                onBlur={onBlur}
-                onChangeText={onChange}
-                placeholder="Nombre y apellido"
-                value={value}
-                variant="outlined"
-              />
-            )}
-          />
+          <View style={styles.form}>
+            <Controller
+              control={control}
+              name="fullName"
+              render={({ field: { onBlur, onChange, value } }) => (
+                <FormField
+                  autoCapitalize="words"
+                  autoComplete="name"
+                  error={errors.fullName?.message}
+                  highContrastBorder
+                  label="Nombre completo"
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  placeholder="Nombre y apellido"
+                  value={value}
+                  variant="outlined"
+                />
+              )}
+            />
 
-          <Controller
-            control={control}
-            name="email"
-            render={({ field: { onBlur, onChange, value } }) => (
-              <FormField
-                autoCapitalize="none"
-                autoComplete="email"
-                error={errors.email?.message}
-                highContrastBorder
-                keyboardType="email-address"
-                label="Correo electrónico"
-                onBlur={onBlur}
-                onChangeText={onChange}
-                placeholder="nombre@empresa.com"
-                value={value}
-                variant="outlined"
-              />
-            )}
-          />
+            <Controller
+              control={control}
+              name="email"
+              render={({ field: { onBlur, onChange, value } }) => (
+                <FormField
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  error={errors.email?.message}
+                  highContrastBorder
+                  keyboardType="email-address"
+                  label="Correo electrónico"
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  placeholder="nombre@empresa.com"
+                  value={value}
+                  variant="outlined"
+                />
+              )}
+            />
 
-          <Controller
-            control={control}
-            name="password"
-            render={({ field: { onBlur, onChange, value } }) => (
-              <FormField
-                autoCapitalize="none"
-                autoComplete="new-password"
-                error={errors.password?.message}
-                highContrastBorder
-                label="Contraseña"
-                onBlur={onBlur}
-                onChangeText={onChange}
-                placeholder="Mínimo 8 caracteres"
-                secureTextEntry
-                value={value}
-                variant="outlined"
-              />
-            )}
-          />
+            <Controller
+              control={control}
+              name="password"
+              render={({ field: { onBlur, onChange, value } }) => (
+                <FormField
+                  autoCapitalize="none"
+                  autoComplete="new-password"
+                  error={errors.password?.message}
+                  highContrastBorder
+                  label="Contraseña"
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  placeholder="Mínimo 8 caracteres"
+                  secureTextEntry
+                  value={value}
+                  variant="outlined"
+                />
+              )}
+            />
 
-          <Controller
-            control={control}
-            name="passwordConfirmation"
-            render={({ field: { onBlur, onChange, value } }) => (
-              <FormField
-                autoCapitalize="none"
-                autoComplete="new-password"
-                error={errors.passwordConfirmation?.message}
-                highContrastBorder
-                label="Confirmar contraseña"
-                onBlur={onBlur}
-                onChangeText={onChange}
-                onSubmitEditing={() => void submit()}
-                placeholder="Repite tu contraseña"
-                returnKeyType="done"
-                secureTextEntry
-                value={value}
-                variant="outlined"
-              />
-            )}
+            <Controller
+              control={control}
+              name="passwordConfirmation"
+              render={({ field: { onBlur, onChange, value } }) => (
+                <FormField
+                  autoCapitalize="none"
+                  autoComplete="new-password"
+                  error={errors.passwordConfirmation?.message}
+                  highContrastBorder
+                  label="Confirmar contraseña"
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  onSubmitEditing={() => void submit()}
+                  placeholder="Repite tu contraseña"
+                  returnKeyType="done"
+                  secureTextEntry
+                  value={value}
+                  variant="outlined"
+                />
+              )}
+            />
+          </View>
+
+          <Button
+            label="Crear cuenta"
+            loading={isSubmitting}
+            onPress={() => void submit()}
+            style={styles.primaryButton}
           />
         </View>
-
-        <Button
-          label="Crear cuenta"
-          loading={isSubmitting}
-          onPress={() => void submit()}
-          style={styles.primaryButton}
-        />
-
-        <View style={styles.spacer} />
 
         <Pressable
           accessibilityLabel="¿Ya tienes una cuenta? Inicia sesión"
@@ -192,6 +196,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
     gap: spacing.lg,
   },
+  main: { flex: 1, justifyContent: 'center', gap: spacing.lg },
   backButton: {
     width: 44,
     height: 44,
@@ -205,9 +210,6 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     minHeight: 56,
-  },
-  spacer: {
-    flex: 1,
   },
   linkButton: {
     minHeight: 48,

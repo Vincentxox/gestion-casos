@@ -49,12 +49,13 @@ export function EditCaseScreen({ navigation, route }: Props) {
   async function handleSubmit(input: UpdateCaseInput) {
     try {
       await mutation.mutateAsync(input)
-      AppFeedback.toast('Solicitud actualizada')
+      AppFeedback.toast('Solicitud actualizada', { tone: 'success' })
       navigation.goBack()
     } catch (error) {
       AppFeedback.show(
         'No fue posible actualizar',
         getErrorMessage(error, 'Comprueba tus permisos y la conexión.'),
+        { tone: 'error' },
       )
     }
   }

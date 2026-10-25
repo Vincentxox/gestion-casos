@@ -45,6 +45,7 @@ export function InvitationsScreen() {
       AppFeedback.show(
         'No fue posible compartir',
         'No se pudo identificar el nombre de la empresa.',
+        { tone: 'error' },
       )
       return
     }
@@ -60,6 +61,7 @@ export function InvitationsScreen() {
       AppFeedback.show(
         'No fue posible compartir',
         'Inténtalo de nuevo desde la invitación registrada.',
+        { tone: 'error' },
       )
     }
   }
@@ -67,14 +69,20 @@ export function InvitationsScreen() {
   async function submit() {
     const result = invitationSchema.safeParse({ email, role, areaId: selectedAreaId })
     if (!result.success) {
-      AppFeedback.show('Revisa la invitación', result.error.issues[0]?.message ?? 'Datos inválidos')
+      AppFeedback.show(
+        'Revisa la invitación',
+        result.error.issues[0]?.message ?? 'Datos inválidos',
+        { tone: 'warning' },
+      )
       return
     }
     if (
       role === 'tecnico' &&
       areas.data?.find((area) => area.id === selectedAreaId)?.kind !== 'tecnica'
     ) {
-      AppFeedback.show('Área incorrecta', 'Un técnico debe pertenecer a un área técnica.')
+      AppFeedback.show('Área incorrecta', 'Un técnico debe pertenecer a un área técnica.', {
+        tone: 'warning',
+      })
       return
     }
     try {
@@ -90,24 +98,34 @@ export function InvitationsScreen() {
             onPress: () => void shareNotice(result.data.email, result.data.role),
           },
         ],
+        { tone: 'success' },
       )
     } catch (error) {
-      AppFeedback.show('No fue posible invitar', getErrorMessage(error, 'Inténtalo de nuevo.'))
+      AppFeedback.show('No fue posible invitar', getErrorMessage(error, 'Inténtalo de nuevo.'), {
+        tone: 'error',
+      })
     }
   }
 
   function confirmRevoke(id: string) {
-    AppFeedback.show('Revocar invitación', '¿Deseas cancelar esta invitación?', [
-      { text: 'Mantener invitación', style: 'cancel' },
-      {
-        text: 'Revocar invitación',
-        style: 'destructive',
-        onPress: () =>
-          void revoke
-            .mutateAsync(id)
-            .catch(() => AppFeedback.show('No fue posible revocar la invitación.')),
-      },
-    ])
+    AppFeedback.show(
+      'Revocar invitación',
+      '¿Deseas cancelar esta invitación?',
+      [
+        { text: 'Mantener invitación', style: 'cancel' },
+        {
+          text: 'Revocar invitación',
+          style: 'destructive',
+          onPress: () =>
+            void revoke.mutateAsync(id).catch(() =>
+              AppFeedback.show('No fue posible revocar la invitación.', undefined, {
+                tone: 'error',
+              }),
+            ),
+        },
+      ],
+      { tone: 'danger', icon: 'trash-outline' },
+    )
   }
 
   return (

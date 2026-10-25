@@ -103,14 +103,20 @@ test('muestra datos compactos, ajustes y la opción de subir foto', async () => 
   await fireEvent.press(screen.getByText('Elegir de galería'))
   await waitFor(() => expect(upload).toHaveBeenCalledWith({ profile, uri: 'file://prepared' }))
   expect(ImagePicker.requestCameraPermissionsAsync).not.toHaveBeenCalled()
-  expect(AppFeedback.toast).toHaveBeenCalledWith('Foto actualizada')
+  expect(AppFeedback.toast).toHaveBeenCalledWith('Foto actualizada', { tone: 'success' })
 })
 
-test('el lápiz abre la edición del nombre actual y conserva el guardado', async () => {
+test('la fila y Editar abren la edición del nombre actual y conservan el guardado', async () => {
   const screen = await render(<ProfileScreen />)
   const pencil = screen.getByRole('button', { name: 'Editar nombre' })
-  expect(StyleSheet.flatten(pencil.props.style)).toMatchObject({ width: 44, height: 44 })
-  await fireEvent.press(pencil)
+  const camera = screen.getByRole('button', { name: 'Cambiar foto de perfil' })
+  const identity = screen.getByText('Ana López').parent?.parent?.parent
+  if (!identity) throw new Error('No se encontró la fila de identidad')
+  expect(StyleSheet.flatten(pencil.props.style)).toMatchObject({ minWidth: 64, minHeight: 44 })
+  expect(camera).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Editar perfil' })).toBeNull()
+  expect(identity.props.accessible).toBe(false)
+  await fireEvent.press(identity)
   await fireEvent.changeText(screen.getByDisplayValue('Ana López'), 'Ana M. López')
   await fireEvent.press(screen.getByRole('button', { name: 'Guardar' }))
   await waitFor(() => expect(updateOwnName).toHaveBeenCalledWith('u1', 'Ana M. López'))
@@ -156,6 +162,7 @@ test('quita la foto por RPC y muestra el error del servidor en español', async 
     expect(AppFeedback.show).toHaveBeenCalledWith(
       'No fue posible quitar la foto',
       'Acceso denegado',
+      { tone: 'error' },
     ),
   )
   expect(clear).toHaveBeenCalledWith('org/u1/old.jpg')
@@ -173,6 +180,7 @@ test('muestra el error en español de set_profile_photo', async () => {
     expect(AppFeedback.show).toHaveBeenCalledWith(
       'No fue posible cambiar la foto',
       'La foto debe estar en tu carpeta de perfil',
+      { tone: 'error' },
     ),
   )
 })

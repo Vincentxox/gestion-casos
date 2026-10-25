@@ -3,11 +3,12 @@ import { AppFeedback } from '@/components/feedback/AppFeedback'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import * as WebBrowser from 'expo-web-browser'
 import { useState } from 'react'
-import { ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { RequestState } from '@/components/feedback/RequestState'
 import { Button } from '@/components/ui/Button'
+import { Icon } from '@/components/ui/Icon'
 import { Card } from '@/components/ui/Card'
 import { useCaseActions, useCaseDetail } from '@/features/cases/useCases'
 import { ROLE_LABELS } from '@/features/auth/types'
@@ -184,6 +185,7 @@ export function ReportReviewScreen({ navigation, route }: Props) {
       AppFeedback.show(
         'No fue posible descargar el PDF',
         getErrorMessage(error, 'Inténtalo de nuevo.'),
+        { tone: 'error' },
       )
     } finally {
       setPdfLoading(false)
@@ -199,6 +201,7 @@ export function ReportReviewScreen({ navigation, route }: Props) {
       AppFeedback.show(
         'No fue posible compartir el PDF',
         getErrorMessage(error, 'Inténtalo de nuevo.'),
+        { tone: 'error' },
       )
     } finally {
       setShareLoading(false)
@@ -215,6 +218,7 @@ export function ReportReviewScreen({ navigation, route }: Props) {
         : signatureAction === 'validate'
           ? 'Reporte validado'
           : 'Solicitud aprobada y cerrada',
+      { tone: 'success' },
     )
     navigation.popTo('CaseDetail', { caseId })
   }
@@ -306,26 +310,32 @@ export function ReportReviewScreen({ navigation, route }: Props) {
         </View>
       ) : item.status === 'aprobado' ? (
         <View style={styles.sticky}>
-          <Button
-            label={pdfLoading ? 'Generando PDF…' : 'Descargar PDF'}
-            icon="download-outline"
-            loading={pdfLoading}
-            disabled={shareLoading}
-            onPress={() => void downloadPdf()}
-          />
-          {current ? (
-            <>
-              <Button
-                label={shareLoading ? 'Preparando PDF…' : 'Compartir PDF'}
-                icon="share-social-outline"
-                variant="secondary"
-                loading={shareLoading}
-                showLabelWhileLoading
-                disabled={pdfLoading}
+          <View style={styles.pdfActions}>
+            <Button
+              label={pdfLoading ? 'Generando PDF…' : 'Descargar PDF'}
+              icon="download-outline"
+              loading={pdfLoading}
+              disabled={shareLoading}
+              onPress={() => void downloadPdf()}
+              containerStyle={styles.pdfPrimary}
+            />
+            {current ? (
+              <Pressable
+                accessibilityLabel="Compartir PDF"
+                accessibilityRole="button"
+                accessibilityState={{ busy: shareLoading, disabled: shareLoading || pdfLoading }}
+                disabled={shareLoading || pdfLoading}
                 onPress={() => void sharePdf()}
-              />
-            </>
-          ) : null}
+                style={styles.pdfShare}
+              >
+                {shareLoading ? (
+                  <ActivityIndicator color={colors.primary} />
+                ) : (
+                  <Icon name="share-outline" color={colors.primary} size={22} />
+                )}
+              </Pressable>
+            ) : null}
+          </View>
         </View>
       ) : null}
       <SignatureSheet
@@ -371,6 +381,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   actionRow: { flexDirection: 'row', gap: spacing.sm },
+  pdfActions: { flexDirection: 'row', gap: spacing.sm },
+  pdfPrimary: { flex: 1 },
+  pdfShare: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: colors.surfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   actionCell: { flex: 1 },
   returnCell: { flex: 0.5 },
 })

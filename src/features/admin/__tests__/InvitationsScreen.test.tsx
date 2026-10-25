@@ -64,6 +64,8 @@ test('ofrece compartir el aviso después de guardar la invitación', async () =>
     }),
   )
   const actions = alert.mock.calls.find(([title]) => title === 'Invitación creada')?.[2]
+  expect(Array.isArray(actions)).toBe(true)
+  if (!Array.isArray(actions)) throw new Error('Faltan acciones de invitación')
   expect(actions?.map((item) => item.text)).toContain('Compartir aviso')
   actions?.find((item) => item.text === 'Compartir aviso')?.onPress?.()
 

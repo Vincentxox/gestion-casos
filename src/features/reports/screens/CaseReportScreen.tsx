@@ -125,6 +125,7 @@ export function CaseReportScreen({ navigation, route }: Props) {
               AppFeedback.show(
                 'Fotos pendientes',
                 'Hay fotos subiéndose. Se terminarán de subir en segundo plano mientras la app esté abierta.',
+                { tone: 'info' },
               )
           })
       }),
@@ -264,7 +265,7 @@ export function CaseReportScreen({ navigation, route }: Props) {
             onPress={() =>
               void handleSubmit(
                 (input) => void review(input),
-                () => AppFeedback.show('Revisa el formulario'),
+                () => AppFeedback.show('Revisa el formulario', undefined, { tone: 'warning' }),
               )()
             }
           />

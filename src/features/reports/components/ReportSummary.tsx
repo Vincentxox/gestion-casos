@@ -87,6 +87,7 @@ export function ReportSummary({
       AppFeedback.show(
         'No fue posible descargar el PDF',
         getErrorMessage(error, 'Inténtalo de nuevo.'),
+        { tone: 'error' },
       )
     } finally {
       setPdfLoading(false)
@@ -102,6 +103,7 @@ export function ReportSummary({
       AppFeedback.show(
         'No fue posible compartir el PDF',
         getErrorMessage(error, 'Inténtalo de nuevo.'),
+        { tone: 'error' },
       )
     } finally {
       setShareLoading(false)
