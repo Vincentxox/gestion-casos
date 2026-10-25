@@ -10,6 +10,7 @@ export function Chip({
   tone = 'neutral',
   selected = false,
   icon,
+  outlined = false,
   accessibilityLabel,
   onPress,
 }: {
@@ -17,10 +18,17 @@ export function Chip({
   tone?: Tone
   selected?: boolean
   icon?: IconName
+  outlined?: boolean
   accessibilityLabel?: string
   onPress?: () => void
 }) {
-  const foreground = selected ? colors.white : onPress ? colors.ink : tonePalette[tone].text
+  const foreground = outlined
+    ? colors.textMuted
+    : selected
+      ? colors.white
+      : onPress
+        ? colors.ink
+        : tonePalette[tone].text
   const content = (
     <>
       {icon ? <Icon name={icon} size="inline" color={foreground} /> : null}
@@ -28,7 +36,16 @@ export function Chip({
     </>
   )
   if (!onPress) {
-    return <View style={[styles.chip, { backgroundColor: tonePalette[tone].bg }]}>{content}</View>
+    return (
+      <View
+        style={[
+          styles.chip,
+          outlined ? styles.outlined : { backgroundColor: tonePalette[tone].bg },
+        ]}
+      >
+        {content}
+      </View>
+    )
   }
 
   return (
@@ -70,4 +87,9 @@ const styles = StyleSheet.create({
     borderColor: colors.chipBorder,
   },
   label: typography.label,
+  outlined: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
 })

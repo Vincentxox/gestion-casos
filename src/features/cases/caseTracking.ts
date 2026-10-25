@@ -23,7 +23,7 @@ const DEFINITIONS = [
   },
   {
     key: 'asignar',
-    label: 'Asignar técnico',
+    label: 'Personal asignado',
     action: 'asignar',
     pending: 'Se asigna al responsable del trabajo',
   },
@@ -35,7 +35,7 @@ const DEFINITIONS = [
   },
   {
     key: 'reporte',
-    label: 'Reporte',
+    label: 'Revisión y firmas',
     action: 'enviar_reporte',
     pending: 'Validación y aprobación',
   },

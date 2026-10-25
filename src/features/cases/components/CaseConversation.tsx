@@ -3,30 +3,12 @@ import { StyleSheet, Text, View } from 'react-native'
 
 import { Avatar } from '@/components/ui/Avatar'
 import type { CaseRecord, CaseStatusHistoryRecord } from '@/features/cases/types'
+import { formatMoment } from '@/theme/formatters'
 import { actionMeta, statusMeta } from '@/theme/statusMeta'
 import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
 
-function sameDay(a: Date, b: Date) {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  )
-}
-
 export function formatEventMoment(value: string, now = new Date()): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return 'Fecha no disponible'
-  const time = date.toLocaleTimeString('es-GT', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })
-  const yesterday = new Date(now)
-  yesterday.setDate(now.getDate() - 1)
-  if (sameDay(date, now)) return `Hoy ${time}`
-  if (sameDay(date, yesterday)) return `Ayer ${time}`
-  return `${date.toLocaleDateString('es-GT', { day: 'numeric', month: 'short' })} · ${time}`
+  return formatMoment(value, now)
 }
 
 export function describeEvent(event: CaseStatusHistoryRecord): string {

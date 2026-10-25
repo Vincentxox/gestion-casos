@@ -90,6 +90,7 @@
       "src/config/queryClient.ts",
       "src/config/queryLifecycle.ts",
       "src/features/auth/authService.ts",
+      "src/features/home/indicatorPresentation.ts",
       "src/features/auth/recoveryLink.ts",
       "src/features/auth/components/GoogleMark.tsx",
       "src/features/auth/screens/ForgotPasswordScreen.tsx",

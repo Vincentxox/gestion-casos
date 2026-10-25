@@ -16,6 +16,7 @@ import { useCasePhotos } from '@/features/photos/usePhotos'
 import { useCaseUsages } from '@/features/resources/useResources'
 import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
+import { formatMoment } from '@/theme/formatters'
 import { colors, spacing, typography } from '@/theme/tokens'
 
 import { ReportContent } from '../components/ReportContent'
@@ -167,8 +168,8 @@ export function ReportReviewScreen({ navigation, route }: Props) {
     action === 'submit'
       ? 'Firmar y enviar'
       : action === 'validate'
-        ? 'Validar y firmar'
-        : 'Aprobar y firmar'
+        ? 'Firmar validación'
+        : 'Firmar conformidad'
   const title =
     signatureAction === 'submit'
       ? 'Firma de ejecución'
@@ -234,12 +235,10 @@ export function ReportReviewScreen({ navigation, route }: Props) {
   return (
     <SafeAreaView edges={['bottom']} style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
-        {action ? (
+        {action === 'submit' ? (
           <Card contentStyle={styles.notice}>
             <Text style={styles.text}>
-              {action === 'submit'
-                ? 'Al firmar, este contenido queda congelado y no se podrá editar.'
-                : 'Tu firma confirma que revisaste esta versión.'}
+              Al firmar, este contenido queda congelado y no se podrá editar.
             </Text>
           </Card>
         ) : null}
@@ -271,7 +270,7 @@ export function ReportReviewScreen({ navigation, route }: Props) {
               />
               <Text style={styles.muted}>
                 Devuelta por {version.returnedByName ?? 'Sin nombre'} ·{' '}
-                {version.returnedAt ? new Date(version.returnedAt).toLocaleString('es-GT') : ''}
+                {version.returnedAt ? formatMoment(version.returnedAt) : ''}
               </Text>
               <Text style={styles.text}>{version.returnReason}</Text>
               {expandedPast === version.id ? (
@@ -293,10 +292,15 @@ export function ReportReviewScreen({ navigation, route }: Props) {
                 </Text>
               ))
             : null}
+          <Text style={styles.consent}>Tu firma confirma que revisaste esta versión.</Text>
           <View style={styles.actionRow}>
             {allowed('devolver_reporte') ? (
               <View style={styles.returnCell}>
-                <Button label="Devolver" variant="danger" onPress={() => setReturnVisible(true)} />
+                <Button
+                  label="Devolver"
+                  variant="secondary"
+                  onPress={() => setReturnVisible(true)}
+                />
               </View>
             ) : null}
             <View style={styles.actionCell}>
@@ -373,6 +377,7 @@ const styles = StyleSheet.create({
   notice: { gap: spacing.sm },
   text: { ...typography.body, color: colors.text },
   muted: { ...typography.body, color: colors.textMuted },
+  consent: { ...typography.caption, color: colors.textMuted, textAlign: 'center' },
   sticky: {
     gap: spacing.sm,
     padding: spacing.md,

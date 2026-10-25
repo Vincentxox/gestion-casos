@@ -1,48 +1,67 @@
+import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { useState } from 'react'
-import { ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { RequestState } from '@/components/feedback/RequestState'
-import { Button } from '@/components/ui/Button'
-import { Card } from '@/components/ui/Card'
+import { Chip } from '@/components/ui/Chip'
+import { Icon } from '@/components/ui/Icon'
 import { ScreenContainer } from '@/components/ui/ScreenContainer'
-import { colors, spacing, typography } from '@/theme/tokens'
-import { useCaseIndicators } from './useIndicators'
-import { CASE_STATUSES } from '@/features/cases/types'
+import { CASE_PRIORITIES, CASE_STATUSES } from '@/features/cases/types'
+import type { MainStackParamList } from '@/navigation/types'
+import { formatNumber } from '@/theme/formatters'
 import { priorityMeta, statusMeta } from '@/theme/statusMeta'
+import { colors, fonts, radius, spacing, tone, typography } from '@/theme/tokens'
+import { useCaseIndicators } from './useIndicators'
+import { formatIndicatorDuration } from './indicatorPresentation'
 
-function Metric({ label, value }: { label: string; value: string | number | null | undefined }) {
+type Props = NativeStackScreenProps<MainStackParamList, 'Indicators'>
+
+function TimeMetric({ label, hours }: { label: string; hours: number | null }) {
   return (
-    <View style={styles.metric}>
-      <Text style={styles.label}>{label}</Text>
-      <Text style={styles.value}>{value ?? '—'}</Text>
+    <View style={styles.timeMetric}>
+      <Text style={styles.timeValue}>{formatIndicatorDuration(hours)}</Text>
+      <Text style={styles.timeLabel}>{label}</Text>
     </View>
   )
 }
 
-export function IndicatorsScreen() {
+function DetailRow({
+  label,
+  value,
+  note,
+}: {
+  label: string
+  value: string | number
+  note?: string
+}) {
+  return (
+    <View style={styles.detailRow}>
+      <View style={styles.detailLabelGroup}>
+        <Text style={styles.detailLabel}>{label}</Text>
+        {note ? <Text style={styles.detailNote}>{note}</Text> : null}
+      </View>
+      <Text style={styles.detailValue}>{value}</Text>
+    </View>
+  )
+}
+
+export function IndicatorsScreen({ navigation }: Props) {
   const [period, setPeriod] = useState<'all' | '30'>('30')
+  const [detailOpen, setDetailOpen] = useState(false)
   const [today] = useState(() => new Date())
   const periodStart =
     period === '30' ? new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString() : null
   const result = useCaseIndicators(true, periodStart)
   const data = result.data
   return (
-    <ScreenContainer edges={[]} padded={false}>
+    <ScreenContainer edges={['bottom']} padded={false}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.note}>
-          Datos de las solicitudes que puedes consultar. Los vencimientos actuales no dependen del
-          filtro de creación.
-        </Text>
         <View style={styles.filters}>
-          <Button
+          <Chip
             label="Últimos 30 días"
-            variant={period === '30' ? 'primary' : 'secondary'}
+            selected={period === '30'}
             onPress={() => setPeriod('30')}
           />
-          <Button
-            label="Todo"
-            variant={period === 'all' ? 'primary' : 'secondary'}
-            onPress={() => setPeriod('all')}
-          />
+          <Chip label="Todo" selected={period === 'all'} onPress={() => setPeriod('all')} />
         </View>
         {result.isLoading ? <RequestState kind="loading" title="Cargando indicadores…" /> : null}
         {result.isError ? (
@@ -54,79 +73,159 @@ export function IndicatorsScreen() {
         ) : null}
         {data ? (
           <>
-            <Card contentStyle={styles.card}>
-              <Text style={styles.heading}>Resumen</Text>
-              <Metric label="Solicitudes" value={data.total} />
-              <Metric
-                label="Aceptación promedio (h)"
-                value={data.tiempos_promedio_horas.aceptacion}
+            <View style={styles.hero}>
+              <Text style={styles.heroValue}>{formatNumber(data.total)}</Text>
+              <Text style={styles.heroLabel}>
+                {period === '30'
+                  ? 'solicitudes creadas en los últimos 30 días'
+                  : 'solicitudes creadas en todo el periodo'}
+              </Text>
+            </View>
+            <View style={styles.timeMetrics}>
+              <TimeMetric
+                label="Aceptar, en promedio"
+                hours={data.tiempos_promedio_horas.aceptacion}
               />
-              <Metric
-                label="Resolución promedio (h)"
-                value={data.tiempos_promedio_horas.resolucion}
+              <TimeMetric
+                label="Resolver, en promedio"
+                hours={data.tiempos_promedio_horas.resolucion}
               />
-              <Metric
-                label="Envío a aprobación promedio (h)"
-                value={data.tiempos_promedio_horas.envio_a_aprobacion}
+              <TimeMetric
+                label="Aprobar, en promedio"
+                hours={data.tiempos_promedio_horas.envio_a_aprobacion}
               />
-            </Card>
-            <Card contentStyle={styles.card}>
-              <Text style={styles.heading}>Vencimientos</Text>
-              <Metric label="Aceptación vencida ahora" value={data.vencidas_hoy.aceptacion} />
-              <Metric label="Resolución vencida ahora" value={data.vencidas_hoy.resolucion} />
-              <Metric label="Aceptadas fuera de plazo" value={data.fuera_de_plazo.aceptacion} />
-              <Metric label="Resueltas fuera de plazo" value={data.fuera_de_plazo.resolucion} />
-            </Card>
-            <Card contentStyle={styles.card}>
-              <Text style={styles.heading}>Por prioridad</Text>
-              {(['alta', 'media', 'baja'] as const).map((priority) => (
-                <Metric
-                  key={priority}
-                  label={priorityMeta[priority].label}
-                  value={data.por_prioridad[priority] ?? 0}
-                />
+            </View>
+            <View style={styles.section}>
+              <Text accessibilityRole="header" style={styles.heading}>
+                Ahora mismo
+              </Text>
+              <Text style={styles.note}>No depende del periodo elegido.</Text>
+              {(
+                [
+                  ['Vencidas sin aceptar', data.vencidas_hoy.aceptacion],
+                  ['Vencidas sin resolver', data.vencidas_hoy.resolucion],
+                ] as const
+              ).map(([label, value]) => (
+                <Pressable
+                  key={label}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${label}, ${value}. Ver solicitudes vencidas`}
+                  onPress={() =>
+                    navigation.navigate('Cases', { status: 'abiertas', overdueOnly: true })
+                  }
+                  style={styles.overdueRow}
+                >
+                  <Icon name="warning-outline" color={tone.danger.text} size={22} />
+                  <Text style={styles.overdueLabel}>{label}</Text>
+                  <Text style={styles.overdueValue}>{formatNumber(value)}</Text>
+                  <Icon name="chevron-forward" color={tone.danger.text} size={20} />
+                </Pressable>
               ))}
-            </Card>
-            <Card contentStyle={styles.card}>
-              <Text style={styles.heading}>Por estado</Text>
-              {CASE_STATUSES.map((status) => (
-                <Metric
-                  key={status}
-                  label={statusMeta[status].label}
-                  value={data.por_estado[status] ?? 0}
-                />
-              ))}
-            </Card>
-            <Card contentStyle={styles.card}>
-              <Text style={styles.heading}>Área destino</Text>
-              {data.por_area_destino.length === 0 ? (
-                <Text style={styles.note}>Sin datos en este periodo</Text>
-              ) : null}
-              {data.por_area_destino.map((area) => (
-                <Metric key={area.area_id} label={area.nombre} value={area.total} />
-              ))}
-            </Card>
-            <Card contentStyle={styles.card}>
-              <Text style={styles.heading}>Área solicitante</Text>
-              {data.por_area_solicitante.length === 0 ? (
-                <Text style={styles.note}>Sin datos en este periodo</Text>
-              ) : null}
-              {data.por_area_solicitante.map((area) => (
-                <Metric key={area.area_id} label={area.nombre} value={area.total} />
-              ))}
-            </Card>
-            <Card contentStyle={styles.card}>
-              <Text style={styles.heading}>Recursos por área solicitante</Text>
-              {data.costo_recursos_por_area.length === 0 ? (
-                <Text style={styles.note}>Sin datos en este periodo</Text>
-              ) : null}
-              {data.costo_recursos_por_area.map((area) => (
-                <View key={area.area_id}>
-                  <Metric label={area.nombre} value={area.costo.toFixed(2)} />
-                  <Text style={styles.note}>{area.horas_mano_de_obra} h de mano de obra</Text>
+            </View>
+            <View style={styles.section}>
+              <Text accessibilityRole="header" style={styles.heading}>
+                Fuera de plazo en el periodo
+              </Text>
+              <View style={styles.lateRow}>
+                <Text style={styles.lateLabel}>Aceptadas tarde</Text>
+                <Text style={styles.lateValue}>{formatNumber(data.fuera_de_plazo.aceptacion)}</Text>
+              </View>
+              <View style={styles.lateRow}>
+                <Text style={styles.lateLabel}>Resueltas tarde</Text>
+                <Text style={styles.lateValue}>{formatNumber(data.fuera_de_plazo.resolucion)}</Text>
+              </View>
+            </View>
+            <View style={styles.details}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Más detalle"
+                accessibilityState={{ expanded: detailOpen }}
+                onPress={() => setDetailOpen((open) => !open)}
+                style={styles.detailsToggle}
+              >
+                <Text style={styles.detailsTitle}>Más detalle</Text>
+                <View style={detailOpen && styles.detailsChevronOpen}>
+                  <Icon name="chevron-down" color={colors.textMuted} size={18} />
                 </View>
-              ))}
-            </Card>
+              </Pressable>
+              {detailOpen ? (
+                <View style={styles.detailBlocks}>
+                  <View>
+                    <Text accessibilityRole="header" style={styles.detailHeading}>
+                      Por prioridad
+                    </Text>
+                    {CASE_PRIORITIES.map((priority) => (
+                      <DetailRow
+                        key={priority}
+                        label={priorityMeta[priority].label}
+                        value={formatNumber(data.por_prioridad[priority] ?? 0)}
+                      />
+                    ))}
+                  </View>
+                  <View>
+                    <Text accessibilityRole="header" style={styles.detailHeading}>
+                      Por estado
+                    </Text>
+                    {CASE_STATUSES.map((status) => (
+                      <DetailRow
+                        key={status}
+                        label={statusMeta[status].label}
+                        value={formatNumber(data.por_estado[status] ?? 0)}
+                      />
+                    ))}
+                  </View>
+                  <View>
+                    <Text accessibilityRole="header" style={styles.detailHeading}>
+                      Área destino
+                    </Text>
+                    {data.por_area_destino.length === 0 ? (
+                      <Text style={styles.note}>Sin datos en este periodo</Text>
+                    ) : (
+                      data.por_area_destino.map((area) => (
+                        <DetailRow
+                          key={area.area_id}
+                          label={area.nombre}
+                          value={formatNumber(area.total)}
+                        />
+                      ))
+                    )}
+                  </View>
+                  <View>
+                    <Text accessibilityRole="header" style={styles.detailHeading}>
+                      Área solicitante
+                    </Text>
+                    {data.por_area_solicitante.length === 0 ? (
+                      <Text style={styles.note}>Sin datos en este periodo</Text>
+                    ) : (
+                      data.por_area_solicitante.map((area) => (
+                        <DetailRow
+                          key={area.area_id}
+                          label={area.nombre}
+                          value={formatNumber(area.total)}
+                        />
+                      ))
+                    )}
+                  </View>
+                  <View>
+                    <Text accessibilityRole="header" style={styles.detailHeading}>
+                      Recursos por área solicitante
+                    </Text>
+                    {data.costo_recursos_por_area.length === 0 ? (
+                      <Text style={styles.note}>Sin datos en este periodo</Text>
+                    ) : (
+                      data.costo_recursos_por_area.map((area) => (
+                        <DetailRow
+                          key={area.area_id}
+                          label={area.nombre}
+                          value={area.costo.toFixed(2)}
+                          note={`${area.horas_mano_de_obra} h de mano de obra`}
+                        />
+                      ))
+                    )}
+                  </View>
+                </View>
+              ) : null}
+            </View>
           </>
         ) : null}
       </ScrollView>
@@ -135,12 +234,66 @@ export function IndicatorsScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { gap: spacing.md, padding: spacing.lg, paddingTop: spacing.md },
-  note: { ...typography.caption, color: colors.textMuted },
+  content: { gap: spacing.lg, padding: spacing.md, paddingBottom: spacing.xl },
+  note: { ...typography.body, color: colors.textMuted },
   filters: { flexDirection: 'row', gap: spacing.sm },
-  card: { gap: spacing.sm },
-  heading: { ...typography.heading, color: colors.text },
-  metric: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md },
-  label: { ...typography.body, color: colors.textMuted, flex: 1 },
-  value: { ...typography.body, color: colors.text },
+  hero: { gap: spacing.xs },
+  heroValue: { fontFamily: fonts.extrabold, fontSize: 56, lineHeight: 64, color: colors.ink },
+  heroLabel: { ...typography.body, color: colors.textMuted },
+  timeMetrics: { flexDirection: 'row', gap: spacing.sm },
+  timeMetric: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 112,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.lg,
+    padding: spacing.base,
+    gap: spacing.sm,
+  },
+  timeValue: { fontFamily: fonts.bold, fontSize: 24, lineHeight: 28, color: colors.ink },
+  timeLabel: { ...typography.caption, color: colors.textMuted },
+  section: { gap: spacing.sm },
+  heading: { ...typography.title, color: colors.ink },
+  overdueRow: {
+    minHeight: 60,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.base,
+    backgroundColor: tone.danger.bg,
+    borderColor: tone.danger.border,
+    borderWidth: 1,
+    borderRadius: radius.lg,
+  },
+  overdueLabel: { ...typography.body, flex: 1, fontFamily: fonts.bold, color: tone.danger.text },
+  overdueValue: { ...typography.heading, color: tone.danger.text },
+  lateRow: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  lateLabel: { ...typography.body, color: colors.text },
+  lateValue: { ...typography.heading, color: colors.ink },
+  details: { borderTopWidth: 1, borderTopColor: colors.track },
+  detailsToggle: { minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: spacing.base },
+  detailsTitle: { ...typography.body, flex: 1, fontFamily: fonts.semibold, color: colors.text },
+  detailsChevronOpen: { transform: [{ rotate: '180deg' }] },
+  detailBlocks: { gap: spacing.lg, paddingBottom: spacing.md },
+  detailHeading: { ...typography.heading, color: colors.ink, paddingBottom: spacing.xs },
+  detailRow: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.track,
+  },
+  detailLabelGroup: { flex: 1, paddingVertical: spacing.sm },
+  detailLabel: { ...typography.body, color: colors.text },
+  detailNote: { ...typography.caption, color: colors.textMuted },
+  detailValue: { ...typography.heading, color: colors.ink },
 })

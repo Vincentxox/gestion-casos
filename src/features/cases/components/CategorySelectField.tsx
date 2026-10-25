@@ -45,14 +45,25 @@ export function CategorySelectField({
         accessibilityRole="button"
         disabled={disabled || loading}
         onPress={onOpen}
-        style={[styles.selector, error ? styles.selectorError : null]}
+        style={({ pressed }) => [
+          styles.selector,
+          error ? styles.selectorError : null,
+          pressed ? styles.selectorPressed : null,
+        ]}
       >
-        <Text style={[styles.value, !value ? styles.placeholder : null]}>
-          {loading
-            ? 'Cargando tipos de servicio…'
-            : categories.find((item) => item.id === value)?.name ||
-              'Selecciona un tipo de servicio'}
-        </Text>
+        <View style={styles.valueGroup}>
+          <Text style={[styles.value, !value ? styles.placeholder : null]}>
+            {loading
+              ? 'Cargando tipos de servicio…'
+              : categories.find((item) => item.id === value)?.name ||
+                'Selecciona un tipo de servicio'}
+          </Text>
+          {categories.find((item) => item.id === value)?.areaName ? (
+            <Text style={styles.areaName}>
+              Lo atiende {categories.find((item) => item.id === value)?.areaName}
+            </Text>
+          ) : null}
+        </View>
         <Ionicons color={colors.textMuted} name="chevron-down" size={22} />
       </Pressable>
       {error ? (
@@ -80,7 +91,11 @@ export function CategorySelectField({
                 onChange(category.id)
                 onClose()
               }}
-              style={[styles.option, selected ? styles.optionSelected : null]}
+              style={({ pressed }) => [
+                styles.option,
+                selected ? styles.optionSelected : null,
+                pressed ? styles.selectorPressed : null,
+              ]}
             >
               <View style={styles.optionContent}>
                 <Text style={styles.optionName}>{category.name}</Text>
@@ -113,7 +128,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   selectorError: { borderColor: colors.error },
-  value: { ...typography.body, flex: 1, color: colors.text },
+  selectorPressed: { backgroundColor: colors.surfaceMuted },
+  valueGroup: { flex: 1, gap: spacing.xs },
+  value: { ...typography.body, color: colors.text },
   placeholder: { color: colors.textMuted },
   error: { ...typography.caption, color: colors.error },
   options: { gap: spacing.sm, padding: spacing.lg, paddingBottom: spacing.xl },

@@ -1,7 +1,7 @@
 import { act, render } from '@testing-library/react-native'
 import { createElement } from 'react'
 
-import { colors } from '@/theme/tokens'
+import { avatar, colors } from '@/theme/tokens'
 
 import { Avatar, avatarColor, avatarInitials } from '../Avatar'
 import { useSignedProfilePhoto } from '@/features/settings/useSignedProfilePhoto'
@@ -17,6 +17,10 @@ describe('Avatar', () => {
   it('mantiene un color estable para la misma persona', () => {
     expect(avatarColor('user-1')).toBe(avatarColor('user-1'))
     expect(avatarColor('user-1')).toMatch(/^#[0-9A-F]{6}$/i)
+    for (const id of ['u1', 'u2', 'u3', 'u4', 'u5', 'u6', 'u7', 'u8']) {
+      expect(Object.values(avatar)).toContain(avatarColor(id))
+    }
+    expect(Object.values(avatar)).toEqual(['#13305E', '#0F766E', '#4338CA', '#52627A'])
   })
 
   it('muestra al responsable actual con avatar neutro', async () => {

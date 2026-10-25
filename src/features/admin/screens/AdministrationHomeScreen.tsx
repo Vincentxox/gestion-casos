@@ -105,7 +105,10 @@ export function AdministrationHomeScreen({ navigation }: Props) {
             <Pressable
               accessibilityRole="button"
               onPress={() => void summary.refetch()}
-              style={styles.alertRow}
+              style={({ pressed }) => [
+                styles.alertRow,
+                pressed && { backgroundColor: colors.surfaceMuted },
+              ]}
             >
               <Text style={styles.linkText}>No pudimos cargar los pendientes. Reintentar</Text>
             </Pressable>
@@ -119,7 +122,10 @@ export function AdministrationHomeScreen({ navigation }: Props) {
               accessibilityLabel={alert.label}
               key={`${alert.screen}-${alert.label}`}
               onPress={() => navigation.navigate(alert.screen)}
-              style={styles.alertRow}
+              style={({ pressed }) => [
+                styles.alertRow,
+                pressed && { backgroundColor: colors.surfaceMuted },
+              ]}
             >
               <Icon name="alert-circle-outline" size="base" color={tone.warning.text} />
               <Text style={styles.alertText}>{alert.label}</Text>

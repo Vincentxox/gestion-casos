@@ -9,12 +9,11 @@ import type { NextStepCase, HomeSummary } from '../homeService'
 import { HomeScreen } from '../HomeScreen'
 import { useCaseCounts } from '@/features/cases/useCases'
 import { useGuidedTour } from '@/features/help/tour/useGuidedTour'
+import { HelpScreen } from '@/features/help/HelpScreen'
 
 const mockNavigate = jest.fn()
 const mockRootNavigate = jest.fn()
 const mockNextRefetch = jest.fn()
-const mockComplete = jest.fn()
-const mockHide = jest.fn()
 let mockNextItems: NextStepCase[] = []
 let mockNextError = false
 let mockNextLoading = false
@@ -130,22 +129,10 @@ jest.mock('@/features/notifications/useNotifications', () => ({
     refetch: jest.fn(),
   }),
 }))
-jest.mock('../useFirstSteps', () => ({
-  useFirstSteps: () => ({
-    loaded: true,
-    hidden: false,
-    completed: [],
-    complete: mockComplete,
-    hide: mockHide,
-  }),
-}))
-
 beforeEach(() => {
   mockNavigate.mockClear()
   mockRootNavigate.mockClear()
   mockNextRefetch.mockClear()
-  mockComplete.mockClear()
-  mockHide.mockClear()
   mockNextItems = []
   mockNotices = []
   mockNextError = false
@@ -175,6 +162,7 @@ beforeEach(() => {
     autoShown: false,
     autoAllowed: false,
     seen: [],
+    skipped: false,
     steps: [],
     index: 0,
     target: null,
@@ -473,12 +461,15 @@ test('dos avisos de la misma persona mantienen el color del avatar', async () =>
   )
 })
 
-test('Primeros pasos se puede ocultar y lleva a la siguiente tarea', async () => {
-  const screen = await renderHome()
-  expect(screen.getByText('0/5')).toBeTruthy()
-  await fireEvent.press(screen.getByRole('button', { name: 'Revisa tu perfil' }))
-  expect(mockComplete).toHaveBeenCalledWith('profile')
-  expect(mockNavigate).toHaveBeenCalledWith('Profile')
-  await fireEvent.press(screen.getByRole('button', { name: 'Ocultar Primeros pasos' }))
-  expect(mockHide).toHaveBeenCalled()
+test('Inicio y Ayuda comparten el mismo avance del recorrido y se oculta al saltarlo', async () => {
+  useGuidedTour.setState({ userId: mockProfile.id, ready: true, seen: ['inicio'] })
+  const home = await renderHome()
+  const help = await render(<HelpScreen />)
+  expect(home.getByText('1 de 5')).toBeTruthy()
+  expect(help.getByText('1 de 5')).toBeTruthy()
+  expect(home.getByText('Sigue: Tu área en números')).toBeTruthy()
+  expect(home.getByRole('button', { name: /Aprende Nexo en 5 pasos, 1 de 5/ })).toBeTruthy()
+  await act(() => useGuidedTour.setState({ skipped: true, active: false }))
+  expect(home.queryByText('Aprende Nexo en 5 pasos')).toBeNull()
+  expect(help.getByText('Aprende Nexo en 5 pasos')).toBeTruthy()
 })

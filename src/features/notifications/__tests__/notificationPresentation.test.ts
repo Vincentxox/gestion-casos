@@ -67,9 +67,10 @@ test('agrupa por calendario local y conserva el orden de cada grupo', () => {
 
 test('formatea hora corta y fecha sin segundos', () => {
   expect(notificationTimeLabel(new Date(2026, 9, 16, 8, 5).toISOString(), now)).toMatch(/^0?8:05$/)
-  expect(notificationTimeLabel(new Date(2026, 9, 15, 18, 5).toISOString(), now)).toMatch(/^18:05$/)
-  expect(notificationTimeLabel(new Date(2026, 9, 13, 9, 0).toISOString(), now)).toMatch(/^mar\.?$/i)
-  expect(notificationTimeLabel(new Date(2026, 8, 30, 8, 0).toISOString(), now)).toBe('30 sep.')
+  expect(notificationTimeLabel(new Date(2026, 9, 15, 18, 5).toISOString(), now)).toBe('Ayer')
+  expect(notificationTimeLabel(new Date(2026, 9, 13, 9, 0).toISOString(), now)).toBe('mar')
+  expect(notificationTimeLabel(new Date(2026, 8, 30, 8, 0).toISOString(), now)).toBe('30 sep')
+  expect(notificationTimeLabel(new Date(2025, 9, 21, 8, 0).toISOString(), now)).toBe('21 oct 2025')
   expect(notificationTimeLabel('incorrecta', now)).toBe('')
 })
 

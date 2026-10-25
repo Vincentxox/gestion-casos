@@ -4,12 +4,12 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
 
 import { StatusBadge } from '@/components/badges/StatusBadge'
-import { PriorityBadge } from '@/components/badges/PriorityBadge'
 import { Card } from '@/components/ui/Card'
 import { Icon, type IconName } from '@/components/ui/Icon'
 import { ROLE_LABELS, type AppRole } from '@/features/auth/types'
-import type { CasePriority, CaseStatus } from '@/features/cases/types'
+import type { CaseStatus } from '@/features/cases/types'
 import { usePhotoUrl } from '@/features/photos/usePhotos'
+import { formatMoment } from '@/theme/formatters'
 import { colors, phaseColors, radius, spacing, typography } from '@/theme/tokens'
 
 import {
@@ -87,7 +87,7 @@ function Info({ label, value, wide = false }: { label: string; value: unknown; w
   if (value === null || value === undefined || value === '') return null
   return (
     <View style={[styles.info, wide && styles.wide]}>
-      <Text style={styles.overline}>{label}</Text>
+      <Text style={styles.dataLabel}>{label}</Text>
       <Text style={styles.text}>{String(value)}</Text>
     </View>
   )
@@ -104,7 +104,7 @@ function PeopleInfo({
 }) {
   return (
     <View style={styles.info}>
-      <Text style={styles.overline}>{label}</Text>
+      <Text style={styles.dataLabel}>{label}</Text>
       <Text style={styles.text}>{area}</Text>
       {person ? <Text style={styles.muted}>{person}</Text> : null}
     </View>
@@ -114,7 +114,7 @@ function PeopleInfo({
 function Work({ label, value }: { label: string; value: string | null }) {
   return value ? (
     <View style={styles.work}>
-      <Text style={styles.overline}>{label}</Text>
+      <Text style={styles.dataLabel}>{label}</Text>
       <Text style={styles.text}>{value}</Text>
     </View>
   ) : null
@@ -169,6 +169,11 @@ export function ReportContent({
   const dates = orderedReviewDates(content.fechas).filter(([, value]) => Boolean(value))
   const elapsed = reportElapsedLabel(content.fechas.creada ?? null, content.fechas.enviada ?? null)
   const steps = reportSignatureSteps(signatures, currentAction)
+  const approvedLabels = {
+    ejecucion: 'Técnico',
+    validacion_tecnica: 'Jefe del área técnica',
+    conformidad: 'Jefe del área solicitante',
+  } as const
   return (
     <View style={styles.container}>
       <Card contentStyle={styles.card}>
@@ -178,10 +183,14 @@ export function ReportContent({
         <Text accessibilityRole="header" style={styles.title}>
           {info.titulo}
         </Text>
-        {caseStatus ? <StatusBadge status={caseStatus} /> : null}
         <View style={styles.badges}>
-          <PriorityBadge priority={info.prioridad as CasePriority} />
-          <Text style={styles.category}>{info.tipo_servicio}</Text>
+          {caseStatus ? <StatusBadge status={caseStatus} /> : null}
+          <Text style={styles.category} accessibilityLabel={`Prioridad: ${info.prioridad}`}>
+            Prioridad {info.prioridad}
+          </Text>
+          <Text style={styles.category} numberOfLines={1}>
+            {info.tipo_servicio}
+          </Text>
         </View>
         {info.descripcion ? <Text style={styles.muted}>{info.descripcion}</Text> : null}
         <View style={styles.grid}>
@@ -192,7 +201,9 @@ export function ReportContent({
       </Card>
 
       <Card contentStyle={styles.card}>
-        <Text style={styles.heading}>Firmas · progreso</Text>
+        <Text style={styles.heading}>
+          Firmas · {steps.filter((step) => step.signature).length} de {steps.length}
+        </Text>
         {steps.map((step) => (
           <View key={step.type} style={styles.step}>
             <View style={[styles.circle, step.signature ? styles.done : styles.pending]}>
@@ -200,12 +211,12 @@ export function ReportContent({
             </View>
             <View style={styles.stepText}>
               <Text style={[styles.text, step.isCurrent && styles.current]}>
-                {step.label}
+                {caseStatus === 'aprobado' ? approvedLabels[step.type] : step.label}
                 {step.isCurrent ? ' · te toca' : ''}
               </Text>
-              <Text style={styles.muted}>
+              <Text style={styles.muted} numberOfLines={1}>
                 {step.signature
-                  ? `${step.signature.signerName}${step.isSubstitute ? ' (suplente)' : ''} · ${new Date(step.signature.signedAt).toLocaleString('es-GT')}`
+                  ? `${step.signature.signerName}${step.isSubstitute ? ' (suplente)' : ''} · ${formatMoment(step.signature.signedAt)}`
                   : 'Pendiente'}
               </Text>
             </View>
@@ -235,18 +246,20 @@ export function ReportContent({
 
       {dates.length > 0 ? (
         <Card contentStyle={styles.card}>
-          <View style={styles.sectionHeading}>
-            <Text style={styles.heading}>Tiempos</Text>
-            {elapsed ? <Text style={styles.duration}>{elapsed}</Text> : null}
-          </View>
-          <View style={styles.grid}>
+          <Text style={styles.heading}>Tiempos</Text>
+          <View style={styles.timeList}>
             {dates.map(([key, value]) => (
-              <Info
-                key={key}
-                label={reviewDateLabel(key)}
-                value={value ? new Date(value).toLocaleString('es-GT') : null}
-              />
+              <View key={key} style={styles.timeRow}>
+                <Text style={styles.timeLabel}>{reviewDateLabel(key)}</Text>
+                <Text style={styles.timeValue}>{value ? formatMoment(value) : ''}</Text>
+              </View>
             ))}
+            {elapsed ? (
+              <View style={styles.timeRow}>
+                <Text style={styles.timeLabel}>Resuelta en</Text>
+                <Text style={styles.timeValue}>{elapsed}</Text>
+              </View>
+            ) : null}
           </View>
         </Card>
       ) : null}
@@ -292,11 +305,7 @@ export function ReportContent({
 
       {signatures.length > 0 ? (
         <Card contentStyle={styles.card}>
-          <Text style={styles.heading}>
-            {caseStatus === 'aprobado'
-              ? `Firmas · ${steps.filter((step) => step.signature).length} de ${steps.length}`
-              : 'Firmas registradas'}
-          </Text>
+          <Text style={styles.heading}>Firmas manuscritas</Text>
           {steps
             .filter((step) => step.signature)
             .map((step) => {
@@ -333,8 +342,8 @@ export function ReportContent({
                       {step.label} ·{' '}
                       {ROLE_LABELS[signature.signerRole as AppRole] ?? signature.signerRole}
                     </Text>
-                    <Text style={styles.muted}>
-                      {new Date(signature.signedAt).toLocaleString('es-GT')}
+                    <Text style={styles.muted} numberOfLines={1}>
+                      {formatMoment(signature.signedAt)}
                     </Text>
                   </View>
                 </View>
@@ -354,19 +363,21 @@ export function ReportContent({
 const styles = StyleSheet.create({
   container: { gap: spacing.md },
   card: { gap: spacing.md },
-  overline: { ...typography.overline, color: colors.textMuted },
+  overline: { ...typography.overline, color: colors.textMuted, textTransform: 'uppercase' },
+  dataLabel: { ...typography.label, color: colors.textMuted },
   title: { ...typography.title, color: colors.text },
   heading: { ...typography.heading, color: colors.text },
   text: { ...typography.body, color: colors.text },
   muted: { ...typography.caption, color: colors.textMuted },
-  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  badges: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   category: {
     ...typography.caption,
-    color: colors.primary,
-    backgroundColor: colors.primarySoft,
+    color: colors.textMuted,
+    backgroundColor: colors.surface,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
+    flexShrink: 1,
   },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
   info: { width: '46%', gap: spacing.xs },
@@ -379,7 +390,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  done: { backgroundColor: colors.success },
+  done: { backgroundColor: colors.ink },
   pending: { borderWidth: 2, borderColor: colors.primary },
   stepText: { flex: 1 },
   current: { color: colors.primary },
@@ -391,13 +402,18 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: spacing.sm,
   },
-  sectionHeading: {
+  timeList: { gap: 0 },
+  timeRow: {
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: spacing.sm,
+    gap: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  duration: { ...typography.caption, color: colors.primary, flexShrink: 1, textAlign: 'right' },
+  timeLabel: { ...typography.body, color: colors.textMuted },
+  timeValue: { ...typography.body, color: colors.text, textAlign: 'right', flexShrink: 1 },
   resource: {
     flexDirection: 'row',
     alignItems: 'center',

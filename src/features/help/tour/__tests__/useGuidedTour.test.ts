@@ -15,6 +15,7 @@ describe('useGuidedTour', () => {
       ready: false,
       autoAllowed: false,
       seen: [],
+      skipped: false,
       autoShown: false,
       steps: [],
       index: 0,
@@ -40,6 +41,11 @@ describe('useGuidedTour', () => {
     )
     await useGuidedTour.getState().skip()
     expect(useGuidedTour.getState().active).toBe(false)
+    expect(useGuidedTour.getState().skipped).toBe(true)
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith(
+      'guided-tour:person-1',
+      JSON.stringify({ seen: ['inicio', 'avisos'], autoShown: true, skipped: true }),
+    )
   })
 
   test('un fallo de lectura impide el lanzamiento automático', async () => {

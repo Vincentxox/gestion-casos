@@ -22,3 +22,25 @@ test('rechazada, cancelada y hecha no dependen solo del color', async () => {
   expect(screen.getByTestId('icon-close')).toBeTruthy()
   expect(screen.getByTestId('icon-remove')).toBeTruthy()
 })
+
+test('el paso actual alinea «Desde hoy» junto al título', async () => {
+  const today = new Date()
+  today.setHours(7, 35, 0, 0)
+  const event = {
+    id: 1,
+    action: 'iniciar',
+    previousStatus: 'asignado',
+    newStatus: 'en_ejecucion',
+    actorName: 'Luis',
+    assigneeName: 'Luis',
+    comment: null,
+    createdAt: today.toISOString(),
+  } as const
+  const steps: TrackingStep[] = [
+    { key: 'en_ejecucion', label: 'En ejecución', state: 'current', detail: '', event },
+  ]
+  const screen = await render(
+    <CaseTracking steps={steps} events={[]} description="Descripción" location="Lugar" />,
+  )
+  expect(screen.getByText('En ejecución').parent).toBe(screen.getByText('Desde hoy 07:35').parent)
+})

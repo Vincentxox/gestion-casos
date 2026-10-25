@@ -1,5 +1,7 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native'
+import { StyleSheet } from 'react-native'
 
+import { colors } from '@/theme/tokens'
 import { HelpScreen } from '../HelpScreen'
 import { useGuidedTour } from '../tour/useGuidedTour'
 
@@ -21,6 +23,7 @@ describe('HelpScreen', () => {
       userId: 'person',
       ready: true,
       seen: [],
+      skipped: false,
       autoShown: true,
       active: false,
       steps: [],
@@ -30,22 +33,41 @@ describe('HelpScreen', () => {
     })
   })
 
-  test('muestra el recorrido del rol y Mostrarme inicia en ese paso', async () => {
+  test('muestra los cinco pasos en un solo bloque', async () => {
     const screen = await render(<HelpScreen />)
     expect(screen.getByText('Aprende Nexo en 5 pasos')).toBeTruthy()
-    expect(screen.getByText('Tu recorrido')).toBeTruthy()
-    await fireEvent.press(screen.getByLabelText('Paso 2: Tu área en números'))
-    await waitFor(() => expect(useGuidedTour.getState().index).toBe(1))
+    expect(screen.getByText('0 de 5')).toBeTruthy()
+    expect(screen.queryByText('EMPIEZA AQUÍ')).toBeNull()
+    const circle = screen.getByText('Lo urgente, primero').parent?.children[0]
+    if (!circle || typeof circle === 'string') throw new Error('Falta el círculo del paso actual')
+    expect(StyleSheet.flatten(circle.props.style)).toMatchObject({
+      width: 28,
+      height: 28,
+      borderColor: colors.white,
+      borderWidth: 2,
+    })
+    expect(screen.getByText('Tu área en números')).toBeTruthy()
+    await fireEvent.press(screen.getByText('Continuar: Lo urgente, primero'))
+    await waitFor(() => expect(useGuidedTour.getState().index).toBe(0))
     expect(useGuidedTour.getState().active).toBe(true)
   })
 
-  test('Empieza aquí cambia entre Empezar, Continuar y Repetir', async () => {
+  test('las guías tienen filas y separadores visibles', async () => {
     const screen = await render(<HelpScreen />)
-    expect(screen.getByText('Empezar recorrido')).toBeTruthy()
+    const guide = screen.getByText('Aceptar y asignar')
+    expect(StyleSheet.flatten(guide.parent?.props.style)).toMatchObject({
+      minHeight: 64,
+      borderBottomColor: colors.track,
+    })
+  })
+
+  test('el recorrido cambia entre Continuar y Repetir', async () => {
+    const screen = await render(<HelpScreen />)
+    expect(screen.getByText('Continuar: Lo urgente, primero')).toBeTruthy()
     await act(() => {
       useGuidedTour.setState({ seen: ['inicio'] })
     })
-    expect(screen.getByText('Continuar recorrido')).toBeTruthy()
+    expect(screen.getByText('Continuar: Tu área en números')).toBeTruthy()
     await act(() => {
       useGuidedTour.setState({ seen: ['inicio', 'tu-area', 'crear', 'decidir', 'indicadores'] })
     })
@@ -104,7 +126,7 @@ describe('HelpScreen', () => {
     const screen = await render(<HelpScreen />)
     await fireEvent.changeText(screen.getByLabelText('Buscar en la ayuda'), 'repuesto')
     expect(screen.getByText('¿Qué es «En espera»?')).toBeTruthy()
-    expect(screen.queryByText('EMPIEZA AQUÍ')).toBeNull()
+    expect(screen.queryByText('Aprende Nexo en 5 pasos')).toBeNull()
     expect(screen.queryByText('Cómo leer una solicitud')).toBeNull()
     await fireEvent.changeText(screen.getByLabelText('Buscar en la ayuda'), 'xyz')
     expect(screen.getByText(/No encontramos nada sobre «xyz»/)).toBeTruthy()

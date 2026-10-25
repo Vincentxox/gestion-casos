@@ -4,7 +4,6 @@ import { useFocusEffect } from '@react-navigation/native'
 import { useCallback, useEffect, useState } from 'react'
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import Svg, { Circle } from 'react-native-svg'
 
 import { NexoLogo } from '@/components/branding/NexoLogo'
 import { ROLE_LABELS } from '@/features/auth/types'
@@ -18,6 +17,7 @@ import { useCaseCounts } from '@/features/cases/useCases'
 import { getTutorialFor } from '@/features/help/helpContent'
 import { TourTarget } from '@/features/help/tour/TourTarget'
 import { useGuidedTour } from '@/features/help/tour/useGuidedTour'
+import { getTourProgress } from '@/features/help/tour/tourProgress'
 import { notificationTimeLabel } from '@/features/notifications/notificationPresentation'
 import { useNotifications } from '@/features/notifications/useNotifications'
 import type { MainTabParamList, RootStackParamList } from '@/navigation/types'
@@ -31,13 +31,11 @@ import {
   NEXT_STEP_BUTTON_LABELS,
   NEXT_STEP_LABELS,
 } from './homePresentation'
-import { useFirstSteps } from './useFirstSteps'
 import { useHomeSummary } from './useHomeSummary'
 import { useNextSteps } from './useNextSteps'
 
 type Props = BottomTabScreenProps<MainTabParamList, 'Home'>
 
-const RING_CIRCUMFERENCE = 2 * Math.PI * 25
 const CARD_TONES = {
   danger: colors.error,
   new: phaseColors.nueva.fg,
@@ -58,6 +56,7 @@ export function HomeScreen({ navigation }: Props) {
   const tourReady = useGuidedTour((state) => state.ready)
   const tourAutoShown = useGuidedTour((state) => state.autoShown)
   const tourSeen = useGuidedTour((state) => state.seen)
+  const tourSkipped = useGuidedTour((state) => state.skipped)
   const startTour = useGuidedTour((state) => state.start)
   const enabled = Boolean(profile?.organizationId)
   const summary = useHomeSummary(enabled)
@@ -81,7 +80,6 @@ export function HomeScreen({ navigation }: Props) {
     },
     enabled && Boolean(countScope),
   )
-  const firstSteps = useFirstSteps(profile?.id)
   const [now, setNow] = useState(() => new Date())
   const refetchSummary = summary.refetch
   const refetchNext = nextSteps.refetch
@@ -153,25 +151,8 @@ export function HomeScreen({ navigation }: Props) {
         : 'Pasaron su plazo; atiéndelas primero'
   const today = getTodayNotifications(notifications.data ?? [], now)
   const areaName = profile.areaName || 'Administración'
-  const firstStepItems = [
-    { id: 'profile', label: 'Revisa tu perfil', action: () => navigation.navigate('Profile') },
-    {
-      id: 'cases',
-      label: 'Explora Solicitudes',
-      action: () => navigation.navigate('CasesTab', { screen: 'Cases' }),
-    },
-    { id: 'notices', label: 'Conoce tus avisos', action: openNotifications },
-    { id: 'help', label: 'Descubre la ayuda', action: () => navigation.navigate('Help') },
-    {
-      id: 'start',
-      label: profile.role === 'administrador' ? 'Configura tu empresa' : 'Consulta una solicitud',
-      action: () =>
-        profile.role === 'administrador'
-          ? navigation.navigate('Administration', { screen: 'AdministrationHome' })
-          : navigation.navigate('CasesTab', { screen: 'Cases' }),
-    },
-  ]
-  const nextFirstStep = firstStepItems.find((step) => !firstSteps.completed.includes(step.id))
+  const tutorialSteps = getTutorialFor(profile.role, '', Boolean(profile.areaId))
+  const tourProgress = getTourProgress(tutorialSteps, tourSeen)
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
@@ -251,7 +232,11 @@ export function HomeScreen({ navigation }: Props) {
                   params: { scope: homeCaseView!.scope, status: 'abiertas', overdueOnly: true },
                 })
               }
-              style={[styles.attentionCard, styles.attentionDanger]}
+              style={({ pressed }) => [
+                styles.attentionCard,
+                styles.attentionDanger,
+                pressed && styles.pressedRow,
+              ]}
             >
               <View style={[styles.attentionIcon, styles.attentionDangerIcon]}>
                 <Icon name="warning-outline" color={colors.dangerText} size={22} />
@@ -262,6 +247,7 @@ export function HomeScreen({ navigation }: Props) {
                 </Text>
                 <Text style={styles.attentionDescription}>{overdueMessage}</Text>
               </View>
+              <Icon name="chevron-forward" color={colors.dangerText} size="inline" />
             </Pressable>
           ) : null}
           {attentionReady && overdueCount === 0 && currentStep ? (
@@ -319,7 +305,11 @@ export function HomeScreen({ navigation }: Props) {
                   params: { scope: homeCaseView!.scope, status: 'abiertas' },
                 })
               }
-              style={[styles.attentionCard, styles.attentionSuccess]}
+              style={({ pressed }) => [
+                styles.attentionCard,
+                styles.attentionSuccess,
+                pressed && styles.pressedRow,
+              ]}
             >
               <View style={[styles.attentionIcon, styles.attentionSuccessIcon]}>
                 <Icon name="checkmark" color={colors.success} size={22} />
@@ -337,73 +327,6 @@ export function HomeScreen({ navigation }: Props) {
             </Pressable>
           ) : null}
         </TourTarget>
-        {firstSteps.loaded && !firstSteps.hidden && firstSteps.completed.length < 5 ? (
-          <View style={styles.firstStepsCard}>
-            <View style={styles.sectionTitleRow}>
-              <Text accessibilityRole="header" style={styles.sectionTitle}>
-                Primeros pasos
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Ocultar Primeros pasos"
-                onPress={firstSteps.hide}
-                style={styles.smallAction}
-              >
-                <Icon name="close" color={colors.textMuted} size={20} />
-              </Pressable>
-            </View>
-            <View style={styles.firstStepsBody}>
-              <View
-                accessibilityLabel={`${firstSteps.completed.length} de 5 pasos completados`}
-                style={styles.progressRing}
-              >
-                <Svg width={60} height={60} viewBox="0 0 60 60">
-                  <Circle
-                    cx={30}
-                    cy={30}
-                    r={25}
-                    stroke={colors.track}
-                    strokeWidth={5}
-                    fill="none"
-                  />
-                  <Circle
-                    cx={30}
-                    cy={30}
-                    r={25}
-                    stroke={colors.sky}
-                    strokeWidth={5}
-                    strokeDasharray={`${(RING_CIRCUMFERENCE * firstSteps.completed.length) / 5} ${RING_CIRCUMFERENCE}`}
-                    strokeLinecap="round"
-                    rotation={-90}
-                    origin="30, 30"
-                    fill="none"
-                  />
-                </Svg>
-                <Text style={styles.progressText}>{firstSteps.completed.length}/5</Text>
-              </View>
-              <View style={styles.firstStepsCopy}>
-                <Text style={styles.bodyText}>
-                  {nextFirstStep ? 'Conoce Nexo Casos paso a paso.' : '¡Ya conoces lo esencial!'}
-                </Text>
-                {nextFirstStep ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={nextFirstStep.label}
-                    onPress={() => {
-                      firstSteps.complete(nextFirstStep.id)
-                      nextFirstStep.action()
-                    }}
-                    style={styles.inlineAction}
-                  >
-                    <Text style={styles.actionText}>{nextFirstStep.label}</Text>
-                    <Icon name="arrow-forward" size="inline" color={colors.primary} />
-                  </Pressable>
-                ) : null}
-              </View>
-            </View>
-          </View>
-        ) : null}
-
         <View style={styles.section}>
           <View style={styles.sectionTitleRow}>
             <Text accessibilityRole="header" style={styles.sectionTitle}>
@@ -460,12 +383,14 @@ export function HomeScreen({ navigation }: Props) {
                         },
                       })
                     }
-                    style={styles.caseTile}
+                    style={({ pressed }) => [styles.caseTile, pressed && styles.pressedRow]}
                   >
-                    <Text style={styles.caseCount}>{card.count}</Text>
+                    <Text maxFontSizeMultiplier={1.3} style={styles.caseCount}>
+                      {card.count}
+                    </Text>
                     <View style={styles.caseTileLabel}>
                       <View style={[styles.caseDot, { backgroundColor: CARD_TONES[card.tone] }]} />
-                      <Text numberOfLines={1} style={styles.caseLabel}>
+                      <Text numberOfLines={2} maxFontSizeMultiplier={1.3} style={styles.caseLabel}>
                         {card.label}
                       </Text>
                     </View>
@@ -474,6 +399,43 @@ export function HomeScreen({ navigation }: Props) {
             </TourTarget>
           ) : null}
         </View>
+
+        {tourReady && !tourSkipped && !tourProgress.complete && tourProgress.nextStep ? (
+          <View style={styles.firstStepsCard}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Aprende Nexo en ${tutorialSteps.length} pasos, ${tourProgress.seenCount} de ${tutorialSteps.length}. Sigue: ${tourProgress.nextStep.title}`}
+              onPress={() => void startTour(tutorialSteps, tourProgress.nextIndex)}
+              style={({ pressed }) => [
+                styles.firstStepsAction,
+                pressed && styles.firstStepsPressed,
+              ]}
+            >
+              <View style={styles.firstStepsCopy}>
+                <View style={styles.firstStepsHeading}>
+                  <Text style={styles.firstStepsTitle}>
+                    Aprende Nexo en {tutorialSteps.length} pasos
+                  </Text>
+                  <Text style={styles.firstStepsCount}>
+                    {tourProgress.seenCount} de {tutorialSteps.length}
+                  </Text>
+                </View>
+                <View style={styles.firstStepsTrack}>
+                  <View
+                    style={[
+                      styles.firstStepsFill,
+                      { width: `${(tourProgress.seenCount / tutorialSteps.length) * 100}%` },
+                    ]}
+                  />
+                </View>
+                <Text numberOfLines={1} style={styles.firstStepsNext}>
+                  Sigue: {tourProgress.nextStep.title}
+                </Text>
+              </View>
+              <Icon name="chevron-forward" color={colors.ink} />
+            </Pressable>
+          </View>
+        ) : null}
 
         <View style={styles.section}>
           <View style={styles.sectionTitleRow}>
@@ -514,7 +476,7 @@ export function HomeScreen({ navigation }: Props) {
                   initial: false,
                 })
               }
-              style={styles.todayRow}
+              style={({ pressed }) => [styles.todayRow, pressed && styles.pressedRow]}
             >
               {item.actorName ? (
                 <Avatar name={item.actorName} id={item.actorId ?? item.actorName} size={44} />
@@ -617,7 +579,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: radius.pill,
   },
-  attentionDangerIcon: { backgroundColor: colors.dangerBadge },
+  attentionDangerIcon: { backgroundColor: colors.surface },
   attentionInfoIcon: { backgroundColor: colors.surface },
   attentionSuccessIcon: { backgroundColor: colors.surface },
   attentionCopy: { flex: 1, gap: spacing.xs },
@@ -640,26 +602,38 @@ const styles = StyleSheet.create({
   firstStepsCard: {
     borderRadius: radius.lg,
     backgroundColor: tone.info.bg,
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
-  firstStepsBody: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  progressRing: {
-    width: 60,
-    height: 60,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  progressText: { ...typography.heading, color: colors.ink, position: 'absolute' },
+  firstStepsAction: {
+    flex: 1,
+    minHeight: 64,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
+  },
+  firstStepsPressed: { backgroundColor: colors.surfaceMuted },
+  pressedRow: { backgroundColor: colors.surfaceMuted },
   firstStepsCopy: { flex: 1, gap: spacing.xs },
-  bodyText: { ...typography.body, color: colors.text },
-  inlineAction: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  firstStepsHeading: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm },
+  firstStepsTitle: { ...typography.heading, color: colors.ink, flexShrink: 1 },
+  firstStepsTrack: {
+    height: 5,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+    overflow: 'hidden',
+  },
+  firstStepsFill: { height: '100%', backgroundColor: colors.primary },
+  firstStepsCount: { ...typography.caption, fontFamily: fonts.semibold, color: colors.primary },
+  firstStepsNext: { ...typography.caption, color: colors.textMuted },
   quietEmpty: { ...typography.body, color: colors.textMuted, paddingVertical: spacing.sm },
   caseGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   caseTile: {
     flexBasis: '30%',
     flexGrow: 1,
-    height: 88,
+    height: 128,
+    justifyContent: 'space-between',
     padding: spacing.md,
     gap: spacing.xs,
     borderWidth: 1,
@@ -668,8 +642,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   caseCount: { ...typography.display, color: colors.ink },
-  caseTileLabel: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  caseDot: { width: 8, height: 8, borderRadius: radius.pill },
+  caseTileLabel: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs },
+  caseDot: { width: 8, height: 8, borderRadius: radius.pill, marginTop: 4 },
   caseLabel: { ...typography.caption, color: colors.textMuted, flexShrink: 1 },
   todayRow: {
     minHeight: 64,

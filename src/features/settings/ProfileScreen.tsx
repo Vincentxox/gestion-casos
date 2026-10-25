@@ -8,6 +8,7 @@ import appConfig from '../../../app.json'
 import { Button } from '@/components/ui/Button'
 import { FormField } from '@/components/forms/FormField'
 import { Icon } from '@/components/ui/Icon'
+import { IconTile } from '@/components/ui/IconTile'
 import { Avatar } from '@/components/ui/Avatar'
 import { Card } from '@/components/ui/Card'
 import { Chip } from '@/components/ui/Chip'
@@ -16,7 +17,7 @@ import { BottomSheet } from '@/components/sheets/BottomSheet'
 import { ROLE_ICONS, ROLE_LABELS } from '@/features/auth/types'
 import { confirmLogout } from '@/features/auth/confirmLogout'
 import { useAuthStore } from '@/store/authStore'
-import { colors, radius, spacing, typography } from '@/theme/tokens'
+import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
 import { updateOwnName } from './profileService'
 import { prepareProfilePhoto } from './profilePhotoPreparation'
 import { useClearOwnProfilePhoto, useUploadOwnProfilePhoto } from './useProfilePhoto'
@@ -227,7 +228,7 @@ export function ProfileScreen() {
           <View style={styles.separator} />
           <View style={styles.dataRow}>
             <Text style={styles.dataLabel}>Correo</Text>
-            <Text style={styles.value} numberOfLines={1}>
+            <Text style={styles.value} numberOfLines={1} ellipsizeMode="middle">
               {session?.user.email || 'No disponible'}
             </Text>
           </View>
@@ -258,7 +259,6 @@ export function ProfileScreen() {
         </Card>
         <Button
           label="Cerrar sesión"
-          icon="log-out-outline"
           variant="danger"
           style={styles.logoutButton}
           onPress={() => confirmLogout(() => void handleLogout())}
@@ -326,9 +326,9 @@ function SettingRow({
       accessibilityLabel={label}
       accessibilityRole="button"
       onPress={onPress}
-      style={styles.settingRow}
+      style={({ pressed }) => [styles.settingRow, pressed && styles.settingPressed]}
     >
-      <Icon name={icon} color={colors.primary} />
+      <IconTile icon={icon} size={40} backgroundColor={colors.surface} iconColor={colors.ink} />
       <View style={styles.settingText}>
         <Text style={styles.settingLabel}>{label}</Text>
         <Text style={styles.settingDetail}>{detail}</Text>
@@ -382,11 +382,18 @@ const styles = StyleSheet.create({
   dataList: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border },
   dataRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   dataLabel: { ...typography.caption, color: colors.textMuted, width: 72 },
-  value: { ...typography.body, color: colors.text, flex: 1 },
+  value: {
+    ...typography.body,
+    fontFamily: fonts.semibold,
+    color: colors.ink,
+    flex: 1,
+    textAlign: 'right',
+  },
   separator: { height: 1, backgroundColor: colors.border },
   sectionHeading: { ...typography.overline, color: colors.textMuted },
   settingsCard: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
   settingRow: { minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  settingPressed: { backgroundColor: colors.surfaceMuted },
   settingText: { flex: 1 },
   settingLabel: { ...typography.body, color: colors.text },
   settingDetail: { ...typography.caption, color: colors.textMuted },

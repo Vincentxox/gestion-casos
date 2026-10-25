@@ -3,9 +3,9 @@ import { Image } from 'expo-image'
 import { StyleSheet, Text, View } from 'react-native'
 
 import { useSignedProfilePhoto } from '@/features/settings/useSignedProfilePhoto'
-import { colors, fonts, radius, typography } from '@/theme/tokens'
+import { avatar, colors, fonts, radius, typography } from '@/theme/tokens'
 
-const palette = [colors.primary, colors.purple, colors.success, colors.neutral] as const
+const palette = [avatar.ink, avatar.teal, avatar.indigo, avatar.slate] as const
 
 export function avatarInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -19,7 +19,7 @@ export function avatarInitials(name: string): string {
 export function avatarColor(id: string): string {
   let hash = 0
   for (const character of id) hash = (hash * 31 + character.charCodeAt(0)) >>> 0
-  return palette[hash % palette.length] ?? colors.primary
+  return palette[hash % palette.length] ?? avatar.ink
 }
 
 export function Avatar({

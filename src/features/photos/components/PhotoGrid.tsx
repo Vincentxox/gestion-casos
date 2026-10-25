@@ -52,7 +52,7 @@ function ConfirmedTile({
         accessibilityLabel={`Ver foto ${label}`}
         accessibilityRole="button"
         onPress={onPress}
-        style={styles.imagePress}
+        style={({ pressed }) => [styles.imagePress, pressed && styles.slotPressed]}
       >
         {url.data ? (
           <Image
@@ -260,17 +260,21 @@ export function PhotoGrid({
     }
   }
 
-  const slots = Array.from({ length: 3 }, (_, index) => ({
-    confirmedPhoto: confirmed[index],
-    pendingPhoto: queued[index - confirmed.length],
-    index,
-  }))
+  const slots = Array.from(
+    { length: Math.min(3, confirmed.length + queued.length + (canEdit ? 1 : 0)) },
+    (_, index) => ({
+      confirmedPhoto: confirmed[index],
+      pendingPhoto: queued[index - confirmed.length],
+      index,
+    }),
+  )
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>
-        Fotos de {label.toLowerCase()} · {confirmed.length} de 3
-      </Text>
+      <View style={styles.titleRow}>
+        <Text style={styles.title}>Fotos de {label.toLowerCase()}</Text>
+        <Text style={styles.count}>{confirmed.length} de 3</Text>
+      </View>
       {actions.error ? (
         <View style={styles.errorRow}>
           <Text style={styles.error}>No fue posible cargar las acciones de fotos.</Text>
@@ -307,7 +311,7 @@ export function PhotoGrid({
                     <Pressable
                       accessibilityLabel={`Reintentar foto ${label} ${index + 1}`}
                       onPress={() => void resume('manual', pendingPhoto.localId)}
-                      style={styles.pendingAction}
+                      style={({ pressed }) => [styles.pendingAction, pressed && styles.slotPressed]}
                     >
                       <Text style={styles.pendingLabel}>Error · Reintentar</Text>
                     </Pressable>
@@ -322,13 +326,15 @@ export function PhotoGrid({
                 accessibilityLabel={`Agregar foto de ${label.toLowerCase()}`}
                 accessibilityRole="button"
                 onPress={() => setPickerVisible(true)}
-                style={[styles.slot, styles.emptySlot]}
+                style={({ pressed }) => [
+                  styles.slot,
+                  styles.emptySlot,
+                  pressed && styles.slotPressed,
+                ]}
               >
                 <Icon name="camera-outline" color={colors.primary} />
                 <Text style={styles.addLabel}>Agregar</Text>
               </Pressable>
-            ) : canEdit ? (
-              <View key={index} style={[styles.slot, styles.emptySlot]} />
             ) : null,
           )}
         </View>
@@ -466,7 +472,9 @@ export function PhotoGrid({
 
 const styles = StyleSheet.create({
   container: { gap: spacing.sm },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { ...typography.heading, color: colors.text },
+  count: { ...typography.caption, color: colors.textMuted },
   description: { ...typography.body, color: colors.textMuted },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   slot: {
@@ -483,6 +491,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  slotPressed: { backgroundColor: colors.surfaceMuted },
   imagePress: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   image: { width: '100%', height: '100%' },
   options: {

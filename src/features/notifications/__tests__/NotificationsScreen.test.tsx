@@ -1,9 +1,10 @@
 import { act, fireEvent, render } from '@testing-library/react-native'
-import { Animated } from 'react-native'
+import { Animated, StyleSheet } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import type { AppNotification } from '../notificationService'
 import { NotificationsScreen } from '../NotificationsScreen'
+import { colors } from '@/theme/tokens'
 
 const mockNavigate = jest.fn()
 const mockSetOptions = jest.fn()
@@ -13,7 +14,6 @@ const mockDismiss = jest.fn().mockResolvedValue(1)
 const mockRestore = jest.fn()
 const mockConfirm = jest.fn().mockResolvedValue(false)
 const mockReadRefetch = jest.fn()
-let mockSheetSelect: ((id: string) => void) | null = null
 let mockItems: AppNotification[] = []
 
 jest.mock('../useNotifications', () => ({
@@ -35,42 +35,6 @@ jest.mock('../useNotifications', () => ({
 jest.mock('@/components/feedback/AppFeedback', () => ({
   useFeedback: () => ({ confirm: mockConfirm }),
 }))
-
-jest.mock('@/components/actions/ActionSheet', () => {
-  const React = jest.requireActual('react')
-  const { Pressable, Text, View } = jest.requireActual('react-native')
-  return {
-    ActionSheet: ({
-      actions,
-      visible,
-      onSelect,
-    }: {
-      actions: { id: string; label: string }[]
-      visible: boolean
-      onSelect: (id: string) => void
-    }) => {
-      mockSheetSelect = onSelect
-      return visible
-        ? React.createElement(
-            View,
-            null,
-            actions.map((action) =>
-              React.createElement(
-                Pressable,
-                {
-                  key: action.id,
-                  accessibilityRole: 'button',
-                  accessibilityLabel: action.label,
-                  onPress: () => onSelect(action.id),
-                },
-                React.createElement(Text, null, action.label),
-              ),
-            ),
-          )
-        : null
-    },
-  }
-})
 
 const item: AppNotification = {
   id: 2,
@@ -133,6 +97,24 @@ test('abre detalle desde Avisos y marca solo el aviso seleccionado', async () =>
   expect(mockNavigate).toHaveBeenCalledWith('CaseDetail', { caseId: 'case-2' })
 })
 
+test('un aviso sin leer conserva el icono sobre fondo visible', async () => {
+  mockItems = [item]
+  const screen = await renderScreen()
+  expect(StyleSheet.flatten(screen.getByTestId('notification-icon-box').props.style)).toMatchObject(
+    {
+      backgroundColor: colors.surface,
+    },
+  )
+})
+
+test('la fila leída tiene fondo opaco para tapar la acción al deslizar', async () => {
+  mockItems = [{ ...item, readAt: '2026-10-16T12:10:00Z' }]
+  const screen = await renderScreen()
+  expect(
+    StyleSheet.flatten(screen.getByRole('button', { name: /Reporte enviado/ }).props.style),
+  ).toMatchObject({ backgroundColor: colors.surface })
+})
+
 test('un aviso de mensaje abre el detalle por action, no por el título', async () => {
   mockItems = [{ ...item, title: 'Título libre', action: 'mensaje' }]
   const screen = await renderScreen()
@@ -148,21 +130,30 @@ test('el menú muestra solo las opciones aplicables', async () => {
   mockItems = [item]
   const firstScreen = await renderScreen()
   const unreadHeader = mockSetOptions.mock.lastCall?.[0].headerRight
-  const action = await render(unreadHeader())
-  await fireEvent.press(action.getByRole('button', { name: 'Más opciones' }))
+  await act(async () => unreadHeader().props.onPress())
   expect(firstScreen.getByText('Marcar todo como leído')).toBeTruthy()
   expect(firstScreen.queryByText(/Borrar avisos leídos/)).toBeNull()
   await act(async () => {
-    mockSheetSelect?.('read')
+    fireEvent.press(firstScreen.getByRole('button', { name: 'Marcar todo como leído' }))
   })
   expect(mockMark).toHaveBeenCalledWith(null)
-  await action.unmount()
   await firstScreen.unmount()
 
   mockItems = [{ ...item, readAt: '2026-10-16T12:10:00Z' }]
   await renderScreen()
   const readHeader = mockSetOptions.mock.lastCall?.[0].headerRight
   expect(readHeader()).not.toBeNull()
+})
+
+test('el menú muestra ambas acciones con leídos y sin leer y se cierra al tocar fuera', async () => {
+  mockItems = [item, { ...item, id: 3, readAt: '2026-10-16T12:10:00Z' }]
+  const screen = await renderScreen()
+  const header = mockSetOptions.mock.lastCall?.[0].headerRight
+  await act(async () => header().props.onPress())
+  expect(screen.getByRole('button', { name: 'Marcar todo como leído' })).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Borrar avisos leídos (1)' })).toBeTruthy()
+  await fireEvent.press(screen.getByRole('button', { name: 'Cerrar opciones de avisos' }))
+  expect(screen.queryByRole('button', { name: 'Marcar todo como leído' })).toBeNull()
 })
 
 test('el filtro Sin leer muestra Estás al día cuando no hay pendientes', async () => {
@@ -216,17 +207,15 @@ test('borrar todos requiere confirmación y no ejecuta la RPC al cancelar', asyn
   mockItems = [{ ...item, readAt: '2026-10-16T12:10:00Z' }]
   const screen = await renderScreen()
   const header = mockSetOptions.mock.lastCall?.[0].headerRight
-  const action = await render(header())
-  await fireEvent.press(action.getByRole('button', { name: 'Más opciones' }))
+  await act(async () => header().props.onPress())
   expect(screen.queryByText('Marcar todo como leído')).toBeNull()
   await act(async () => {
-    mockSheetSelect?.('delete')
+    fireEvent.press(screen.getByRole('button', { name: 'Borrar avisos leídos (1)' }))
   })
   expect(mockConfirm).toHaveBeenCalledWith(
     expect.objectContaining({ tone: 'danger', confirmLabel: 'Borrar' }),
   )
   expect(mockDismiss).not.toHaveBeenCalled()
-  await action.unmount()
 })
 
 test('borrar todos conserva los IDs exactos para Deshacer', async () => {
@@ -234,12 +223,10 @@ test('borrar todos conserva los IDs exactos para Deshacer', async () => {
   mockConfirm.mockResolvedValue(true)
   const screen = await renderScreen()
   const header = mockSetOptions.mock.lastCall?.[0].headerRight
-  const action = await render(header())
-  await fireEvent.press(action.getByRole('button', { name: 'Más opciones' }))
+  await act(async () => header().props.onPress())
   await act(async () => {
-    mockSheetSelect?.('delete')
+    fireEvent.press(screen.getByRole('button', { name: 'Borrar avisos leídos (1)' }))
   })
   expect(mockDismiss).toHaveBeenCalledWith([2])
   expect(await screen.findByText('Aviso borrado')).toBeTruthy()
-  await action.unmount()
 })

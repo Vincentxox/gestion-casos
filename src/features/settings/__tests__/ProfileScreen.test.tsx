@@ -87,9 +87,27 @@ test('muestra datos compactos, ajustes y la opción de subir foto', async () => 
     flexDirection: 'row',
   })
   expect(screen.getByText('ana@example.test')).toBeTruthy()
+  expect(screen.getByText('ana@example.test').props).toMatchObject({
+    numberOfLines: 1,
+    ellipsizeMode: 'middle',
+  })
+  expect(StyleSheet.flatten(screen.getByText('ana@example.test').props.style)).toMatchObject({
+    textAlign: 'right',
+    color: colors.ink,
+  })
   expect(screen.getByLabelText('Apariencia')).toBeTruthy()
   expect(screen.getByLabelText('Notificaciones')).toBeTruthy()
   expect(screen.getByLabelText('Permisos de tu rol')).toBeTruthy()
+  for (const label of ['Apariencia', 'Notificaciones', 'Permisos de tu rol']) {
+    const row = screen.getByLabelText(label)
+    const tile = row.children[0]
+    if (!tile || typeof tile === 'string') throw new Error(`IconTile ausente en ${label}`)
+    expect(StyleSheet.flatten(tile.props.style)).toMatchObject({
+      width: 40,
+      height: 40,
+      backgroundColor: colors.surface,
+    })
+  }
   expect(screen.getByText(/Nexo Casos · versión/)).toBeTruthy()
   const camera = screen.getByRole('button', { name: 'Cambiar foto de perfil' })
   expect(StyleSheet.flatten(camera.props.style)).toMatchObject({ width: 44, height: 44 })

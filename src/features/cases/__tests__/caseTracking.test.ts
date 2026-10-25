@@ -3,12 +3,12 @@ import type { CaseStatus, CaseStatusHistoryRecord } from '../types'
 
 const states: { status: CaseStatus; current: string | null; done: number }[] = [
   { status: 'solicitado', current: 'Solicitada', done: 0 },
-  { status: 'aceptado', current: 'Asignar técnico', done: 2 },
+  { status: 'aceptado', current: 'Personal asignado', done: 2 },
   { status: 'asignado', current: 'En ejecución', done: 3 },
   { status: 'en_ejecucion', current: 'En ejecución', done: 3 },
   { status: 'en_espera', current: 'En ejecución', done: 3 },
-  { status: 'reporte_enviado', current: 'Reporte', done: 4 },
-  { status: 'validado', current: 'Reporte', done: 4 },
+  { status: 'reporte_enviado', current: 'Revisión y firmas', done: 4 },
+  { status: 'validado', current: 'Revisión y firmas', done: 4 },
   { status: 'aprobado', current: null, done: 6 },
 ]
 

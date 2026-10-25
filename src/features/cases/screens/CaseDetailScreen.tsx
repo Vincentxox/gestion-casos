@@ -26,10 +26,12 @@ import { ReportSummary } from '@/features/reports/components/ReportSummary'
 import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
 import { priorityMeta, statusMeta } from '@/theme/statusMeta'
+import { formatMoment } from '@/theme/formatters'
 import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
 import { getErrorMessage } from '@/utils/errorMessage'
 
 import { CaseMessages } from '../components/CaseMessages'
+import { CaseKeyFacts } from '../components/CaseKeyFacts'
 import { CaseTracking } from '../components/CaseTracking'
 import { getCaseTrackingSteps } from '../caseTracking'
 import { getCaseActionMeta } from '../caseActionPresentation'
@@ -108,7 +110,13 @@ export function CaseDetailScreen({ navigation, route }: Props) {
   }
 
   if (detail.isLoading) {
-    return <RequestState kind="loading" title="Cargando solicitud…" />
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+        <ScrollView contentContainerStyle={styles.content}>
+          <SkeletonList count={4} />
+        </ScrollView>
+      </SafeAreaView>
+    )
   }
 
   if (detail.error || !detail.data) {
@@ -216,7 +224,7 @@ export function CaseDetailScreen({ navigation, route }: Props) {
         : priorityMeta[item.priority].label,
     },
     { label: 'Técnico', value: item.assigneeName || 'Sin asignar' },
-    { label: 'Creada', value: new Date(item.createdAt).toLocaleDateString('es-GT') },
+    { label: 'Creada', value: formatMoment(item.createdAt) },
   ]
 
   return (
@@ -269,13 +277,13 @@ export function CaseDetailScreen({ navigation, route }: Props) {
                 {item.requestingAreaName} · {item.category}
               </Text>
             </View>
+            <CaseKeyFacts
+              priority={item.priority}
+              dueAt={item.dueAt}
+              overdueStage={item.overdueStage}
+              assigneeName={item.assigneeName}
+            />
             {overdue ? <Text style={styles.overdue}>{overdue}</Text> : null}
-            {!primaryLabel && waiting ? (
-              <View style={[styles.turnBanner, styles.waitingBanner]}>
-                <Icon name="time-outline" size={22} color={colors.textMuted} />
-                <Text style={styles.waitingText}>{waiting.banner}</Text>
-              </View>
-            ) : null}
           </View>
 
           <OfflineBanner />
@@ -326,9 +334,6 @@ export function CaseDetailScreen({ navigation, route }: Props) {
                 REPORT_STATUSES.includes(item.status) ? (
                   <ReportSummary
                     item={item}
-                    beforeEditable={allowed('fotos_antes')}
-                    afterEditable={allowed('fotos_despues')}
-                    userId={profile?.id}
                     onOpen={() => navigation.navigate('CaseReport', { caseId })}
                     onReview={() => navigation.navigate('ReportReview', { caseId })}
                   />
@@ -347,6 +352,7 @@ export function CaseDetailScreen({ navigation, route }: Props) {
               placeholder="Escribe un mensaje…"
               placeholderTextColor={colors.textMuted}
               multiline
+              numberOfLines={1}
               maxLength={500}
               value={messageDraft}
               onChangeText={(value) => {
@@ -355,13 +361,20 @@ export function CaseDetailScreen({ navigation, route }: Props) {
               }}
               style={styles.messageInput}
             />
-            <Button
-              label="Enviar"
+            <Pressable
+              accessibilityLabel="Enviar mensaje"
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !messageDraft.trim() || sendMessage.isPending }}
+              disabled={!messageDraft.trim() || sendMessage.isPending}
               onPress={() => void submitMessage()}
-              loading={sendMessage.isPending}
-              disabled={sendMessage.isPending}
-              containerStyle={styles.sendButton}
-            />
+              style={({ pressed }) => [
+                styles.sendButton,
+                (!messageDraft.trim() || sendMessage.isPending) && styles.sendDisabled,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Icon name="send" color={messageDraft.trim() ? colors.white : colors.textMuted} />
+            </Pressable>
             {messageError ? (
               <Text accessibilityRole="alert" style={styles.messageError}>
                 {messageError}
@@ -531,11 +544,19 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.lg,
+    borderRadius: radius.pill,
     color: colors.text,
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.surface,
   },
-  sendButton: { minWidth: 82 },
+  sendButton: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+  },
+  sendDisabled: { backgroundColor: colors.disabledBg },
   messageError: { ...typography.caption, color: colors.error, width: '100%' },
   actionBar: {
     paddingHorizontal: spacing.md,

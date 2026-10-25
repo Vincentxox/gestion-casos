@@ -7,6 +7,7 @@ import { RequestState } from '@/components/feedback/RequestState'
 import { FormField } from '@/components/forms/FormField'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { SkeletonList } from '@/components/ui/SkeletonList'
 import { ScreenContainer } from '@/components/ui/ScreenContainer'
 import { usePriorityTargets, useSetPriorityTarget } from '@/features/home/useIndicators'
 import type { PriorityTarget } from '@/features/home/indicatorsService'
@@ -100,7 +101,7 @@ export function PriorityTargetsScreen() {
           Los cambios se aplican solo a solicitudes nuevas. Los plazos de solicitudes existentes se
           conservan.
         </Text>
-        {targets.isLoading ? <RequestState kind="loading" title="Cargando plazos…" /> : null}
+        {targets.isLoading ? <SkeletonList count={3} /> : null}
         {targets.isError ? (
           <RequestState
             kind="error"

@@ -5,6 +5,7 @@ import type { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSw
 import {
   runOnJS,
   useAnimatedReaction,
+  useReducedMotion,
   useSharedValue,
   type SharedValue,
 } from 'react-native-reanimated'
@@ -70,23 +71,28 @@ export function NotificationRow({
   const [rowHeight, setRowHeight] = useState(80)
   const [removing, setRemoving] = useState(false)
   const [collapse] = useState(() => new Animated.Value(1))
+  const reduceMotion = useReducedMotion()
 
   const deleteRow = () => {
     if (removing) return
     setRemoving(true)
-    Animated.timing(collapse, { toValue: 0, duration: 180, useNativeDriver: false }).start(
-      ({ finished }) => {
-        if (!finished) return
-        void onDelete().then((removed) => {
-          if (!removed) {
-            swipe.current?.close()
-            Animated.timing(collapse, { toValue: 1, duration: 180, useNativeDriver: false }).start(
-              () => setRemoving(false),
-            )
-          }
-        })
-      },
-    )
+    Animated.timing(collapse, {
+      toValue: 0,
+      duration: reduceMotion ? 0 : 200,
+      useNativeDriver: false,
+    }).start(({ finished }) => {
+      if (!finished) return
+      void onDelete().then((removed) => {
+        if (!removed) {
+          swipe.current?.close()
+          Animated.timing(collapse, {
+            toValue: 1,
+            duration: reduceMotion ? 0 : 200,
+            useNativeDriver: false,
+          }).start(() => setRemoving(false))
+        }
+      })
+    })
   }
 
   return (
@@ -135,7 +141,13 @@ export function NotificationRow({
           onPress={onOpen}
           style={[styles.row, unread && styles.unreadRow]}
         >
-          <View style={[styles.iconBox, { backgroundColor: appearance.background }]}>
+          <View
+            testID="notification-icon-box"
+            style={[
+              styles.iconBox,
+              { backgroundColor: unread ? colors.surface : appearance.background },
+            ]}
+          >
             <Icon name={appearance.icon} size={20} color={appearance.foreground} />
           </View>
           <View style={styles.rowBody}>
@@ -172,6 +184,7 @@ const styles = StyleSheet.create({
   rowDivider: { borderBottomColor: colors.cardBorder, borderBottomWidth: 1 },
   row: {
     flexDirection: 'row',
+    backgroundColor: colors.surface,
     gap: spacing.base,
     minHeight: 80,
     padding: spacing.base,

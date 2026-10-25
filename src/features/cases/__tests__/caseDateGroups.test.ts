@@ -22,7 +22,18 @@ describe('groupCasesByDay', () => {
   })
 
   it('tolera fechas inválidas', () => {
-    expect(groupCasesByDay([record('a', 'bad')], now)[0]?.title).toBe('Fecha no disponible')
+    expect(groupCasesByDay([record('a', 'bad')], now)[0]?.title).toBe('Antes')
+  })
+
+  it('usa las mismas reglas semanales de Avisos', () => {
+    const groups = groupCasesByDay(
+      [
+        record('week', new Date(2026, 8, 21, 8).toISOString()),
+        record('before', new Date(2026, 8, 20, 8).toISOString()),
+      ],
+      now,
+    )
+    expect(groups.map(({ title }) => title)).toEqual(['Esta semana', 'Antes'])
   })
 
   it('conserva el orden descendente recibido del servidor', () => {
