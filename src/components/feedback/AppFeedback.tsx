@@ -16,19 +16,23 @@ import { Icon, type IconName } from '@/components/ui/Icon'
 import { feedback } from '@/services/feedback'
 import { colors, elevation, fonts, radius, spacing, tone, typography } from '@/theme/tokens'
 
-type DialogTone = 'info' | 'warning' | 'danger'
+export type DialogTone = 'info' | 'success' | 'warning' | 'error' | 'danger'
 type ToastTone = 'success' | 'info'
 
 type ConfirmOptions = {
   title: string
   confirmLabel?: string
   cancelLabel?: string
-} & ({ tone: 'danger'; message: string } | { tone?: 'info' | 'warning'; message?: string })
+  icon?: IconName
+} & (
+  { tone: 'danger'; message: string } | { tone?: Exclude<DialogTone, 'danger'>; message?: string }
+)
 
 interface AlertOptions {
   title: string
   message?: string
   tone?: DialogTone
+  icon?: IconName
 }
 
 interface FeedbackApi {
@@ -43,43 +47,66 @@ interface FeedbackAction {
   onPress?: () => void
 }
 
+type ShowOptions = { tone: DialogTone; icon?: IconName }
+
 let activeFeedback: FeedbackApi | null = null
 
 /** Adaptador para los mensajes existentes mientras todos usan el diálogo de la app. */
 export const AppFeedback = {
-  show(title: string, message?: string, actions?: FeedbackAction[]) {
+  show(
+    title: string,
+    message?: string,
+    actionsOrOptions?: FeedbackAction[] | ShowOptions,
+    explicitOptions?: ShowOptions,
+  ) {
     if (!activeFeedback) return
+    const actions = Array.isArray(actionsOrOptions) ? actionsOrOptions : undefined
+    const options = Array.isArray(actionsOrOptions) ? explicitOptions : actionsOrOptions
     if (!actions?.length) {
-      const tone =
-        /^(No fue|No se pudo|Error|Revisa|Código no válido|Área inválida|Nombre inválido|Motivo inválido|Demasiados intentos)/i.test(
-          title,
-        )
-          ? 'warning'
-          : 'info'
-      void activeFeedback.alert({ title, message, tone })
+      void activeFeedback.alert({
+        title,
+        message,
+        tone: options?.tone ?? 'info',
+        icon: options?.icon,
+      })
       return
     }
     const affirmative = actions.find((action) => action.style !== 'cancel')
     const cancel = actions.find((action) => action.style === 'cancel')
     if (!affirmative) {
-      void activeFeedback.alert({ title, message })
+      void activeFeedback.alert({
+        title,
+        message,
+        tone: options?.tone ?? 'info',
+        icon: options?.icon,
+      })
       return
     }
     if (!cancel) {
-      void activeFeedback.alert({ title, message }).then(() => affirmative.onPress?.())
+      void activeFeedback
+        .alert({ title, message, tone: options?.tone ?? 'info', icon: options?.icon })
+        .then(() => affirmative.onPress?.())
       return
     }
-    const options: ConfirmOptions =
-      affirmative.style === 'destructive'
+    const confirmOptions: ConfirmOptions =
+      affirmative.style === 'destructive' || options?.tone === 'danger'
         ? {
             title,
             message: message ?? '¿Deseas continuar?',
             confirmLabel: affirmative.text,
             cancelLabel: cancel.text,
             tone: 'danger',
+            icon: options?.icon,
           }
-        : { title, message, confirmLabel: affirmative.text, cancelLabel: cancel.text, tone: 'info' }
-    void activeFeedback.confirm(options).then((confirmed) => {
+        : {
+            title,
+            message,
+            confirmLabel: affirmative.text,
+            cancelLabel: cancel.text,
+            tone: options?.tone ?? 'info',
+            icon: options?.icon,
+          }
+    void activeFeedback.confirm(confirmOptions).then((confirmed) => {
       if (confirmed) affirmative.onPress?.()
       else cancel.onPress?.()
     })
@@ -111,7 +138,13 @@ const toneMeta: Record<DialogTone, { icon: IconName; color: string; background: 
     background: tone.info.bg,
   },
   warning: { icon: 'warning-outline', color: tone.warning.text, background: tone.warning.bg },
-  danger: { icon: 'warning-outline', color: tone.danger.text, background: tone.danger.bg },
+  success: {
+    icon: 'checkmark-circle-outline',
+    color: tone.success.text,
+    background: tone.success.bg,
+  },
+  error: { icon: 'close-circle-outline', color: tone.danger.text, background: tone.danger.bg },
+  danger: { icon: 'alert-circle-outline', color: tone.danger.text, background: tone.danger.bg },
 }
 
 function AppDialog({
@@ -140,8 +173,11 @@ function AppDialog({
         />
         {dialog ? (
           <View accessibilityViewIsModal style={styles.dialogCard}>
-            <View style={[styles.dialogIcon, { backgroundColor: meta.background }]}>
-              <Icon name={meta.icon} color={meta.color} size="base" />
+            <View
+              testID="app-dialog-icon"
+              style={[styles.dialogIcon, { backgroundColor: meta.background }]}
+            >
+              <Icon name={dialog.icon ?? meta.icon} color={meta.color} size="base" />
             </View>
             <Text accessibilityRole="header" style={styles.dialogTitle}>
               {dialog.title}
@@ -188,7 +224,10 @@ function AppToast({
       testID="app-toast"
     >
       <View style={styles.toast}>
-        <View style={[styles.toastIcon, value.tone === 'info' && styles.toastIconInfo]}>
+        <View
+          testID="app-toast-icon"
+          style={[styles.toastIcon, value.tone === 'info' && styles.toastIconInfo]}
+        >
           <Icon
             name={value.tone === 'success' ? 'checkmark' : 'information'}
             color={colors.white}
@@ -294,6 +333,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 360,
     alignSelf: 'center',
+    alignItems: 'center',
     gap: spacing.base,
     padding: spacing.lg,
     borderRadius: radius.sheet,
@@ -306,9 +346,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dialogTitle: { ...typography.title, fontFamily: fonts.extrabold, color: colors.ink },
-  dialogMessage: { ...typography.body, color: colors.textMuted },
-  dialogActions: { flexDirection: 'column', gap: spacing.sm, marginTop: spacing.xs },
+  dialogTitle: {
+    ...typography.title,
+    fontFamily: fonts.extrabold,
+    color: colors.ink,
+    textAlign: 'center',
+  },
+  dialogMessage: { ...typography.body, color: colors.textMuted, textAlign: 'center' },
+  dialogActions: { width: '100%', flexDirection: 'column', gap: spacing.sm, marginTop: spacing.xs },
   toastLayer: {
     position: 'absolute',
     left: spacing.md,
@@ -324,14 +369,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     paddingVertical: spacing.xs,
     paddingLeft: spacing.sm,
-    backgroundColor: colors.ink,
+    backgroundColor: colors.toastBg,
     ...elevation.md,
   },
   toastIcon: {
     width: 30,
     height: 30,
     borderRadius: radius.pill,
-    backgroundColor: colors.sky,
+    backgroundColor: tone.success.text,
     alignItems: 'center',
     justifyContent: 'center',
   },

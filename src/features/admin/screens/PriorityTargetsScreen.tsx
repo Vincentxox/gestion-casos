@@ -40,9 +40,12 @@ function TargetEditor({ target }: { target: PriorityTarget }) {
       await update.mutateAsync({ priority: target.priority, acceptHours, resolveHours })
       AppFeedback.toast(
         `Plazos de prioridad ${priorityMeta[target.priority].label.toLowerCase()} actualizados`,
+        { tone: 'success' },
       )
     } catch (error) {
-      AppFeedback.show('No fue posible guardar', getErrorMessage(error, 'Inténtalo de nuevo.'))
+      AppFeedback.show('No fue posible guardar', getErrorMessage(error, 'Inténtalo de nuevo.'), {
+        tone: 'error',
+      })
     }
   }
 

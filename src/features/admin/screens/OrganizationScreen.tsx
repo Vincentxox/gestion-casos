@@ -34,16 +34,18 @@ export function OrganizationScreen() {
 
   async function save() {
     if (name.trim().length < 2 || name.trim().length > 120) {
-      AppFeedback.show('Nombre inválido', 'Usa entre 2 y 120 caracteres.')
+      AppFeedback.show('Nombre inválido', 'Usa entre 2 y 120 caracteres.', { tone: 'warning' })
       return
     }
     try {
       const updated = await rename.mutateAsync(name)
       applyOrganizationName(updated.name)
       setDraftName(null)
-      AppFeedback.toast('Empresa actualizada')
+      AppFeedback.toast('Empresa actualizada', { tone: 'success' })
     } catch {
-      AppFeedback.show('No fue posible guardar', 'Comprueba tu conexión e inténtalo de nuevo.')
+      AppFeedback.show('No fue posible guardar', 'Comprueba tu conexión e inténtalo de nuevo.', {
+        tone: 'error',
+      })
     }
   }
 
@@ -55,14 +57,17 @@ export function OrganizationScreen() {
         confirmLabel: 'Regenerar código',
         cancelLabel: 'Conservar código',
         tone: 'danger',
+        icon: 'refresh-outline',
       }))
     )
       return
     try {
       await regenerate.mutateAsync()
-      AppFeedback.toast('Código regenerado')
+      AppFeedback.toast('Código regenerado', { tone: 'success' })
     } catch (error) {
-      AppFeedback.show('No fue posible regenerar', getErrorMessage(error, 'Inténtalo de nuevo.'))
+      AppFeedback.show('No fue posible regenerar', getErrorMessage(error, 'Inténtalo de nuevo.'), {
+        tone: 'error',
+      })
     }
   }
 

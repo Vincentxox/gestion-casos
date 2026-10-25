@@ -74,12 +74,14 @@ export function AssignCaseScreen({ navigation, route }: Props) {
       })
       AppFeedback.toast(
         `Solicitud ${isReassignment ? 'reasignada' : 'asignada'} a ${selectedProfile.fullName}`,
+        { tone: 'success' },
       )
       navigation.goBack()
     } catch (error) {
       AppFeedback.show(
         isReassignment ? 'No fue posible reasignar' : 'No fue posible asignar',
         getErrorMessage(error, 'Comprueba tus permisos y la conexión.'),
+        { tone: 'error' },
       )
     }
   }

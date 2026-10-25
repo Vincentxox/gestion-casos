@@ -81,11 +81,12 @@ export function ProfileScreen() {
       const asset = result.assets[0]
       const uri = await prepareProfilePhoto(asset.uri, asset.width, asset.height)
       await uploadPhoto.mutateAsync({ profile, uri })
-      AppFeedback.toast('Foto actualizada')
+      AppFeedback.toast('Foto actualizada', { tone: 'success' })
     } catch (error) {
       AppFeedback.show(
         'No fue posible cambiar la foto',
         getErrorMessage(error, 'Inténtalo de nuevo.'),
+        { tone: 'error' },
       )
     }
   }
@@ -95,11 +96,12 @@ export function ProfileScreen() {
     if (!profile?.avatarUrl) return
     try {
       await clearPhoto.mutateAsync(profile.avatarUrl)
-      AppFeedback.toast('Foto eliminada')
+      AppFeedback.toast('Foto eliminada', { tone: 'success' })
     } catch (error) {
       AppFeedback.show(
         'No fue posible quitar la foto',
         getErrorMessage(error, 'Inténtalo de nuevo.'),
+        { tone: 'error' },
       )
     }
   }
@@ -110,9 +112,11 @@ export function ProfileScreen() {
     try {
       applyOwnName(await updateOwnName(profile.id, name ?? profile.fullName))
       setName(null)
-      AppFeedback.toast('Nombre actualizado')
+      AppFeedback.toast('Nombre actualizado', { tone: 'success' })
     } catch (error) {
-      AppFeedback.show('No fue posible guardar', getErrorMessage(error, 'Inténtalo de nuevo.'))
+      AppFeedback.show('No fue posible guardar', getErrorMessage(error, 'Inténtalo de nuevo.'), {
+        tone: 'error',
+      })
     } finally {
       setSaving(false)
     }
@@ -125,6 +129,7 @@ export function ProfileScreen() {
       AppFeedback.show(
         'No fue posible cerrar sesión',
         'Comprueba tu conexión e inténtalo nuevamente.',
+        { tone: 'error' },
       )
     }
   }
@@ -138,7 +143,11 @@ export function ProfileScreen() {
           </Text>
         </View>
 
-        <View style={styles.identity}>
+        <Pressable
+          accessible={false}
+          onPress={() => setName(profile?.fullName ?? '')}
+          style={({ pressed }) => [styles.identity, pressed && styles.identityPressed]}
+        >
           <View style={styles.avatarWrap}>
             <Avatar
               name={profile?.fullName || 'Usuario'}
@@ -175,7 +184,7 @@ export function ProfileScreen() {
                 onPress={() => setName(profile?.fullName ?? '')}
                 style={styles.editName}
               >
-                <Icon name="create-outline" color={colors.primary} />
+                <Text style={styles.editNameText}>Editar</Text>
               </Pressable>
             </View>
             {profile?.role ? (
@@ -184,7 +193,7 @@ export function ProfileScreen() {
               <Text style={styles.roleFallback}>Sin rol</Text>
             )}
           </View>
-        </View>
+        </Pressable>
 
         {name !== null ? (
           <View style={styles.nameEditor}>
@@ -334,6 +343,7 @@ const styles = StyleSheet.create({
   header: { gap: spacing.sm },
   title: { ...typography.display, color: colors.text },
   identity: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+  identityPressed: { backgroundColor: colors.surfaceMuted },
   avatarWrap: { width: 76, height: 76 },
   cameraTouchTarget: {
     position: 'absolute',
@@ -359,7 +369,15 @@ const styles = StyleSheet.create({
   nameRow: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   nameEditor: { gap: spacing.sm },
   nameActions: { flexDirection: 'row', gap: spacing.sm },
-  editName: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  editName: {
+    minWidth: 64,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceMuted,
+  },
+  editNameText: { ...typography.label, color: colors.primary },
   roleFallback: { ...typography.body, color: colors.textMuted },
   dataList: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border },
   dataRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },

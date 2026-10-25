@@ -292,7 +292,11 @@ export function ReportContent({
 
       {signatures.length > 0 ? (
         <Card contentStyle={styles.card}>
-          <Text style={styles.heading}>Firmas registradas</Text>
+          <Text style={styles.heading}>
+            {caseStatus === 'aprobado'
+              ? `Firmas · ${steps.filter((step) => step.signature).length} de ${steps.length}`
+              : 'Firmas registradas'}
+          </Text>
           {steps
             .filter((step) => step.signature)
             .map((step) => {

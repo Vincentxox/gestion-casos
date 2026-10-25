@@ -8,5 +8,6 @@ export function confirmLogout(onConfirm: () => void) {
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Cerrar sesión', style: 'destructive', onPress: onConfirm },
     ],
+    { tone: 'danger', icon: 'log-out-outline' },
   )
 }

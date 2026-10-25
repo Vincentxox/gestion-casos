@@ -22,7 +22,7 @@ test.each(states)(
   },
 )
 
-test.each(['rechazado', 'cancelado'] as const)('%s termina en paso de peligro', (status) => {
+test.each(['rechazado', 'cancelado'] as const)('%s termina con icono propio', (status) => {
   const event: CaseStatusHistoryRecord = {
     id: 1,
     action: status === 'rechazado' ? 'rechazar' : 'cancelar',
@@ -34,7 +34,10 @@ test.each(['rechazado', 'cancelado'] as const)('%s termina en paso de peligro', 
     createdAt: '2026-10-19T12:00:00Z',
   }
   const steps = getCaseTrackingSteps({ status }, [event], 'Pendiente')
-  expect(steps.at(-1)).toMatchObject({ state: 'danger', event })
+  expect(steps.at(-1)).toMatchObject({
+    state: status === 'cancelado' ? 'cancelled' : 'danger',
+    event,
+  })
   expect(steps).toHaveLength(4)
   expect(steps.some((step) => step.label === 'Reporte')).toBe(false)
 })

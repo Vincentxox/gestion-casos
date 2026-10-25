@@ -224,6 +224,7 @@ export function PhotoGrid({
       AppFeedback.show(
         'No fue posible preparar la foto',
         getErrorMessage(error, 'Inténtalo de nuevo.'),
+        { tone: 'error' },
       )
     } finally {
       setBusy(false)
@@ -239,6 +240,7 @@ export function PhotoGrid({
       AppFeedback.show(
         'No fue posible eliminar la foto',
         getErrorMessage(error, 'Inténtalo de nuevo.'),
+        { tone: 'error' },
       )
     }
   }

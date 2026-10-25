@@ -1,7 +1,7 @@
 import { getErrorMessage } from '@/utils/errorMessage'
 import { AppFeedback } from '@/components/feedback/AppFeedback'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
-import { useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -10,7 +10,6 @@ import { ActionSheet } from '@/components/actions/ActionSheet'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { RequestState } from '@/components/feedback/RequestState'
 import { SkeletonList } from '@/components/ui/SkeletonList'
-import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { IconTile } from '@/components/ui/IconTile'
 import { Icon } from '@/components/ui/Icon'
@@ -31,7 +30,7 @@ import {
 
 type Props = NativeStackScreenProps<MainStackParamList, 'CaseResources'>
 
-export function CaseResourcesScreen({ route }: Props) {
+export function CaseResourcesScreen({ navigation, route }: Props) {
   const { caseId } = route.params
   const detail = useCaseDetail(caseId)
   const actions = useCaseActions(caseId)
@@ -46,6 +45,26 @@ export function CaseResourcesScreen({ route }: Props) {
   const [actionUsage, setActionUsage] = useState<CaseUsageRecord | null>(null)
   const [formVisible, setFormVisible] = useState(false)
   const formSubmit = useRef<(() => void) | null>(null)
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: canManage
+        ? () => (
+            <Pressable
+              accessibilityLabel="Registrar uso"
+              accessibilityRole="button"
+              onPress={() => {
+                setEditing(null)
+                setFormVisible(true)
+              }}
+              style={styles.headerAction}
+            >
+              <Text style={styles.headerActionText}>Registrar</Text>
+            </Pressable>
+          )
+        : undefined,
+    })
+  }, [canManage, navigation])
 
   function openForm(usage?: CaseUsageRecord) {
     if (!canManage) return
@@ -68,28 +87,35 @@ export function CaseResourcesScreen({ route }: Props) {
       AppFeedback.show(
         'No fue posible guardar el registro',
         getErrorMessage(error, 'Comprueba la conexión y el estado de la solicitud.'),
+        { tone: 'error' },
       )
     }
   }
 
   function confirmDelete(usage: CaseUsageRecord) {
     if (!canManage) return
-    AppFeedback.show('Eliminar registro', '¿Deseas quitar este uso de la solicitud?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar',
-        style: 'destructive',
-        onPress: () =>
-          void remove
-            .mutateAsync(usage.id)
-            .catch((error) =>
-              AppFeedback.show(
-                'No fue posible eliminar',
-                getErrorMessage(error, 'Comprueba la conexión.'),
+    AppFeedback.show(
+      'Eliminar registro',
+      '¿Deseas quitar este uso de la solicitud?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: () =>
+            void remove
+              .mutateAsync(usage.id)
+              .catch((error) =>
+                AppFeedback.show(
+                  'No fue posible eliminar',
+                  getErrorMessage(error, 'Comprueba la conexión.'),
+                  { tone: 'error' },
+                ),
               ),
-            ),
-      },
-    ])
+        },
+      ],
+      { tone: 'danger', icon: 'trash-outline' },
+    )
   }
 
   const loading = detail.isLoading || actions.isPending || usages.isLoading || resources.isLoading
@@ -104,9 +130,6 @@ export function CaseResourcesScreen({ route }: Props) {
           <View style={styles.headerText}>
             <Text style={styles.subtitle}>Materiales, equipos, herramientas y mano de obra.</Text>
           </View>
-          {canManage ? (
-            <Button label="Registrar uso" icon="add" onPress={() => openForm()} />
-          ) : null}
         </View>
         {loading ? (
           <SkeletonList />
@@ -251,6 +274,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, gap: spacing.md, padding: spacing.lg },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   headerText: { flex: 1, gap: spacing.xs },
+  headerAction: { minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
+  headerActionText: { ...typography.label, color: colors.primary },
   subtitle: { ...typography.body, color: colors.textMuted },
   list: { gap: spacing.md, paddingBottom: spacing.xl },
   hint: { color: colors.textMuted, lineHeight: 20 },

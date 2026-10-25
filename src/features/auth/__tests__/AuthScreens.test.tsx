@@ -146,7 +146,9 @@ test('la nueva contraseña usa la regla de Registro, guarda y permite cancelar',
   await fireEvent.press(screen.getByRole('button', { name: 'Guardar contraseña' }))
   await waitFor(() => expect(update).toHaveBeenCalledWith('Password1!'))
   expect(finish).toHaveBeenCalled()
-  expect(feedback).toHaveBeenCalledWith('Contraseña actualizada', 'Tu contraseña se actualizó')
+  expect(feedback).toHaveBeenCalledWith('Contraseña actualizada', 'Tu contraseña se actualizó', {
+    tone: 'success',
+  })
   await fireEvent.press(screen.getByRole('button', { name: 'Cancelar' }))
   expect(logout).toHaveBeenCalled()
   feedback.mockRestore()
@@ -165,6 +167,7 @@ test('un error al actualizar conserva la sesión y muestra un mensaje seguro', a
     expect(feedback).toHaveBeenCalledWith(
       'No fue posible guardar la contraseña',
       'No fue posible actualizar la contraseña. Inténtalo nuevamente.',
+      { tone: 'error' },
     ),
   )
   expect(finish).not.toHaveBeenCalled()
@@ -184,6 +187,7 @@ test('la contraseña repetida explica que debe ser distinta de la anterior', asy
     expect(feedback).toHaveBeenCalledWith(
       'No fue posible guardar la contraseña',
       'La contraseña nueva debe ser distinta de la anterior.',
+      { tone: 'error' },
     ),
   )
   expect(finish).not.toHaveBeenCalled()
@@ -218,6 +222,7 @@ test('entrar a la empresa muestra el código sin pasos extra y valida su largo',
   expect(show).toHaveBeenCalledWith(
     'Código incompleto',
     'Escribe los ocho caracteres del código de tu empresa.',
+    { tone: 'warning' },
   )
   expect(mockMutate).not.toHaveBeenCalled()
   show.mockRestore()

@@ -21,11 +21,12 @@ import { BottomSheet } from '@/components/sheets/BottomSheet'
 import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
 import { SkeletonList } from '@/components/ui/SkeletonList'
+import { StatusBadge } from '@/components/badges/StatusBadge'
 import { ReportSummary } from '@/features/reports/components/ReportSummary'
 import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
 import { priorityMeta, statusMeta } from '@/theme/statusMeta'
-import { colors, fonts, phaseColors, radius, spacing, typography } from '@/theme/tokens'
+import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
 import { getErrorMessage } from '@/utils/errorMessage'
 
 import { CaseMessages } from '../components/CaseMessages'
@@ -40,7 +41,7 @@ import { useCaseActions, useCaseDetail, useCaseHistory, useSendCaseMessage } fro
 
 type Props = NativeStackScreenProps<MainStackParamList, 'CaseDetail'>
 
-type MenuId = CaseAction | 'editar'
+type MenuId = CaseAction | 'editar' | 'datos'
 
 const REPORT_STATUSES: CaseStatus[] = [
   'asignado',
@@ -143,15 +144,22 @@ export function CaseDetailScreen({ navigation, route }: Props) {
   const primaryAction = caseActionsAllowed.find((action) => action === workflowAction)
   const metaFor = (action: CaseAction) => getCaseActionMeta(action, item.assignedTo)
 
-  const menu: SheetAction<MenuId>[] = caseActionsAllowed
-    .filter((action) => action !== primaryAction)
-    .map((action) => ({
-      id: action,
-      label: metaFor(action).label,
-      description: metaFor(action).description,
-      icon: metaFor(action).icon,
-      destructive: ['rechazar', 'cancelar'].includes(action),
-    }))
+  const menu: SheetAction<MenuId>[] = [
+    {
+      id: 'datos',
+      label: 'Ver datos del caso',
+      icon: 'information-circle-outline',
+    },
+    ...caseActionsAllowed
+      .filter((action) => action !== primaryAction)
+      .map((action) => ({
+        id: action,
+        label: metaFor(action).label,
+        description: metaFor(action).description,
+        icon: metaFor(action).icon,
+        destructive: ['rechazar', 'cancelar'].includes(action),
+      })),
+  ]
   if (allowed('editar_datos'))
     menu.push({
       id: 'editar',
@@ -161,7 +169,8 @@ export function CaseDetailScreen({ navigation, route }: Props) {
     })
 
   function runMenu(id: MenuId) {
-    if (id === 'editar') navigation.navigate('EditCase', { caseId })
+    if (id === 'datos') setDataVisible(true)
+    else if (id === 'editar') navigation.navigate('EditCase', { caseId })
     else if (id === 'asignar') navigation.navigate('AssignCase', { caseId })
     else navigation.navigate('ChangeCaseStatus', { caseId, action: id })
   }
@@ -244,42 +253,18 @@ export function CaseDetailScreen({ navigation, route }: Props) {
               <Text style={styles.caseNumber}>{item.caseNumber}</Text>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Datos del caso"
-                onPress={() => setDataVisible(true)}
+                accessibilityLabel="Más acciones"
+                onPress={() => setMenuVisible(true)}
                 style={({ pressed }) => [styles.round, pressed && styles.pressed]}
               >
-                <Icon name="information-circle-outline" size={22} color={colors.ink} />
+                <Icon name="ellipsis-vertical" size={20} color={colors.text} />
               </Pressable>
-              {menu.length > 0 ? (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Más acciones"
-                  onPress={() => setMenuVisible(true)}
-                  style={({ pressed }) => [styles.round, pressed && styles.pressed]}
-                >
-                  <Icon name="ellipsis-vertical" size={20} color={colors.text} />
-                </Pressable>
-              ) : null}
             </View>
             <Text accessibilityRole="header" style={styles.title}>
               {item.title}
             </Text>
             <View style={styles.metaRow}>
-              <View
-                style={[
-                  styles.statusChip,
-                  { backgroundColor: phaseColors[statusMeta[item.status].phase].bg },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.statusChipText,
-                    { color: phaseColors[statusMeta[item.status].phase].fg },
-                  ]}
-                >
-                  {statusMeta[item.status].label}
-                </Text>
-              </View>
+              <StatusBadge status={item.status} size="md" />
               <Text style={styles.meta}>
                 {item.requestingAreaName} · {item.category}
               </Text>
@@ -413,7 +398,7 @@ export function CaseDetailScreen({ navigation, route }: Props) {
         title="Más acciones"
         subtitle={`${item.caseNumber} · ${statusMeta[item.status].label}`}
         actions={menu}
-        visible={menuVisible && menu.length > 0}
+        visible={menuVisible}
         onClose={() => setMenuVisible(false)}
         onSelect={(id) => {
           setMenuVisible(false)
@@ -484,13 +469,6 @@ const styles = StyleSheet.create({
   },
   meta: { ...typography.caption, color: colors.textMuted },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  statusChip: {
-    paddingHorizontal: spacing.base,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.pill,
-    overflow: 'hidden',
-  },
-  statusChipText: { ...typography.caption },
   turnBanner: {
     flexDirection: 'row',
     alignItems: 'center',

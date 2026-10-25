@@ -114,3 +114,30 @@ test('la prioridad media usa el distintivo común y un reporte firmado evidencia
   expect(screen.getByLabelText('Prioridad: Media')).toBeTruthy()
   expect(screen.getByText('Sin recursos registrados')).toBeTruthy()
 })
+
+test('el reporte aprobado muestra el número de firmas registradas sobre el total de pasos', async () => {
+  const signature = {
+    id: 's1',
+    versionId: 'v1',
+    type: 'ejecucion' as const,
+    signerId: 'u1',
+    signerName: 'Luis',
+    signerRole: 'tecnico',
+    signedAt: '2026-09-24T16:00:00Z',
+    consentText: 'Acepto',
+    strokePath: 'M 10 10 L 80 40',
+  }
+  const screen = await render(
+    <ReportContent
+      content={content}
+      caseStatus="aprobado"
+      signatures={[
+        signature,
+        { ...signature, id: 's2', type: 'validacion_tecnica', signerName: 'Ana' },
+        { ...signature, id: 's3', type: 'conformidad', signerName: 'Marta' },
+      ]}
+    />,
+  )
+  expect(screen.getByText('Firmas · 3 de 3')).toBeTruthy()
+  expect(screen.queryByText('Firmas registradas')).toBeNull()
+})

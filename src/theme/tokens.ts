@@ -5,6 +5,7 @@ export const colors = {
   primaryDark: '#0E4FA8',
   primarySoft: '#E6F0FC',
   ink: '#13305E',
+  toastBg: '#13305E',
   sky: '#1BA6E8',
   skySoft: '#E2F5FD',
   night: '#0A1426',
@@ -42,9 +43,9 @@ export const colors = {
 
 export const tone = {
   danger: { bg: colors.dangerSoft, border: colors.dangerBorder, text: colors.dangerText },
-  warning: { bg: colors.warningSoft, border: '#F5D98A', text: colors.warning },
+  warning: { bg: colors.warningSoft, border: '#F5D98A', text: '#8A5C00' },
   info: { bg: colors.infoSoft, border: '#B9D3F5', text: colors.primary },
-  success: { bg: colors.successSoft, border: '#B5DEC6', text: colors.success },
+  success: { bg: colors.successSoft, border: '#B5DEC6', text: '#14733A' },
   neutral: { bg: colors.neutralSoft, border: '#E4E9F0', text: colors.neutral },
 } as const
 

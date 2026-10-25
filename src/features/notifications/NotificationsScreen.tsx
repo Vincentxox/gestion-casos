@@ -77,12 +77,14 @@ export function NotificationsScreen({ navigation }: Props) {
       await feedback.alert({
         title: 'No fue posible consultar los avisos',
         message: 'Comprueba tu conexión e inténtalo de nuevo.',
+        tone: 'error',
       })
       return
     }
     if (!ids.length) return
     const confirmed = await feedback.confirm({
       tone: 'danger',
+      icon: 'trash-outline',
       title: '¿Borrar los avisos leídos?',
       message: `Se quitan ${ids.length} avisos de esta lista. Las solicitudes y su historial no cambian.`,
       confirmLabel: 'Borrar',

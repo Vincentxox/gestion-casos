@@ -110,7 +110,7 @@ test('separa al responsable actual y exige elegir a otra persona antes de reasig
   await fireEvent.press(screen.getByLabelText('Reasignar a Luis'))
 
   await waitFor(() => expect(mutateAsync).toHaveBeenCalledWith({ assignedTo: 'luis', comment: '' }))
-  expect(AppFeedback.toast).toHaveBeenCalledWith('Solicitud reasignada a Luis')
+  expect(AppFeedback.toast).toHaveBeenCalledWith('Solicitud reasignada a Luis', { tone: 'success' })
   expect(navigation.goBack).toHaveBeenCalledTimes(1)
 })
 
@@ -132,7 +132,7 @@ test('mantiene la asignación inicial sin selección ni responsable actual', asy
   await fireEvent.press(screen.getByLabelText('Asignar a Luis'))
 
   await waitFor(() => expect(mutateAsync).toHaveBeenCalledWith({ assignedTo: 'luis', comment: '' }))
-  expect(AppFeedback.toast).toHaveBeenCalledWith('Solicitud asignada a Luis')
+  expect(AppFeedback.toast).toHaveBeenCalledWith('Solicitud asignada a Luis', { tone: 'success' })
 })
 
 test('exige motivo de 3 a 500 caracteres al reasignar un trabajo en ejecución', async () => {

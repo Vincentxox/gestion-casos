@@ -1,7 +1,8 @@
 import { StyleSheet, Text, View } from 'react-native'
 
+import { Icon } from '@/components/ui/Icon'
 import { describeEvent, formatEventMoment } from '@/features/cases/components/CaseConversation'
-import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
+import { colors, fonts, phaseColors, radius, spacing, typography } from '@/theme/tokens'
 
 import type { TrackingStep } from '../caseTracking'
 import type { CaseStatusHistoryRecord } from '../types'
@@ -34,9 +35,18 @@ export function CaseTracking({
                 step.state === 'done' && styles.dotDone,
                 step.state === 'current' && styles.dotCurrent,
                 step.state === 'danger' && styles.dotDanger,
+                step.state === 'cancelled' && styles.dotCancelled,
               ]}
             >
-              {step.state === 'done' ? <Text style={styles.check}>✓</Text> : null}
+              {step.state === 'done' ? (
+                <Icon name="checkmark" size={18} color={colors.white} />
+              ) : null}
+              {step.state === 'danger' ? (
+                <Icon name="close" size={18} color={colors.white} />
+              ) : null}
+              {step.state === 'cancelled' ? (
+                <Icon name="remove" size={18} color={colors.white} />
+              ) : null}
             </View>
             {index < steps.length - 1 ? (
               <View style={[styles.line, step.state === 'done' && styles.lineDone]} />
@@ -49,6 +59,7 @@ export function CaseTracking({
                 step.state === 'current' && styles.labelCurrent,
                 step.state === 'pending' && styles.labelPending,
                 step.state === 'danger' && styles.labelDanger,
+                step.state === 'cancelled' && styles.labelCancelled,
               ]}
             >
               {step.label}
@@ -102,7 +113,10 @@ const styles = StyleSheet.create({
   dotDone: { borderColor: colors.ink, backgroundColor: colors.ink },
   dotCurrent: { borderWidth: 3, borderColor: colors.sky },
   dotDanger: { borderColor: colors.error, backgroundColor: colors.error },
-  check: { color: colors.white, fontFamily: fonts.bold, fontSize: 18 },
+  dotCancelled: {
+    borderColor: phaseColors.cancelada.fg,
+    backgroundColor: phaseColors.cancelada.fg,
+  },
   line: { flex: 1, width: 2, backgroundColor: colors.track },
   lineDone: { backgroundColor: colors.ink },
   body: { flex: 1, paddingBottom: spacing.lg, gap: spacing.xs },
@@ -110,6 +124,7 @@ const styles = StyleSheet.create({
   labelCurrent: { fontFamily: fonts.extrabold },
   labelPending: { color: colors.textMuted },
   labelDanger: { color: colors.error },
+  labelCancelled: { color: phaseColors.cancelada.fg },
   detail: { ...typography.body, color: colors.textMuted },
   requestCard: {
     gap: spacing.xs,

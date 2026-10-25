@@ -79,6 +79,7 @@ export function ChangeCaseStatusScreen({ navigation, route }: Props) {
       AppFeedback.show(
         'No fue posible completar la acción',
         getErrorMessage(error, 'Comprueba tus permisos y la conexión.'),
+        { tone: 'error' },
       )
     }
   }

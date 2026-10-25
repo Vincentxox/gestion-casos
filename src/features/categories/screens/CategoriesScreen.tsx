@@ -60,6 +60,7 @@ export function CategoriesScreen() {
       AppFeedback.show(
         'No fue posible guardar la categoría',
         'Verifica que el nombre no esté repetido dentro del área.',
+        { tone: 'error' },
       )
     }
   }
@@ -77,10 +78,18 @@ export function CategoriesScreen() {
           onPress: () => {
             void activeMutation
               .mutateAsync({ categoryId: category.id, isActive: activate })
-              .catch(() => AppFeedback.show('No fue posible actualizar la categoría.'))
+              .catch(() =>
+                AppFeedback.show('No fue posible actualizar la categoría.', undefined, {
+                  tone: 'error',
+                }),
+              )
           },
         },
       ],
+      {
+        tone: activate ? 'warning' : 'danger',
+        icon: activate ? undefined : 'pause-circle-outline',
+      },
     )
   }
 
