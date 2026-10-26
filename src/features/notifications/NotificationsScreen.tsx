@@ -2,13 +2,12 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   AccessibilityInfo,
-  Modal,
+  BackHandler,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
-  useWindowDimensions,
 } from 'react-native'
 
 import { EmptyState } from '@/components/feedback/EmptyState'
@@ -42,14 +41,8 @@ export function NotificationsScreen({ navigation }: Props) {
   const dismiss = useDismissNotifications()
   const restore = useRestoreNotifications()
   const feedback = useFeedback()
-  const { width: windowWidth } = useWindowDimensions()
   const [filter, setFilter] = useState<NotificationFilter>('all')
   const [menuOpen, setMenuOpen] = useState(false)
-  const [menuPosition, setMenuPosition] = useState<{ top: number; right: number }>({
-    top: 56,
-    right: spacing.md,
-  })
-  const headerButton = useRef<View>(null)
   const [undoIds, setUndoIds] = useState<number[]>([])
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [now] = useState(() => new Date())
@@ -61,6 +54,15 @@ export function NotificationsScreen({ navigation }: Props) {
 
   useEffect(() => {
     if (menuOpen) AccessibilityInfo.announceForAccessibility('Opciones de avisos, menú')
+  }, [menuOpen])
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      setMenuOpen(false)
+      return true
+    })
+    return () => subscription.remove()
   }, [menuOpen])
 
   useEffect(
@@ -132,23 +134,14 @@ export function NotificationsScreen({ navigation }: Props) {
             accessibilityLabel="Más opciones"
             accessibilityState={{ disabled: markPending || dismiss.isPending }}
             disabled={markPending || dismiss.isPending}
-            ref={headerButton}
-            onPress={() => {
-              headerButton.current?.measureInWindow((x, y, width, height) => {
-                setMenuPosition({
-                  top: y + height,
-                  right: Math.max(spacing.md, windowWidth - x - width),
-                })
-              })
-              setMenuOpen(true)
-            }}
+            onPress={() => setMenuOpen((open) => !open)}
             style={styles.headerAction}
           >
             <Icon name="ellipsis-horizontal" color={colors.primary} />
           </Pressable>
         ) : null,
     })
-  }, [navigation, unreadCount, readCount, markPending, dismiss.isPending, windowWidth])
+  }, [navigation, unreadCount, readCount, markPending, dismiss.isPending])
 
   return (
     <ScreenContainer padded={false} edges={['bottom']}>
@@ -221,24 +214,21 @@ export function NotificationsScreen({ navigation }: Props) {
         ))}
       </ScrollView>
       <UndoSnackbar count={undoIds.length} onUndo={undo} />
-      <Modal
-        transparent
-        statusBarTranslucent
-        animationType="fade"
-        visible={menuOpen}
-        onRequestClose={() => setMenuOpen(false)}
-      >
+      {menuOpen ? (
         <View style={styles.menuOverlay}>
           <Pressable
+            testID="notification-options-backdrop"
             accessibilityRole="button"
             accessibilityLabel="Cerrar opciones de avisos"
             onPress={() => setMenuOpen(false)}
             style={StyleSheet.absoluteFill}
           />
           <View
+            testID="notification-options-menu"
             accessibilityRole="menu"
             accessibilityLabel="Opciones de avisos"
-            style={[styles.menu, menuPosition]}
+            accessibilityViewIsModal
+            style={styles.menu}
           >
             {unreadCount > 0 ? (
               <Pressable
@@ -270,7 +260,7 @@ export function NotificationsScreen({ navigation }: Props) {
             ) : null}
           </View>
         </View>
-      </Modal>
+      ) : null}
     </ScreenContainer>
   )
 }
@@ -278,9 +268,18 @@ export function NotificationsScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   content: { gap: spacing.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.lg },
   headerAction: { minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center' },
-  menuOverlay: { flex: 1, backgroundColor: 'rgba(10,20,38,0.12)' },
+  menuOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: 'rgba(10,20,38,0.12)',
+  },
   menu: {
     position: 'absolute',
+    top: spacing.xs,
+    right: spacing.md,
     minWidth: 250,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
