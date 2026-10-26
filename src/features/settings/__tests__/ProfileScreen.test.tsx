@@ -52,6 +52,11 @@ const profile: Profile = {
 const upload = jest.fn()
 const clear = jest.fn()
 const applyOwnName = jest.fn()
+const navigate = jest.fn()
+const profileScreenProps = {
+  navigation: { navigate },
+  route: { key: 'ProfileHome', name: 'ProfileHome' },
+} as unknown as Parameters<typeof ProfileScreen>[0]
 
 beforeEach(() => {
   jest.clearAllMocks()
@@ -80,7 +85,7 @@ beforeEach(() => {
 })
 
 test('muestra datos compactos, ajustes y la opción de subir foto', async () => {
-  const screen = await render(<ProfileScreen />)
+  const screen = await render(<ProfileScreen {...profileScreenProps} />)
   expect(screen.getByRole('header', { name: 'Mi perfil' })).toBeTruthy()
   const name = screen.getByText('Ana López')
   expect(StyleSheet.flatten(name.parent?.parent?.parent?.props.style)).toMatchObject({
@@ -125,7 +130,7 @@ test('muestra datos compactos, ajustes y la opción de subir foto', async () => 
 })
 
 test('la fila y Editar abren la edición del nombre actual y conservan el guardado', async () => {
-  const screen = await render(<ProfileScreen />)
+  const screen = await render(<ProfileScreen {...profileScreenProps} />)
   const pencil = screen.getByRole('button', { name: 'Editar nombre' })
   const camera = screen.getByRole('button', { name: 'Cambiar foto de perfil' })
   const identity = screen.getByText('Ana López').parent?.parent?.parent
@@ -142,7 +147,7 @@ test('la fila y Editar abren la edición del nombre actual y conservan el guarda
 })
 
 test('Empresa, Área y Correo son filas de 52 px con etiquetas de 72 px', async () => {
-  const screen = await render(<ProfileScreen />)
+  const screen = await render(<ProfileScreen {...profileScreenProps} />)
   for (const label of ['Empresa', 'Área', 'Correo']) {
     const field = screen
       .getAllByText(label)
@@ -157,7 +162,7 @@ test('Empresa, Área y Correo son filas de 52 px con etiquetas de 72 px', async 
 })
 
 test('Cerrar sesión es un botón accesible de contorno rojo y 52 px', async () => {
-  const screen = await render(<ProfileScreen />)
+  const screen = await render(<ProfileScreen {...profileScreenProps} />)
   const logout = screen.getByRole('button', { name: 'Cerrar sesión' })
   expect(StyleSheet.flatten(logout.props.style)).toMatchObject({
     minHeight: 52,
@@ -170,10 +175,18 @@ test('Cerrar sesión es un botón accesible de contorno rojo y 52 px', async () 
   })
 })
 
+test('el enlace de eliminación abre DeleteAccount sin competir con Cerrar sesión', async () => {
+  const screen = await render(<ProfileScreen {...profileScreenProps} />)
+  const link = screen.getByRole('button', { name: 'Eliminar mi cuenta' })
+  expect(StyleSheet.flatten(link.props.style)).toMatchObject({ minHeight: 44 })
+  await fireEvent.press(link)
+  expect(navigate).toHaveBeenCalledWith('DeleteAccount')
+})
+
 test('quita la foto por RPC y muestra el error del servidor en español', async () => {
   profile.avatarUrl = 'org/u1/old.jpg'
   clear.mockRejectedValueOnce({ code: 'P0001', message: 'Acceso denegado' })
-  const screen = await render(<ProfileScreen />)
+  const screen = await render(<ProfileScreen {...profileScreenProps} />)
   await fireEvent.press(screen.getByLabelText('Cambiar foto de perfil'))
   await fireEvent.press(screen.getByText('Quitar foto'))
   await waitFor(() =>
@@ -191,7 +204,7 @@ test('muestra el error en español de set_profile_photo', async () => {
     code: 'P0001',
     message: 'La foto debe estar en tu carpeta de perfil',
   })
-  const screen = await render(<ProfileScreen />)
+  const screen = await render(<ProfileScreen {...profileScreenProps} />)
   await fireEvent.press(screen.getByLabelText('Cambiar foto de perfil'))
   await fireEvent.press(screen.getByText('Elegir de galería'))
   await waitFor(() =>

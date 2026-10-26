@@ -9,6 +9,7 @@ import {
   signIn,
   signInWithGoogle,
   signOut,
+  signOutDeletedAccount,
   signUp,
   retryPendingInvitation,
   setPasswordRecoverySession,
@@ -23,6 +24,7 @@ jest.mock('@/features/auth/authService', () => ({
   signIn: jest.fn(),
   signInWithGoogle: jest.fn(),
   signOut: jest.fn(),
+  signOutDeletedAccount: jest.fn(),
   signUp: jest.fn(),
   retryPendingInvitation: jest.fn(),
   setPasswordRecoverySession: jest.fn(),
@@ -40,6 +42,7 @@ const mockResolveSessionProfile = jest.mocked(resolveSessionProfile)
 const mockSignIn = jest.mocked(signIn)
 const mockSignInWithGoogle = jest.mocked(signInWithGoogle)
 const mockSignOut = jest.mocked(signOut)
+const mockSignOutDeletedAccount = jest.mocked(signOutDeletedAccount)
 const mockSignUp = jest.mocked(signUp)
 const mockRetryPendingInvitation = jest.mocked(retryPendingInvitation)
 const mockSetPasswordRecoverySession = jest.mocked(setPasswordRecoverySession)
@@ -74,6 +77,7 @@ describe('estado global de autenticación', () => {
       initializationError: null,
       passwordRecovery: false,
       recoveryLinkError: null,
+      accountDeletedNotice: false,
     })
   })
 
@@ -335,6 +339,26 @@ describe('estado global de autenticación', () => {
     expect(useAuthStore.getState().status).toBe('unauthenticated')
     expect(mockClearMemoryCache).toHaveBeenCalledTimes(1)
     expect(mockClearDiskCache).toHaveBeenCalledTimes(1)
+  })
+
+  test('elimina la cuenta localmente y muestra aviso aunque Auth rechace signOut', async () => {
+    useAuthStore.setState({ session, profile, status: 'authenticated' })
+    mockSignOutDeletedAccount.mockRejectedValueOnce(new Error('Auth user not found'))
+    const clearQueries = jest.spyOn(queryClient, 'clear')
+
+    await expect(useAuthStore.getState().completeAccountDeletion()).resolves.toBeUndefined()
+    expect(useAuthStore.getState()).toMatchObject({
+      session: null,
+      profile: null,
+      status: 'unauthenticated',
+      accountDeletedNotice: true,
+    })
+    expect(clearQueries).toHaveBeenCalled()
+    expect(mockClearMemoryCache).toHaveBeenCalled()
+    expect(mockClearDiskCache).toHaveBeenCalled()
+    useAuthStore.getState().clearAccountDeletedNotice()
+    expect(useAuthStore.getState().accountDeletedNotice).toBe(false)
+    clearQueries.mockRestore()
   })
 
   test('aplica cambios de sesión emitidos por Supabase', async () => {

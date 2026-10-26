@@ -52,10 +52,15 @@ export type AdministrationStackParamList = {
   PriorityTargets: undefined
 }
 
+export type ProfileStackParamList = {
+  ProfileHome: undefined
+  DeleteAccount: undefined
+}
+
 export type MainTabParamList = {
   Home: undefined
   CasesTab: NavigatorScreenParams<MainStackParamList> | undefined
   Help: { section?: 'case-card' } | undefined
-  Profile: undefined
+  Profile: NavigatorScreenParams<ProfileStackParamList> | undefined
   Administration: NavigatorScreenParams<AdministrationStackParamList> | undefined
 }

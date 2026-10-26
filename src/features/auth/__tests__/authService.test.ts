@@ -13,6 +13,7 @@ import {
   updatePassword,
   passwordResetRedirectUrl,
   signOut,
+  signOutDeletedAccount,
   signUp,
 } from '../authService'
 
@@ -201,6 +202,14 @@ describe('servicio de autenticación', () => {
     auth.signOut.mockResolvedValue({ error: null })
 
     await expect(signOut()).resolves.toBeUndefined()
+  })
+
+  test('tras eliminar cuenta solo cierra la sesión local', async () => {
+    auth.signOut.mockResolvedValue({ error: new Error('Auth user already removed') })
+    await expect(signOutDeletedAccount()).resolves.toEqual({
+      error: expect.any(Error),
+    })
+    expect(auth.signOut).toHaveBeenCalledWith({ scope: 'local' })
   })
 
   test('propaga errores de cierre de sesión', async () => {

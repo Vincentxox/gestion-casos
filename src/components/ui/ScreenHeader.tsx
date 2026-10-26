@@ -11,12 +11,14 @@ export function ScreenHeader({
   backLabel = 'Volver',
   action,
   right,
+  backDisabled = false,
 }: {
   title: string
   onBack: () => void
   backLabel?: string
   action?: { label: string; onPress: () => void; icon?: IconName }
   right?: ReactNode
+  backDisabled?: boolean
 }) {
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
@@ -24,6 +26,8 @@ export function ScreenHeader({
         <Pressable
           accessibilityLabel={backLabel}
           accessibilityRole="button"
+          accessibilityState={{ disabled: backDisabled }}
+          disabled={backDisabled}
           onPress={onBack}
           style={styles.back}
         >

@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from '@testing-library/react-native'
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native'
 import { AuthApiError } from '@supabase/supabase-js'
 import type { ReactElement } from 'react'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
@@ -19,6 +19,7 @@ jest.mock('@/features/auth/authService', () => ({
   signIn: jest.fn(),
   signInWithGoogle: jest.fn(),
   signOut: jest.fn(),
+  signOutDeletedAccount: jest.fn(),
   signUp: jest.fn(),
   retryPendingInvitation: jest.fn(),
   requestPasswordReset: jest.fn(),
@@ -62,7 +63,26 @@ function renderWithSafeArea(element: ReactElement) {
 beforeEach(() => {
   jest.clearAllMocks()
   mockRequest = null
-  useAuthStore.setState({ initializationError: null, recoveryLinkError: null })
+  useAuthStore.setState({
+    initializationError: null,
+    recoveryLinkError: null,
+    accountDeletedNotice: false,
+  })
+})
+
+test('aviso verde de cuenta eliminada se borra al tocar Ingresar o Crear cuenta', async () => {
+  const props = { navigation, route: { key: 'Login', name: 'Login' } } as unknown as Parameters<
+    typeof LoginScreen
+  >[0]
+  await act(async () => useAuthStore.setState({ accountDeletedNotice: true }))
+  const screen = await renderWithSafeArea(<LoginScreen {...props} />)
+  expect(screen.getByText('Tu cuenta fue eliminada')).toBeTruthy()
+  expect(screen.getByText('Gracias por usar Nexo Casos.')).toBeTruthy()
+  await fireEvent.press(screen.getByRole('button', { name: 'Ingresar' }))
+  expect(useAuthStore.getState().accountDeletedNotice).toBe(false)
+  await act(async () => useAuthStore.setState({ accountDeletedNotice: true }))
+  await fireEvent.press(screen.getByRole('button', { name: '¿No tienes una cuenta? Crear cuenta' }))
+  expect(useAuthStore.getState().accountDeletedNotice).toBe(false)
 })
 
 test('el inicio de sesión muestra la marca, el título y lleva a crear cuenta', async () => {

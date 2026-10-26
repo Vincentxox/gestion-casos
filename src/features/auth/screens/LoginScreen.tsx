@@ -8,6 +8,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Button } from '@/components/ui/Button'
+import { Icon } from '@/components/ui/Icon'
 import { FormField } from '@/components/forms/FormField'
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
 import { getAuthErrorMessage } from '@/features/auth/authErrors'
@@ -26,6 +27,8 @@ export function LoginScreen({ navigation }: Props) {
   const initialize = useAuthStore((state) => state.initialize)
   const initializationError = useAuthStore((state) => state.initializationError)
   const recoveryLinkError = useAuthStore((state) => state.recoveryLinkError)
+  const accountDeletedNotice = useAuthStore((state) => state.accountDeletedNotice)
+  const clearAccountDeletedNotice = useAuthStore((state) => state.clearAccountDeletedNotice)
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false)
   const {
     control,
@@ -41,6 +44,7 @@ export function LoginScreen({ navigation }: Props) {
   })
 
   const submit = handleSubmit(async (values) => {
+    clearAccountDeletedNotice()
     try {
       await login(values.email, values.password)
     } catch (error) {
@@ -56,6 +60,7 @@ export function LoginScreen({ navigation }: Props) {
   })
 
   const submitGoogle = async () => {
+    clearAccountDeletedNotice()
     try {
       setIsGoogleSubmitting(true)
       await loginWithGoogle()
@@ -80,6 +85,15 @@ export function LoginScreen({ navigation }: Props) {
           <AuthBrand />
 
           <View style={styles.headingBlock}>
+            {accountDeletedNotice ? (
+              <View accessibilityRole="alert" style={styles.deletedNotice}>
+                <Icon name="checkmark-circle" color={colors.success} size={24} />
+                <View style={styles.deletedNoticeCopy}>
+                  <Text style={styles.deletedNoticeTitle}>Tu cuenta fue eliminada</Text>
+                  <Text style={styles.deletedNoticeBody}>Gracias por usar Nexo Casos.</Text>
+                </View>
+              </View>
+            ) : null}
             <AuthHeading title="Inicia sesión" />
 
             {initializationError ? (
@@ -159,7 +173,10 @@ export function LoginScreen({ navigation }: Props) {
               disabled={isGoogleSubmitting}
               label="Ingresar"
               loading={isSubmitting}
-              onPress={() => void submit()}
+              onPress={() => {
+                clearAccountDeletedNotice()
+                void submit()
+              }}
               style={styles.primaryButton}
             />
 
@@ -192,7 +209,10 @@ export function LoginScreen({ navigation }: Props) {
           <Pressable
             accessibilityLabel="¿No tienes una cuenta? Crear cuenta"
             accessibilityRole="button"
-            onPress={() => navigation.navigate('Register')}
+            onPress={() => {
+              clearAccountDeletedNotice()
+              navigation.navigate('Register')
+            }}
             style={styles.linkButton}
           >
             <Text style={styles.linkText}>
@@ -228,6 +248,17 @@ const styles = StyleSheet.create({
     paddingTop: spacing.base,
     marginTop: -spacing.base,
   },
+  deletedNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderRadius: radius.lg,
+    backgroundColor: colors.successSoft,
+    padding: spacing.md,
+  },
+  deletedNoticeCopy: { flex: 1, gap: spacing.xs },
+  deletedNoticeTitle: { ...typography.body, fontFamily: fonts.bold, color: colors.success },
+  deletedNoticeBody: { ...typography.caption, color: colors.text },
   form: {
     gap: spacing.md,
   },
