@@ -116,7 +116,7 @@ Aprobado por el responsable el 26/10/2026 (contrato C-024; requisito de Google P
   `delete-account`) o pedirlo por correo desde la página web de eliminación de cuenta.
 - Se borran su acceso (usuario de Auth, en modo suave), su nombre en el perfil (queda
   «Cuenta eliminada»), su foto, área, rol y empresa, sus dispositivos para avisos, sus
-  avisos y sus solicitudes de acceso.
+  avisos, sus solicitudes de acceso y sus solicitudes de empresa nueva (2.6).
 - Se conservan, como registro de trabajo de la empresa: solicitudes, historial, reportes,
   firmas (8), recursos y su nombre en `former_members`.
 - Se bloquea si tiene trabajos asignados en `asignado`, `en_ejecucion` o `en_espera`, o si
@@ -124,6 +124,24 @@ Aprobado por el responsable el 26/10/2026 (contrato C-024; requisito de Google P
 - Si es el único miembro de su empresa, la empresa queda inactiva (2.3).
 - También puede eliminarla quien pertenece a una empresa inactiva.
 - No se puede deshacer.
+
+### 2.6 Solicitar una empresa nueva
+
+Aprobado por el responsable el 26/10/2026 (contrato C-025).
+
+- Una persona con cuenta, correo verificado y sin empresa puede pedir que se cree la suya:
+  nombre de la empresa, tamaño del equipo (`1-5`, `6-25`, `26-75`, `76+`) y, opcionales,
+  teléfono y mensaje.
+- Tiene como máximo una solicitud pendiente y puede cancelarla.
+- La empresa existe solo cuando un administrador de la plataforma la aprueba. Los
+  administradores de la plataforma están en `private.platform_admins` y se agregan desde el
+  SQL Editor, nunca desde la app. No son lo mismo que el administrador de una empresa.
+- Al aprobar, el servidor crea la empresa con la invitación de administrador para el correo
+  de quien la pidió, y esa persona queda vinculada de inmediato como administrador.
+- No se aprueba si la persona ya entró a otra empresa.
+- Rechazar exige un motivo, que la persona ve. Después puede enviar otra solicitud.
+- En esta versión no hay aviso push: el administrador de la plataforma ve las pendientes en
+  la app y la persona ve el resultado al abrirla.
 
 ## 3. Áreas
 

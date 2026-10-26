@@ -166,6 +166,9 @@ begin
     for target in
       select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
       where n.nspname = 'public' and c.relkind in ('r', 'p')
+        -- Una tabla que los usuarios no pueden leer no filtra nada (por ejemplo
+        -- organization_creation_requests, que solo se lee por sus RPC).
+        and has_table_privilege('authenticated', c.oid, 'select')
         and exists (select 1 from pg_attribute a where a.attrelid = c.oid
                     and a.attname = 'organization_id' and not a.attisdropped)
     loop
@@ -343,6 +346,14 @@ select test.set('unreviewed_functions', (
     'request_organization_access(text)',
     'set_priority_target(case_priority, integer, integer)',
     'unregister_push_token(text)',
+    -- Solicitudes de empresa nueva (prueba 36): las de quien pide actúan sobre sí mismo; las
+    -- de revisión son solo para administradores de la plataforma, que no tienen empresa fija.
+    'cancel_organization_creation_request()',
+    'is_platform_admin()',
+    'list_organization_creation_requests(text)',
+    'my_organization_creation_request()',
+    'request_organization_creation(text, text, text, text)',
+    'review_organization_creation_request(uuid, boolean, text)',
     -- SECURITY INVOKER: calculan sobre una fila de cases que RLS ya filtró.
     'due_at(cases)',
     'overdue_stage(cases)',
