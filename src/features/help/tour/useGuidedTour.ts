@@ -11,31 +11,30 @@ export interface TourRect {
 }
 interface SavedProgress {
   seen: string[]
-  autoShown: boolean
+  started?: boolean
+  hiddenOnHome?: boolean
+  // Legacy fields are read only; skipping the old automatic tour never hides Home now.
+  autoShown?: boolean
   skipped?: boolean
 }
 
 interface GuidedTourState {
   userId: string | null
   ready: boolean
-  autoAllowed: boolean
   seen: string[]
-  autoShown: boolean
-  skipped: boolean
+  started: boolean
+  hiddenOnHome: boolean
   steps: TutorialStep[]
   index: number
   active: boolean
   target: TourTargetId | null
   rect: TourRect | null
   hydrate: (userId: string | undefined) => Promise<void>
-  start: (
-    steps: TutorialStep[],
-    index?: number,
-    repeat?: boolean,
-    automatic?: boolean,
-  ) => Promise<void>
+  start: (steps: TutorialStep[], index?: number, repeat?: boolean) => Promise<void>
   next: () => Promise<void>
   skip: () => Promise<void>
+  hideOnHome: () => Promise<void>
+  showOnHome: () => Promise<void>
   setTarget: (target: TourTargetId | null) => void
   setRect: (target: TourTargetId, rect: TourRect | null) => void
 }
@@ -57,10 +56,9 @@ async function save(userId: string | null, value: SavedProgress) {
 export const useGuidedTour = create<GuidedTourState>((set, get) => ({
   userId: null,
   ready: false,
-  autoAllowed: false,
   seen: [],
-  autoShown: false,
-  skipped: false,
+  started: false,
+  hiddenOnHome: false,
   steps: [],
   index: 0,
   active: false,
@@ -71,9 +69,9 @@ export const useGuidedTour = create<GuidedTourState>((set, get) => ({
       set({
         userId: null,
         ready: false,
-        autoAllowed: false,
         seen: [],
-        skipped: false,
+        started: false,
+        hiddenOnHome: false,
         active: false,
       })
       return
@@ -82,10 +80,10 @@ export const useGuidedTour = create<GuidedTourState>((set, get) => ({
     set({
       userId,
       ready: false,
-      autoAllowed: false,
       active: false,
       seen: [],
-      skipped: false,
+      started: false,
+      hiddenOnHome: false,
       rect: null,
     })
     try {
@@ -94,42 +92,29 @@ export const useGuidedTour = create<GuidedTourState>((set, get) => ({
       const parsed = raw ? (JSON.parse(raw) as SavedProgress) : null
       set({
         ready: true,
-        autoAllowed: true,
         seen: Array.isArray(parsed?.seen)
           ? parsed.seen.filter((id): id is string => typeof id === 'string')
           : [],
-        autoShown: Boolean(parsed?.autoShown),
-        skipped: Boolean(parsed?.skipped),
+        started: Boolean(parsed?.started || parsed?.autoShown || parsed?.seen?.length),
+        hiddenOnHome: Boolean(parsed?.hiddenOnHome),
       })
     } catch {
       if (get().userId === userId)
-        set({ ready: true, autoAllowed: false, seen: [], autoShown: true, skipped: false })
+        set({ ready: true, seen: [], started: false, hiddenOnHome: false })
     }
   },
-  async start(steps, index = 0, repeat = false, automatic = false) {
+  async start(steps, index = 0, repeat = false) {
     const state = get()
-    if (
-      !state.ready ||
-      steps.length === 0 ||
-      (automatic && (!state.autoAllowed || state.autoShown))
-    )
-      return
+    if (!state.ready || steps.length === 0) return
     const seen = repeat ? [] : state.seen.filter((id) => steps.some((step) => step.id === id))
     const nextIndex = Math.max(0, Math.min(index, steps.length - 1))
-    const autoShown = true
-    // The flag is durable before the first automatic frame appears.
-    const saved = await save(state.userId, { seen, autoShown })
-    if (automatic && !saved) {
-      set({ autoAllowed: false })
-      return
-    }
+    await save(state.userId, { seen, started: true, hiddenOnHome: state.hiddenOnHome })
     if (get().userId !== state.userId) return
     set({
       steps,
       index: nextIndex,
       seen,
-      autoShown,
-      skipped: false,
+      started: true,
       active: true,
       target: steps[nextIndex]!.target,
       rect: null,
@@ -147,12 +132,20 @@ export const useGuidedTour = create<GuidedTourState>((set, get) => ({
       target: done ? null : state.steps[state.index + 1]!.target,
       rect: null,
     })
-    await save(state.userId, { seen, autoShown: state.autoShown })
+    await save(state.userId, { seen, started: state.started, hiddenOnHome: state.hiddenOnHome })
   },
   async skip() {
+    set({ active: false, target: null, rect: null })
+  },
+  async hideOnHome() {
     const state = get()
-    set({ active: false, skipped: true, target: null, rect: null })
-    await save(state.userId, { seen: state.seen, autoShown: state.autoShown, skipped: true })
+    set({ hiddenOnHome: true })
+    await save(state.userId, { seen: state.seen, started: state.started, hiddenOnHome: true })
+  },
+  async showOnHome() {
+    const state = get()
+    set({ hiddenOnHome: false })
+    await save(state.userId, { seen: state.seen, started: state.started, hiddenOnHome: false })
   },
   setTarget(target) {
     set({ target, rect: null })

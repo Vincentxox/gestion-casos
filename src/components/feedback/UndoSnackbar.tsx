@@ -4,9 +4,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
 
-export function UndoSnackbar({ count, onUndo }: { count: number; onUndo: () => void }) {
+export function UndoSnackbar({
+  count,
+  onUndo,
+  message: customMessage,
+}: {
+  count: number
+  onUndo: () => void
+  message?: string
+}) {
   const insets = useSafeAreaInsets()
-  const message = count === 1 ? 'Aviso borrado' : `${count} avisos borrados`
+  const message = customMessage ?? (count === 1 ? 'Aviso borrado' : `${count} avisos borrados`)
 
   useEffect(() => {
     if (count > 0) AccessibilityInfo.announceForAccessibility(`${message}. Deshacer`)

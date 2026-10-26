@@ -23,8 +23,8 @@ describe('HelpScreen', () => {
       userId: 'person',
       ready: true,
       seen: [],
-      skipped: false,
-      autoShown: true,
+      started: false,
+      hiddenOnHome: false,
       active: false,
       steps: [],
       index: 0,
@@ -47,7 +47,7 @@ describe('HelpScreen', () => {
       borderWidth: 2,
     })
     expect(screen.getByText('Tu área en números')).toBeTruthy()
-    await fireEvent.press(screen.getByText('Continuar: Lo urgente, primero'))
+    await fireEvent.press(screen.getByText('Empezar: Lo urgente, primero'))
     await waitFor(() => expect(useGuidedTour.getState().index).toBe(0))
     expect(useGuidedTour.getState().active).toBe(true)
   })
@@ -61,11 +61,11 @@ describe('HelpScreen', () => {
     })
   })
 
-  test('el recorrido cambia entre Continuar y Repetir', async () => {
+  test('el recorrido cambia entre Empezar, Continuar y Repetir', async () => {
     const screen = await render(<HelpScreen />)
-    expect(screen.getByText('Continuar: Lo urgente, primero')).toBeTruthy()
+    expect(screen.getByText('Empezar: Lo urgente, primero')).toBeTruthy()
     await act(() => {
-      useGuidedTour.setState({ seen: ['inicio'] })
+      useGuidedTour.setState({ seen: ['inicio'], started: true })
     })
     expect(screen.getByText('Continuar: Tu área en números')).toBeTruthy()
     await act(() => {

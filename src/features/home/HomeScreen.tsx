@@ -1,14 +1,14 @@
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useFocusEffect } from '@react-navigation/native'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { NexoLogo } from '@/components/branding/NexoLogo'
 import { ROLE_LABELS } from '@/features/auth/types'
 import { OfflineBanner } from '@/components/feedback/OfflineBanner'
-import { useFeedbackDialogOpen } from '@/components/feedback/AppFeedback'
+import { UndoSnackbar } from '@/components/feedback/UndoSnackbar'
 import { RequestState } from '@/components/feedback/RequestState'
 import { Icon } from '@/components/ui/Icon'
 import { Avatar } from '@/components/ui/Avatar'
@@ -45,19 +45,21 @@ const CARD_TONES = {
 
 export function HomeScreen({ navigation }: Props) {
   const profile = useAuthStore((state) => state.profile)
-  const feedbackDialogOpen = useFeedbackDialogOpen()
-  const [focused, setFocused] = useState(false)
-  useFocusEffect(
-    useCallback(() => {
-      setFocused(true)
-      return () => setFocused(false)
-    }, []),
-  )
   const tourReady = useGuidedTour((state) => state.ready)
-  const tourAutoShown = useGuidedTour((state) => state.autoShown)
   const tourSeen = useGuidedTour((state) => state.seen)
-  const tourSkipped = useGuidedTour((state) => state.skipped)
+  const tourStarted = useGuidedTour((state) => state.started)
+  const tourHiddenOnHome = useGuidedTour((state) => state.hiddenOnHome)
   const startTour = useGuidedTour((state) => state.start)
+  const hideTourOnHome = useGuidedTour((state) => state.hideOnHome)
+  const showTourOnHome = useGuidedTour((state) => state.showOnHome)
+  const [showTourUndo, setShowTourUndo] = useState(false)
+  const tourUndoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(
+    () => () => {
+      if (tourUndoTimer.current) clearTimeout(tourUndoTimer.current)
+    },
+    [],
+  )
   const enabled = Boolean(profile?.organizationId)
   const summary = useHomeSummary(enabled)
   const nextSteps = useNextSteps(enabled)
@@ -110,36 +112,6 @@ export function HomeScreen({ navigation }: Props) {
     : summary.isLoading
   const attentionError = counts.isError || nextSteps.isError || (!homeCaseView && summary.isError)
   const attentionReady = Boolean(homeCaseView) && !attentionLoading && !attentionError
-  useEffect(() => {
-    if (!focused || !profile || !tourReady || tourAutoShown || feedbackDialogOpen) return
-    const steps = getTutorialFor(profile.role, '', Boolean(profile.areaId))
-    const launch = () =>
-      void startTour(
-        steps,
-        Math.max(
-          0,
-          steps.findIndex((step) => !tourSeen.includes(step.id)),
-        ),
-        false,
-        true,
-      )
-    if (!attentionLoading || attentionError) {
-      launch()
-      return
-    }
-    const timer = setTimeout(launch, 2000)
-    return () => clearTimeout(timer)
-  }, [
-    focused,
-    profile,
-    tourReady,
-    tourAutoShown,
-    tourSeen,
-    startTour,
-    attentionLoading,
-    attentionError,
-    feedbackDialogOpen,
-  ])
   if (!profile) return null
   const overdueMessage =
     profile.role === 'solicitante'
@@ -153,6 +125,19 @@ export function HomeScreen({ navigation }: Props) {
   const areaName = profile.areaName || 'Administración'
   const tutorialSteps = getTutorialFor(profile.role, '', Boolean(profile.areaId))
   const tourProgress = getTourProgress(tutorialSteps, tourSeen)
+  const tourAction = tourStarted ? 'Sigue' : 'Empezar'
+  function hideTourCard() {
+    void hideTourOnHome()
+    if (tourUndoTimer.current) clearTimeout(tourUndoTimer.current)
+    setShowTourUndo(true)
+    tourUndoTimer.current = setTimeout(() => setShowTourUndo(false), 5000)
+  }
+  function undoHideTourCard() {
+    if (tourUndoTimer.current) clearTimeout(tourUndoTimer.current)
+    tourUndoTimer.current = null
+    setShowTourUndo(false)
+    void showTourOnHome()
+  }
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
@@ -400,11 +385,11 @@ export function HomeScreen({ navigation }: Props) {
           ) : null}
         </View>
 
-        {tourReady && !tourSkipped && !tourProgress.complete && tourProgress.nextStep ? (
+        {tourReady && !tourHiddenOnHome && !tourProgress.complete && tourProgress.nextStep ? (
           <View style={styles.firstStepsCard}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`Aprende Nexo en ${tutorialSteps.length} pasos, ${tourProgress.seenCount} de ${tutorialSteps.length}. Sigue: ${tourProgress.nextStep.title}`}
+              accessibilityLabel={`Aprende Nexo en ${tutorialSteps.length} pasos, ${tourProgress.seenCount} de ${tutorialSteps.length}. ${tourAction}: ${tourProgress.nextStep.title}`}
               onPress={() => void startTour(tutorialSteps, tourProgress.nextIndex)}
               style={({ pressed }) => [
                 styles.firstStepsAction,
@@ -429,10 +414,17 @@ export function HomeScreen({ navigation }: Props) {
                   />
                 </View>
                 <Text numberOfLines={1} style={styles.firstStepsNext}>
-                  Sigue: {tourProgress.nextStep.title}
+                  {tourAction}: {tourProgress.nextStep.title} ›
                 </Text>
               </View>
-              <Icon name="chevron-forward" color={colors.ink} />
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Ocultar Aprende Nexo"
+              onPress={hideTourCard}
+              style={styles.firstStepsHide}
+            >
+              <Icon name="close" color={colors.textMuted} />
             </Pressable>
           </View>
         ) : null}
@@ -514,6 +506,11 @@ export function HomeScreen({ navigation }: Props) {
           ))}
         </View>
       </ScrollView>
+      <UndoSnackbar
+        count={showTourUndo ? 1 : 0}
+        message="Lo encuentras siempre en Ayuda"
+        onUndo={undoHideTourCard}
+      />
     </SafeAreaView>
   )
 }
@@ -602,21 +599,31 @@ const styles = StyleSheet.create({
   firstStepsCard: {
     borderRadius: radius.lg,
     backgroundColor: tone.info.bg,
-    flexDirection: 'row',
-    alignItems: 'center',
+    overflow: 'hidden',
   },
   firstStepsAction: {
-    flex: 1,
-    minHeight: 64,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
+    minHeight: 88,
     padding: spacing.md,
+    paddingRight: 56,
+  },
+  firstStepsHide: {
+    position: 'absolute',
+    top: spacing.xs,
+    right: spacing.xs,
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   firstStepsPressed: { backgroundColor: colors.surfaceMuted },
   pressedRow: { backgroundColor: colors.surfaceMuted },
-  firstStepsCopy: { flex: 1, gap: spacing.xs },
-  firstStepsHeading: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm },
+  firstStepsCopy: { gap: spacing.sm },
+  firstStepsHeading: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
   firstStepsTitle: { ...typography.heading, color: colors.ink, flexShrink: 1 },
   firstStepsTrack: {
     height: 5,
@@ -626,7 +633,7 @@ const styles = StyleSheet.create({
   },
   firstStepsFill: { height: '100%', backgroundColor: colors.primary },
   firstStepsCount: { ...typography.caption, fontFamily: fonts.semibold, color: colors.primary },
-  firstStepsNext: { ...typography.caption, color: colors.textMuted },
+  firstStepsNext: { ...typography.caption, fontFamily: fonts.semibold, color: colors.primary },
   quietEmpty: { ...typography.body, color: colors.textMuted, paddingVertical: spacing.sm },
   caseGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   caseTile: {

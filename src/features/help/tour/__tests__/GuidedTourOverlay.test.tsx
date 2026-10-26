@@ -12,8 +12,8 @@ function show(index = 0) {
   useGuidedTour.setState({
     userId: 'person',
     ready: true,
-    autoAllowed: true,
-    autoShown: true,
+    started: true,
+    hiddenOnHome: false,
     seen: [],
     steps,
     index,

@@ -13,10 +13,9 @@ describe('useGuidedTour', () => {
     useGuidedTour.setState({
       userId: null,
       ready: false,
-      autoAllowed: false,
       seen: [],
-      skipped: false,
-      autoShown: false,
+      started: false,
+      hiddenOnHome: false,
       steps: [],
       index: 0,
       active: false,
@@ -25,65 +24,79 @@ describe('useGuidedTour', () => {
     })
   })
 
-  test('lee y guarda el avance por persona', async () => {
+  test('lee el avance viejo sin usar skipped para ocultar Inicio', async () => {
     ;(AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce(
-      JSON.stringify({ seen: ['inicio'], autoShown: true }),
+      JSON.stringify({ seen: ['inicio'], autoShown: true, skipped: true }),
     )
     await useGuidedTour.getState().hydrate('person-1')
     expect(AsyncStorage.getItem).toHaveBeenCalledWith('guided-tour:person-1')
     expect(useGuidedTour.getState().seen).toEqual(['inicio'])
+    expect(useGuidedTour.getState().started).toBe(true)
+    expect(useGuidedTour.getState().hiddenOnHome).toBe(false)
     await useGuidedTour.getState().start(steps, 1)
     await useGuidedTour.getState().next()
     expect(useGuidedTour.getState().seen).toEqual(['inicio', 'avisos'])
     expect(AsyncStorage.setItem).toHaveBeenCalledWith(
       'guided-tour:person-1',
-      JSON.stringify({ seen: ['inicio', 'avisos'], autoShown: true }),
+      JSON.stringify({ seen: ['inicio', 'avisos'], started: true, hiddenOnHome: false }),
     )
     await useGuidedTour.getState().skip()
     expect(useGuidedTour.getState().active).toBe(false)
-    expect(useGuidedTour.getState().skipped).toBe(true)
-    expect(AsyncStorage.setItem).toHaveBeenCalledWith(
-      'guided-tour:person-1',
-      JSON.stringify({ seen: ['inicio', 'avisos'], autoShown: true, skipped: true }),
-    )
+    expect(useGuidedTour.getState().hiddenOnHome).toBe(false)
   })
 
-  test('un fallo de lectura impide el lanzamiento automático', async () => {
-    ;(AsyncStorage.getItem as jest.Mock).mockRejectedValueOnce(new Error('Storage unavailable'))
+  test('una cuenta nueva solo empieza al tocar, y Saltar conserva el progreso', async () => {
     await useGuidedTour.getState().hydrate('person-2')
-    await useGuidedTour.getState().start(steps, 0, false, true)
-    expect(useGuidedTour.getState().active).toBe(false)
-    expect(useGuidedTour.getState().autoAllowed).toBe(false)
-  })
-
-  test('guarda autoShown antes de mostrar el recorrido', async () => {
-    await useGuidedTour.getState().hydrate('person-3')
-    let finishWrite: () => void = () => undefined
-    ;(AsyncStorage.setItem as jest.Mock).mockImplementationOnce(
-      () =>
-        new Promise<void>((resolve) => {
-          finishWrite = resolve
-        }),
-    )
-    const starting = useGuidedTour.getState().start(steps, 0, false, true)
-    expect(AsyncStorage.setItem).toHaveBeenCalledWith(
-      'guided-tour:person-3',
-      JSON.stringify({ seen: [], autoShown: true }),
-    )
-    expect(useGuidedTour.getState().active).toBe(false)
-    finishWrite()
-    await starting
-    expect(useGuidedTour.getState().active).toBe(true)
+    expect(useGuidedTour.getState()).toMatchObject({
+      ready: true,
+      active: false,
+      started: false,
+      hiddenOnHome: false,
+    })
+    await useGuidedTour.getState().start(steps)
+    expect(useGuidedTour.getState()).toMatchObject({ active: true, started: true })
+    await useGuidedTour.getState().next()
     await useGuidedTour.getState().skip()
-    await useGuidedTour.getState().start(steps, 0, false, true)
-    expect(useGuidedTour.getState().active).toBe(false)
+    expect(useGuidedTour.getState()).toMatchObject({
+      active: false,
+      seen: [steps[0]!.id],
+      hiddenOnHome: false,
+    })
   })
 
-  test('si no puede guardar el indicador, no lanza automáticamente', async () => {
+  test('Ocultar y Deshacer guardan una clave nueva sin perder el avance', async () => {
+    await useGuidedTour.getState().hydrate('person-3')
+    await useGuidedTour.getState().start(steps)
+    await useGuidedTour.getState().next()
+    await useGuidedTour.getState().hideOnHome()
+    expect(useGuidedTour.getState()).toMatchObject({
+      hiddenOnHome: true,
+      seen: [steps[0]!.id],
+    })
+    expect(AsyncStorage.setItem).toHaveBeenLastCalledWith(
+      'guided-tour:person-3',
+      JSON.stringify({ seen: [steps[0]!.id], started: true, hiddenOnHome: true }),
+    )
+    await useGuidedTour.getState().showOnHome()
+    expect(useGuidedTour.getState().hiddenOnHome).toBe(false)
+    expect(AsyncStorage.setItem).toHaveBeenLastCalledWith(
+      'guided-tour:person-3',
+      JSON.stringify({ seen: [steps[0]!.id], started: true, hiddenOnHome: false }),
+    )
+  })
+
+  test('un fallo de lectura no inicia el recorrido y aún permite iniciarlo manualmente', async () => {
+    ;(AsyncStorage.getItem as jest.Mock).mockRejectedValueOnce(new Error('Storage unavailable'))
     await useGuidedTour.getState().hydrate('person-4')
-    ;(AsyncStorage.setItem as jest.Mock).mockRejectedValueOnce(new Error('Storage unavailable'))
-    await useGuidedTour.getState().start(steps, 0, false, true)
     expect(useGuidedTour.getState().active).toBe(false)
-    expect(useGuidedTour.getState().autoAllowed).toBe(false)
+    await useGuidedTour.getState().start(steps)
+    expect(useGuidedTour.getState().active).toBe(true)
+  })
+
+  test('si falla el guardado, el recorrido iniciado a mano sigue disponible', async () => {
+    await useGuidedTour.getState().hydrate('person-5')
+    ;(AsyncStorage.setItem as jest.Mock).mockRejectedValueOnce(new Error('Storage unavailable'))
+    await useGuidedTour.getState().start(steps)
+    expect(useGuidedTour.getState().active).toBe(true)
   })
 })
