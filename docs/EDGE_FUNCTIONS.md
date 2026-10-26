@@ -10,6 +10,7 @@ de las funciones.
 | `generate-report-pdf` | La app, con la sesión del usuario | Sí     | Genera una vez el PDF de un caso aprobado y devuelve un enlace de 5 min. |
 | `send-push`           | Tarea programada, cada minuto     | No (*) | Envía los avisos pendientes con Expo Push.                               |
 | `cleanup-photos`      | Tarea programada, cada hora       | No (*) | Borra reservas de fotos sin confirmar de más de 24 horas.                |
+| `delete-account`      | La app, con la sesión del usuario | Sí     | Elimina la cuenta de quien llama (C-024): perfil, fotos y usuario Auth.  |
 
 (*) Se autorizan con la cabecera `x-cron-secret`, comparada con el secreto `CRON_SECRET`.
 
@@ -29,6 +30,20 @@ const { data, error } = await supabase.functions.invoke('generate-report-pdf', {
   (las originales siguen en Storage), las tres firmas con su trazo y una hoja de
   evidencia con firmantes, IP, dispositivo, hashes y el historial.
 
+## Contrato de `delete-account`
+
+```ts
+const { data, error } = await supabase.functions.invoke('delete-account', { method: 'POST' })
+// data: { deleted: true }
+```
+
+- 401 sin sesión, 409 si una regla lo impide (trabajos abiertos asignados o único
+  administrador de una empresa con miembros; el mensaje en español dice qué hacer), 500 si
+  falla. Los errores traen `{ error: string }`.
+- Llama a `prepare_account_deletion` con la sesión del usuario, borra su carpeta de
+  `profile-photos` y borra su usuario de Auth en modo suave. Reintentarla es seguro.
+- Después de un 200 la app cierra la sesión local.
+
 ## Despliegue (requiere autorización del responsable)
 
 1. Aplicar antes la migración `20260923110000_create_push_dispatch.sql`.
@@ -42,6 +57,7 @@ const { data, error } = await supabase.functions.invoke('generate-report-pdf', {
    supabase functions deploy generate-report-pdf
    supabase functions deploy send-push --no-verify-jwt
    supabase functions deploy cleanup-photos --no-verify-jwt
+   supabase functions deploy delete-account
    ```
 
 ## Tareas programadas

@@ -337,6 +337,7 @@ select test.set('unreviewed_functions', (
     'get_home_summary()',
     'get_my_access_request()',
     'get_organization_join_code()',
+    'prepare_account_deletion()',
     'regenerate_organization_join_code()',
     'register_push_token(text, text)',
     'request_organization_access(text)',
