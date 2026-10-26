@@ -4,6 +4,7 @@ export const colors = {
   primary: '#1366D6',
   primaryDark: '#0E4FA8',
   primarySoft: '#E6F0FC',
+  primaryTint: '#DCE8FB',
   ink: '#13305E',
   toastBg: '#13305E',
   sky: '#1BA6E8',

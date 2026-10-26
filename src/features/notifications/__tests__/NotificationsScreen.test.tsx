@@ -1,10 +1,12 @@
 import { act, fireEvent, render } from '@testing-library/react-native'
 import { Animated, BackHandler, StyleSheet } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { useAnimatedReaction } from 'react-native-reanimated'
 
 import type { AppNotification } from '../notificationService'
 import { NotificationsScreen } from '../NotificationsScreen'
 import { colors, spacing } from '@/theme/tokens'
+import { feedback } from '@/services/feedback'
 
 const mockNavigate = jest.fn()
 const mockGoBack = jest.fn()
@@ -16,6 +18,11 @@ const mockRestore = jest.fn()
 const mockConfirm = jest.fn().mockResolvedValue(false)
 const mockReadRefetch = jest.fn()
 let mockItems: AppNotification[] = []
+const mockMeasureNotificationView = jest.fn()
+
+jest.mock('../notificationLayout', () => ({
+  measureNotificationView: (...args: unknown[]) => mockMeasureNotificationView(...args),
+}))
 
 jest.mock('../useNotifications', () => ({
   useNotifications: () => ({
@@ -71,6 +78,7 @@ function renderScreen() {
 
 beforeEach(() => {
   mockItems = []
+  mockMeasureNotificationView.mockReset()
   mockNavigate.mockClear()
   mockGoBack.mockClear()
   mockSetOptions.mockClear()
@@ -245,6 +253,180 @@ test('un aviso sin leer ofrece Marcar como leído, nunca Borrar', async () => {
   await fireEvent(row, 'accessibilityAction', { nativeEvent: { actionName: 'markRead' } })
   expect(mockMark).toHaveBeenCalledWith([2])
   expect(mockDismiss).not.toHaveBeenCalled()
+})
+
+test('derecha solo en sin leer marca leído, con icono sin texto y umbral del 40 %', async () => {
+  mockItems = [item]
+  const screen = await renderScreen()
+  const swipe = screen.getByTestId('mock-swipeable')
+  const props = swipe.props.swipeableProps
+  expect(props.renderLeftActions).toBeDefined()
+  expect(props.renderRightActions).toBeUndefined()
+  await act(async () =>
+    fireEvent(screen.getByTestId('notification-row-container'), 'layout', {
+      nativeEvent: { layout: { width: 300, height: 80 } },
+    }),
+  )
+  expect(screen.getByTestId('mock-swipeable').props.swipeableProps.leftThreshold).toBe(120)
+  const action = await render(props.renderLeftActions({ value: 0 }, { value: 0 }))
+  const actionView = action.getByTestId('notification-swipe-read-action')
+  expect(StyleSheet.flatten(actionView.props.style)).toMatchObject({
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    paddingLeft: spacing.lg,
+  })
+  expect(action.queryByText('Leído')).toBeNull()
+  await act(async () => props.onSwipeableOpen('right'))
+  expect(mockMark).toHaveBeenCalledWith([2])
+  expect(mockDismiss).not.toHaveBeenCalled()
+})
+
+test('izquierda solo en leídos borra y permite Deshacer', async () => {
+  mockItems = [{ ...item, readAt: '2026-10-16T12:10:00Z' }]
+  const animation = jest.spyOn(Animated, 'timing').mockImplementation(
+    () =>
+      ({
+        start: (callback?: (result: { finished: boolean }) => void) =>
+          callback?.({ finished: true }),
+      }) as Animated.CompositeAnimation,
+  )
+  try {
+    const screen = await renderScreen()
+    const swipe = screen.getByTestId('mock-swipeable')
+    const props = swipe.props.swipeableProps
+    expect(props.renderLeftActions).toBeUndefined()
+    expect(props.renderRightActions).toBeDefined()
+    await act(async () =>
+      fireEvent(screen.getByTestId('notification-row-container'), 'layout', {
+        nativeEvent: { layout: { width: 300, height: 80 } },
+      }),
+    )
+    expect(screen.getByTestId('mock-swipeable').props.swipeableProps.rightThreshold).toBe(120)
+    const action = await render(props.renderRightActions({ value: 0 }, { value: 0 }))
+    expect(
+      StyleSheet.flatten(action.getByTestId('notification-swipe-delete-action').props.style),
+    ).toMatchObject({
+      alignItems: 'flex-end',
+      justifyContent: 'center',
+      paddingRight: spacing.lg,
+      backgroundColor: colors.error,
+    })
+    expect(action.queryByText('Borrar')).toBeNull()
+    await act(async () => props.onSwipeableOpen('left'))
+    expect(mockDismiss).toHaveBeenCalledWith([2])
+    expect(await screen.findByText('Aviso borrado')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Deshacer' })).toBeTruthy()
+  } finally {
+    animation.mockRestore()
+  }
+})
+
+test('la vibración de deslizar ocurre una vez al cruzar el umbral de 40 %', async () => {
+  mockItems = [item]
+  const haptic = jest.spyOn(feedback, 'selection').mockImplementation(jest.fn())
+  const reactionHook = jest.mocked(useAnimatedReaction)
+  reactionHook.mockClear()
+  try {
+    const screen = await renderScreen()
+    await act(async () =>
+      fireEvent(screen.getByTestId('notification-row-container'), 'layout', {
+        nativeEvent: { layout: { width: 300, height: 80 } },
+      }),
+    )
+    const swipe = screen.getByTestId('mock-swipeable')
+    const translation = { value: 0 }
+    await render(swipe.props.swipeableProps.renderLeftActions({ value: 0 }, translation))
+    const [prepare, react] = reactionHook.mock.calls[0]!
+    translation.value = 119
+    react(prepare(), false)
+    expect(haptic).not.toHaveBeenCalled()
+    translation.value = 120
+    react(prepare(), false)
+    react(prepare(), true)
+    expect(haptic).toHaveBeenCalledTimes(1)
+    translation.value = 0
+    react(prepare(), true)
+    translation.value = 121
+    react(prepare(), false)
+    expect(haptic).toHaveBeenCalledTimes(2)
+  } finally {
+    haptic.mockRestore()
+  }
+})
+
+test('pulsación larga: menú de sin leer bloquea Borrar y se cierra al tocar fuera', async () => {
+  mockItems = [item]
+  const screen = await renderScreen()
+  const row = screen.getByRole('button', { name: /Sin leer. Reporte enviado/ })
+  mockMeasureNotificationView
+    .mockImplementationOnce((_view, callback) => callback(24, 100, 320, 80))
+    .mockImplementationOnce((_view, callback) => callback(0, 40, 400, 700))
+  try {
+    await act(async () => fireEvent(row, 'longPress'))
+    expect(mockMeasureNotificationView).toHaveBeenCalledTimes(2)
+    expect(
+      StyleSheet.flatten(
+        screen.getByTestId('notification-row-preview', { includeHiddenElements: true }).props.style,
+      ),
+    ).toMatchObject({
+      top: 60,
+      left: 24,
+      width: 320,
+    })
+    expect(screen.getByRole('button', { name: 'Marcar como leído' })).toBeTruthy()
+    const deleteButton = screen.getByRole('button', { name: 'Borrar. Primero márcalo como leído' })
+    expect(deleteButton.props.accessibilityState).toEqual({ disabled: true })
+    expect(screen.getByText('Primero márcalo como leído')).toBeTruthy()
+    await fireEvent.press(
+      screen.getByTestId('notification-row-backdrop', { includeHiddenElements: true }),
+    )
+    expect(screen.queryByTestId('notification-row-menu')).toBeNull()
+  } finally {
+    screen.unmount()
+  }
+})
+
+test('pulsación larga en leído ofrece solo Borrar y Atrás cierra el menú', async () => {
+  mockItems = [{ ...item, readAt: '2026-10-16T12:10:00Z' }]
+  mockMeasureNotificationView
+    .mockImplementationOnce((_view, callback) => callback(24, 700, 320, 80))
+    .mockImplementationOnce((_view, callback) => callback(0, 40, 400, 700))
+  let onBack: Parameters<typeof BackHandler.addEventListener>[1] | undefined
+  const backSubscription = jest
+    .spyOn(BackHandler, 'addEventListener')
+    .mockImplementation((_event, handler) => {
+      onBack = handler
+      return { remove: jest.fn() }
+    })
+  try {
+    const screen = await renderScreen()
+    await act(async () =>
+      fireEvent(screen.getByRole('button', { name: /Reporte enviado/ }), 'longPress'),
+    )
+    expect(screen.queryByRole('button', { name: 'Marcar como leído' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Borrar' })).toBeTruthy()
+    expect(
+      StyleSheet.flatten(screen.getByTestId('notification-row-menu').props.style).top,
+    ).toBeLessThan(660)
+    await act(async () => expect(onBack?.({ type: 'hardwareBackPress', timeStamp: 0 })).toBe(true))
+    expect(screen.queryByTestId('notification-row-menu')).toBeNull()
+  } finally {
+    backSubscription.mockRestore()
+  }
+})
+
+test('Borrar del menú contextual elimina solo el aviso leído', async () => {
+  mockItems = [{ ...item, readAt: '2026-10-16T12:10:00Z' }]
+  mockMeasureNotificationView
+    .mockImplementationOnce((_view, callback) => callback(24, 100, 320, 80))
+    .mockImplementationOnce((_view, callback) => callback(0, 40, 400, 700))
+  const screen = await renderScreen()
+  await act(async () =>
+    fireEvent(screen.getByRole('button', { name: /Reporte enviado/ }), 'longPress'),
+  )
+  await act(async () => fireEvent.press(screen.getByRole('button', { name: 'Borrar' })))
+  expect(mockDismiss).toHaveBeenCalledWith([2])
+  expect(screen.queryByTestId('notification-row-menu')).toBeNull()
 })
 
 test('borrar todos requiere confirmación y no ejecuta la RPC al cancelar', async () => {

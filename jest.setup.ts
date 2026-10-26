@@ -5,9 +5,14 @@ jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => {
   const { View } = require('react-native')
   return {
     __esModule: true,
-    default: React.forwardRef(({ children }: { children: unknown }, _ref: unknown) =>
-      React.createElement(View, null, children),
-    ),
+    default: React.forwardRef(({ children, ...props }: { children: unknown }, ref: unknown) => {
+      React.useImperativeHandle(ref, () => ({ close: jest.fn() }))
+      return React.createElement(
+        View,
+        { testID: 'mock-swipeable', swipeableProps: props },
+        children,
+      )
+    }),
   }
 })
 
@@ -17,6 +22,8 @@ jest.mock('react-native-reanimated', () => {
     __esModule: true,
     default: { View },
     useAnimatedStyle: () => ({}),
+    useAnimatedReaction: jest.fn(),
+    runOnJS: (callback: (...args: unknown[]) => unknown) => callback,
     useReducedMotion: () => true,
     useSharedValue: (value: number) => ({ value, set: jest.fn() }),
     withTiming: (value: number) => value,

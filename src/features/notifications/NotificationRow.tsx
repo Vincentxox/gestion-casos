@@ -2,11 +2,13 @@ import { useRef, useState } from 'react'
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native'
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable'
 import type { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable'
-import {
+import Reanimated, {
   runOnJS,
   useAnimatedReaction,
+  useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
+  withTiming,
   type SharedValue,
 } from 'react-native-reanimated'
 
@@ -15,19 +17,25 @@ import { feedback } from '@/services/feedback'
 import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
 import type { AppNotification } from './notificationService'
 import { notificationAppearance, notificationTimeLabel } from './notificationPresentation'
+import { measureNotificationView } from './notificationLayout'
 
-function RightAction({
-  unread,
+export type NotificationRowRect = { x: number; y: number; width: number; height: number }
+
+function SwipeAction({
+  direction,
   width,
   translation,
 }: {
-  unread: boolean
+  direction: 'left' | 'right'
   width: number
   translation: SharedValue<number>
 }) {
+  const markRead = direction === 'left'
   const crossed = useSharedValue(false)
   useAnimatedReaction(
-    () => width > 0 && translation.value <= -width / 2,
+    () =>
+      width > 0 &&
+      (markRead ? translation.value >= width * 0.4 : translation.value <= -width * 0.4),
     (beyond) => {
       if (beyond && !crossed.value) {
         crossed.value = true
@@ -35,14 +43,90 @@ function RightAction({
       }
       if (translation.value === 0) crossed.value = false
     },
-    [width],
+    [width, markRead],
   )
+  const leftBackground = useAnimatedStyle(() => ({
+    backgroundColor: withTiming(
+      translation.value >= width * 0.4 ? colors.primary : colors.primaryTint,
+      { duration: 120 },
+    ),
+  }))
+  const primaryIcon = useAnimatedStyle(() => ({
+    opacity: withTiming(translation.value >= width * 0.4 ? 0 : 1, { duration: 120 }),
+  }))
+  const whiteIcon = useAnimatedStyle(() => ({
+    opacity: withTiming(translation.value >= width * 0.4 ? 1 : 0, { duration: 120 }),
+    transform: [
+      { scale: withTiming(translation.value >= width * 0.4 ? 1.25 : 1, { duration: 120 }) },
+    ],
+  }))
   return (
-    <View
-      style={[styles.action, { width, backgroundColor: unread ? colors.primary : colors.error }]}
+    <Reanimated.View
+      testID={markRead ? 'notification-swipe-read-action' : 'notification-swipe-delete-action'}
+      style={[
+        styles.action,
+        markRead ? styles.leftAction : styles.rightAction,
+        { width },
+        markRead ? leftBackground : styles.deleteAction,
+      ]}
     >
-      <Icon name={unread ? 'checkmark' : 'trash-outline'} color={colors.white} />
-      <Text style={styles.actionText}>{unread ? 'Leído' : 'Borrar'}</Text>
+      {markRead ? (
+        <View style={styles.actionIcon}>
+          <Reanimated.View style={[styles.absoluteIcon, primaryIcon]}>
+            <Icon name="checkmark" size={24} color={colors.primary} />
+          </Reanimated.View>
+          <Reanimated.View style={[styles.absoluteIcon, whiteIcon]}>
+            <Icon name="checkmark" size={24} color={colors.white} />
+          </Reanimated.View>
+        </View>
+      ) : (
+        <Icon name="trash-outline" size={24} color={colors.white} />
+      )}
+    </Reanimated.View>
+  )
+}
+
+function RowContent({ item, now }: { item: AppNotification; now: Date }) {
+  const unread = !item.readAt
+  const appearance = notificationAppearance(item.action)
+  const caseLabel =
+    item.caseNumber && item.caseTitle ? `${item.caseNumber} · ${item.caseTitle}` : item.body
+  return (
+    <>
+      <View
+        testID="notification-icon-box"
+        style={[
+          styles.iconBox,
+          { backgroundColor: unread ? colors.surface : appearance.background },
+        ]}
+      >
+        <Icon name={appearance.icon} size={20} color={appearance.foreground} />
+      </View>
+      <View style={styles.rowBody}>
+        <View style={styles.rowTop}>
+          <Text numberOfLines={2} style={[styles.itemTitle, unread && styles.unreadTitle]}>
+            {item.title}
+          </Text>
+          <Text style={styles.time}>{notificationTimeLabel(item.createdAt, now)}</Text>
+        </View>
+        <Text numberOfLines={2} style={styles.caseLabel}>
+          {caseLabel}
+        </Text>
+        {item.actorName ? (
+          <Text numberOfLines={1} style={styles.actor}>
+            por {item.actorName}
+          </Text>
+        ) : null}
+      </View>
+      {unread ? <View style={styles.unreadDot} /> : null}
+    </>
+  )
+}
+
+export function NotificationRowPreview({ item, now }: { item: AppNotification; now: Date }) {
+  return (
+    <View style={[styles.row, styles.previewRow]}>
+      <RowContent item={item} now={now} />
     </View>
   )
 }
@@ -54,6 +138,7 @@ export function NotificationRow({
   onOpen,
   onMarkRead,
   onDelete,
+  onLongPress,
 }: {
   item: AppNotification
   now: Date
@@ -61,12 +146,13 @@ export function NotificationRow({
   onOpen: () => void
   onMarkRead: () => void
   onDelete: () => Promise<boolean>
+  onLongPress: (rect: NotificationRowRect) => void
 }) {
   const unread = !item.readAt
-  const appearance = notificationAppearance(item.action)
   const caseLabel =
     item.caseNumber && item.caseTitle ? `${item.caseNumber} · ${item.caseTitle}` : item.body
   const swipe = useRef<SwipeableMethods>(null)
+  const rowRef = useRef<View>(null)
   const [width, setWidth] = useState(0)
   const [rowHeight, setRowHeight] = useState(80)
   const [removing, setRemoving] = useState(false)
@@ -97,6 +183,7 @@ export function NotificationRow({
 
   return (
     <Animated.View
+      testID="notification-row-container"
       onLayout={(event) => {
         setWidth(event.nativeEvent.layout.width)
         if (!removing) setRowHeight(event.nativeEvent.layout.height)
@@ -113,22 +200,39 @@ export function NotificationRow({
     >
       <ReanimatedSwipeable
         ref={swipe}
-        rightThreshold={width / 2}
+        leftThreshold={width * 0.4}
+        rightThreshold={width * 0.4}
+        dragOffsetFromLeftEdge={20}
         dragOffsetFromRightEdge={20}
+        overshootLeft={false}
         overshootRight={false}
-        onSwipeableOpen={() => {
-          if (unread) {
+        onSwipeableOpen={(direction) => {
+          if (direction === 'right' && unread) {
             onMarkRead()
             swipe.current?.close()
-          } else deleteRow()
+          } else if (direction === 'left' && !unread) deleteRow()
+          else swipe.current?.close()
         }}
-        renderRightActions={(_progress, translation) => (
-          <RightAction unread={unread} width={width} translation={translation} />
-        )}
+        renderLeftActions={
+          unread
+            ? (_progress, translation) => (
+                <SwipeAction direction="left" width={width} translation={translation} />
+              )
+            : undefined
+        }
+        renderRightActions={
+          !unread
+            ? (_progress, translation) => (
+                <SwipeAction direction="right" width={width} translation={translation} />
+              )
+            : undefined
+        }
       >
         <Pressable
+          ref={rowRef}
           accessibilityRole="button"
           accessibilityLabel={`${unread ? 'Sin leer. ' : ''}${item.title}. ${caseLabel}${item.actorName ? `. por ${item.actorName}` : ''}`}
+          accessibilityHint="Mantén presionado para ver opciones"
           accessibilityActions={[
             unread
               ? { name: 'markRead', label: 'Marcar como leído' }
@@ -139,34 +243,15 @@ export function NotificationRow({
             if (event.nativeEvent.actionName === 'markRead' && unread) onMarkRead()
           }}
           onPress={onOpen}
+          onLongPress={() => {
+            measureNotificationView(rowRef.current, (x, y, measuredWidth, measuredHeight) => {
+              void feedback.selection()
+              onLongPress({ x, y, width: measuredWidth, height: measuredHeight })
+            })
+          }}
           style={[styles.row, unread && styles.unreadRow]}
         >
-          <View
-            testID="notification-icon-box"
-            style={[
-              styles.iconBox,
-              { backgroundColor: unread ? colors.surface : appearance.background },
-            ]}
-          >
-            <Icon name={appearance.icon} size={20} color={appearance.foreground} />
-          </View>
-          <View style={styles.rowBody}>
-            <View style={styles.rowTop}>
-              <Text numberOfLines={2} style={[styles.itemTitle, unread && styles.unreadTitle]}>
-                {item.title}
-              </Text>
-              <Text style={styles.time}>{notificationTimeLabel(item.createdAt, now)}</Text>
-            </View>
-            <Text numberOfLines={2} style={styles.caseLabel}>
-              {caseLabel}
-            </Text>
-            {item.actorName ? (
-              <Text numberOfLines={1} style={styles.actor}>
-                por {item.actorName}
-              </Text>
-            ) : null}
-          </View>
-          {unread ? <View style={styles.unreadDot} /> : null}
+          <RowContent item={item} now={now} />
         </Pressable>
       </ReanimatedSwipeable>
     </Animated.View>
@@ -175,12 +260,14 @@ export function NotificationRow({
 
 const styles = StyleSheet.create({
   action: {
-    alignItems: 'flex-end',
+    alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.xs,
-    paddingRight: spacing.lg,
   },
-  actionText: { ...typography.caption, color: colors.white, fontFamily: fonts.bold },
+  leftAction: { alignItems: 'flex-start', paddingLeft: spacing.lg },
+  rightAction: { alignItems: 'flex-end', paddingRight: spacing.lg },
+  deleteAction: { backgroundColor: colors.error },
+  actionIcon: { width: 24, height: 24 },
+  absoluteIcon: { position: 'absolute', top: 0, left: 0 },
   rowDivider: { borderBottomColor: colors.cardBorder, borderBottomWidth: 1 },
   row: {
     flexDirection: 'row',
@@ -191,6 +278,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   unreadRow: { backgroundColor: colors.primarySoft },
+  previewRow: { backgroundColor: colors.surface, borderRadius: radius.lg, overflow: 'hidden' },
   iconBox: {
     width: 40,
     height: 40,
