@@ -82,6 +82,7 @@ select test.ok(
     'cases <-> profiles',                      -- creador y responsable
     'former_members <-> profiles',             -- miembro y quien dio la baja
     'organization_access_requests <-> profiles', -- solicitante y quien decidió
+    'organization_creation_requests <-> profiles', -- solicitante y quien revisó
     'organization_invitations <-> profiles',   -- invitó y aceptó
     'organizations <-> profiles'               -- empresa del perfil y former_members
   ],
