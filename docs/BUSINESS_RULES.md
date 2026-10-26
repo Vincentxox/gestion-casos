@@ -108,6 +108,23 @@ Aprobado por el responsable el 17/10/2026 (contrato C-017, rediseño del Perfil)
 - Se hace cumplir en la base de datos: bucket privado de Storage con políticas por
   empresa y persona, y RPC que solo aceptan un archivo de la carpeta propia.
 
+### 2.5 Eliminar la propia cuenta
+
+Aprobado por el responsable el 26/10/2026 (contrato C-024; requisito de Google Play).
+
+- Cada persona puede eliminar su propia cuenta desde la app (Edge Function
+  `delete-account`) o pedirlo por correo desde la página web de eliminación de cuenta.
+- Se borran su acceso (usuario de Auth, en modo suave), su nombre en el perfil (queda
+  «Cuenta eliminada»), su foto, área, rol y empresa, sus dispositivos para avisos, sus
+  avisos y sus solicitudes de acceso.
+- Se conservan, como registro de trabajo de la empresa: solicitudes, historial, reportes,
+  firmas (8), recursos y su nombre en `former_members`.
+- Se bloquea si tiene trabajos asignados en `asignado`, `en_ejecucion` o `en_espera`, o si
+  es el único administrador de una empresa con más miembros.
+- Si es el único miembro de su empresa, la empresa queda inactiva (2.3).
+- También puede eliminarla quien pertenece a una empresa inactiva.
+- No se puede deshacer.
+
 ## 3. Áreas
 
 - Cada área pertenece a una empresa y tiene un tipo:
