@@ -290,11 +290,13 @@ export function CasesListScreen({ navigation, route }: Props) {
   }
   const filters = buildCaseSearchFilters(filterInput)
   // Una sola respuesta base permite contar cada chip como alternativa al activo.
-  // Conserva alcance, búsqueda, prioridad, fecha y estado exacto.
+  // Conserva alcance, búsqueda, prioridad y fecha; los accesos rápidos quitan el estado exacto.
   const countFilters = buildCaseSearchFilters({
     ...filterInput,
     tab: 'todas',
     quickStatus: null,
+    exactStatus: null,
+    legacyStatuses: null,
     overdueOnly: false,
     ...(filtersOpen && customDate && !dateError
       ? { fromDate: fromDateDraft || null, toDate: toDateDraft || null, sinceDays: null }
@@ -345,7 +347,9 @@ export function CasesListScreen({ navigation, route }: Props) {
     const timeout = setTimeout(() => setAnimateInitialList(false), 600)
     return () => clearTimeout(timeout)
   }, [animateInitialList, isLoading, error, filteredCases.length])
-  const segmentCounts = counts.data ? getCaseSegments(counts.data, quickStatus, overdueOnly) : null
+  const segmentCounts = counts.data
+    ? getCaseSegments(counts.data, quickStatus, overdueOnly, exactStatus, legacyStatuses)
+    : null
   const firstUse = canCreate && segmentCounts?.todas === 0
   const quickCounts = counts.data ? getQuickFilterCounts(counts.data) : null
   const segments = (Object.keys(STATUS_LABELS) as CaseListTab[]).map((value) => ({
@@ -520,7 +524,6 @@ export function CasesListScreen({ navigation, route }: Props) {
               onPress={() =>
                 changeFilters({
                   status: segment.value,
-                  legacyStatuses: null,
                   ...(segment.value === 'cerradas'
                     ? { quickStatus: null, overdueOnly: false }
                     : {}),
