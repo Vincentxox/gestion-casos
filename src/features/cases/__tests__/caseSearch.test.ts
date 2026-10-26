@@ -101,8 +101,32 @@ test('las pestañas aplican el chip activo sobre los conteos base sin otra consu
     { status: 'en_ejecucion' as const, total: 3, overdue: 2, unassigned: 0 },
     { status: 'aprobado' as const, total: 2, overdue: 0, unassigned: 0 },
   ]
-  expect(getCaseSegments(counts, 'sin_asignar')).toEqual({ abiertas: 3, cerradas: 0, todas: 3 })
-  expect(getCaseSegments(counts, null, true)).toEqual({ abiertas: 5, cerradas: 0, todas: 5 })
+  expect(getCaseSegments(counts, 'sin_asignar')).toEqual({ abiertas: 3, cerradas: 2, todas: 3 })
+  expect(getCaseSegments(counts, null, true)).toEqual({ abiertas: 5, cerradas: 2, todas: 5 })
+})
+
+test('el estado exacto y los estados heredados filtran cada pestaña sin alterar los accesos rápidos', () => {
+  const counts = [
+    { status: 'solicitado' as const, total: 3, overdue: 1, unassigned: 3 },
+    { status: 'en_espera' as const, total: 2, overdue: 1, unassigned: 0 },
+    { status: 'aprobado' as const, total: 4, overdue: 0, unassigned: 0 },
+  ]
+  expect(getCaseSegments(counts, null, false, 'en_espera')).toEqual({
+    abiertas: 2,
+    cerradas: 0,
+    todas: 2,
+  })
+  expect(getCaseSegments(counts, null, false, null, ['en_espera', 'aprobado'])).toEqual({
+    abiertas: 2,
+    cerradas: 4,
+    todas: 6,
+  })
+  expect(getCaseSegments(counts, null, true, null, ['en_espera', 'aprobado'])).toEqual({
+    abiertas: 1,
+    cerradas: 4,
+    todas: 1,
+  })
+  expect(getQuickFilterCounts(counts).por_aceptar).toBe(3)
 })
 
 test('los seis filtros rápidos se cuentan a partir de las filas filtradas por el servidor', () => {

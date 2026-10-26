@@ -127,25 +127,27 @@ export function getCaseSegments(
   counts: CaseStatusCount[],
   quickStatus: QuickStatusFilter | null = null,
   overdueOnly = false,
+  exactStatus: CaseStatus | null = null,
+  legacyStatuses: CaseStatus[] | null = null,
 ) {
-  const byStatus = new Map(
-    counts.map((row) => [
-      row.status,
-      quickStatus && !QUICK_STATUSES[quickStatus].includes(row.status)
-        ? 0
-        : quickStatus === 'sin_asignar'
-          ? row.unassigned
-          : overdueOnly
-            ? row.overdue
-            : row.total,
-    ]),
-  )
-  const count = (statuses: CaseStatus[]) =>
-    statuses.reduce((sum, status) => sum + (byStatus.get(status) ?? 0), 0)
+  const byStatus = new Map(counts.map((row) => [row.status, row]))
+  const count = (statuses: CaseStatus[], applyQuickFilter: boolean) =>
+    statuses.reduce((sum, status) => {
+      if (exactStatus && status !== exactStatus) return sum
+      if (legacyStatuses && !legacyStatuses.includes(status)) return sum
+      const row = byStatus.get(status)
+      if (!row) return sum
+      if (!applyQuickFilter) return sum + row.total
+      if (quickStatus && !QUICK_STATUSES[quickStatus].includes(status)) return sum
+      return (
+        sum +
+        (quickStatus === 'sin_asignar' ? row.unassigned : overdueOnly ? row.overdue : row.total)
+      )
+    }, 0)
   return {
-    abiertas: count(OPEN_CASE_STATUSES),
-    cerradas: count(CLOSED_CASE_STATUSES),
-    todas: count([...OPEN_CASE_STATUSES, ...CLOSED_CASE_STATUSES]),
+    abiertas: count(OPEN_CASE_STATUSES, true),
+    cerradas: count(CLOSED_CASE_STATUSES, false),
+    todas: count([...OPEN_CASE_STATUSES, ...CLOSED_CASE_STATUSES], true),
   }
 }
 

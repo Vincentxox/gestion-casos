@@ -131,6 +131,86 @@ test('Cerradas oculta los chips rápidos y quita el filtro activo', async () => 
   )
 })
 
+function mockCountedCases() {
+  const cases = [
+    { id: 'open-1', status: 'solicitado', overdue: true },
+    { id: 'open-2', status: 'solicitado', overdue: false },
+    { id: 'waiting', status: 'en_espera', overdue: true },
+    { id: 'closed-1', status: 'aprobado', overdue: false },
+    { id: 'closed-2', status: 'aprobado', overdue: false },
+    { id: 'closed-3', status: 'aprobado', overdue: false },
+  ] as const
+  ;(useCaseCounts as jest.Mock).mockReturnValue({
+    data: [
+      { status: 'solicitado', total: 2, overdue: 1, unassigned: 2 },
+      { status: 'en_espera', total: 1, overdue: 1, unassigned: 0 },
+      { status: 'aprobado', total: 3, overdue: 0, unassigned: 0 },
+    ],
+    refetch: jest.fn(),
+  })
+  ;(useCases as jest.Mock).mockImplementation((filters) => ({
+    data: {
+      pages: [
+        cases
+          .filter((item) => !filters.statuses || filters.statuses.includes(item.status))
+          .filter((item) => !filters.overdueOnly || item.overdue)
+          .map((item) => ({
+            ...sortedCase(item.id, '2026-10-16T12:00:00Z'),
+            status: item.status,
+          })),
+      ],
+    },
+    error: null,
+    isLoading: false,
+    refetch: jest.fn(),
+    hasNextPage: false,
+    fetchNextPage: jest.fn(),
+    isFetchingNextPage: false,
+    isFetchNextPageError: false,
+  }))
+}
+
+test('Vencidas conserva los conteos de Abiertas y Todas, pero Cerradas anticipa sus filas', async () => {
+  mockCountedCases()
+  const { screen } = await setup()
+  await fireEvent.press(screen.getByRole('button', { name: 'Vencidas, 2 solicitudes' }))
+  expect(screen.getByRole('tab', { name: 'Abiertas, 2 solicitudes' })).toBeTruthy()
+  expect(screen.queryAllByRole('button', { name: /CAS-/ })).toHaveLength(2)
+  await fireEvent.press(screen.getByRole('tab', { name: 'Todas, 2 solicitudes' }))
+  expect(screen.queryAllByRole('button', { name: /CAS-/ })).toHaveLength(2)
+  await fireEvent.press(screen.getByRole('tab', { name: 'Cerradas, 3 solicitudes' }))
+  expect(screen.queryAllByRole('button', { name: /CAS-/ })).toHaveLength(3)
+})
+
+test('estado exacto En espera filtra pestañas, pero no los conteos de accesos rápidos', async () => {
+  mockCountedCases()
+  const { screen } = await setup({ exactStatus: 'en_espera' })
+  expect(useCaseCounts).toHaveBeenLastCalledWith(expect.objectContaining({ statuses: null }), true)
+  expect(screen.getByRole('tab', { name: 'Abiertas, 1 solicitudes' })).toBeTruthy()
+  expect(screen.queryAllByRole('button', { name: /CAS-/ })).toHaveLength(1)
+  await fireEvent.press(screen.getByRole('tab', { name: 'Todas, 1 solicitudes' }))
+  expect(screen.queryAllByRole('button', { name: /CAS-/ })).toHaveLength(1)
+  await fireEvent.press(screen.getByRole('tab', { name: 'Cerradas, 0 solicitudes' }))
+  expect(screen.queryAllByRole('button', { name: /CAS-/ })).toHaveLength(0)
+  await fireEvent.press(screen.getByRole('tab', { name: 'Abiertas, 1 solicitudes' }))
+  await fireEvent.press(screen.getByRole('button', { name: 'Por aceptar, 2 solicitudes' }))
+  expect(screen.queryAllByRole('button', { name: /CAS-/ })).toHaveLength(2)
+})
+
+test('estados heredados del enlace cuentan igual que las filas de cada pestaña y chip', async () => {
+  mockCountedCases()
+  const { screen } = await setup({ statuses: ['solicitado', 'aprobado'] })
+  expect(useCaseCounts).toHaveBeenLastCalledWith(expect.objectContaining({ statuses: null }), true)
+  expect(screen.getByRole('tab', { name: 'Abiertas, 2 solicitudes' })).toBeTruthy()
+  expect(screen.queryAllByRole('button', { name: /CAS-/ })).toHaveLength(2)
+  await fireEvent.press(screen.getByRole('tab', { name: 'Cerradas, 3 solicitudes' }))
+  expect(screen.queryAllByRole('button', { name: /CAS-/ })).toHaveLength(3)
+  await fireEvent.press(screen.getByRole('tab', { name: 'Todas, 5 solicitudes' }))
+  expect(screen.queryAllByRole('button', { name: /CAS-/ })).toHaveLength(5)
+  await fireEvent.press(screen.getByRole('button', { name: 'En espera, 1 solicitud' }))
+  expect(screen.queryAllByRole('button', { name: /CAS-/ })).toHaveLength(1)
+})
+
 test('el aviso aparece con una fila, Entendido lo guarda y Ver guía abre Ayuda', async () => {
   ;(AsyncStorage.getItem as jest.Mock).mockResolvedValue(null)
   ;(useCases as jest.Mock).mockReturnValue({
@@ -473,7 +553,7 @@ test('Inicio puede abrir Tus solicitudes filtradas por fase', async () => {
   mockProfile.role = 'solicitante'
   const { screen } = await setup({ scope: 'mias', status: 'en_curso' })
   expect(
-    screen.getByRole('tab', { name: 'Abiertas, 7 solicitudes' }).props.accessibilityState,
+    screen.getByRole('tab', { name: 'Abiertas, 4 solicitudes' }).props.accessibilityState,
   ).toEqual({
     selected: true,
   })
