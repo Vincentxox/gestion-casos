@@ -42,7 +42,8 @@ export function FloatingTabBar({
   const isRoot =
     !nestedRoute ||
     (focusedRoute?.name === 'CasesTab' && nestedRoute === 'Cases') ||
-    (focusedRoute?.name === 'Administration' && nestedRoute === 'AdministrationHome')
+    (focusedRoute?.name === 'Administration' && nestedRoute === 'AdministrationHome') ||
+    (focusedRoute?.name === 'Profile' && nestedRoute === 'ProfileHome')
 
   if (keyboardVisible || !isRoot) return null
 

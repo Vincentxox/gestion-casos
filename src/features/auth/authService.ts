@@ -198,6 +198,11 @@ export async function signOut() {
   }
 }
 
+/** After account deletion Auth may already reject the user, so callers ignore its error. */
+export async function signOutDeletedAccount() {
+  return supabase.auth.signOut({ scope: 'local' })
+}
+
 export async function resolveSessionProfile(session: Session | null) {
   if (!session) return null
   const profile = await getProfile(session.user.id)

@@ -148,6 +148,7 @@
       "src/features/notifications/notificationPresentation.ts",
       "src/features/home/homePresentation.ts",
       "src/features/settings/profileService.ts",
+      "src/features/settings/accountDeletionService.ts",
       "src/features/settings/profilePhotoService.ts",
       "src/features/settings/profilePhotoPreparation.ts",
       "src/features/settings/useProfilePhoto.ts",

@@ -30,6 +30,7 @@ import { HelpScreen } from '@/features/help/HelpScreen'
 import { GuidedTourOverlay } from '@/features/help/tour/GuidedTourOverlay'
 import { useGuidedTour } from '@/features/help/tour/useGuidedTour'
 import { ProfileScreen } from '@/features/settings/ProfileScreen'
+import { DeleteAccountScreen } from '@/features/settings/DeleteAccountScreen'
 import { ResourcesScreen } from '@/features/resources/screens/ResourcesScreen'
 import { CaseResourcesScreen } from '@/features/resources/screens/CaseResourcesScreen'
 import { CaseReportScreen } from '@/features/reports/screens/CaseReportScreen'
@@ -43,12 +44,14 @@ import type {
   AdministrationStackParamList,
   MainStackParamList,
   MainTabParamList,
+  ProfileStackParamList,
   RootStackParamList,
 } from './types'
 
 const Stack = createNativeStackNavigator<MainStackParamList>()
 const RootStack = createNativeStackNavigator<RootStackParamList>()
 const AdministrationStack = createNativeStackNavigator<AdministrationStackParamList>()
+const ProfileStack = createNativeStackNavigator<ProfileStackParamList>()
 const Tab = createBottomTabNavigator<MainTabParamList>()
 
 function renderScreenHeader({ navigation, options }: NativeStackHeaderProps) {
@@ -56,8 +59,33 @@ function renderScreenHeader({ navigation, options }: NativeStackHeaderProps) {
     <ScreenHeader
       title={typeof options.title === 'string' ? options.title : ''}
       onBack={navigation.goBack}
+      backDisabled={options.headerBackVisible === false}
       right={options.headerRight?.({ tintColor: colors.primary, canGoBack: true })}
     />
+  )
+}
+
+function ProfileNavigator() {
+  return (
+    <ProfileStack.Navigator
+      screenOptions={{
+        contentStyle: { backgroundColor: colors.background },
+        headerShadowVisible: false,
+        headerTintColor: colors.primary,
+        header: renderScreenHeader,
+      }}
+    >
+      <ProfileStack.Screen
+        component={ProfileScreen}
+        name="ProfileHome"
+        options={{ headerShown: false }}
+      />
+      <ProfileStack.Screen
+        component={DeleteAccountScreen}
+        name="DeleteAccount"
+        options={{ title: 'Eliminar mi cuenta' }}
+      />
+    </ProfileStack.Navigator>
   )
 }
 
@@ -306,7 +334,7 @@ export function MainNavigator() {
         />
       ) : null}
       <Tab.Screen component={HelpScreen} name="Help" options={{ title: 'Ayuda' }} />
-      <Tab.Screen component={ProfileScreen} name="Profile" options={{ title: 'Perfil' }} />
+      <Tab.Screen component={ProfileNavigator} name="Profile" options={{ title: 'Perfil' }} />
     </Tab.Navigator>
   )
 }

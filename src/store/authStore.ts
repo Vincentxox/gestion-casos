@@ -11,6 +11,7 @@ import {
   signIn,
   signInWithGoogle,
   signOut,
+  signOutDeletedAccount,
   signUp,
 } from '@/features/auth/authService'
 import type { RegistrationInput } from '@/features/auth/schemas'
@@ -26,6 +27,9 @@ interface AuthStore {
   initializationError: string | null
   passwordRecovery: boolean
   recoveryLinkError: string | null
+  accountDeletedNotice: boolean
+  clearAccountDeletedNotice: () => void
+  completeAccountDeletion: () => Promise<void>
   handleRecoveryUrl: (url: string) => Promise<void>
   finishPasswordRecovery: () => Promise<void>
   initialize: () => Promise<void>
@@ -85,6 +89,30 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   initializationError: null,
   passwordRecovery: false,
   recoveryLinkError: null,
+  accountDeletedNotice: false,
+
+  clearAccountDeletedNotice() {
+    set({ accountDeletedNotice: false })
+  },
+
+  async completeAccountDeletion() {
+    try {
+      await signOutDeletedAccount()
+    } catch {
+      // Auth user may have been removed by the Edge Function already.
+    }
+    queryClient.clear()
+    set({
+      session: null,
+      profile: null,
+      status: 'unauthenticated',
+      initializationError: null,
+      passwordRecovery: false,
+      recoveryLinkError: null,
+      accountDeletedNotice: true,
+    })
+    await clearImageCaches()
+  },
 
   async handleRecoveryUrl(url) {
     const link = parseRecoveryLink(url)

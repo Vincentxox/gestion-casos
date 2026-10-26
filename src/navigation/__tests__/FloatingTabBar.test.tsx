@@ -124,4 +124,33 @@ describe('FloatingTabBar', () => {
     expect(slotStyle.flex).toBeGreaterThan(1)
     expect(screen.getByText('Solicitudes').props.numberOfLines).toBeUndefined()
   })
+
+  test('muestra la barra en ProfileHome y la oculta en DeleteAccount', async () => {
+    const { props } = setup()
+    const profileRoute = {
+      key: 'profile',
+      name: 'Profile',
+      state: { index: 0, routes: [{ name: 'ProfileHome' }, { name: 'DeleteAccount' }] },
+    }
+    const profileProps = {
+      ...props,
+      state: { ...props.state, index: 3, routes: [...props.state.routes, profileRoute] },
+      descriptors: { ...props.descriptors, profile: { options: { title: 'Perfil' } } },
+    } as unknown as BottomTabBarProps
+    const screen = await render(<FloatingTabBar {...profileProps} />)
+    expect(screen.getByTestId('floating-tab-bar')).toBeTruthy()
+    const detailProps = {
+      ...profileProps,
+      state: {
+        ...profileProps.state,
+        routes: profileProps.state.routes.map((route) =>
+          route.name === 'Profile'
+            ? { ...route, state: { index: 1, routes: profileRoute.state.routes } }
+            : route,
+        ),
+      },
+    } as unknown as BottomTabBarProps
+    await screen.rerender(<FloatingTabBar {...detailProps} />)
+    expect(screen.queryByTestId('floating-tab-bar')).toBeNull()
+  })
 })

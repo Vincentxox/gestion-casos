@@ -3,6 +3,7 @@ import { AppFeedback } from '@/components/feedback/AppFeedback'
 import * as ImagePicker from 'expo-image-picker'
 import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useState } from 'react'
+import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import appConfig from '../../../app.json'
 
 import { Button } from '@/components/ui/Button'
@@ -17,6 +18,7 @@ import { BottomSheet } from '@/components/sheets/BottomSheet'
 import { ROLE_ICONS, ROLE_LABELS } from '@/features/auth/types'
 import { confirmLogout } from '@/features/auth/confirmLogout'
 import { useAuthStore } from '@/store/authStore'
+import type { ProfileStackParamList } from '@/navigation/types'
 import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
 import { updateOwnName } from './profileService'
 import { prepareProfilePhoto } from './profilePhotoPreparation'
@@ -34,7 +36,9 @@ const ROLE_DESCRIPTIONS = {
   auditor: 'Puedes consultar las solicitudes y reportes de tu empresa, sin modificarlos.',
 } as const
 
-export function ProfileScreen() {
+export function ProfileScreen({
+  navigation,
+}: NativeStackScreenProps<ProfileStackParamList, 'ProfileHome'>) {
   const profile = useAuthStore((state) => state.profile)
   const session = useAuthStore((state) => state.session)
   const logout = useAuthStore((state) => state.logout)
@@ -263,6 +267,15 @@ export function ProfileScreen() {
           style={styles.logoutButton}
           onPress={() => confirmLogout(() => void handleLogout())}
         />
+        <Pressable
+          accessibilityLabel="Eliminar mi cuenta"
+          accessibilityRole="button"
+          onPress={() => navigation.navigate('DeleteAccount')}
+          style={styles.deleteAccountLink}
+        >
+          <Icon name="trash-outline" color={colors.error} size={18} />
+          <Text style={styles.deleteAccountText}>Eliminar mi cuenta</Text>
+        </Pressable>
         <Text style={styles.version}>Nexo Casos · versión {appConfig.expo.version}</Text>
       </ScrollView>
       <BottomSheet
@@ -404,6 +417,15 @@ const styles = StyleSheet.create({
     borderColor: colors.dangerBorder,
     backgroundColor: colors.background,
   },
+  deleteAccountLink: {
+    minHeight: 44,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  deleteAccountText: { ...typography.body, color: colors.error, fontFamily: fonts.semibold },
   version: {
     ...typography.caption,
     color: colors.textMuted,
