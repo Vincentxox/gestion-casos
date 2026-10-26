@@ -1,6 +1,7 @@
-import { act, fireEvent, render, waitFor } from '@testing-library/react-native'
+import { act, fireEvent, render } from '@testing-library/react-native'
 import { useFocusEffect } from '@react-navigation/native'
 import { StyleSheet } from 'react-native'
+import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import type { Profile } from '@/features/auth/types'
 import type { AppNotification } from '@/features/notifications/notificationService'
@@ -9,6 +10,7 @@ import type { NextStepCase, HomeSummary } from '../homeService'
 import { HomeScreen } from '../HomeScreen'
 import { useCaseCounts } from '@/features/cases/useCases'
 import { useGuidedTour } from '@/features/help/tour/useGuidedTour'
+import { getTutorialFor } from '@/features/help/helpContent'
 import { HelpScreen } from '@/features/help/HelpScreen'
 
 const mockNavigate = jest.fn()
@@ -159,10 +161,9 @@ beforeEach(() => {
     userId: null,
     ready: false,
     active: false,
-    autoShown: false,
-    autoAllowed: false,
     seen: [],
-    skipped: false,
+    started: false,
+    hiddenOnHome: false,
     steps: [],
     index: 0,
     target: null,
@@ -175,22 +176,32 @@ function renderHome() {
     navigation: { navigate: mockNavigate, getParent: () => ({ navigate: mockRootNavigate }) },
     route: { key: 'Home', name: 'Home' },
   } as unknown as Parameters<typeof HomeScreen>[0]
-  return render(<HomeScreen {...props} />)
+  return render(
+    <SafeAreaProvider
+      initialMetrics={{
+        frame: { x: 0, y: 0, width: 390, height: 844 },
+        insets: { top: 0, right: 0, bottom: 0, left: 0 },
+      }}
+    >
+      <HomeScreen {...props} />
+    </SafeAreaProvider>,
+  )
 }
 
-test('lanza el recorrido una sola vez después de tener foco y atención lista', async () => {
-  useGuidedTour.setState({ userId: mockProfile.id, ready: true, autoAllowed: true })
-  await renderHome()
+test('una cuenta nueva no abre el recorrido sola; la tarjeta lo inicia y Saltar la conserva', async () => {
+  useGuidedTour.setState({ userId: mockProfile.id, ready: true })
+  const home = await renderHome()
   expect(useGuidedTour.getState().active).toBe(false)
-  await act(() => {
-    ;(useFocusEffect as jest.Mock).mock.calls[0]?.[0]()
-  })
-  await waitFor(() => expect(useGuidedTour.getState().active).toBe(true))
-  expect(useGuidedTour.getState().autoShown).toBe(true)
+  expect(home.getByText('0 de 5')).toBeTruthy()
+  expect(home.getByText('Empezar: Lo urgente, primero ›')).toBeTruthy()
+  const card = home.getByRole('button', { name: /Aprende Nexo en 5 pasos, 0 de 5. Empezar/ })
+  await fireEvent.press(card)
+  expect(useGuidedTour.getState().active).toBe(true)
   await act(async () => {
     await useGuidedTour.getState().skip()
   })
   expect(useGuidedTour.getState().active).toBe(false)
+  expect(home.getByText('Sigue: Lo urgente, primero ›')).toBeTruthy()
 })
 
 test('las vencidas prevalecen aun cuando hay un siguiente paso', async () => {
@@ -461,15 +472,59 @@ test('dos avisos de la misma persona mantienen el color del avatar', async () =>
   )
 })
 
-test('Inicio y Ayuda comparten el mismo avance del recorrido y se oculta al saltarlo', async () => {
-  useGuidedTour.setState({ userId: mockProfile.id, ready: true, seen: ['inicio'] })
+test('Ocultar solo quita la tarjeta de Inicio; Ayuda conserva el recorrido', async () => {
+  useGuidedTour.setState({ userId: mockProfile.id, ready: true, seen: ['inicio'], started: true })
   const home = await renderHome()
-  const help = await render(<HelpScreen />)
   expect(home.getByText('1 de 5')).toBeTruthy()
-  expect(help.getByText('1 de 5')).toBeTruthy()
-  expect(home.getByText('Sigue: Tu área en números')).toBeTruthy()
+  expect(home.getByText('Sigue: Tu área en números ›')).toBeTruthy()
   expect(home.getByRole('button', { name: /Aprende Nexo en 5 pasos, 1 de 5/ })).toBeTruthy()
-  await act(() => useGuidedTour.setState({ skipped: true, active: false }))
-  expect(home.queryByText('Aprende Nexo en 5 pasos')).toBeNull()
+  const hide = home.getByRole('button', { name: 'Ocultar Aprende Nexo' })
+  expect(StyleSheet.flatten(hide.props.style)).toMatchObject({ width: 44, height: 44 })
+  await fireEvent.press(hide)
+  expect(useGuidedTour.getState().active).toBe(false)
+  expect(useGuidedTour.getState().hiddenOnHome).toBe(true)
+  expect(home.queryByRole('button', { name: /Aprende Nexo en 5 pasos,/ })).toBeNull()
+  expect(home.getByText('Lo encuentras siempre en Ayuda')).toBeTruthy()
+  const help = await render(<HelpScreen />)
+  expect(help.getByText('1 de 5')).toBeTruthy()
   expect(help.getByText('Aprende Nexo en 5 pasos')).toBeTruthy()
+})
+
+test('Deshacer devuelve la tarjeta de Inicio tras ocultarla', async () => {
+  useGuidedTour.setState({ userId: mockProfile.id, ready: true })
+  const home = await renderHome()
+  await fireEvent.press(home.getByRole('button', { name: 'Ocultar Aprende Nexo' }))
+  expect(home.getByText('Lo encuentras siempre en Ayuda')).toBeTruthy()
+  await fireEvent.press(home.getByRole('button', { name: 'Deshacer' }))
+  expect(home.getByRole('button', { name: /Aprende Nexo en 5 pasos,/ })).toBeTruthy()
+  expect(useGuidedTour.getState().hiddenOnHome).toBe(false)
+})
+
+test('el aviso para Deshacer dura cinco segundos y la tarjeta sigue oculta después', async () => {
+  useGuidedTour.setState({ userId: mockProfile.id, ready: true })
+  const home = await renderHome()
+  jest.useFakeTimers()
+  try {
+    await fireEvent.press(home.getByRole('button', { name: 'Ocultar Aprende Nexo' }))
+    expect(home.getByText('Lo encuentras siempre en Ayuda')).toBeTruthy()
+    await act(async () => jest.advanceTimersByTime(5000))
+    expect(home.queryByText('Lo encuentras siempre en Ayuda')).toBeNull()
+    expect(useGuidedTour.getState().hiddenOnHome).toBe(true)
+  } finally {
+    jest.useRealTimers()
+  }
+})
+
+test('al completar los cinco pasos desaparece la tarjeta de Inicio', async () => {
+  useGuidedTour.setState({ userId: mockProfile.id, ready: true })
+  const home = await renderHome()
+  expect(home.getByText('Aprende Nexo en 5 pasos')).toBeTruthy()
+  await act(() =>
+    useGuidedTour.setState({
+      seen: getTutorialFor(mockProfile.role, '', Boolean(mockProfile.areaId)).map(
+        (step) => step.id,
+      ),
+    }),
+  )
+  expect(home.queryByText('Aprende Nexo en 5 pasos')).toBeNull()
 })

@@ -50,6 +50,7 @@ export function HelpScreen({
   const [openGuide, setOpenGuide] = useState<QuickGuide | null>(null)
   const [openFaq, setOpenFaq] = useState<string | null>(null)
   const seen = useGuidedTour((state) => state.seen)
+  const tourStarted = useGuidedTour((state) => state.started)
   const startTour = useGuidedTour((state) => state.start)
   useEffect(() => {
     if (!navigation) return
@@ -163,7 +164,9 @@ export function HelpScreen({
               style={({ pressed }) => [styles.startButton, pressed && styles.startButtonPressed]}
             >
               <Text style={styles.startButtonText}>
-                {nextStep ? `Continuar: ${nextStep.title}` : 'Repetir recorrido'}
+                {nextStep
+                  ? `${tourStarted ? 'Continuar' : 'Empezar'}: ${nextStep.title}`
+                  : 'Repetir recorrido'}
               </Text>
             </Pressable>
           </View>
