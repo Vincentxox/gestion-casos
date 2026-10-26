@@ -1,12 +1,13 @@
 import { act, fireEvent, render } from '@testing-library/react-native'
-import { Animated, StyleSheet } from 'react-native'
+import { Animated, BackHandler, StyleSheet } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import type { AppNotification } from '../notificationService'
 import { NotificationsScreen } from '../NotificationsScreen'
-import { colors } from '@/theme/tokens'
+import { colors, spacing } from '@/theme/tokens'
 
 const mockNavigate = jest.fn()
+const mockGoBack = jest.fn()
 const mockSetOptions = jest.fn()
 const mockMark = jest.fn()
 const mockRefetch = jest.fn()
@@ -53,7 +54,7 @@ const item: AppNotification = {
 
 function renderScreen() {
   const props = {
-    navigation: { navigate: mockNavigate, setOptions: mockSetOptions },
+    navigation: { navigate: mockNavigate, goBack: mockGoBack, setOptions: mockSetOptions },
     route: { key: 'Notifications', name: 'Notifications' },
   } as unknown as Parameters<typeof NotificationsScreen>[0]
   return render(
@@ -71,6 +72,7 @@ function renderScreen() {
 beforeEach(() => {
   mockItems = []
   mockNavigate.mockClear()
+  mockGoBack.mockClear()
   mockSetOptions.mockClear()
   mockMark.mockClear()
   mockDismiss.mockClear()
@@ -150,10 +152,52 @@ test('el menú muestra ambas acciones con leídos y sin leer y se cierra al toca
   const screen = await renderScreen()
   const header = mockSetOptions.mock.lastCall?.[0].headerRight
   await act(async () => header().props.onPress())
+  const menu = screen.getByTestId('notification-options-menu')
+  expect(menu.props.accessibilityRole).toBe('menu')
+  expect(StyleSheet.flatten(menu.props.style)).toMatchObject({
+    position: 'absolute',
+    top: spacing.xs,
+    right: spacing.md,
+  })
+  expect(menu.props.accessibilityViewIsModal).toBe(true)
   expect(screen.getByRole('button', { name: 'Marcar todo como leído' })).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Borrar avisos leídos (1)' })).toBeTruthy()
-  await fireEvent.press(screen.getByRole('button', { name: 'Cerrar opciones de avisos' }))
+  await fireEvent.press(
+    screen.getByTestId('notification-options-backdrop', { includeHiddenElements: true }),
+  )
   expect(screen.queryByRole('button', { name: 'Marcar todo como leído' })).toBeNull()
+})
+
+test('el botón ⋯ alterna el menú sin medir el encabezado', async () => {
+  mockItems = [item]
+  const screen = await renderScreen()
+  await act(async () => mockSetOptions.mock.lastCall?.[0].headerRight().props.onPress())
+  expect(screen.getByTestId('notification-options-menu')).toBeTruthy()
+  await act(async () => mockSetOptions.mock.lastCall?.[0].headerRight().props.onPress())
+  expect(screen.queryByTestId('notification-options-menu')).toBeNull()
+})
+
+test('Atrás de Android cierra el menú sin salir de Avisos', async () => {
+  mockItems = [item]
+  let onBack: Parameters<typeof BackHandler.addEventListener>[1] | undefined
+  const remove = jest.fn()
+  const backSubscription = jest
+    .spyOn(BackHandler, 'addEventListener')
+    .mockImplementation((_event, handler) => {
+      onBack = handler
+      return { remove }
+    })
+  try {
+    const screen = await renderScreen()
+    await act(async () => mockSetOptions.mock.lastCall?.[0].headerRight().props.onPress())
+    expect(onBack).toBeDefined()
+    await act(async () => expect(onBack?.({ type: 'hardwareBackPress', timeStamp: 0 })).toBe(true))
+    expect(screen.queryByTestId('notification-options-menu')).toBeNull()
+    expect(mockGoBack).not.toHaveBeenCalled()
+    expect(remove).toHaveBeenCalled()
+  } finally {
+    backSubscription.mockRestore()
+  }
 })
 
 test('el filtro Sin leer muestra Estás al día cuando no hay pendientes', async () => {
