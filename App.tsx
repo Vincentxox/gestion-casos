@@ -20,13 +20,13 @@ import { queryClient } from '@/config/queryClient'
 import { registerQueryLifecycle } from '@/config/queryLifecycle'
 import { AuthLoadingScreen } from '@/features/auth/screens/AuthLoadingScreen'
 import { InactiveOrganizationScreen } from '@/features/auth/screens/InactiveOrganizationScreen'
-import { PendingInvitationScreen } from '@/features/auth/screens/PendingInvitationScreen'
 import { ResetPasswordScreen } from '@/features/auth/screens/ResetPasswordScreen'
 import { getAuthenticatedRoute } from '@/features/auth/authRoute'
 import { useOrganizationLifecycle } from '@/features/auth/useOrganizationLifecycle'
 import { CompleteNameScreen } from '@/features/settings/CompleteNameScreen'
 import { AuthNavigator } from '@/navigation/AuthNavigator'
 import { MainRootNavigator } from '@/navigation/MainNavigator'
+import { PendingOrganizationNavigator } from '@/navigation/PendingOrganizationNavigator'
 import { registerAuthAutoRefresh, supabase } from '@/services/supabase/client'
 import { useAuthStore } from '@/store/authStore'
 import { colors } from '@/theme/tokens'
@@ -118,7 +118,7 @@ function RootContent({ fontsReady }: { fontsReady: boolean }) {
         ) : route === 'main' ? (
           <MainRootNavigator />
         ) : (
-          <PendingInvitationScreen />
+          <PendingOrganizationNavigator />
         )
       ) : (
         <AuthNavigator />

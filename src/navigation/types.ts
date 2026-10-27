@@ -2,11 +2,20 @@ import type { NavigatorScreenParams } from '@react-navigation/native'
 import type { CaseAction, CaseStatus } from '@/features/cases/types'
 import type { ScopeFilter, StatusFilter } from '@/features/cases/caseListPresentation'
 import type { QuickStatusFilter } from '@/features/cases/caseSearch'
+import type {
+  OrganizationCreationInput,
+  PlatformOrganizationRequest,
+} from '@/features/auth/organizationRequestService'
 
 export type AuthStackParamList = {
   Login: undefined
   Register: undefined
   ForgotPassword: { email?: string } | undefined
+}
+
+export type PendingOrganizationStackParamList = {
+  PendingHome: undefined
+  RequestOrganization: { prefill?: Partial<OrganizationCreationInput> } | undefined
 }
 
 export type MainStackParamList = {
@@ -55,6 +64,8 @@ export type AdministrationStackParamList = {
 export type ProfileStackParamList = {
   ProfileHome: undefined
   DeleteAccount: undefined
+  OrganizationRequests: undefined
+  OrganizationRequestDetail: { request: PlatformOrganizationRequest }
 }
 
 export type MainTabParamList = {

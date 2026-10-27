@@ -36,7 +36,14 @@ jest.mock('../accessService', () => ({
 }))
 
 let mockRequest: { status: string; organizationName?: string; decisionNote?: string } | null = null
+let mockCreation: {
+  status: string
+  organizationName: string
+  rejectionReason?: string
+  createdAt: string
+} | null = null
 const mockMutate = jest.fn()
+const mockCancelCreation = jest.fn().mockResolvedValue(undefined)
 jest.mock('../useAccessRequest', () => ({
   useMyAccessRequest: () => ({
     data: mockRequest,
@@ -46,6 +53,13 @@ jest.mock('../useAccessRequest', () => ({
   }),
   useRequestOrganizationAccess: () => ({ mutateAsync: mockMutate, isPending: false }),
   useCancelMyAccessRequest: () => ({ mutateAsync: jest.fn(), isPending: false }),
+}))
+jest.mock('../useOrganizationRequest', () => ({
+  useMyOrganizationCreationRequest: () => ({ data: mockCreation, refetch: jest.fn() }),
+  useCancelOrganizationCreationRequest: () => ({
+    mutateAsync: mockCancelCreation,
+    isPending: false,
+  }),
 }))
 
 const navigate = jest.fn()
@@ -63,6 +77,7 @@ function renderWithSafeArea(element: ReactElement) {
 beforeEach(() => {
   jest.clearAllMocks()
   mockRequest = null
+  mockCreation = null
   useAuthStore.setState({
     initializationError: null,
     recoveryLinkError: null,
@@ -256,4 +271,63 @@ test('con una solicitud pendiente muestra a qué empresa se envió y oculta el c
   expect(screen.getByText('Solicitud enviada a Clínica Norte')).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Cancelar solicitud' })).toBeTruthy()
   expect(screen.queryByLabelText('Código de empresa')).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Solicita crearla' })).toBeNull()
+})
+
+test('sin solicitud muestra el enlace punteado para crear empresa', async () => {
+  const screen = await renderWithSafeArea(<PendingInvitationScreen navigation={navigation} />)
+  await fireEvent.press(screen.getByRole('button', { name: 'Solicita crearla' }))
+  expect(navigate).toHaveBeenCalledWith('RequestOrganization')
+})
+
+test('solicitud de empresa pendiente aparece primero y oculta el enlace', async () => {
+  mockCreation = {
+    status: 'pendiente',
+    organizationName: 'Nueva Empresa',
+    createdAt: '2026-10-26T16:10:00Z',
+  }
+  const screen = await renderWithSafeArea(<PendingInvitationScreen navigation={navigation} />)
+  expect(screen.getByRole('header', { name: 'Solicitud enviada: Nueva Empresa' })).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Solicita crearla' })).toBeNull()
+  expect(screen.getByRole('button', { name: 'Cancelar solicitud' })).toBeTruthy()
+  const show = jest.spyOn(AppFeedback, 'show').mockImplementation(() => {})
+  await fireEvent.press(screen.getByRole('button', { name: 'Cancelar solicitud' }))
+  expect(show).toHaveBeenCalledWith(
+    '¿Cancelar la solicitud de Nueva Empresa?',
+    expect.any(String),
+    expect.arrayContaining([
+      expect.objectContaining({ text: 'Volver', style: 'cancel' }),
+      expect.objectContaining({ text: 'Cancelar solicitud', style: 'destructive' }),
+    ]),
+    { tone: 'danger' },
+  )
+  expect(mockCancelCreation).not.toHaveBeenCalled()
+  show.mockRestore()
+})
+
+test('solicitud rechazada muestra motivo y acción para reintentar', async () => {
+  mockCreation = {
+    status: 'rechazada',
+    organizationName: 'Nueva Empresa',
+    rejectionReason: 'Faltan datos',
+    createdAt: '2026-10-26',
+  }
+  const screen = await renderWithSafeArea(<PendingInvitationScreen navigation={navigation} />)
+  expect(screen.getByText('Motivo: Faltan datos')).toBeTruthy()
+  await fireEvent.press(screen.getByRole('button', { name: 'Enviar otra solicitud' }))
+  expect(navigate).toHaveBeenCalledWith(
+    'RequestOrganization',
+    expect.objectContaining({
+      prefill: expect.objectContaining({ organizationName: 'Nueva Empresa' }),
+    }),
+  )
+})
+
+test('solicitud aprobada vuelve a comprobar acceso al abrir', async () => {
+  const retryInvitation = jest.fn().mockResolvedValue(true)
+  useAuthStore.setState({ retryInvitation })
+  mockCreation = { status: 'aprobada', organizationName: 'Nueva Empresa', createdAt: '2026-10-26' }
+  const screen = await renderWithSafeArea(<PendingInvitationScreen navigation={navigation} />)
+  expect(screen.getByRole('header', { name: 'Nueva Empresa ya está creada' })).toBeTruthy()
+  expect(retryInvitation).toHaveBeenCalled()
 })
