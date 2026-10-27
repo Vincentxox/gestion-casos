@@ -98,6 +98,9 @@ jest.mock('@/store/authStore', () => ({
   useAuthStore: (selector: (state: { profile: Profile }) => Profile) =>
     selector({ profile: mockProfile }),
 }))
+jest.mock('../useApprovedOrganizationNotice', () => ({
+  useApprovedOrganizationNotice: jest.fn(),
+}))
 jest.mock('../useHomeSummary', () => ({
   useHomeSummary: () => ({
     data: mockSummary,
