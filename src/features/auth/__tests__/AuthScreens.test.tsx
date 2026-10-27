@@ -44,6 +44,7 @@ let mockCreation: {
 } | null = null
 const mockMutate = jest.fn()
 const mockCancelCreation = jest.fn().mockResolvedValue(undefined)
+const mockRefetchCreation = jest.fn().mockResolvedValue({ isError: false, data: null })
 jest.mock('../useAccessRequest', () => ({
   useMyAccessRequest: () => ({
     data: mockRequest,
@@ -55,7 +56,10 @@ jest.mock('../useAccessRequest', () => ({
   useCancelMyAccessRequest: () => ({ mutateAsync: jest.fn(), isPending: false }),
 }))
 jest.mock('../useOrganizationRequest', () => ({
-  useMyOrganizationCreationRequest: () => ({ data: mockCreation, refetch: jest.fn() }),
+  useMyOrganizationCreationRequest: () => ({
+    data: mockCreation,
+    refetch: () => mockRefetchCreation(),
+  }),
   useCancelOrganizationCreationRequest: () => ({
     mutateAsync: mockCancelCreation,
     isPending: false,
@@ -78,6 +82,7 @@ beforeEach(() => {
   jest.clearAllMocks()
   mockRequest = null
   mockCreation = null
+  mockRefetchCreation.mockResolvedValue({ isError: false, data: null })
   useAuthStore.setState({
     initializationError: null,
     recoveryLinkError: null,
@@ -302,6 +307,37 @@ test('solicitud de empresa pendiente aparece primero y oculta el enlace', async 
     { tone: 'danger' },
   )
   expect(mockCancelCreation).not.toHaveBeenCalled()
+  show.mockRestore()
+})
+
+test('comprobar una solicitud de empresa pendiente dice que sigue en revisión', async () => {
+  mockCreation = {
+    status: 'pendiente',
+    organizationName: 'Nueva Empresa',
+    createdAt: '2026-10-26T16:10:00Z',
+  }
+  mockRefetchCreation.mockResolvedValue({ isError: false, data: mockCreation })
+  const retryInvitation = jest.fn().mockResolvedValue(false)
+  useAuthStore.setState({ retryInvitation })
+  const screen = await renderWithSafeArea(<PendingInvitationScreen navigation={navigation} />)
+  const show = jest.spyOn(AppFeedback, 'show').mockImplementation(() => {})
+  await fireEvent.press(screen.getByRole('button', { name: 'Comprobar estado' }))
+  await waitFor(() =>
+    expect(show).toHaveBeenCalledWith(
+      'Tu solicitud sigue en revisión',
+      'Te avisamos aquí cuando la revisemos.',
+      { tone: 'info' },
+    ),
+  )
+
+  show.mockClear()
+  mockRefetchCreation.mockResolvedValue({ isError: true, error: new Error('red') })
+  await fireEvent.press(screen.getByRole('button', { name: 'Comprobar estado' }))
+  await waitFor(() =>
+    expect(show).toHaveBeenCalledWith('No fue posible comprobar el estado', expect.any(String), {
+      tone: 'error',
+    }),
+  )
   show.mockRestore()
 })
 

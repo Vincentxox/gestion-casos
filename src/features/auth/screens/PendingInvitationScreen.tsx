@@ -80,8 +80,16 @@ export function PendingInvitationScreen({
   async function checkOrganization() {
     setBusy(true)
     try {
-      await organizationRequest.refetch()
-      await retryInvitation()
+      const result = await organizationRequest.refetch()
+      if (result.isError) throw result.error
+      if (await retryInvitation()) return
+      if (result.data?.status === 'pendiente') {
+        AppFeedback.show(
+          'Tu solicitud sigue en revisión',
+          'Te avisamos aquí cuando la revisemos.',
+          { tone: 'info' },
+        )
+      }
     } catch {
       AppFeedback.show(
         'No fue posible comprobar el estado',

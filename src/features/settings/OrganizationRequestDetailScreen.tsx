@@ -162,8 +162,8 @@ export function OrganizationRequestDetailScreen({ navigation, route }: Props) {
           setRejectOpen(false)
           reset()
         }}
-        fitContent
         form
+        height="60%"
         footerSecondaryAction={{
           label: 'Volver',
           onPress: () => {

@@ -98,6 +98,17 @@ test('mantiene desplazable un menú de cuatro o más acciones', async () => {
   expect(StyleSheet.flatten(screen.getByTestId('bottom-sheet').props.style).height).toBe('55%')
 })
 
+test('un formulario no se ajusta al contenido para que se vean sus campos', async () => {
+  const screen = await render(
+    withSafeArea(
+      <BottomSheet title="Rechazar" visible onClose={jest.fn()} form fitContent>
+        <Text>Motivo del rechazo</Text>
+      </BottomSheet>,
+    ),
+  )
+  expect(StyleSheet.flatten(screen.getByTestId('bottom-sheet').props.style).height).toBe('80%')
+})
+
 test('el fondo aparece con fade y con movimiento reducido no desplaza la hoja', async () => {
   const screen = await render(
     withSafeArea(
