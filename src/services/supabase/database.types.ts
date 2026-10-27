@@ -870,6 +870,76 @@ export type Database = {
           },
         ]
       }
+      organization_creation_requests: {
+        Row: {
+          contact_phone: string | null
+          created_at: string
+          email: string
+          id: string
+          message: string | null
+          organization_id: string | null
+          organization_name: string
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          team_size: string
+          user_id: string
+        }
+        Insert: {
+          contact_phone?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          message?: string | null
+          organization_id?: string | null
+          organization_name: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          team_size: string
+          user_id: string
+        }
+        Update: {
+          contact_phone?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          message?: string | null
+          organization_id?: string | null
+          organization_name?: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          team_size?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'organization_creation_requests_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'organization_creation_requests_reviewed_by_fkey'
+            columns: ['reviewed_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'organization_creation_requests_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       organization_invitations: {
         Row: {
           accepted_at: string | null
@@ -1015,6 +1085,7 @@ export type Database = {
           area_id: string | null
           avatar_url: string | null
           created_at: string
+          deleted_at: string | null
           full_name: string
           id: string
           organization_id: string | null
@@ -1025,6 +1096,7 @@ export type Database = {
           area_id?: string | null
           avatar_url?: string | null
           created_at?: string
+          deleted_at?: string | null
           full_name?: string
           id: string
           organization_id?: string | null
@@ -1035,6 +1107,7 @@ export type Database = {
           area_id?: string | null
           avatar_url?: string | null
           created_at?: string
+          deleted_at?: string | null
           full_name?: string
           id?: string
           organization_id?: string | null
@@ -1181,6 +1254,7 @@ export type Database = {
         }
       }
       cancel_my_access_request: { Args: never; Returns: undefined }
+      cancel_organization_creation_request: { Args: never; Returns: undefined }
       claim_pending_push: {
         Args: { batch_size?: number }
         Returns: {
@@ -1286,6 +1360,7 @@ export type Database = {
         }[]
       }
       get_organization_join_code: { Args: never; Returns: string }
+      is_platform_admin: { Args: never; Returns: boolean }
       list_next_steps: {
         Args: never
         Returns: {
@@ -1319,9 +1394,38 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      list_organization_creation_requests: {
+        Args: { requested_status: string }
+        Returns: {
+          contact_phone: string
+          created_at: string
+          email: string
+          id: string
+          message: string
+          organization_id: string
+          organization_name: string
+          rejection_reason: string
+          requester_name: string
+          reviewed_at: string
+          reviewed_by_name: string
+          status: string
+          team_size: string
+        }[]
+      }
       mark_notifications_read: {
         Args: { notification_ids?: number[] }
         Returns: number
+      }
+      my_organization_creation_request: {
+        Args: never
+        Returns: {
+          created_at: string
+          id: string
+          organization_name: string
+          rejection_reason: string
+          reviewed_at: string
+          status: string
+        }[]
       }
       next_step: {
         Args: { target_case: Database['public']['Tables']['cases']['Row'] }
@@ -1331,6 +1435,7 @@ export type Database = {
         Args: { target: Database['public']['Tables']['cases']['Row'] }
         Returns: string
       }
+      prepare_account_deletion: { Args: never; Returns: string }
       regenerate_organization_join_code: { Args: never; Returns: string }
       register_push_token: {
         Args: { device_platform: string; push_token: string }
@@ -1347,6 +1452,15 @@ export type Database = {
       request_organization_access: {
         Args: { access_code: string }
         Returns: Json
+      }
+      request_organization_creation: {
+        Args: {
+          contact_phone: string
+          message: string
+          organization_name: string
+          team_size: string
+        }
+        Returns: string
       }
       reserve_case_photo: {
         Args: {
@@ -1391,6 +1505,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      review_organization_creation_request: {
+        Args: { approve: boolean; reason: string; request_id: string }
+        Returns: string
       }
       search_cases: {
         Args: {

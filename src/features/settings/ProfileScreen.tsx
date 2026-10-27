@@ -23,6 +23,10 @@ import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
 import { updateOwnName } from './profileService'
 import { prepareProfilePhoto } from './profilePhotoPreparation'
 import { useClearOwnProfilePhoto, useUploadOwnProfilePhoto } from './useProfilePhoto'
+import {
+  useIsPlatformAdmin,
+  useOrganizationCreationRequests,
+} from '@/features/auth/useOrganizationRequest'
 
 type Setting = 'appearance' | 'notifications' | 'permissions'
 
@@ -45,6 +49,12 @@ export function ProfileScreen({
   const applyOwnName = useAuthStore((state) => state.applyOwnName)
   const uploadPhoto = useUploadOwnProfilePhoto()
   const clearPhoto = useClearOwnProfilePhoto()
+  const platformAdmin = useIsPlatformAdmin()
+  const pendingOrganizations = useOrganizationCreationRequests(
+    'pendiente',
+    platformAdmin.data === true,
+  )
+  const pendingCount = pendingOrganizations.data?.length ?? 0
   const [name, setName] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [photoSheetOpen, setPhotoSheetOpen] = useState(false)
@@ -238,6 +248,42 @@ export function ProfileScreen({
           </View>
         </View>
 
+        {platformAdmin.data === true ? (
+          <>
+            <Text style={styles.sectionHeading}>PLATAFORMA</Text>
+            <Card style={[styles.settingsCard, styles.platformCard]}>
+              <Pressable
+                accessibilityLabel="Solicitudes de empresas"
+                accessibilityRole="button"
+                onPress={() => navigation.navigate('OrganizationRequests')}
+                style={styles.settingRow}
+              >
+                <IconTile
+                  icon="business-outline"
+                  size={40}
+                  backgroundColor={colors.primarySoft}
+                  iconColor={colors.primary}
+                />
+                <View style={styles.settingText}>
+                  <Text style={styles.settingLabel}>Solicitudes de empresas</Text>
+                  <Text style={styles.settingDetail}>
+                    {pendingOrganizations.isError
+                      ? 'No se pudieron comprobar las solicitudes'
+                      : pendingCount
+                        ? `${pendingCount} por revisar`
+                        : 'Sin solicitudes por revisar'}
+                  </Text>
+                </View>
+                {pendingCount > 0 ? (
+                  <View style={styles.countBadge}>
+                    <Text style={styles.countBadgeText}>{pendingCount}</Text>
+                  </View>
+                ) : null}
+                <Icon name="chevron-forward" color={colors.textMuted} size={18} />
+              </Pressable>
+            </Card>
+          </>
+        ) : null}
         <Text style={styles.sectionHeading}>AJUSTES</Text>
         <Card style={styles.settingsCard}>
           <SettingRow
@@ -405,11 +451,22 @@ const styles = StyleSheet.create({
   separator: { height: 1, backgroundColor: colors.border },
   sectionHeading: { ...typography.overline, color: colors.textMuted },
   settingsCard: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
+  platformCard: { backgroundColor: colors.surfaceMuted },
   settingRow: { minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   settingPressed: { backgroundColor: colors.surfaceMuted },
   settingText: { flex: 1 },
   settingLabel: { ...typography.body, color: colors.text },
   settingDetail: { ...typography.caption, color: colors.textMuted },
+  countBadge: {
+    minWidth: 24,
+    height: 24,
+    paddingHorizontal: 5,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+  },
+  countBadgeText: { ...typography.caption, color: colors.white, fontFamily: fonts.bold },
   sheetText: { ...typography.body, color: colors.text },
   logoutButton: {
     minHeight: 52,

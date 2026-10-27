@@ -19,6 +19,14 @@ jest.mock('../useProfilePhoto', () => ({
   useClearOwnProfilePhoto: jest.fn(),
   useUploadOwnProfilePhoto: jest.fn(),
 }))
+let mockPlatformAdmin = false
+let mockPendingCount = 0
+jest.mock('@/features/auth/useOrganizationRequest', () => ({
+  useIsPlatformAdmin: () => ({ data: mockPlatformAdmin }),
+  useOrganizationCreationRequests: () => ({
+    data: Array.from({ length: mockPendingCount }, (_, index) => ({ id: String(index) })),
+  }),
+}))
 jest.mock('../useSignedProfilePhoto', () => ({
   useSignedProfilePhoto: jest.fn(() => ({ data: undefined })),
 }))
@@ -60,6 +68,8 @@ const profileScreenProps = {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  mockPlatformAdmin = false
+  mockPendingCount = 0
   profile.avatarUrl = null
   ;(useAuthStore as unknown as jest.Mock).mockImplementation((selector) =>
     selector({
@@ -82,6 +92,21 @@ beforeEach(() => {
   upload.mockResolvedValue('org/u1/new.jpg')
   clear.mockResolvedValue(undefined)
   ;(updateOwnName as jest.Mock).mockResolvedValue('Ana M. López')
+})
+
+test('solo la administradora de plataforma ve el grupo y su contador', async () => {
+  const hidden = await render(<ProfileScreen {...profileScreenProps} />)
+  expect(hidden.queryByText('PLATAFORMA')).toBeNull()
+  await hidden.unmount()
+  mockPlatformAdmin = true
+  mockPendingCount = 2
+  const visible = await render(<ProfileScreen {...profileScreenProps} />)
+  expect(visible.getByText('PLATAFORMA')).toBeTruthy()
+  expect(visible.getByText('2 por revisar')).toBeTruthy()
+  await visible.unmount()
+  mockPendingCount = 0
+  const empty = await render(<ProfileScreen {...profileScreenProps} />)
+  expect(empty.getByText('Sin solicitudes por revisar')).toBeTruthy()
 })
 
 test('muestra datos compactos, ajustes y la opción de subir foto', async () => {

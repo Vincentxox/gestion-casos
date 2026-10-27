@@ -31,6 +31,8 @@ import { GuidedTourOverlay } from '@/features/help/tour/GuidedTourOverlay'
 import { useGuidedTour } from '@/features/help/tour/useGuidedTour'
 import { ProfileScreen } from '@/features/settings/ProfileScreen'
 import { DeleteAccountScreen } from '@/features/settings/DeleteAccountScreen'
+import { OrganizationRequestsScreen } from '@/features/settings/OrganizationRequestsScreen'
+import { OrganizationRequestDetailScreen } from '@/features/settings/OrganizationRequestDetailScreen'
 import { ResourcesScreen } from '@/features/resources/screens/ResourcesScreen'
 import { CaseResourcesScreen } from '@/features/resources/screens/CaseResourcesScreen'
 import { CaseReportScreen } from '@/features/reports/screens/CaseReportScreen'
@@ -84,6 +86,16 @@ function ProfileNavigator() {
         component={DeleteAccountScreen}
         name="DeleteAccount"
         options={{ title: 'Eliminar mi cuenta' }}
+      />
+      <ProfileStack.Screen
+        component={OrganizationRequestsScreen}
+        name="OrganizationRequests"
+        options={{ title: 'Solicitudes de empresas' }}
+      />
+      <ProfileStack.Screen
+        component={OrganizationRequestDetailScreen}
+        name="OrganizationRequestDetail"
+        options={{ title: 'Solicitud' }}
       />
     </ProfileStack.Navigator>
   )
