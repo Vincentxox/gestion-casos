@@ -31,6 +31,7 @@ import {
   NEXT_STEP_BUTTON_LABELS,
   NEXT_STEP_LABELS,
 } from './homePresentation'
+import { useApprovedOrganizationNotice } from './useApprovedOrganizationNotice'
 import { useHomeSummary } from './useHomeSummary'
 import { useNextSteps } from './useNextSteps'
 
@@ -45,6 +46,7 @@ const CARD_TONES = {
 
 export function HomeScreen({ navigation }: Props) {
   const profile = useAuthStore((state) => state.profile)
+  useApprovedOrganizationNotice(profile)
   const tourReady = useGuidedTour((state) => state.ready)
   const tourSeen = useGuidedTour((state) => state.seen)
   const tourStarted = useGuidedTour((state) => state.started)
