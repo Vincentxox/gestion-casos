@@ -64,6 +64,9 @@ export function BottomSheet({
   const [mounted, setMounted] = useState(visible)
   const [sheetHeight, setSheetHeight] = useState(0)
   const [translateY] = useState(() => new Animated.Value(windowHeight))
+  // Un formulario va dentro de un KeyboardAvoidingView con flex: 1, que con altura automática
+  // mide 0 y oculta los campos. Por eso un formulario nunca se ajusta al contenido.
+  const fitsContent = fitContent && !form
 
   useEffect(() => {
     if (visible) {
@@ -140,7 +143,7 @@ export function BottomSheet({
           }}
           style={[
             styles.sheet,
-            { height: fitContent ? 'auto' : (height ?? '80%') },
+            { height: fitsContent ? 'auto' : (height ?? '80%') },
             { transform: [{ translateY }] },
           ]}
           testID="bottom-sheet"
