@@ -9,15 +9,15 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "backgroundColor": "#F4F7FB",
-    "primaryColor": "#0868B7",
+    "backgroundColor": "#FFFFFF",
+    "primaryColor": "#1366D6",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.gestioncasos.app",
+      "bundleIdentifier": "com.nexocasos.app",
       "buildNumber": "1"
     },
     "android": {
-      "package": "com.gestioncasos.app",
+      "package": "com.nexocasos.app",
       "versionCode": 1,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
@@ -31,7 +31,22 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["expo-secure-store", "expo-sqlite", "expo-font", "expo-web-browser", "expo-asset"],
+    "plugins": [
+      "expo-secure-store",
+      "expo-sqlite",
+      "expo-font",
+      "expo-web-browser",
+      "expo-asset",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 140,
+          "backgroundColor": "#FFFFFF"
+        }
+      ],
+      "@react-native-community/datetimepicker"
+    ],
     "extra": {
       "eas": {
         "projectId": "058a8d06-fccc-44e1-91bf-18d69a111d03"

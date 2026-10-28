@@ -1,10 +1,24 @@
 import { fireEvent, render } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
+import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import type { AccessRequest } from '../accessRequestService'
 import { AccessRequestsScreen } from '../screens/AccessRequestsScreen'
 
 let mockRequests: AccessRequest[] = []
+
+function inSafeArea(children: React.ReactNode) {
+  return (
+    <SafeAreaProvider
+      initialMetrics={{
+        frame: { x: 0, y: 0, width: 400, height: 800 },
+        insets: { top: 0, right: 0, bottom: 0, left: 0 },
+      }}
+    >
+      {children}
+    </SafeAreaProvider>
+  )
+}
 
 jest.mock('@/features/areas/useAreas', () => ({
   useAreas: () => ({ data: [], isError: false, refetch: jest.fn() }),
@@ -23,7 +37,7 @@ jest.mock('../useAccessRequests', () => ({
 
 test('usa pestañas accesibles y estado vacío para solicitudes pendientes', async () => {
   mockRequests = []
-  const screen = await render(<AccessRequestsScreen />)
+  const screen = await render(inSafeArea(<AccessRequestsScreen />))
   expect(screen.getByRole('tab', { name: 'Pendientes' })).toBeTruthy()
   expect(screen.getByText('Todo al día')).toBeTruthy()
   expect(screen.getByText('No hay solicitudes pendientes.')).toBeTruthy()
@@ -43,7 +57,7 @@ test('abre la hoja de una solicitud con altura y ambas acciones visibles', async
       decisionNote: null,
     },
   ]
-  const screen = await render(<AccessRequestsScreen />)
+  const screen = await render(inSafeArea(<AccessRequestsScreen />))
 
   await fireEvent.press(
     screen.getByRole('button', { name: 'Revisar solicitud de Persona de prueba' }),

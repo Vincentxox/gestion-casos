@@ -2,14 +2,17 @@ import type { Session } from '@supabase/supabase-js'
 import { Image } from 'expo-image'
 
 import { queryClient } from '@/config/queryClient'
+import { getAuthenticatedRoute } from '@/features/auth/authRoute'
 import {
   getCurrentSession,
   resolveSessionProfile,
   signIn,
   signInWithGoogle,
   signOut,
+  signOutDeletedAccount,
   signUp,
   retryPendingInvitation,
+  setPasswordRecoverySession,
 } from '@/features/auth/authService'
 import type { Profile } from '@/features/auth/types'
 
@@ -21,8 +24,10 @@ jest.mock('@/features/auth/authService', () => ({
   signIn: jest.fn(),
   signInWithGoogle: jest.fn(),
   signOut: jest.fn(),
+  signOutDeletedAccount: jest.fn(),
   signUp: jest.fn(),
   retryPendingInvitation: jest.fn(),
+  setPasswordRecoverySession: jest.fn(),
 }))
 
 jest.mock('expo-image', () => ({
@@ -37,8 +42,10 @@ const mockResolveSessionProfile = jest.mocked(resolveSessionProfile)
 const mockSignIn = jest.mocked(signIn)
 const mockSignInWithGoogle = jest.mocked(signInWithGoogle)
 const mockSignOut = jest.mocked(signOut)
+const mockSignOutDeletedAccount = jest.mocked(signOutDeletedAccount)
 const mockSignUp = jest.mocked(signUp)
 const mockRetryPendingInvitation = jest.mocked(retryPendingInvitation)
+const mockSetPasswordRecoverySession = jest.mocked(setPasswordRecoverySession)
 const mockClearMemoryCache = jest.mocked(Image.clearMemoryCache)
 const mockClearDiskCache = jest.mocked(Image.clearDiskCache)
 
@@ -55,6 +62,7 @@ const profile: Profile = {
   areaName: null,
   organizationId: 'org-1',
   organizationName: 'Empresa',
+  organizationActive: true,
 }
 
 describe('estado global de autenticación', () => {
@@ -67,6 +75,9 @@ describe('estado global de autenticación', () => {
       profile: null,
       status: 'initializing',
       initializationError: null,
+      passwordRecovery: false,
+      recoveryLinkError: null,
+      accountDeletedNotice: false,
     })
   })
 
@@ -82,6 +93,123 @@ describe('estado global de autenticación', () => {
       status: 'authenticated',
       initializationError: null,
     })
+  })
+
+  test('el enlace válido activa recuperación antes de aplicar la sesión', async () => {
+    mockSetPasswordRecoverySession.mockImplementation(async () => {
+      expect(useAuthStore.getState().passwordRecovery).toBe(true)
+      return session
+    })
+    await useAuthStore
+      .getState()
+      .handleRecoveryUrl('gestion-casos://auth/reset#access_token=a&refresh_token=r&type=recovery')
+    expect(useAuthStore.getState()).toMatchObject({
+      session,
+      passwordRecovery: true,
+      status: 'authenticated',
+    })
+    expect(mockResolveSessionProfile).not.toHaveBeenCalled()
+  })
+
+  test('al guardar la contraseña sale de recuperación y conserva la sesión', async () => {
+    useAuthStore.setState({ session, status: 'authenticated', passwordRecovery: true })
+    mockResolveSessionProfile.mockResolvedValue(profile)
+    await useAuthStore.getState().finishPasswordRecovery()
+    expect(useAuthStore.getState()).toMatchObject({
+      passwordRecovery: false,
+      session,
+      profile,
+      status: 'authenticated',
+    })
+  })
+
+  test('mantiene recuperación hasta cargar el perfil y nunca pasa por Completa tu nombre', async () => {
+    let resolveProfile: (value: Profile) => void = () => undefined
+    mockResolveSessionProfile.mockImplementation(
+      () => new Promise<Profile>((resolve) => (resolveProfile = resolve)),
+    )
+    useAuthStore.setState({
+      session,
+      profile: null,
+      status: 'authenticated',
+      passwordRecovery: true,
+    })
+    const states: ReturnType<typeof useAuthStore.getState>[] = []
+    const unsubscribe = useAuthStore.subscribe((state) => states.push(state))
+
+    try {
+      const finishing = useAuthStore.getState().finishPasswordRecovery()
+      expect(useAuthStore.getState()).toMatchObject({
+        passwordRecovery: true,
+        profile: null,
+      })
+
+      resolveProfile(profile)
+      await finishing
+
+      expect(useAuthStore.getState()).toMatchObject({
+        passwordRecovery: false,
+        profile,
+        status: 'authenticated',
+      })
+      expect(
+        states.some(
+          (state) =>
+            !state.passwordRecovery &&
+            state.status === 'authenticated' &&
+            getAuthenticatedRoute({
+              organizationId: state.profile?.organizationId ?? null,
+              organizationActive: state.profile?.organizationActive ?? null,
+              fullName: state.profile?.fullName ?? '',
+            }) === 'completeName',
+        ),
+      ).toBe(false)
+    } finally {
+      unsubscribe()
+    }
+  })
+
+  test('si falla el perfil después de cambiar la contraseña vuelve al acceso sin mostrar el nombre', async () => {
+    useAuthStore.setState({
+      session,
+      profile: null,
+      status: 'authenticated',
+      passwordRecovery: true,
+    })
+    mockResolveSessionProfile.mockRejectedValue(new Error('network'))
+
+    await useAuthStore.getState().finishPasswordRecovery()
+
+    expect(useAuthStore.getState()).toMatchObject({
+      session: null,
+      profile: null,
+      status: 'unauthenticated',
+      passwordRecovery: false,
+      initializationError: 'No fue posible cargar el perfil del usuario.',
+    })
+  })
+
+  test('el enlace vencido vuelve al acceso sin llamar a Supabase', async () => {
+    useAuthStore.setState({ session, profile, status: 'authenticated' })
+    await useAuthStore
+      .getState()
+      .handleRecoveryUrl('gestion-casos://auth/reset#error_code=otp_expired')
+    expect(useAuthStore.getState()).toMatchObject({
+      session: null,
+      profile: null,
+      status: 'unauthenticated',
+      passwordRecovery: false,
+      recoveryLinkError: 'El enlace venció o ya se usó. Pide uno nuevo.',
+    })
+    expect(mockSignOut).toHaveBeenCalledTimes(1)
+    expect(mockSetPasswordRecoverySession).not.toHaveBeenCalled()
+  })
+
+  test('ignora la URL de Google', async () => {
+    await useAuthStore
+      .getState()
+      .handleRecoveryUrl('gestion-casos://auth/callback#access_token=a&refresh_token=r')
+    expect(mockSetPasswordRecoverySession).not.toHaveBeenCalled()
   })
 
   test('continúa sin autenticar cuando falla la recuperación inicial', async () => {
@@ -213,6 +341,26 @@ describe('estado global de autenticación', () => {
     expect(mockClearDiskCache).toHaveBeenCalledTimes(1)
   })
 
+  test('elimina la cuenta localmente y muestra aviso aunque Auth rechace signOut', async () => {
+    useAuthStore.setState({ session, profile, status: 'authenticated' })
+    mockSignOutDeletedAccount.mockRejectedValueOnce(new Error('Auth user not found'))
+    const clearQueries = jest.spyOn(queryClient, 'clear')
+
+    await expect(useAuthStore.getState().completeAccountDeletion()).resolves.toBeUndefined()
+    expect(useAuthStore.getState()).toMatchObject({
+      session: null,
+      profile: null,
+      status: 'unauthenticated',
+      accountDeletedNotice: true,
+    })
+    expect(clearQueries).toHaveBeenCalled()
+    expect(mockClearMemoryCache).toHaveBeenCalled()
+    expect(mockClearDiskCache).toHaveBeenCalled()
+    useAuthStore.getState().clearAccountDeletedNotice()
+    expect(useAuthStore.getState().accountDeletedNotice).toBe(false)
+    clearQueries.mockRestore()
+  })
+
   test('aplica cambios de sesión emitidos por Supabase', async () => {
     mockResolveSessionProfile.mockResolvedValue(profile)
 
@@ -307,5 +455,46 @@ describe('estado global de autenticación', () => {
     expect(mockClearMemoryCache).toHaveBeenCalledTimes(1)
     expect(mockClearDiskCache).toHaveBeenCalledTimes(1)
     expect(useAuthStore.getState().profile?.organizationId).toBe('org-2')
+  })
+
+  test('al desactivarse la empresa limpia consultas e imágenes sin cerrar la sesión', async () => {
+    queryClient.setQueryData(['cases'], [{ id: 'private' }])
+    useAuthStore.setState({ session, profile, status: 'authenticated' })
+    mockResolveSessionProfile.mockResolvedValue({ ...profile, organizationActive: false })
+
+    await useAuthStore.getState().refreshProfile()
+
+    expect(queryClient.getQueryData(['cases'])).toBeUndefined()
+    expect(mockClearMemoryCache).toHaveBeenCalledTimes(1)
+    expect(mockClearDiskCache).toHaveBeenCalledTimes(1)
+    expect(useAuthStore.getState()).toMatchObject({
+      session,
+      status: 'authenticated',
+      profile: { organizationActive: false },
+    })
+  })
+
+  test('al reactivarse la empresa limpia las cachés y recupera el acceso', async () => {
+    useAuthStore.setState({
+      session,
+      profile: { ...profile, organizationActive: false },
+      status: 'authenticated',
+    })
+    mockResolveSessionProfile.mockResolvedValue(profile)
+
+    await expect(useAuthStore.getState().refreshProfile()).resolves.toEqual(profile)
+
+    expect(useAuthStore.getState().profile?.organizationActive).toBe(true)
+    expect(mockClearMemoryCache).toHaveBeenCalledTimes(1)
+    expect(mockClearDiskCache).toHaveBeenCalledTimes(1)
+  })
+
+  test('si falla la recarga del perfil conserva la sesión y permite reintentar', async () => {
+    useAuthStore.setState({ session, profile, status: 'authenticated' })
+    mockResolveSessionProfile.mockRejectedValue(new Error('network'))
+
+    await expect(useAuthStore.getState().refreshProfile()).rejects.toThrow('network')
+
+    expect(useAuthStore.getState()).toMatchObject({ session, profile, status: 'authenticated' })
   })
 })

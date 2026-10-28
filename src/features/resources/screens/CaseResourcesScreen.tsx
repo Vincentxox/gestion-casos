@@ -1,33 +1,24 @@
-import { Ionicons } from '@expo/vector-icons'
+import { getErrorMessage } from '@/utils/errorMessage'
+import { AppFeedback } from '@/components/feedback/AppFeedback'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
-import { useState } from 'react'
-import {
-  Alert,
-  FlatList,
-  Modal,
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native'
+import { useLayoutEffect, useRef, useState } from 'react'
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
+import { BottomSheet } from '@/components/sheets/BottomSheet'
+import { ActionSheet } from '@/components/actions/ActionSheet'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { RequestState } from '@/components/feedback/RequestState'
 import { SkeletonList } from '@/components/ui/SkeletonList'
-import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { IconTile } from '@/components/ui/IconTile'
+import { Icon } from '@/components/ui/Icon'
 import { formatNumber, formatQuetzales, plural } from '@/theme/formatters'
-import { useAssignableProfiles, useCaseDetail } from '@/features/cases/useCases'
+import { useAssignableProfiles, useCaseActions, useCaseDetail } from '@/features/cases/useCases'
 import type { MainStackParamList } from '@/navigation/types'
-import { useAuthStore } from '@/store/authStore'
-import { colors, radius, spacing, typography } from '@/theme/tokens'
+import { colors, spacing, typography } from '@/theme/tokens'
 
 import { UsageForm } from '../components/UsageForm'
-import { canManageCaseUsage } from '../resourcePermissions'
 import { RESOURCE_KIND_LABELS, type CaseUsageRecord, type UsageInput } from '../types'
 import {
   useAddCaseUsage,
@@ -39,26 +30,50 @@ import {
 
 type Props = NativeStackScreenProps<MainStackParamList, 'CaseResources'>
 
-export function CaseResourcesScreen({ route }: Props) {
+export function CaseResourcesScreen({ navigation, route }: Props) {
   const { caseId } = route.params
-  const profile = useAuthStore((state) => state.profile)
   const detail = useCaseDetail(caseId)
+  const actions = useCaseActions(caseId)
   const usages = useCaseUsages(caseId)
   const resources = useResources()
-  const canManage = detail.data ? canManageCaseUsage(detail.data, profile) : false
+  const canManage = actions.data?.recursos?.allowed === true
   const technicians = useAssignableProfiles(detail.data?.targetAreaId, canManage)
   const add = useAddCaseUsage(caseId)
   const update = useUpdateCaseUsage(caseId)
   const remove = useDeleteCaseUsage(caseId)
   const [editing, setEditing] = useState<CaseUsageRecord | null>(null)
+  const [actionUsage, setActionUsage] = useState<CaseUsageRecord | null>(null)
   const [formVisible, setFormVisible] = useState(false)
+  const formSubmit = useRef<(() => void) | null>(null)
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: canManage
+        ? () => (
+            <Pressable
+              accessibilityLabel="Registrar uso"
+              accessibilityRole="button"
+              onPress={() => {
+                setEditing(null)
+                setFormVisible(true)
+              }}
+              style={styles.headerAction}
+            >
+              <Text style={styles.headerActionText}>Registrar</Text>
+            </Pressable>
+          )
+        : undefined,
+    })
+  }, [canManage, navigation])
 
   function openForm(usage?: CaseUsageRecord) {
+    if (!canManage) return
     setEditing(usage ?? null)
     setFormVisible(true)
   }
 
   async function save(input: UsageInput) {
+    if (!canManage) return
     try {
       if (editing)
         await update.mutateAsync({
@@ -69,36 +84,43 @@ export function CaseResourcesScreen({ route }: Props) {
       setFormVisible(false)
       setEditing(null)
     } catch (error) {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible guardar el registro',
-        error instanceof Error
-          ? error.message
-          : 'Comprueba la conexión y el estado de la solicitud.',
+        getErrorMessage(error, 'Comprueba la conexión y el estado de la solicitud.'),
+        { tone: 'error' },
       )
     }
   }
 
   function confirmDelete(usage: CaseUsageRecord) {
-    Alert.alert('Eliminar registro', '¿Deseas quitar este uso de la solicitud?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar',
-        style: 'destructive',
-        onPress: () =>
-          void remove
-            .mutateAsync(usage.id)
-            .catch((error) =>
-              Alert.alert(
-                'No fue posible eliminar',
-                error instanceof Error ? error.message : 'Comprueba la conexión.',
+    if (!canManage) return
+    AppFeedback.show(
+      'Eliminar registro',
+      '¿Deseas quitar este uso de la solicitud?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: () =>
+            void remove
+              .mutateAsync(usage.id)
+              .catch((error) =>
+                AppFeedback.show(
+                  'No fue posible eliminar',
+                  getErrorMessage(error, 'Comprueba la conexión.'),
+                  { tone: 'error' },
+                ),
               ),
-            ),
-      },
-    ])
+        },
+      ],
+      { tone: 'danger', icon: 'trash-outline' },
+    )
   }
 
-  const loading = detail.isLoading || usages.isLoading || resources.isLoading
-  const error = detail.error || usages.error || resources.error || technicians.error
+  const loading = detail.isLoading || actions.isPending || usages.isLoading || resources.isLoading
+  const error =
+    detail.error || actions.error || usages.error || resources.error || technicians.error
   const totalHours = (usages.data ?? []).reduce((sum, item) => sum + (item.hours ?? 0), 0)
   const recordCount = usages.data?.length ?? 0
   return (
@@ -108,9 +130,6 @@ export function CaseResourcesScreen({ route }: Props) {
           <View style={styles.headerText}>
             <Text style={styles.subtitle}>Materiales, equipos, herramientas y mano de obra.</Text>
           </View>
-          {canManage ? (
-            <Button label="Registrar uso" icon="add" onPress={() => openForm()} />
-          ) : null}
         </View>
         {loading ? (
           <SkeletonList />
@@ -120,6 +139,7 @@ export function CaseResourcesScreen({ route }: Props) {
             title="No fue posible cargar los recursos de esta solicitud"
             onRetry={() => {
               void detail.refetch()
+              void actions.refetch()
               void usages.refetch()
               void resources.refetch()
               if (canManage) void technicians.refetch()
@@ -138,8 +158,8 @@ export function CaseResourcesScreen({ route }: Props) {
                 </Text>
                 {!canManage ? (
                   <Text style={styles.hint}>
-                    Puedes consultar estos registros. Solo el responsable asignado o el jefe del
-                    área técnica pueden modificarlos durante la ejecución o espera.
+                    Puedes consultar estos registros. Las modificaciones dependen de las acciones
+                    disponibles para tu usuario.
                   </Text>
                 ) : null}
               </View>
@@ -193,62 +213,58 @@ export function CaseResourcesScreen({ route }: Props) {
                   {item.notes ? <Text style={styles.notes}>{item.notes}</Text> : null}
                 </View>
                 {canManage ? (
-                  <View style={styles.actions}>
-                    <Pressable
-                      accessibilityLabel="Corregir registro"
-                      accessibilityRole="button"
-                      onPress={() => openForm(item)}
-                      style={styles.iconButton}
-                    >
-                      <Ionicons color={colors.primary} name="pencil-outline" size={22} />
-                    </Pressable>
-                    <Pressable
-                      accessibilityLabel="Eliminar registro"
-                      accessibilityRole="button"
-                      onPress={() => confirmDelete(item)}
-                      style={styles.iconButton}
-                    >
-                      <Ionicons color={colors.error} name="trash-outline" size={22} />
-                    </Pressable>
-                  </View>
+                  <Pressable
+                    accessibilityLabel={`Opciones de ${item.resourceName || item.technicianName || 'registro'}`}
+                    accessibilityRole="button"
+                    onPress={() => setActionUsage(item)}
+                    style={styles.iconButton}
+                  >
+                    <Icon name="ellipsis-horizontal" color={colors.ink} size={22} />
+                  </Pressable>
                 ) : null}
               </Card>
             )}
           />
         )}
       </View>
-      <Modal
-        animationType="fade"
-        onRequestClose={() => setFormVisible(false)}
-        transparent
-        visible={formVisible}
+      <ActionSheet<'edit' | 'remove'>
+        title="Opciones del registro"
+        actions={[
+          { id: 'edit', label: 'Editar', icon: 'create-outline' },
+          { id: 'remove', label: 'Quitar', icon: 'trash-outline', destructive: true },
+        ]}
+        visible={actionUsage !== null}
+        onClose={() => setActionUsage(null)}
+        onSelect={(action) => {
+          const usage = actionUsage
+          setActionUsage(null)
+          if (!usage) return
+          if (action === 'edit') openForm(usage)
+          else confirmDelete(usage)
+        }}
+      />
+      <BottomSheet
+        title={editing ? 'Corregir uso' : 'Registrar uso'}
+        visible={formVisible && canManage}
+        onClose={() => setFormVisible(false)}
+        form
+        height="82%"
+        footerAction={{
+          label: editing ? 'Guardar corrección' : 'Registrar uso',
+          loading: add.isPending || update.isPending,
+          onPress: () => formSubmit.current?.(),
+        }}
       >
-        <View style={styles.backdrop}>
-          <SafeAreaView edges={['bottom']} style={styles.modal}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{editing ? 'Corregir uso' : 'Registrar uso'}</Text>
-              <Pressable
-                accessibilityLabel="Cerrar formulario"
-                accessibilityRole="button"
-                onPress={() => setFormVisible(false)}
-                style={styles.iconButton}
-              >
-                <Ionicons color={colors.text} name="close" size={24} />
-              </Pressable>
-            </View>
-            <KeyboardFormScrollView contentContainerStyle={styles.modalContent}>
-              <UsageForm
-                key={editing?.id ?? 'new'}
-                usage={editing ?? undefined}
-                resources={resources.data ?? []}
-                technicians={technicians.data ?? []}
-                loading={add.isPending || update.isPending}
-                onSubmit={(input) => void save(input)}
-              />
-            </KeyboardFormScrollView>
-          </SafeAreaView>
-        </View>
-      </Modal>
+        <UsageForm
+          key={editing?.id ?? 'new'}
+          usage={editing ?? undefined}
+          resources={resources.data ?? []}
+          technicians={technicians.data ?? []}
+          loading={add.isPending || update.isPending}
+          onSubmit={(input) => void save(input)}
+          submitRef={formSubmit}
+        />
+      </BottomSheet>
     </SafeAreaView>
   )
 }
@@ -258,6 +274,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, gap: spacing.md, padding: spacing.lg },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   headerText: { flex: 1, gap: spacing.xs },
+  headerAction: { minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
+  headerActionText: { ...typography.label, color: colors.primary },
   subtitle: { ...typography.body, color: colors.textMuted },
   list: { gap: spacing.md, paddingBottom: spacing.xl },
   hint: { color: colors.textMuted, lineHeight: 20 },
@@ -271,23 +289,5 @@ const styles = StyleSheet.create({
   name: { ...typography.heading, color: colors.text },
   meta: { ...typography.caption, color: colors.textMuted },
   notes: { color: colors.textMuted },
-  actions: { justifyContent: 'center', gap: spacing.sm },
   iconButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.backdrop },
-  modal: {
-    height: '82%',
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    backgroundColor: colors.background,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    padding: spacing.lg,
-  },
-  modalTitle: { ...typography.title, color: colors.text },
-  modalContent: { flexGrow: 1, padding: spacing.lg },
 })

@@ -10,6 +10,29 @@ export const createCaseSchema = z.object({
 
 export const updateCaseSchema = createCaseSchema
 
+export const caseSearchTextSchema = z
+  .string()
+  .trim()
+  .max(100, 'La búsqueda no puede exceder 100 caracteres')
+
+export const caseCreatedRangeSchema = z
+  .object({ createdFrom: z.iso.datetime().nullable(), createdTo: z.iso.datetime().nullable() })
+  .refine(({ createdFrom, createdTo }) => !createdFrom || !createdTo || createdTo > createdFrom, {
+    message: 'La fecha final debe ser posterior a la inicial',
+  })
+
+export const reassignmentReasonSchema = z
+  .string()
+  .trim()
+  .min(3, 'Explica el motivo con al menos 3 caracteres.')
+  .max(500, 'El motivo no puede exceder 500 caracteres.')
+
+export const caseMessageSchema = z
+  .string()
+  .trim()
+  .min(3, 'El mensaje debe tener entre 3 y 500 caracteres')
+  .max(500, 'El mensaje debe tener entre 3 y 500 caracteres')
+
 export const changeCaseStatusSchema = z
   .object({
     action: z.enum(['aceptar', 'rechazar', 'cancelar', 'iniciar', 'pausar', 'reanudar']),

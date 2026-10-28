@@ -2,26 +2,69 @@ import { Ionicons } from '@expo/vector-icons'
 import { useState } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, type TextInputProps, View } from 'react-native'
 
-import { colors, radius, spacing, typography } from '@/theme/tokens'
+import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
 
 interface FormFieldProps extends TextInputProps {
   label: string
   error?: string
+  required?: boolean
+  showCharacterCount?: boolean
+  characterCountThreshold?: number
+  /** `filled`: campo relleno sin borde, como en las pantallas de acceso. */
+  variant?: 'outlined' | 'filled'
+  highContrastBorder?: boolean
 }
 
-export function FormField({ label, error, secureTextEntry, style, ...inputProps }: FormFieldProps) {
+export function FormField({
+  label,
+  error,
+  required = false,
+  showCharacterCount = false,
+  characterCountThreshold = 0,
+  variant = 'outlined',
+  highContrastBorder = false,
+  secureTextEntry,
+  style,
+  onFocus,
+  ...inputProps
+}: FormFieldProps) {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
+  const [isFocused, setIsFocused] = useState(false)
   const canTogglePassword = secureTextEntry === true
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
-      <View style={[styles.inputContainer, error ? styles.inputError : null]}>
+      <Text
+        accessibilityLabel={required ? `${label}, obligatorio` : undefined}
+        style={[styles.label, variant === 'filled' ? styles.labelFilled : null]}
+      >
+        {label}
+        {required ? <Text style={styles.required}> *</Text> : null}
+      </Text>
+      <View
+        style={[
+          styles.inputContainer,
+          variant === 'filled' ? styles.inputContainerFilled : null,
+          variant === 'outlined' && highContrastBorder ? styles.inputContainerHighContrast : null,
+          variant === 'outlined' && isFocused ? styles.inputFocused : null,
+          error ? styles.inputError : null,
+        ]}
+      >
         <TextInput
           {...inputProps}
-          accessibilityLabel={inputProps.accessibilityLabel ?? label}
+          accessibilityLabel={
+            inputProps.accessibilityLabel ?? (required ? `${label}, obligatorio` : label)
+          }
           accessibilityHint={error}
           autoCorrect={canTogglePassword ? false : inputProps.autoCorrect}
+          onFocus={(event) => {
+            setIsFocused(true)
+            onFocus?.(event)
+          }}
+          onBlur={(event) => {
+            setIsFocused(false)
+            inputProps.onBlur?.(event)
+          }}
           secureTextEntry={canTogglePassword && !isPasswordVisible}
           style={[styles.input, style]}
           placeholderTextColor={colors.textMuted}
@@ -42,6 +85,13 @@ export function FormField({ label, error, secureTextEntry, style, ...inputProps 
           </Pressable>
         ) : null}
       </View>
+      {showCharacterCount &&
+      inputProps.maxLength &&
+      (inputProps.value ?? '').length > inputProps.maxLength * characterCountThreshold ? (
+        <Text style={styles.count}>
+          {(inputProps.value ?? '').length} / {inputProps.maxLength}
+        </Text>
+      ) : null}
       {error ? (
         <Text accessibilityLiveRegion="polite" style={styles.error}>
           {error}
@@ -59,15 +109,26 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.text,
   },
+  labelFilled: { fontFamily: fonts.semibold, fontSize: 14 },
+  required: { color: colors.error },
+  count: { ...typography.caption, color: colors.textMuted, textAlign: 'right' },
   inputContainer: {
     minHeight: 50,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
+    borderColor: colors.cardBorder,
+    borderRadius: radius.lg,
     backgroundColor: colors.surface,
   },
+  inputContainerFilled: {
+    minHeight: 54,
+    borderWidth: 1.5,
+    borderColor: colors.surfaceMuted,
+    backgroundColor: colors.surfaceMuted,
+  },
+  inputContainerHighContrast: { borderColor: colors.inputBorder },
+  inputFocused: { borderWidth: 2, borderColor: colors.primary },
   input: {
     ...typography.body,
     minHeight: 48,

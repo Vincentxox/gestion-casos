@@ -5,15 +5,18 @@ import { create } from 'zustand'
 import { queryClient } from '@/config/queryClient'
 import {
   getCurrentSession,
+  setPasswordRecoverySession,
   resolveSessionProfile,
   retryPendingInvitation,
   signIn,
   signInWithGoogle,
   signOut,
+  signOutDeletedAccount,
   signUp,
 } from '@/features/auth/authService'
 import type { RegistrationInput } from '@/features/auth/schemas'
 import type { AppRole, Profile } from '@/features/auth/types'
+import { EXPIRED_RECOVERY_LINK_MESSAGE, parseRecoveryLink } from '@/features/auth/recoveryLink'
 
 type AuthStatus = 'initializing' | 'authenticated' | 'unauthenticated'
 
@@ -22,12 +25,20 @@ interface AuthStore {
   profile: Profile | null
   status: AuthStatus
   initializationError: string | null
+  passwordRecovery: boolean
+  recoveryLinkError: string | null
+  accountDeletedNotice: boolean
+  clearAccountDeletedNotice: () => void
+  completeAccountDeletion: () => Promise<void>
+  handleRecoveryUrl: (url: string) => Promise<void>
+  finishPasswordRecovery: () => Promise<void>
   initialize: () => Promise<void>
   login: (email: string, password: string) => Promise<void>
   loginWithGoogle: () => Promise<boolean>
   register: (input: RegistrationInput) => Promise<boolean>
   logout: () => Promise<void>
   applySession: (session: Session | null) => Promise<void>
+  refreshProfile: () => Promise<Profile | null>
   applyOwnAccess: (
     userId: string,
     role: AppRole,
@@ -36,6 +47,7 @@ interface AuthStore {
   ) => void
   applyOrganizationName: (name: string) => void
   applyOwnName: (name: string) => void
+  applyOwnAvatar: (path: string | null) => void
   retryInvitation: () => Promise<boolean>
 }
 
@@ -56,7 +68,8 @@ async function getAuthValues(
 
   if (
     session?.user.id !== previousSession?.user.id ||
-    profile?.organizationId !== previousProfile?.organizationId
+    profile?.organizationId !== previousProfile?.organizationId ||
+    profile?.organizationActive !== previousProfile?.organizationActive
   ) {
     queryClient.clear()
     await clearImageCaches()
@@ -74,14 +87,84 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   profile: null,
   status: 'initializing',
   initializationError: null,
+  passwordRecovery: false,
+  recoveryLinkError: null,
+  accountDeletedNotice: false,
 
-  async initialize() {
-    set({ status: 'initializing', initializationError: null })
+  clearAccountDeletedNotice() {
+    set({ accountDeletedNotice: false })
+  },
 
+  async completeAccountDeletion() {
     try {
-      const session = await getCurrentSession()
+      await signOutDeletedAccount()
+    } catch {
+      // Auth user may have been removed by the Edge Function already.
+    }
+    queryClient.clear()
+    set({
+      session: null,
+      profile: null,
+      status: 'unauthenticated',
+      initializationError: null,
+      passwordRecovery: false,
+      recoveryLinkError: null,
+      accountDeletedNotice: true,
+    })
+    await clearImageCaches()
+  },
+
+  async handleRecoveryUrl(url) {
+    const link = parseRecoveryLink(url)
+    if (!link) return
+    if (link.type === 'expired') {
+      try {
+        await signOut()
+      } catch {
+        // An expired link must still return to Login if the network is unavailable.
+      }
+      queryClient.clear()
       set({
-        ...(await getAuthValues(session, get().session, get().profile)),
+        session: null,
+        profile: null,
+        status: 'unauthenticated',
+        passwordRecovery: false,
+        recoveryLinkError: EXPIRED_RECOVERY_LINK_MESSAGE,
+      })
+      return
+    }
+    // Set this before setSession emits its auth-state event.
+    set({ passwordRecovery: true, recoveryLinkError: null })
+    try {
+      const session = await setPasswordRecoverySession(link.url)
+      if (!session) throw new Error(EXPIRED_RECOVERY_LINK_MESSAGE)
+      queryClient.clear()
+      set({ session, profile: null, status: 'authenticated', initializationError: null })
+    } catch {
+      try {
+        await signOut()
+      } catch {
+        // Keep the recovery failure visible even if sign-out fails.
+      }
+      queryClient.clear()
+      set({
+        session: null,
+        profile: null,
+        status: 'unauthenticated',
+        passwordRecovery: false,
+        recoveryLinkError: EXPIRED_RECOVERY_LINK_MESSAGE,
+      })
+    }
+  },
+
+  async finishPasswordRecovery() {
+    const session = get().session
+    try {
+      const values = await getAuthValues(session, session, get().profile)
+      set({
+        ...values,
+        passwordRecovery: false,
+        recoveryLinkError: null,
         initializationError: null,
       })
     } catch {
@@ -90,7 +173,32 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         session: null,
         profile: null,
         status: 'unauthenticated',
+        initializationError: 'No fue posible cargar el perfil del usuario.',
+        passwordRecovery: false,
+        recoveryLinkError: null,
+      })
+    }
+  },
+
+  async initialize() {
+    set({ status: 'initializing', initializationError: null })
+
+    try {
+      const session = await getCurrentSession()
+      if (get().passwordRecovery || get().recoveryLinkError) return
+      set({
+        ...(await getAuthValues(session, get().session, get().profile)),
+        initializationError: null,
+      })
+    } catch {
+      if (get().passwordRecovery || get().recoveryLinkError) return
+      queryClient.clear()
+      set({
+        session: null,
+        profile: null,
+        status: 'unauthenticated',
         initializationError: 'No fue posible recuperar la sesión guardada.',
+        passwordRecovery: false,
       })
     }
   },
@@ -100,6 +208,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     set({
       ...(await getAuthValues(session, get().session, get().profile)),
       initializationError: null,
+      recoveryLinkError: null,
     })
   },
 
@@ -114,6 +223,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       set({
         ...(await getAuthValues(session, get().session, get().profile)),
         initializationError: null,
+        recoveryLinkError: null,
       })
     } catch (error) {
       // setSession también emite onAuthStateChange. Si ese flujo ya cargó el
@@ -140,6 +250,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       set({
         ...(await getAuthValues(session, get().session, get().profile)),
         initializationError: null,
+        recoveryLinkError: null,
       })
     }
 
@@ -154,11 +265,18 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       profile: null,
       status: 'unauthenticated',
       initializationError: null,
+      passwordRecovery: false,
+      recoveryLinkError: null,
     })
     await clearImageCaches()
   },
 
   async applySession(session) {
+    if (get().recoveryLinkError && session) return
+    if (get().passwordRecovery) {
+      if (session) set({ session, status: 'authenticated', initializationError: null })
+      return
+    }
     const previousSession = get().session
     const previousProfile = get().profile
     if (session?.user.id !== previousSession?.user.id) {
@@ -177,8 +295,18 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         profile: null,
         status: 'unauthenticated',
         initializationError: 'No fue posible cargar el perfil del usuario.',
+        passwordRecovery: false,
       })
     }
+  },
+
+  async refreshProfile() {
+    const session = get().session
+    if (!session) return null
+    const values = await getAuthValues(session, session, get().profile)
+    if (get().session?.user.id !== session.user.id) return null
+    set({ ...values, initializationError: null })
+    return values.profile
   },
 
   applyOwnAccess(userId, role, areaId, areaName) {
@@ -195,6 +323,11 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   applyOwnName(name) {
     const profile = get().profile
     if (profile) set({ profile: { ...profile, fullName: name } })
+  },
+
+  applyOwnAvatar(path) {
+    const profile = get().profile
+    if (profile) set({ profile: { ...profile, avatarUrl: path } })
   },
 
   async retryInvitation() {

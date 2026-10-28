@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useEffect } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
@@ -15,9 +16,10 @@ interface Props {
   category?: CategoryRecord
   loading: boolean
   onSubmit: (input: CategoryInput) => void
+  submitRef?: { current: (() => void) | null }
 }
 
-export function CategoryForm({ areas, category, loading, onSubmit }: Props) {
+export function CategoryForm({ areas, category, loading, onSubmit, submitRef }: Props) {
   const {
     control,
     handleSubmit,
@@ -31,6 +33,14 @@ export function CategoryForm({ areas, category, loading, onSubmit }: Props) {
       minAfterPhotos: category?.minAfterPhotos ?? 0,
     },
   })
+
+  useEffect(() => {
+    if (!submitRef) return
+    submitRef.current = handleSubmit(onSubmit)
+    return () => {
+      submitRef.current = null
+    }
+  }, [handleSubmit, onSubmit, submitRef])
 
   return (
     <View style={styles.form}>
@@ -129,11 +139,13 @@ export function CategoryForm({ areas, category, loading, onSubmit }: Props) {
           </View>
         )}
       />
-      <Button
-        label={category ? 'Guardar cambios' : 'Crear tipo de servicio'}
-        loading={loading}
-        onPress={handleSubmit(onSubmit)}
-      />
+      {!submitRef ? (
+        <Button
+          label={category ? 'Guardar cambios' : 'Crear tipo de servicio'}
+          loading={loading}
+          onPress={handleSubmit(onSubmit)}
+        />
+      ) : null}
     </View>
   )
 }

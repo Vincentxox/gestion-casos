@@ -3,11 +3,16 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
 import {
+  clampLines,
   describeUsage,
+  elapsedLabel,
+  formatAmount,
   fitStroke,
   formatDateTime,
   svgPathBounds,
   toWinAnsi,
+  usageCost,
+  usageKindLabel,
   verificationCode,
   wrapText,
 } from '../_shared/pdfText.ts'
@@ -73,4 +78,52 @@ test('describeUsage combina cantidad, unidad y horas', () => {
   assert.equal(describeUsage({ cantidad: 2, unidad: 'm' }), '2 m')
   assert.equal(describeUsage({ horas: 1.5 }), '1.5 h')
   assert.equal(describeUsage({}), '—')
+})
+
+test('usageKindLabel distingue la clase del recurso y la mano de obra', () => {
+  assert.equal(usageKindLabel({ tipo: 'recurso', clase: 'material' }), 'Material')
+  assert.equal(usageKindLabel({ tipo: 'recurso', clase: 'equipo' }), 'Equipo')
+  assert.equal(usageKindLabel({ tipo: 'mano_de_obra', clase: null }), 'Mano de obra')
+  assert.equal(usageKindLabel({ tipo: 'recurso', clase: null }), '—')
+})
+
+test('usageCost multiplica cantidad por costo unitario solo en materiales', () => {
+  const material = { tipo: 'recurso', clase: 'material' }
+  assert.equal(usageCost({ ...material, cantidad: 2, costo_unitario: 12 }), 24)
+  assert.equal(usageCost({ ...material, cantidad: '1.5', costo_unitario: '3.333' }), 5)
+  assert.equal(usageCost({ ...material, cantidad: 2, costo_unitario: null }), null)
+  assert.equal(usageCost({ ...material, cantidad: null, costo_unitario: 5 }), null)
+  // Herramientas, equipos y mano de obra no suman al total de materiales.
+  assert.equal(
+    usageCost({ tipo: 'recurso', clase: 'herramienta', cantidad: 1, costo_unitario: 90 }),
+    null,
+  )
+  assert.equal(
+    usageCost({ tipo: 'recurso', clase: 'equipo', cantidad: 3, costo_unitario: 50 }),
+    null,
+  )
+  assert.equal(
+    usageCost({ tipo: 'mano_de_obra', clase: null, cantidad: 2, costo_unitario: 10 }),
+    null,
+  )
+  assert.equal(
+    formatAmount(1234.5),
+    Number(1234.5).toLocaleString('es-GT', { minimumFractionDigits: 2 }),
+  )
+})
+
+test('clampLines corta los bloques largos y marca el corte con «…»', () => {
+  assert.deepEqual(clampLines(['uno', 'dos'], 3), ['uno', 'dos'])
+  assert.deepEqual(clampLines(['uno', 'dos', 'tres', 'cuatro'], 2), ['uno', 'd…'])
+  assert.deepEqual(clampLines(['ab', 'cd', 'ef'], 2), ['ab', 'cd…'])
+  assert.deepEqual(clampLines(['uno'], 0), [])
+})
+
+test('elapsedLabel resume la duración en días, horas o minutos', () => {
+  assert.equal(elapsedLabel('2026-10-11T09:15:00Z', '2026-10-12T13:42:00Z'), '1 d 4 h')
+  assert.equal(elapsedLabel('2026-10-11T09:15:00Z', '2026-10-11T12:20:00Z'), '3 h')
+  assert.equal(elapsedLabel('2026-10-11T09:15:00Z', '2026-10-11T09:40:00Z'), '25 min')
+  assert.equal(elapsedLabel('2026-10-11T09:15:00Z', '2026-10-11T09:15:10Z'), '1 min')
+  assert.equal(elapsedLabel(null, '2026-10-11T09:15:00Z'), null)
+  assert.equal(elapsedLabel('2026-10-12T00:00:00Z', '2026-10-11T00:00:00Z'), null)
 })

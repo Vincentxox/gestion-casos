@@ -22,10 +22,32 @@ describe('groupCasesByDay', () => {
   })
 
   it('tolera fechas inválidas', () => {
-    expect(groupCasesByDay([record('a', 'bad')], now)[0]?.title).toBe('Fecha no disponible')
+    expect(groupCasesByDay([record('a', 'bad')], now)[0]?.title).toBe('Antes')
   })
 
-  it('ordena los grupos por fecha aunque la lista venga ordenada por prioridad', () => {
+  it('usa las mismas reglas semanales de Avisos', () => {
+    const groups = groupCasesByDay(
+      [
+        record('week', new Date(2026, 8, 21, 8).toISOString()),
+        record('before', new Date(2026, 8, 20, 8).toISOString()),
+      ],
+      now,
+    )
+    expect(groups.map(({ title }) => title)).toEqual(['Esta semana', 'Antes'])
+  })
+
+  it('conserva el orden descendente recibido del servidor', () => {
+    const groups = groupCasesByDay(
+      [
+        record('new', new Date(2026, 8, 23, 8).toISOString()),
+        record('old', new Date(2026, 8, 22, 8).toISOString()),
+      ],
+      now,
+    )
+    expect(groups.map(({ title }) => title)).toEqual(['Hoy', 'Ayer'])
+  })
+
+  it('conserva el orden ascendente recibido del servidor', () => {
     const groups = groupCasesByDay(
       [
         record('old', new Date(2026, 8, 22, 8).toISOString()),
@@ -33,6 +55,19 @@ describe('groupCasesByDay', () => {
       ],
       now,
     )
+    expect(groups.map(({ title }) => title)).toEqual(['Ayer', 'Hoy'])
+  })
+
+  it('añade páginas nuevas al grupo ya existente sin duplicarlo', () => {
+    const groups = groupCasesByDay(
+      [
+        record('first', new Date(2026, 8, 23, 8).toISOString()),
+        record('older', new Date(2026, 8, 22, 8).toISOString()),
+        record('next-page', new Date(2026, 8, 23, 7).toISOString()),
+      ],
+      now,
+    )
     expect(groups.map(({ title }) => title)).toEqual(['Hoy', 'Ayer'])
+    expect(groups[0]?.data.map(({ id }) => id)).toEqual(['first', 'next-page'])
   })
 })

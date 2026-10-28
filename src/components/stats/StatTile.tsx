@@ -1,9 +1,7 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 
-import { Card } from '@/components/ui/Card'
 import type { IconName } from '@/components/ui/Icon'
-import { IconTile } from '@/components/ui/IconTile'
-import { colors, fonts, phaseColors, spacing, typography } from '@/theme/tokens'
+import { colors, fonts, phaseColors, radius, spacing, typography } from '@/theme/tokens'
 import { formatNumber } from '@/theme/formatters'
 
 interface Props {
@@ -15,33 +13,43 @@ interface Props {
   phase: keyof typeof phaseColors
 }
 
-export function StatTile({ label, value, icon, phase, onPress, emphasis = false }: Props) {
+/** Número grande con su etiqueta y un punto del color de la fase, sin caja alrededor. */
+export function StatTile({ label, value, phase, onPress, emphasis = false }: Props) {
   return (
-    <Card
+    <Pressable
       accessibilityLabel={`${value} ${label.toLowerCase()}`}
+      accessibilityRole="button"
       onPress={onPress}
-      style={styles.tile}
+      style={({ pressed }) => [styles.tile, pressed && styles.pressed]}
     >
-      <View style={styles.top}>
-        <IconTile icon={icon} phase={phase} size={36} />
-        <View style={styles.content}>
-          <Text style={[styles.value, emphasis && styles.emphasis]}>{formatNumber(value)}</Text>
-          <Text style={styles.label}>{label}</Text>
-        </View>
+      <Text style={[styles.value, emphasis && styles.emphasis]}>{formatNumber(value)}</Text>
+      <View style={styles.labelRow}>
+        <View style={[styles.dot, { backgroundColor: phaseColors[phase].fg }]} />
+        <Text style={styles.label}>{label}</Text>
       </View>
-    </Card>
+    </Pressable>
   )
 }
 
 const styles = StyleSheet.create({
   tile: {
-    minHeight: 72,
+    minHeight: 64,
     flexGrow: 1,
     flexBasis: '47%',
+    justifyContent: 'center',
+    gap: 2,
+    paddingVertical: spacing.sm,
   },
-  top: { flexDirection: 'row', alignItems: 'center', gap: spacing.base },
-  content: { flex: 1 },
-  value: { ...typography.title, color: colors.text },
+  pressed: { opacity: 0.6 },
+  value: {
+    ...typography.display,
+    fontSize: 30,
+    lineHeight: 36,
+    letterSpacing: -0.6,
+    color: colors.ink,
+  },
   emphasis: { color: colors.primary },
-  label: { ...typography.caption, fontFamily: fonts.semibold, color: colors.textMuted },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  dot: { width: 8, height: 8, borderRadius: radius.pill },
+  label: { ...typography.caption, fontFamily: fonts.semibold, color: colors.textMuted, flex: 1 },
 })

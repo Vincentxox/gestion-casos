@@ -1,38 +1,41 @@
+import { getErrorMessage } from '@/utils/errorMessage'
+import { AppFeedback } from '@/components/feedback/AppFeedback'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
-import { Alert, StyleSheet } from 'react-native'
+import { StyleSheet } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { RequestState } from '@/components/feedback/RequestState'
 
 import type { MainStackParamList } from '@/navigation/types'
-import { useAuthStore } from '@/store/authStore'
 import { colors } from '@/theme/tokens'
 
 import { CaseForm } from '../components/CaseForm'
-import { canEditCase } from '../casePermissions'
 import type { UpdateCaseInput } from '../types'
-import { useCaseDetail, useUpdateCase } from '../useCases'
+import { useCaseActions, useCaseDetail, useUpdateCase } from '../useCases'
 
 type Props = NativeStackScreenProps<MainStackParamList, 'EditCase'>
 
 export function EditCaseScreen({ navigation, route }: Props) {
-  const profile = useAuthStore((state) => state.profile)
   const detail = useCaseDetail(route.params.caseId)
+  const actions = useCaseActions(route.params.caseId)
   const mutation = useUpdateCase(route.params.caseId)
 
-  if (detail.isLoading) {
+  if (detail.isLoading || actions.isPending) {
     return <RequestState kind="loading" title="Cargando solicitud…" />
   }
 
-  if (!detail.data || detail.error)
+  if (!detail.data || detail.error || actions.error)
     return (
       <RequestState
         kind="error"
         title="No fue posible cargar la solicitud"
-        onRetry={() => void detail.refetch()}
+        onRetry={() => {
+          void detail.refetch()
+          void actions.refetch()
+        }}
       />
     )
 
-  if (!canEditCase(detail.data, profile))
+  if (actions.data?.editar_datos?.allowed !== true)
     return <RequestState kind="empty" title="No tienes permiso para editar esta solicitud" />
 
   const initialValues: UpdateCaseInput = {
@@ -46,13 +49,13 @@ export function EditCaseScreen({ navigation, route }: Props) {
   async function handleSubmit(input: UpdateCaseInput) {
     try {
       await mutation.mutateAsync(input)
-      Alert.alert('Caso actualizado', 'Los cambios se guardaron correctamente.', [
-        { text: 'Entendido', onPress: () => navigation.goBack() },
-      ])
+      AppFeedback.toast('Solicitud actualizada', { tone: 'success' })
+      navigation.goBack()
     } catch (error) {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible actualizar',
-        error instanceof Error ? error.message : 'Comprueba tus permisos y la conexión.',
+        getErrorMessage(error, 'Comprueba tus permisos y la conexión.'),
+        { tone: 'error' },
       )
     }
   }

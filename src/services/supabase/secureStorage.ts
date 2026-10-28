@@ -8,15 +8,36 @@ const secureStoreOptions: SecureStore.SecureStoreOptions = {
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
 }
 
-function chunkKey(key: string, index: number) {
-  return `${key}.${index}`
+type ChunkLayout = {
+  count: number
+  /** `null` es el formato anterior, con fragmentos `${key}.${index}`. */
+  slot: number | null
 }
 
-async function getChunkCount(key: string) {
-  const value = await SecureStore.getItemAsync(`${key}${META_SUFFIX}`, secureStoreOptions)
-  const count = Number(value)
+function chunkKey(key: string, layout: ChunkLayout, index: number) {
+  return layout.slot === null ? `${key}.${index}` : `${key}.${layout.slot}.${index}`
+}
 
-  return Number.isInteger(count) && count > 0 ? count : 0
+/** Lee el metadato `N` (formato anterior) o `N:ranura`. */
+async function getChunkLayout(key: string): Promise<ChunkLayout> {
+  const value = await SecureStore.getItemAsync(`${key}${META_SUFFIX}`, secureStoreOptions)
+  const [countText, slotText] = (value ?? '').split(':')
+  const count = Number(countText)
+  const slot = slotText === undefined ? null : Number(slotText)
+
+  if (!Number.isInteger(count) || count <= 0 || (slot !== null && slot !== 0 && slot !== 1)) {
+    return { count: 0, slot: null }
+  }
+
+  return { count, slot }
+}
+
+function deleteChunks(key: string, layout: ChunkLayout) {
+  return Promise.all(
+    Array.from({ length: layout.count }, (_, index) =>
+      SecureStore.deleteItemAsync(chunkKey(key, layout, index), secureStoreOptions),
+    ),
+  )
 }
 
 /**
@@ -25,55 +46,52 @@ async function getChunkCount(key: string) {
  */
 export const secureSessionStorage: SupportedStorage = {
   async getItem(key) {
-    const count = await getChunkCount(key)
+    const layout = await getChunkLayout(key)
 
-    if (count === 0) {
+    if (layout.count === 0) {
       return null
     }
 
     const chunks = await Promise.all(
-      Array.from({ length: count }, (_, index) =>
-        SecureStore.getItemAsync(chunkKey(key, index), secureStoreOptions),
+      Array.from({ length: layout.count }, (_, index) =>
+        SecureStore.getItemAsync(chunkKey(key, layout, index), secureStoreOptions),
       ),
     )
 
     return chunks.every((chunk): chunk is string => chunk !== null) ? chunks.join('') : null
   },
 
+  /**
+   * Escribe la sesión nueva en la ranura libre y solo después cambia el metadato.
+   * Si la app se cierra a mitad de la escritura, el metadato sigue apuntando a la
+   * sesión anterior completa y el usuario no pierde la sesión.
+   */
   async setItem(key, value) {
-    const previousCount = await getChunkCount(key)
+    const previous = await getChunkLayout(key)
     const chunks = Array.from({ length: Math.ceil(value.length / CHUNK_SIZE) }, (_, index) =>
       value.slice(index * CHUNK_SIZE, (index + 1) * CHUNK_SIZE),
     )
+    const next: ChunkLayout = { count: chunks.length, slot: previous.slot === 0 ? 1 : 0 }
 
     await Promise.all(
       chunks.map((chunk, index) =>
-        SecureStore.setItemAsync(chunkKey(key, index), chunk, secureStoreOptions),
-      ),
-    )
-
-    await Promise.all(
-      Array.from({ length: Math.max(previousCount - chunks.length, 0) }, (_, index) =>
-        SecureStore.deleteItemAsync(chunkKey(key, chunks.length + index), secureStoreOptions),
+        SecureStore.setItemAsync(chunkKey(key, next, index), chunk, secureStoreOptions),
       ),
     )
 
     await SecureStore.setItemAsync(
       `${key}${META_SUFFIX}`,
-      String(chunks.length),
+      `${next.count}:${next.slot}`,
       secureStoreOptions,
     )
+
+    await deleteChunks(key, previous)
   },
 
   async removeItem(key) {
-    const count = await getChunkCount(key)
-
-    await Promise.all(
-      Array.from({ length: count }, (_, index) =>
-        SecureStore.deleteItemAsync(chunkKey(key, index), secureStoreOptions),
-      ),
-    )
+    const layout = await getChunkLayout(key)
 
     await SecureStore.deleteItemAsync(`${key}${META_SUFFIX}`, secureStoreOptions)
+    await deleteChunks(key, layout)
   },
 }

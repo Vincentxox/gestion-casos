@@ -16,10 +16,12 @@ https://docs.expo.dev/versions/v57.0.0/
   mantenimiento, el área técnica lo atiende, registra los recursos usados y entrega un
   reporte firmado y aprobado. El detalle está en `docs/BUSINESS_RULES.md`.
 - Nombre visible: Nexo Casos. Slug y scheme: `gestion-casos`. Callback OAuth:
-  `gestion-casos://auth/callback`. Paquete/bundle: `com.gestioncasos.app`.
+  `gestion-casos://auth/callback`. Identificador definitivo aprobado:
+  `com.nexocasos.app` (se configura en `agent/codex/release-config`).
 - Stack: Expo SDK 57, React Native 0.86, React 19, TypeScript estricto, React Navigation,
   TanStack Query, Zustand, React Hook Form, Zod, Supabase (Auth, Postgres, RLS).
-- Rama de desarrollo: `feature/stage-2-improvements`. `main` solo tiene la versión inicial.
+- `main` es la rama estable y `develop` la rama de integración. El MVP `v0.9.0-mvp`
+  ya está en `main`.
 - Responsable del proyecto: Vincent. Es quien decide alcance, arquitectura y reglas de negocio.
 
 ## 2. Fuentes de verdad
@@ -47,7 +49,7 @@ https://docs.expo.dev/versions/v57.0.0/
 
 ### 3.2 Aislamiento
 
-- Cada agente trabaja en su propia rama creada desde la rama de desarrollo:
+- Cada agente trabaja en su propia rama creada desde `develop`:
   `agent/<agente>/<tema-corto>`, por ejemplo `agent/codex/detalle-responsable` o
   `agent/claude/migracion-category-id`.
 - Nunca trabajen dos agentes a la vez sobre la misma copia de trabajo. Si se necesita
@@ -57,7 +59,7 @@ https://docs.expo.dev/versions/v57.0.0/
   cambia un contrato bloquea a las que dependen de él hasta que se integre.
 - **Tablero único.** `docs/AGENT_HANDOFF.md` tiene una sola copia oficial: la del
   **worktree principal** del repositorio en el equipo donde trabajas, con la rama
-  `feature/stage-2-improvements`. Aunque trabajes en otro worktree, edita el tablero, los
+  `develop`. Aunque trabajes en otro worktree, edita el tablero, los
   contratos y el registro **siempre en esa copia**.
   - Para localizarla en cualquier equipo (Windows o Mac), ejecuta `git worktree list`: la
     primera línea es el worktree principal. Por ejemplo, en el equipo Windows del
@@ -135,6 +137,12 @@ en paralelo.
 ## 4. Git y archivos
 
 - No trabajes directamente sobre `main`.
+- `main` solo recibe cambios por PR desde `develop`, con CI aprobado y una etiqueta de
+  versión `vX.Y.Z`. Las ramas `agent/<agente>/<tema>` salen de `develop`, llegan por PR
+  a `develop` y se borran después de integrarse. La rama V8, creada antes de adoptar
+  esta estrategia, también se revisa por PR hacia `develop`.
+- Toda migración en un PR requiere revisión humana antes de integrarse. Solo se aplica
+  en Supabase después del merge y con la autorización específica de la sección 6.
 - Nunca uses `git reset --hard`, `git clean`, `git checkout -- .`, `push --force` ni descartes
   cambios sin autorización.
 - Si un comando de git deja un `.git/index.lock` huérfano, avísalo. No lo borres si otro

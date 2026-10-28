@@ -32,7 +32,8 @@ for migration in "$ROOT"/supabase/migrations/*.sql; do
   run "$migration"
 done
 
-for test_file in "$ROOT"/supabase/tests/1*_test.sql; do
+# Todas las pruebas numeradas (10, 11, …, 20, …); 00 y 01 son preparación, no pruebas.
+for test_file in "$ROOT"/supabase/tests/[0-9][0-9]_*_test.sql; do
   echo "Ejecutando $(basename "$test_file")"
   psql "$TEST_URL" -v ON_ERROR_STOP=1 -f "$test_file" 2>&1 \
     | grep -E '(NOTICE:  ok|ERROR|FALLÓ|Todas)' \

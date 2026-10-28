@@ -1,22 +1,27 @@
+import { getErrorMessage } from '@/utils/errorMessage'
 import { useState } from 'react'
-import { Modal, StyleSheet, Text, TextInput, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { StyleSheet, Text, TextInput, View } from 'react-native'
 
-import { Button } from '@/components/ui/Button'
+import { BottomSheet } from '@/components/sheets/BottomSheet'
+import { Chip } from '@/components/ui/Chip'
 import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 import { returnReportSchema } from '../schemas'
+
+const QUICK_REASONS = ['Falta una foto', 'Recursos incompletos', 'Falta detalle del trabajo']
 
 export function ReturnSheet({
   visible,
   loading,
   label,
+  nextVersion,
   onClose,
   onReturn,
 }: {
   visible: boolean
   loading: boolean
   label: string
+  nextVersion: number
   onClose: () => void
   onReturn: (reason: string) => Promise<void>
 }) {
@@ -33,57 +38,70 @@ export function ReturnSheet({
       setError(null)
       await onReturn(result.data.reason)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'No fue posible devolver el reporte.')
+      setError(getErrorMessage(cause, 'No fue posible devolver el reporte.'))
     }
   }
 
   return (
-    <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <SafeAreaView edges={['bottom']} style={styles.sheet}>
-          <Text accessibilityRole="header" style={styles.title}>
-            Devolver reporte
-          </Text>
-          <Text style={styles.copy}>Motivo de la devolución</Text>
-          <TextInput
-            accessibilityLabel="Motivo de la devolución"
-            multiline
-            maxLength={500}
-            placeholder="Falta la foto del tablero reparado"
-            value={reason}
-            onChangeText={setReason}
-            style={styles.input}
+    <BottomSheet
+      title="Devolver reporte"
+      visible={visible}
+      onClose={onClose}
+      form
+      height="65%"
+      footerAction={{ label, onPress: () => void submit(), loading, variant: 'destructive' }}
+    >
+      <Text style={styles.copy}>¿Qué le falta al reporte?</Text>
+      <View accessibilityLabel="Motivos frecuentes" style={styles.quickReasons}>
+        {QUICK_REASONS.map((quick) => (
+          <Chip
+            key={quick}
+            label={quick}
+            selected={reason.includes(quick)}
+            onPress={() =>
+              setReason((current) =>
+                current.includes(quick)
+                  ? current
+                  : current.trim()
+                    ? `${current.trim()}. ${quick}`
+                    : quick,
+              )
+            }
           />
-          <Text style={styles.counter}>{reason.length} / 500</Text>
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-          <Button label={label} variant="danger" loading={loading} onPress={() => void submit()} />
-          <Button label="Cancelar" variant="secondary" disabled={loading} onPress={onClose} />
-        </SafeAreaView>
+        ))}
       </View>
-    </Modal>
+      <Text style={styles.copy}>Motivo de la devolución *</Text>
+      <TextInput
+        accessibilityLabel="Motivo de la devolución, obligatorio"
+        multiline
+        maxLength={500}
+        placeholder="Falta la foto del tablero reparado"
+        value={reason}
+        onChangeText={setReason}
+        style={styles.input}
+      />
+      <View style={styles.helpRow}>
+        <Text style={styles.help}>El técnico lo verá en la versión {nextVersion} del reporte.</Text>
+        <Text style={styles.counter}>{reason.length} / 500</Text>
+      </View>
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+    </BottomSheet>
   )
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.backdrop },
-  sheet: {
-    gap: spacing.md,
-    padding: spacing.lg,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    backgroundColor: colors.surface,
-  },
-  title: { ...typography.title, color: colors.text },
   copy: { ...typography.body, color: colors.text },
   input: {
     minHeight: 100,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.xl,
     padding: spacing.md,
     color: colors.text,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surfaceMuted,
+    textAlignVertical: 'top',
   },
-  counter: { ...typography.caption, color: colors.textMuted, textAlign: 'right' },
+  quickReasons: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  helpRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  help: { ...typography.caption, color: colors.textMuted, flex: 1 },
+  counter: { ...typography.caption, color: colors.textMuted },
   error: { ...typography.caption, color: colors.error },
 })

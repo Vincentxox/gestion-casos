@@ -1,41 +1,50 @@
 import {
-  PlusJakartaSans_400Regular,
-  PlusJakartaSans_500Medium,
-  PlusJakartaSans_600SemiBold,
-  PlusJakartaSans_700Bold,
-  PlusJakartaSans_800ExtraBold,
+  Onest_400Regular,
+  Onest_500Medium,
+  Onest_600SemiBold,
+  Onest_700Bold,
+  Onest_800ExtraBold,
   useFonts,
-} from '@expo-google-fonts/plus-jakarta-sans'
+} from '@expo-google-fonts/onest'
 import { QueryClientProvider } from '@tanstack/react-query'
-import NetInfo from '@react-native-community/netinfo'
 import { NavigationContainer } from '@react-navigation/native'
 import { StatusBar } from 'expo-status-bar'
 import { useCallback, useEffect, useState } from 'react'
-import { StyleSheet, View } from 'react-native'
+import { Linking, StyleSheet, View } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
 
 import { BrandIntroScreen } from '@/components/branding/BrandIntroScreen'
+import { AppFeedbackProvider } from '@/components/feedback/AppFeedback'
 import { queryClient } from '@/config/queryClient'
 import { registerQueryLifecycle } from '@/config/queryLifecycle'
 import { AuthLoadingScreen } from '@/features/auth/screens/AuthLoadingScreen'
-import { PendingInvitationScreen } from '@/features/auth/screens/PendingInvitationScreen'
+import { InactiveOrganizationScreen } from '@/features/auth/screens/InactiveOrganizationScreen'
+import { ResetPasswordScreen } from '@/features/auth/screens/ResetPasswordScreen'
+import { getAuthenticatedRoute } from '@/features/auth/authRoute'
+import { useOrganizationLifecycle } from '@/features/auth/useOrganizationLifecycle'
 import { CompleteNameScreen } from '@/features/settings/CompleteNameScreen'
-import { resumePendingPhotos } from '@/features/photos/uploadQueue'
-import { photosQueryKey } from '@/features/photos/usePhotos'
 import { AuthNavigator } from '@/navigation/AuthNavigator'
-import { MainNavigator } from '@/navigation/MainNavigator'
+import { MainRootNavigator } from '@/navigation/MainNavigator'
+import { PendingOrganizationNavigator } from '@/navigation/PendingOrganizationNavigator'
 import { registerAuthAutoRefresh, supabase } from '@/services/supabase/client'
+import { TourOriginProbe } from '@/features/help/tour/TourTarget'
 import { useAuthStore } from '@/store/authStore'
 import { colors } from '@/theme/tokens'
 
 function RootContent({ fontsReady }: { fontsReady: boolean }) {
   const [showIntro, setShowIntro] = useState(true)
   const status = useAuthStore((state) => state.status)
-  const organizationId = useAuthStore((state) => state.profile?.organizationId)
-  const userId = useAuthStore((state) => state.profile?.id)
-  const fullName = useAuthStore((state) => state.profile?.fullName)
+  const profile = useAuthStore((state) => state.profile)
+  const passwordRecovery = useAuthStore((state) => state.passwordRecovery)
+  const session = useAuthStore((state) => state.session)
+  const handleRecoveryUrl = useAuthStore((state) => state.handleRecoveryUrl)
+  const organizationId = profile?.organizationId
+  const organizationActive = profile?.organizationActive
+  const userId = profile?.id
   const initialize = useAuthStore((state) => state.initialize)
   const applySession = useAuthStore((state) => state.applySession)
+  const refreshProfile = useAuthStore((state) => state.refreshProfile)
 
   useEffect(() => {
     const unregisterAutoRefresh = registerAuthAutoRefresh()
@@ -61,23 +70,22 @@ function RootContent({ fontsReady }: { fontsReady: boolean }) {
   }, [applySession, initialize])
 
   useEffect(() => {
-    if (!userId || !organizationId) return
-    const resume = (mode: 'startup' | 'reconnect') =>
-      void resumePendingPhotos(
-        userId,
-        (caseId) => {
-          void queryClient.invalidateQueries({ queryKey: [...photosQueryKey, caseId] })
-        },
-        mode,
-      )
-    resume('startup')
-    let wasConnected: boolean | null = null
-    const subscription = NetInfo.addEventListener((network) => {
-      if (network.isConnected && wasConnected === false) resume('reconnect')
-      wasConnected = network.isConnected
-    })
-    return () => subscription()
-  }, [userId, organizationId])
+    void Linking.getInitialURL()
+      .then((url) => {
+        if (url) void handleRecoveryUrl(url)
+      })
+      .catch(() => {})
+    const listener = Linking.addEventListener('url', ({ url }) => void handleRecoveryUrl(url))
+    return () => listener.remove()
+  }, [handleRecoveryUrl])
+
+  useOrganizationLifecycle({
+    userId,
+    organizationId,
+    organizationActive,
+    authenticated: status === 'authenticated',
+    refreshProfile,
+  })
 
   const finishIntro = useCallback(() => setShowIntro(false), [])
 
@@ -93,15 +101,25 @@ function RootContent({ fontsReady }: { fontsReady: boolean }) {
     return <AuthLoadingScreen />
   }
 
+  const route = getAuthenticatedRoute({
+    organizationId: organizationId ?? null,
+    organizationActive: organizationActive ?? null,
+    fullName: profile?.fullName ?? '',
+  })
+
   return (
     <NavigationContainer>
-      {status === 'authenticated' ? (
-        !fullName?.trim() ? (
+      {passwordRecovery && session ? (
+        <ResetPasswordScreen />
+      ) : status === 'authenticated' ? (
+        route === 'inactive' ? (
+          <InactiveOrganizationScreen />
+        ) : route === 'completeName' ? (
           <CompleteNameScreen />
-        ) : organizationId ? (
-          <MainNavigator />
+        ) : route === 'main' ? (
+          <MainRootNavigator />
         ) : (
-          <PendingInvitationScreen />
+          <PendingOrganizationNavigator />
         )
       ) : (
         <AuthNavigator />
@@ -112,24 +130,29 @@ function RootContent({ fontsReady }: { fontsReady: boolean }) {
 
 export default function App() {
   const [fontsLoaded, fontError] = useFonts({
-    PlusJakartaSans_400Regular,
-    PlusJakartaSans_500Medium,
-    PlusJakartaSans_600SemiBold,
-    PlusJakartaSans_700Bold,
-    PlusJakartaSans_800ExtraBold,
+    Onest_400Regular,
+    Onest_500Medium,
+    Onest_600SemiBold,
+    Onest_700Bold,
+    Onest_800ExtraBold,
   })
 
-  useEffect(() => registerQueryLifecycle(), [])
+  useEffect(() => registerQueryLifecycle(() => supabase.auth.getSession()), [])
 
   return (
-    <SafeAreaProvider>
-      <QueryClientProvider client={queryClient}>
-        <View style={styles.container}>
-          <StatusBar style="dark" />
-          <RootContent fontsReady={fontsLoaded || Boolean(fontError)} />
-        </View>
-      </QueryClientProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <AppFeedbackProvider>
+          <QueryClientProvider client={queryClient}>
+            <View style={styles.container}>
+              <StatusBar style="dark" />
+              <TourOriginProbe />
+              <RootContent fontsReady={fontsLoaded || Boolean(fontError)} />
+            </View>
+          </QueryClientProvider>
+        </AppFeedbackProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   )
 }
 

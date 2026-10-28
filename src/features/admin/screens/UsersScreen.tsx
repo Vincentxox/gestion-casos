@@ -1,9 +1,9 @@
+import { getErrorMessage } from '@/utils/errorMessage'
+import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { Ionicons } from '@expo/vector-icons'
 import { useState } from 'react'
 import {
-  Alert,
   FlatList,
-  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -12,14 +12,14 @@ import {
   TextInput,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { BottomSheet } from '@/components/sheets/BottomSheet'
 
-import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { RequestState } from '@/components/feedback/RequestState'
 import { SkeletonList } from '@/components/ui/SkeletonList'
 import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
 import { Chip } from '@/components/ui/Chip'
 import { ScreenContainer } from '@/components/ui/ScreenContainer'
 import { useAreas } from '@/features/areas/useAreas'
@@ -28,12 +28,14 @@ import { useAuthStore } from '@/store/authStore'
 import { colors, radius, spacing, typography } from '@/theme/tokens'
 
 import type { ManagedProfile } from '../types'
-import { useManagedProfiles, useSetMemberAccess } from '../useManagedProfiles'
+import { useDeactivateMember, useManagedProfiles, useSetMemberAccess } from '../useManagedProfiles'
 
 export function UsersScreen() {
   const profiles = useManagedProfiles()
   const areas = useAreas()
   const mutation = useSetMemberAccess()
+  const deactivation = useDeactivateMember()
+  const ownUserId = useAuthStore((state) => state.profile?.id)
   const applyOwnAccess = useAuthStore((state) => state.applyOwnAccess)
   const [selectedProfile, setSelectedProfile] = useState<ManagedProfile | null>(null)
   const [role, setRole] = useState<AppRole>('solicitante')
@@ -53,11 +55,15 @@ export function UsersScreen() {
     if (!selectedProfile) return
 
     if ((role === 'tecnico' || role === 'jefe_area') && !areaId) {
-      Alert.alert('Selecciona un área', 'Este rol necesita un área asignada.')
+      AppFeedback.show('Selecciona un área', 'Este rol necesita un área asignada.', {
+        tone: 'warning',
+      })
       return
     }
     if (role === 'tecnico' && areas.data?.find((area) => area.id === areaId)?.kind !== 'tecnica') {
-      Alert.alert('Área inválida', 'Un técnico debe pertenecer a un área técnica.')
+      AppFeedback.show('Área inválida', 'Un técnico debe pertenecer a un área técnica.', {
+        tone: 'warning',
+      })
       return
     }
 
@@ -67,11 +73,38 @@ export function UsersScreen() {
       applyOwnAccess(selectedProfile.id, role, areaId, areaName)
       setSelectedProfile(null)
     } catch (error) {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible guardar el acceso',
-        error instanceof Error ? error.message : 'Comprueba tus permisos y la conexión.',
+        getErrorMessage(error, 'Comprueba tus permisos y la conexión.'),
+        { tone: 'error' },
       )
     }
+  }
+
+  async function deactivate(profile: ManagedProfile) {
+    try {
+      await deactivation.mutateAsync(profile.id)
+      setSelectedProfile(null)
+      AppFeedback.toast(`Se dio de baja a ${profile.fullName}`, { tone: 'success' })
+    } catch (error) {
+      AppFeedback.show(
+        'No fue posible dar de baja',
+        getErrorMessage(error, 'Comprueba tus permisos y la conexión.'),
+        { tone: 'error' },
+      )
+    }
+  }
+
+  function confirmDeactivation(profile: ManagedProfile) {
+    AppFeedback.show(
+      `¿Dar de baja a ${profile.fullName}?`,
+      'Perderá el acceso a la empresa. Sus solicitudes, firmas e historial se conservarán.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Dar de baja', style: 'destructive', onPress: () => void deactivate(profile) },
+      ],
+      { tone: 'danger', icon: 'person-remove-outline' },
+    )
   }
 
   function refresh() {
@@ -156,7 +189,7 @@ export function UsersScreen() {
                 onPress={() => openProfile(item)}
                 contentStyle={styles.card}
               >
-                <Avatar name={item.fullName} id={item.id} size={44} />
+                <Avatar name={item.fullName} id={item.id} avatarPath={item.avatarPath} size={44} />
                 <View style={styles.cardContent}>
                   <Text style={styles.name}>{item.fullName}</Text>
                   <Chip icon={ROLE_ICONS[item.role]} label={ROLE_LABELS[item.role]} />
@@ -165,83 +198,77 @@ export function UsersScreen() {
                     <Text style={styles.areaName}>{item.areaName || 'Sin área asignada'}</Text>
                   </View>
                 </View>
-                <Ionicons color={colors.primary} name="chevron-forward" size={23} />
+                <Ionicons color={colors.textMuted} name="chevron-forward" size={23} />
               </Card>
             )}
           />
         )}
       </View>
 
-      <Modal
-        animationType="fade"
-        onRequestClose={() => setSelectedProfile(null)}
-        transparent
+      <BottomSheet
+        title="Acceso del usuario"
+        subtitle={selectedProfile?.fullName}
         visible={selectedProfile !== null}
+        onClose={() => setSelectedProfile(null)}
+        height="75%"
+        scrollable={false}
+        footerAction={{
+          label: 'Guardar acceso',
+          loading: mutation.isPending || deactivation.isPending,
+          onPress: () => void saveAccess(),
+        }}
       >
-        <View style={styles.modalBackdrop}>
-          <SafeAreaView edges={['bottom']} style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <View style={styles.modalTitleGroup}>
-                <Text style={styles.modalTitle}>Acceso del usuario</Text>
-                <Text style={styles.modalSubtitle}>{selectedProfile?.fullName}</Text>
-              </View>
-              <Pressable
-                accessibilityLabel="Cerrar"
-                accessibilityRole="button"
-                onPress={() => setSelectedProfile(null)}
-                style={styles.closeButton}
-              >
-                <Ionicons color={colors.text} name="close" size={28} />
-              </Pressable>
-            </View>
-            <FlatList
-              contentContainerStyle={styles.areaOptions}
-              data={(areas.data ?? []).filter(
-                (area) =>
-                  (area.isActive || area.id === areaId) &&
-                  (role !== 'tecnico' || area.kind === 'tecnica'),
-              )}
-              keyExtractor={(item) => item.id}
-              ListHeaderComponent={
-                <View style={styles.areaOptions}>
-                  <Text style={styles.sectionLabel}>Rol</Text>
-                  {APP_ROLES.map((option) => (
-                    <AreaOption
-                      key={option}
-                      label={ROLE_LABELS[option]}
-                      loading={mutation.isPending}
-                      onPress={() => setRole(option)}
-                      selected={role === option}
-                    />
-                  ))}
-                  <Text style={styles.sectionLabel}>Área</Text>
-                  <AreaOption
-                    label="Sin área asignada"
-                    loading={mutation.isPending}
-                    onPress={() => setAreaId(null)}
-                    selected={areaId === null}
-                  />
-                </View>
-              }
-              renderItem={({ item }) => (
+        <FlatList
+          contentContainerStyle={styles.areaOptions}
+          data={(areas.data ?? []).filter(
+            (area) =>
+              (area.isActive || area.id === areaId) &&
+              (role !== 'tecnico' || area.kind === 'tecnica'),
+          )}
+          keyExtractor={(item) => item.id}
+          ListHeaderComponent={
+            <View style={styles.areaOptions}>
+              <Text style={styles.sectionLabel}>Rol</Text>
+              {APP_ROLES.map((option) => (
                 <AreaOption
-                  label={`${item.name} · ${item.kind === 'tecnica' ? 'Técnica' : 'Solicitante'}`}
-                  loading={mutation.isPending}
-                  onPress={() => setAreaId(item.id)}
-                  selected={areaId === item.id}
+                  key={option}
+                  label={ROLE_LABELS[option]}
+                  loading={mutation.isPending || deactivation.isPending}
+                  onPress={() => setRole(option)}
+                  selected={role === option}
                 />
-              )}
-              ListFooterComponent={
-                <Button
-                  label="Guardar acceso"
-                  loading={mutation.isPending}
-                  onPress={() => void saveAccess()}
-                />
-              }
+              ))}
+              <Text style={styles.sectionLabel}>Área</Text>
+              <AreaOption
+                label="Sin área asignada"
+                loading={mutation.isPending || deactivation.isPending}
+                onPress={() => setAreaId(null)}
+                selected={areaId === null}
+              />
+            </View>
+          }
+          renderItem={({ item }) => (
+            <AreaOption
+              label={`${item.name} · ${item.kind === 'tecnica' ? 'Técnica' : 'Solicitante'}`}
+              loading={mutation.isPending || deactivation.isPending}
+              onPress={() => setAreaId(item.id)}
+              selected={areaId === item.id}
             />
-          </SafeAreaView>
-        </View>
-      </Modal>
+          )}
+          ListFooterComponent={
+            selectedProfile && selectedProfile.id !== ownUserId ? (
+              <View style={styles.deactivationAction}>
+                <Button
+                  label={`Dar de baja a ${selectedProfile.fullName}`}
+                  variant="destructive"
+                  loading={deactivation.isPending || mutation.isPending}
+                  onPress={() => confirmDeactivation(selectedProfile)}
+                />
+              </View>
+            ) : null
+          }
+        />
+      </BottomSheet>
     </ScreenContainer>
   )
 }
@@ -272,7 +299,7 @@ function AreaOption({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, gap: spacing.lg, padding: spacing.lg },
+  container: { flex: 1, gap: spacing.lg, padding: spacing.lg, paddingTop: spacing.md },
   header: { gap: spacing.xs },
   subtitle: { ...typography.body, color: colors.textMuted },
   search: {
@@ -298,25 +325,8 @@ const styles = StyleSheet.create({
   name: { ...typography.heading, color: colors.text },
   areaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   areaName: { ...typography.caption, color: colors.textMuted },
-  modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.backdrop },
-  modalCard: {
-    maxHeight: '75%',
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    backgroundColor: colors.background,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    padding: spacing.lg,
-  },
-  modalTitleGroup: { flex: 1, gap: spacing.xs },
-  modalTitle: { ...typography.title, color: colors.text },
-  modalSubtitle: { ...typography.caption, color: colors.textMuted },
   areaOptions: { gap: spacing.sm, padding: spacing.lg, paddingBottom: spacing.xl },
+  deactivationAction: { marginTop: spacing.lg },
   sectionLabel: { ...typography.heading, color: colors.text },
   areaOption: {
     minHeight: 54,

@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useEffect } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
@@ -13,9 +14,10 @@ interface AreaFormProps {
   area?: AreaRecord
   loading: boolean
   onSubmit: (input: AreaInput) => void
+  submitRef?: { current: (() => void) | null }
 }
 
-export function AreaForm({ area, loading, onSubmit }: AreaFormProps) {
+export function AreaForm({ area, loading, onSubmit, submitRef }: AreaFormProps) {
   const {
     control,
     handleSubmit,
@@ -28,6 +30,14 @@ export function AreaForm({ area, loading, onSubmit }: AreaFormProps) {
       kind: area?.kind ?? 'solicitante',
     },
   })
+
+  useEffect(() => {
+    if (!submitRef) return
+    submitRef.current = handleSubmit(onSubmit)
+    return () => {
+      submitRef.current = null
+    }
+  }, [handleSubmit, onSubmit, submitRef])
 
   return (
     <View style={styles.form}>
@@ -86,11 +96,13 @@ export function AreaForm({ area, loading, onSubmit }: AreaFormProps) {
           />
         )}
       />
-      <Button
-        label={area ? 'Guardar cambios' : 'Crear área'}
-        loading={loading}
-        onPress={handleSubmit(onSubmit)}
-      />
+      {!submitRef ? (
+        <Button
+          label={area ? 'Guardar cambios' : 'Crear área'}
+          loading={loading}
+          onPress={handleSubmit(onSubmit)}
+        />
+      ) : null}
     </View>
   )
 }

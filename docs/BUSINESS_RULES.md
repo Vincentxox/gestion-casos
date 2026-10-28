@@ -50,6 +50,99 @@ Aprobado por el responsable el 23/09/2026.
 - Si la persona acepta una invitación, su solicitud pendiente se cancela.
 - Toda persona debe tener nombre; la app lo pide si está vacío.
 
+### 2.2 Baja de miembros
+
+Aprobado por el responsable el 15/10/2026 (hallazgo D-1).
+
+- Solo un administrador da de baja a un miembro de su empresa, y nunca a sí mismo. Se
+  hace con la RPC `deactivate_member`.
+- La baja se bloquea si la persona tiene trabajos asignados en `asignado`,
+  `en_ejecucion` o `en_espera`. El error dice cuáles son, para reasignarlos primero
+  (5.5.3).
+- Quien se da de baja queda como una persona sin empresa: no ve casos, avisos ni datos de
+  la empresa, no recibe avisos nuevos y se borran sus dispositivos para notificaciones.
+  Su rol vuelve a `solicitante` y su área queda vacía.
+- Su historial, sus firmas, sus recursos y las solicitudes que creó se conservan. La
+  empresa sigue viendo su nombre en los casos.
+- Para volver, la persona pide acceso con el código de la empresa (2.1) y un
+  administrador la aprueba eligiendo de nuevo rol y área.
+- La empresa conserva, en `former_members`, el nombre de la persona, cuándo se dio de
+  baja y quién la dio. No vuelve a ver su perfil, que puede pasar a ser de otra empresa.
+- Una baja y una asignación simultáneas a la misma persona no pueden dejarle un trabajo
+  abierto: la base de datos las hace esperar una a la otra.
+
+### 2.3 Empresa inactiva
+
+Aprobado por el responsable el 16/10/2026 (hallazgo D-5).
+
+- Solo la plataforma (Nexo Casos) desactiva o reactiva una empresa, por ejemplo por falta
+  de pago. Lo hace fuera de la app, con `organizations.is_active`. Los administradores de
+  la empresa no pueden cambiarlo.
+- Mientras la empresa está inactiva, **nadie de esa empresa tiene acceso**: no ve casos,
+  avisos, usuarios, catálogos ni reportes, y no crea ni modifica nada, tampoco mediante
+  RPC. Tampoco se pueden crear invitaciones ni solicitudes de acceso para esa empresa.
+- La persona sigue pudiendo iniciar sesión y leer su propio perfil y el nombre y estado
+  de su empresa. La app le muestra «Tu empresa está inactiva» y la opción de cerrar
+  sesión. No registra dispositivos nuevos para avisos, pero sí puede quitar el suyo al
+  cerrar sesión.
+- Quien todavía no tiene empresa y pidió acceso a una empresa que luego se desactivó
+  sigue viendo su solicitud y puede cancelarla.
+- No se borra ni se modifica ningún dato. Al reactivar la empresa, todos recuperan el
+  acceso que tenían, con el mismo rol y área.
+- Las tareas del servidor (envío de avisos ya generados, limpieza de fotos) no se
+  bloquean.
+
+### 2.4 Foto de perfil
+
+Aprobado por el responsable el 17/10/2026 (contrato C-017, rediseño del Perfil).
+
+- Cada persona sube, cambia o quita **su propia** foto de perfil. Nadie más puede
+  cambiarla, tampoco un administrador.
+- La foto la ven solo los miembros de su misma empresa (Perfil, listas de personas,
+  historial y mensajes del caso).
+- Formato JPEG o WebP, de 1 MB como máximo. La app la recorta en cuadrado y la reduce a
+  512 px antes de subirla.
+- Si la persona se da de baja (2.2), su foto deja de mostrarse. Si su empresa queda
+  inactiva (2.3), nadie de la empresa la ve. En los dos casos la app muestra sus
+  iniciales.
+- Se hace cumplir en la base de datos: bucket privado de Storage con políticas por
+  empresa y persona, y RPC que solo aceptan un archivo de la carpeta propia.
+
+### 2.5 Eliminar la propia cuenta
+
+Aprobado por el responsable el 26/10/2026 (contrato C-024; requisito de Google Play).
+
+- Cada persona puede eliminar su propia cuenta desde la app (Edge Function
+  `delete-account`) o pedirlo por correo desde la página web de eliminación de cuenta.
+- Se borran su acceso (usuario de Auth, en modo suave), su nombre en el perfil (queda
+  «Cuenta eliminada»), su foto, área, rol y empresa, sus dispositivos para avisos, sus
+  avisos, sus solicitudes de acceso y sus solicitudes de empresa nueva (2.6).
+- Se conservan, como registro de trabajo de la empresa: solicitudes, historial, reportes,
+  firmas (8), recursos y su nombre en `former_members`.
+- Se bloquea si tiene trabajos asignados en `asignado`, `en_ejecucion` o `en_espera`, o si
+  es el único administrador de una empresa con más miembros.
+- Si es el único miembro de su empresa, la empresa queda inactiva (2.3).
+- También puede eliminarla quien pertenece a una empresa inactiva.
+- No se puede deshacer.
+
+### 2.6 Solicitar una empresa nueva
+
+Aprobado por el responsable el 26/10/2026 (contrato C-025).
+
+- Una persona con cuenta, correo verificado y sin empresa puede pedir que se cree la suya:
+  nombre de la empresa, tamaño del equipo (`1-5`, `6-25`, `26-75`, `76+`) y, opcionales,
+  teléfono y mensaje.
+- Tiene como máximo una solicitud pendiente y puede cancelarla.
+- La empresa existe solo cuando un administrador de la plataforma la aprueba. Los
+  administradores de la plataforma están en `private.platform_admins` y se agregan desde el
+  SQL Editor, nunca desde la app. No son lo mismo que el administrador de una empresa.
+- Al aprobar, el servidor crea la empresa con la invitación de administrador para el correo
+  de quien la pidió, y esa persona queda vinculada de inmediato como administrador.
+- No se aprueba si la persona ya entró a otra empresa.
+- Rechazar exige un motivo, que la persona ve. Después puede enviar otra solicitud.
+- En esta versión no hay aviso push: el administrador de la plataforma ve las pendientes en
+  la app y la persona ve el resultado al abrirla.
+
 ## 3. Áreas
 
 - Cada área pertenece a una empresa y tiene un tipo:
@@ -126,6 +219,8 @@ que no esté en esta lista se rechaza.
   destino.
 - `asignado → asignado` (reasignación): jefe técnico o administrador. Queda en el
   historial.
+- `en_ejecucion → en_ejecucion` y `en_espera → en_espera` (reasignación): jefe técnico o
+  administrador, con motivo obligatorio (ver 5.5.3).
 - `asignado → en_ejecucion`: técnico asignado.
 - `en_ejecucion → en_espera` y `en_espera → en_ejecucion`: técnico asignado o jefe
   técnico. Motivo obligatorio al pausar.
@@ -143,9 +238,7 @@ Reglas comunes:
 - Toda transición registra en el historial: estado anterior y nuevo, usuario, rol,
   comentario y fecha del servidor.
 - El administrador **no** puede forzar transiciones que requieren firma. Solo firma como
-  suplente en dos casos, que quedan registrados: la validación técnica cuando el único
-  jefe técnico ejecutó el trabajo y la conformidad cuando el área solicitante no tiene
-  jefe.
+  suplente en los casos de la sección 5.6, que quedan registrados.
 - Si el área solicitante no tiene jefe asignado, la conformidad la da el administrador.
   Esta excepción queda registrada.
 
@@ -155,6 +248,10 @@ Reglas comunes:
 - Técnico: casos de su área técnica, sin importar a quién estén asignados.
 - Jefe de área: casos donde su área es la solicitante o la destino.
 - Administrador y auditor: todos los casos de su empresa.
+- Además, cada persona sigue viendo los casos de su empresa en los que fue técnico
+  asignado (aunque después se reasignaran) o en los que firmó, aunque cambie de área o
+  de rol. Así nadie pierde acceso a lo que ejecutó o firmó (aprobado el 15/10/2026,
+  hallazgo D-3). Quien se da de baja pierde este acceso (2.2).
 - Todos pueden ver los nombres del creador, el técnico y los firmantes de los casos que
   pueden leer, mediante una vista o RPC que expone solo `id`, nombre y área.
 
@@ -164,15 +261,21 @@ Precisadas al implementar la base de datos y confirmadas por el responsable el
 22/09/2026:
 
 1. El **administrador** puede suplir **siempre** al jefe del área técnica en aceptar,
-   rechazar y asignar, y al jefe del área solicitante en cancelar. La acción queda en el
-   historial con su rol. Nunca puede firmar.
+   rechazar y asignar. La acción queda en el historial con su rol. No cancela solicitudes
+   ajenas (5.3, decisión del 24/09/2026). Solo firma como suplente (sección 5.6).
 2. Se puede asignar a un **técnico o a un jefe** del área destino.
-3. La **reasignación** solo se permite mientras la solicitud está en `asignado`. Para
-   reasignar un trabajo en ejecución habría que ampliar la regla.
+3. La **reasignación** se permite en `asignado`, `en_ejecucion` y `en_espera` (ampliada
+   el 15/10/2026, hallazgo D-2). En ejecución o en espera el motivo es obligatorio y el
+   estado no cambia: el nuevo técnico continúa con los recursos registrados y el
+   borrador del reporte. El nuevo técnico y quien deja el trabajo reciben aviso. Desde
+   `reporte_enviado` no se reasigna: si el reporte se devuelve, vuelve a ejecución y ahí
+   se puede reasignar.
 4. **Edición de datos**: el creador edita título, descripción, ubicación, prioridad y
    tipo de servicio solo mientras la solicitud está en `solicitado`. El jefe del área
-   destino y el administrador pueden editarlos mientras no esté cerrada. El tipo de
-   servicio solo cambia en `solicitado`.
+   destino y el administrador pueden editarlos hasta que se envía el reporte. Mientras
+   está en `reporte_enviado` o `validado` nadie los edita, para que coincidan con lo
+   firmado; si el reporte se devuelve, se pueden editar de nuevo (precisado el
+   06/10/2026). El tipo de servicio solo cambia en `solicitado`.
 5. El **auditor** no crea solicitudes. Para crear una solicitud, el usuario necesita un
    área asignada.
 6. **Visibilidad**: además de lo indicado en 5.4, cada persona ve siempre las solicitudes
@@ -185,6 +288,52 @@ Precisadas al implementar la base de datos y confirmadas por el responsable el
    - no se revela si el correo ya pertenece a otra empresa.
 9. **Alta de empresas**: la hace el operador de la plataforma con
    `private.create_organization(nombre, correo_del_administrador)` desde el SQL editor.
+
+### 5.6 Suplencias de firma
+
+Aprobado por el responsable el 06/10/2026.
+
+Una persona no firma dos veces la misma versión (sección 8). Si el firmante designado ya
+firmó esa versión, firma el siguiente suplente que no la haya firmado:
+
+- **Validación técnica**: un jefe del área técnica que no haya ejecutado el trabajo. Si no
+  hay ninguno, un administrador.
+- **Conformidad**: un jefe del área solicitante que no haya firmado la versión. Si no hay
+  ninguno (porque el área no tiene jefe o porque su jefe ya firmó como ejecutor o como
+  validador), firma un administrador que no la haya firmado.
+- La devolución en `validado` la decide quien puede dar la conformidad.
+- Si nadie puede firmar, el caso queda en espera. Por ejemplo: el único administrador ya
+  validó y el área solicitante no tiene jefe. La app explica el motivo y el Inicio del
+  administrador lo muestra para que asigne un jefe al área solicitante o agregue otro
+  administrador.
+- Cada suplencia queda registrada en el historial con su motivo.
+
+Esto ocurre cuando un área técnica se pide un trabajo a sí misma o cuando el único jefe
+técnico ejecuta el trabajo.
+
+### 5.7 Mensajes del caso
+
+Aprobado por el responsable el 17/10/2026.
+
+- **Quién escribe**: los participantes del caso: su creador, el técnico asignado, los
+  jefes del área solicitante y del área técnica, y los administradores. El auditor y el
+  resto de las personas que pueden ver el caso (5.4) leen los mensajes, pero no escriben.
+- **Hasta cuándo**: mientras el caso está abierto. Al quedar `aprobado`, `rechazado` o
+  `cancelado` ya no se escriben mensajes nuevos.
+- **Contenido**: solo texto, de 3 a 500 caracteres (el mismo límite que los comentarios
+  del historial). Sin adjuntos: las fotos siguen en el reporte (7.1).
+- **Evidencia**: un mensaje es un evento del historial con la acción `mensaje`. No se
+  edita ni se borra, y queda con su autor, su rol y su fecha y hora. No cambia el estado
+  del caso y no se incluye en el PDF (9).
+- **Avisos**: cada mensaje avisa en la app y por push al creador, al técnico asignado, a
+  los jefes de las dos áreas y a quienes ya escribieron en el caso, nunca a quien lo
+  escribió.
+- **Bajas y empresa inactiva**: quien se da de baja deja de escribir y de recibir avisos
+  (2.2); con la empresa inactiva nadie escribe (2.3). Los mensajes se conservan con el
+  nombre de su autor.
+- **Dónde se cumple**: base de datos (`send_case_message`, permiso en
+  `private.case_action_denial`, que `get_case_actions` expone como la acción `mensaje`;
+  `check` de largo en `case_events.comment`). El cliente valida lo mismo con Zod.
 
 ## 6. Recursos
 
@@ -289,22 +438,64 @@ Reglas:
   avisos se ven en la app (campana del Inicio) y se envían como notificación push a los
   teléfonos registrados. Destinatarios: nueva solicitud → jefes del área técnica;
   reporte enviado → jefes del área técnica que no lo ejecutaron (si no hay, los
-  administradores); aceptada, rechazada y aprobada → creador; asignada, reasignada y
-  devuelta → técnico asignado; reporte validado → jefes del área solicitante (o
-  administradores si no hay jefe); pausa → jefes del área técnica; cancelada → jefes del
-  área técnica.
+  administradores); aceptada, rechazada e iniciada → creador; aprobada → creador y técnico
+  asignado; asignada, reasignada y devuelta → técnico asignado; reasignada → también la
+  persona que deja el trabajo; reporte validado → quienes pueden dar la conformidad
+  (sección 5.6); pausa → jefes del área técnica; cancelada → jefes del área técnica.
+  Precisado el 06/10/2026 para que coincida con el código.
+- **Borrar avisos** (aprobado por el responsable el 24/10/2026): cada persona puede quitar
+  de su lista los avisos que ya leyó, uno a uno o todos a la vez, y deshacerlo. Un aviso
+  sin leer no se puede quitar. Quitar un aviso no cambia la solicitud, su historial ni los
+  avisos de otras personas. Limpieza automática: los avisos quitados se borran del todo a
+  los 30 días, y cualquier aviso, leído o no, a los 180 días.
 - **Indicador del reporte**: tiempo entre el envío del reporte y la aprobación final.
 - **Tiempos por prioridad**: la empresa configura, por prioridad, el tiempo máximo para
-  aceptar y para resolver. El caso muestra si está vencido.
+  aceptar y para resolver. El caso muestra si está vencido (ver 9.2).
 - **Panel**: casos por estado, por área y por prioridad; tiempo promedio de aceptación y
-  de resolución; casos vencidos y costo de recursos por área.
+  de resolución; casos vencidos y costo de recursos por área (ver 9.2).
 
 ### 9.1 Inicio por rol
 
 Aprobado por el responsable el 23/09/2026. Cada rol ve en su Inicio su trabajo pendiente
 (ver `docs/UX_REDESIGN.md`, sección 3). El administrador recibe alertas de configuración:
 áreas técnicas sin jefe o sin técnicos, usuarios sin área o sin nombre, solicitudes de
-acceso pendientes y catálogos vacíos. Los conteos respetan la visibilidad de cada rol.
+acceso pendientes, catálogos vacíos y reportes validados que nadie puede aprobar (5.6).
+Los conteos respetan la visibilidad de cada rol.
+
+### 9.2 Tiempos por prioridad e indicadores
+
+Valores por defecto aprobados por el responsable el 14/10/2026 (decisión 11.2). Cada
+empresa nueva los recibe y el administrador los cambia por prioridad:
+
+| Prioridad | Aceptar | Resolver |
+| --------- | ------- | -------- |
+| Alta      | 4 h     | 24 h     |
+| Media     | 8 h     | 72 h     |
+| Baja      | 24 h    | 7 días   |
+
+Límites: aceptar entre 1 y 720 h, resolver entre 1 y 2160 h, y resolver nunca menor que
+aceptar. Se cumple en la base (`priority_targets` y `set_priority_target`).
+
+Cómo se cuenta (aprobado por el responsable el 14/10/2026):
+
+- Los dos plazos corren **desde que se crea la solicitud**, en horas corridas (incluye
+  noches, fines de semana y pausas).
+- **Aceptación vencida**: sigue en `solicitado` después del plazo para aceptar.
+- **Resolución vencida**: sigue abierta (`aceptado`, `asignado`, `en_ejecucion` o
+  `en_espera`) después del plazo para resolver. Se considera resuelta cuando se envía el
+  reporte; si el reporte se devuelve, vuelve a contar.
+- Una solicitud cerrada, rechazada o cancelada no vence.
+- Cada solicitud guarda los tiempos vigentes al crearse. Si el administrador cambia los
+  tiempos, el cambio solo afecta a las solicitudes nuevas; las anteriores y sus
+  indicadores no se recalculan. Si se cambia la prioridad de una solicitud, toma los
+  tiempos vigentes de la nueva prioridad.
+
+Panel (administrador, jefes de área y auditor; cada uno cuenta solo lo que puede ver):
+casos por estado, por prioridad, por área destino y por área solicitante; tiempos
+promedio de aceptación, de resolución (creación → último envío del reporte) y de envío a
+aprobación; casos resueltos fuera de plazo; vencidos de hoy; y costo de recursos por área
+solicitante (cantidad × costo unitario; la mano de obra se informa en horas). Se puede
+filtrar por fecha de creación.
 
 ## 10. Estado del código antes del nuevo modelo
 
@@ -335,7 +526,8 @@ Tratamiento de los datos existentes (confirmado por el responsable el 22/09/2026
 ## 11. Decisiones pendientes
 
 1. Confirmar con un abogado la validez de la firma simple.
-2. Definir los tiempos por prioridad por defecto de una empresa nueva.
+2. ~~Definir los tiempos por prioridad por defecto de una empresa nueva.~~ Resuelta el
+   14/10/2026: ver 9.2.
 3. Definir si el solicitante puede adjuntar fotos al crear la solicitud en el MVP o
    después (hoy solo las suben el técnico asignado y el jefe técnico).
 4. Entornos: el proyecto de Supabase actual sirve como desarrollo y pruebas. Antes de la
@@ -343,7 +535,11 @@ Tratamiento de los datos existentes (confirmado por el responsable el 22/09/2026
    por definir si el proyecto actual se conserva como entorno de desarrollo permanente.
 5. Prioridad decidida por el área técnica en lugar del solicitante (ver
    `docs/UX_REDESIGN.md`, sección 10.2).
-6. Comentarios en la solicitud (las notificaciones push se adelantaron al MVP el
-   23/09/2026).
+6. ~~Comentarios en la solicitud.~~ Resuelta el 17/10/2026: mensajes dentro del caso,
+   ver 5.7.
 7. ~~Jefe técnico que ejecuta el trabajo.~~ Resuelta el 23/09/2026: valida el
    administrador, dejando constancia (5.3 y 8).
+8. ~~Baja de miembros, reasignación en ejecución y visibilidad por participación.~~
+   Resueltas el 15/10/2026: ver 2.2, 5.4 y 5.5.3.
+9. ~~Acceso de una empresa inactiva.~~ Resuelta el 16/10/2026: bloqueo total, ver 2.3.
+10. ~~Foto de perfil.~~ Resuelta el 17/10/2026: ver 2.4.

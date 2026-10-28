@@ -11,6 +11,7 @@ import {
   updateResource,
 } from './resourceService'
 import type { ResourceInput, UsageInput } from './types'
+import { casesQueryKey } from '@/features/cases/useCases'
 
 export const resourcesQueryKey = ['resources'] as const
 export const caseUsagesQueryKey = (caseId: string) => ['cases', caseId, 'usages'] as const
@@ -53,7 +54,10 @@ export function useAddCaseUsage(caseId: string) {
   const client = useQueryClient()
   return useMutation({
     mutationFn: (input: UsageInput) => addCaseUsage(caseId, input),
-    onSuccess: () => client.invalidateQueries({ queryKey: caseUsagesQueryKey(caseId) }),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: caseUsagesQueryKey(caseId) })
+      await client.invalidateQueries({ queryKey: [...casesQueryKey, caseId] })
+    },
   })
 }
 
@@ -67,7 +71,10 @@ export function useUpdateCaseUsage(caseId: string) {
       usageId: string
       input: Pick<UsageInput, 'quantity' | 'hours' | 'notes'>
     }) => updateCaseUsage(usageId, input),
-    onSuccess: () => client.invalidateQueries({ queryKey: caseUsagesQueryKey(caseId) }),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: caseUsagesQueryKey(caseId) })
+      await client.invalidateQueries({ queryKey: [...casesQueryKey, caseId] })
+    },
   })
 }
 
@@ -75,6 +82,9 @@ export function useDeleteCaseUsage(caseId: string) {
   const client = useQueryClient()
   return useMutation({
     mutationFn: deleteCaseUsage,
-    onSuccess: () => client.invalidateQueries({ queryKey: caseUsagesQueryKey(caseId) }),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: caseUsagesQueryKey(caseId) })
+      await client.invalidateQueries({ queryKey: [...casesQueryKey, caseId] })
+    },
   })
 }

@@ -1,4 +1,12 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, type PressableProps } from 'react-native'
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  type PressableProps,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native'
 import Animated, {
   useAnimatedStyle,
   useReducedMotion,
@@ -9,7 +17,7 @@ import Animated, {
 import { Icon, type IconName } from '@/components/ui/Icon'
 import { colors, fonts, radius, spacing } from '@/theme/tokens'
 
-type Variant = 'primary' | 'secondary' | 'danger' | 'text'
+type Variant = 'primary' | 'secondary' | 'danger' | 'destructive' | 'text'
 
 export function Button({
   label,
@@ -19,9 +27,12 @@ export function Button({
   disabled,
   icon,
   destructive = false,
+  containerStyle,
   style,
   onPressIn,
   onPressOut,
+  onPress,
+  onDisabledPress,
   ...props
 }: PressableProps & {
   label: string
@@ -30,29 +41,41 @@ export function Button({
   showLabelWhileLoading?: boolean
   icon?: IconName
   destructive?: boolean
+  /** Permite explicar por qué una acción visualmente desactivada aún no está disponible. */
+  onDisabledPress?: () => void
+  containerStyle?: StyleProp<ViewStyle>
 }) {
   const inactive = disabled || loading
   const pressedScale = useSharedValue(1)
   const reduceMotion = useReducedMotion()
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: pressedScale.value }] }))
-  const foreground = destructive
-    ? colors.error
-    : variant === 'primary'
-      ? colors.white
-      : variant === 'danger'
-        ? colors.dangerText
-        : variant === 'secondary'
-          ? colors.text
-          : colors.primary
+  const foreground =
+    inactive && variant !== 'text'
+      ? colors.disabledText
+      : destructive
+        ? colors.error
+        : variant === 'primary'
+          ? colors.white
+          : variant === 'danger'
+            ? colors.dangerText
+            : variant === 'destructive'
+              ? colors.white
+              : variant === 'secondary'
+                ? colors.text
+                : colors.primary
 
   return (
-    <Animated.View style={animatedStyle}>
+    <Animated.View style={[containerStyle, animatedStyle]}>
       <Pressable
         {...props}
         accessibilityLabel={props.accessibilityLabel ?? label}
         accessibilityRole="button"
         accessibilityState={{ disabled: inactive, busy: loading }}
-        disabled={inactive}
+        disabled={loading || (Boolean(disabled) && !onDisabledPress)}
+        onPress={(event) => {
+          if (disabled) onDisabledPress?.()
+          else onPress?.(event)
+        }}
         onPressIn={(event) => {
           if (!reduceMotion && !inactive) pressedScale.set(withTiming(0.98, { duration: 120 }))
           onPressIn?.(event)
@@ -64,7 +87,7 @@ export function Button({
         style={({ pressed }) => [
           styles.button,
           styles[variant],
-          inactive && styles.disabled,
+          inactive && (variant === 'text' ? styles.disabledText : styles.disabled),
           pressed && !inactive && styles.pressed,
           typeof style === 'function' ? style({ pressed }) : style,
         ]}
@@ -86,14 +109,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.compact,
   },
   primary: { backgroundColor: colors.primary },
-  secondary: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 },
+  secondary: { backgroundColor: colors.surfaceMuted },
   danger: { backgroundColor: colors.dangerBadge },
+  destructive: { backgroundColor: colors.error },
   text: { backgroundColor: 'transparent' },
-  disabled: { opacity: 0.55 },
+  disabled: { backgroundColor: colors.disabledBg, opacity: 1 },
+  disabledText: { opacity: 0.55 },
   pressed: { opacity: 0.9 },
   label: { fontFamily: fonts.bold, fontSize: 15 },
 })

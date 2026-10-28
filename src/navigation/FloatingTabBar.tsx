@@ -1,0 +1,178 @@
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs'
+import { getFocusedRouteNameFromRoute } from '@react-navigation/native'
+import { useEffect, useState } from 'react'
+import { Keyboard, Platform, Pressable, StyleSheet, Text, View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+
+import { Icon, type IconName } from '@/components/ui/Icon'
+import { TourTarget } from '@/features/help/tour/TourTarget'
+import { colors, elevation, fonts, radius, spacing } from '@/theme/tokens'
+
+export const TAB_ICONS: Record<string, readonly [IconName, IconName]> = {
+  Home: ['home-outline', 'home'],
+  CasesTab: ['list-outline', 'list'],
+  Administration: ['settings-outline', 'settings'],
+  Help: ['help-circle-outline', 'help-circle'],
+  Profile: ['person-outline', 'person'],
+}
+
+/** Barra inferior flotante en forma de píldora, con el botón + aparte cuando se puede crear. */
+export function FloatingTabBar({
+  state,
+  descriptors,
+  navigation,
+  onCreate,
+}: BottomTabBarProps & { onCreate?: () => void }) {
+  const insets = useSafeAreaInsets()
+  const [keyboardVisible, setKeyboardVisible] = useState(false)
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
+    const show = Keyboard.addListener(showEvent, () => setKeyboardVisible(true))
+    const hide = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false))
+    return () => {
+      show.remove()
+      hide.remove()
+    }
+  }, [])
+
+  const focusedRoute = state.routes[state.index]
+  const nestedRoute = focusedRoute ? getFocusedRouteNameFromRoute(focusedRoute) : undefined
+  const isRoot =
+    !nestedRoute ||
+    (focusedRoute?.name === 'CasesTab' && nestedRoute === 'Cases') ||
+    (focusedRoute?.name === 'Administration' && nestedRoute === 'AdministrationHome') ||
+    (focusedRoute?.name === 'Profile' && nestedRoute === 'ProfileHome')
+
+  if (keyboardVisible || !isRoot) return null
+
+  return (
+    <View
+      style={[styles.container, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}
+      testID="floating-tab-bar"
+    >
+      <View accessibilityRole="tablist" style={styles.pill}>
+        {state.routes.map((route, index) => {
+          const options = descriptors[route.key]?.options
+          const focused = state.index === index
+          const title = typeof options?.title === 'string' ? options.title : route.name
+          const label = typeof options?.tabBarLabel === 'string' ? options.tabBarLabel : title
+          const badge = options?.tabBarBadge
+          const icons = TAB_ICONS[route.name] ?? (['ellipse-outline', 'ellipse'] as const)
+          const color = focused ? colors.primaryDark : colors.textMuted
+          return (
+            <TourTarget
+              key={route.key}
+              id={
+                `tab:${route.name}` as
+                  'tab:Home' | 'tab:CasesTab' | 'tab:Administration' | 'tab:Help' | 'tab:Profile'
+              }
+              style={[styles.tabSlot, route.name === 'CasesTab' && styles.casesTabSlot]}
+            >
+              <Pressable
+                accessibilityLabel={badge ? `${title}, ${badge} pendientes` : title}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: focused }}
+                onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
+                onPress={() => {
+                  const event = navigation.emit({
+                    type: 'tabPress',
+                    target: route.key,
+                    canPreventDefault: true,
+                  })
+                  if (!focused && !event.defaultPrevented)
+                    navigation.navigate(route.name, undefined)
+                }}
+                style={[styles.tab, focused && styles.tabFocused]}
+              >
+                <View>
+                  <Icon name={icons[focused ? 1 : 0]} color={color} size={21} />
+                  {badge ? (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>{badge}</Text>
+                    </View>
+                  ) : null}
+                </View>
+                <Text style={[styles.label, { color }, focused && styles.labelFocused]}>
+                  {label}
+                </Text>
+              </Pressable>
+            </TourTarget>
+          )
+        })}
+      </View>
+      {onCreate ? (
+        <TourTarget id="tab:create">
+          <Pressable
+            accessibilityLabel="Nueva solicitud"
+            accessibilityRole="button"
+            onPress={onCreate}
+            style={({ pressed }) => [styles.create, pressed && styles.createPressed]}
+          >
+            <Icon name="add" color={colors.white} size={28} />
+          </Pressable>
+        </TourTarget>
+      ) : null}
+    </View>
+  )
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    backgroundColor: colors.background,
+  },
+  pill: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 2,
+    padding: 6,
+    borderRadius: radius.sheet,
+    borderWidth: 1,
+    borderColor: colors.track,
+    backgroundColor: colors.surface,
+    ...elevation.md,
+  },
+  tabSlot: { flex: 1, alignSelf: 'stretch' },
+  casesTabSlot: { flex: 1.5 },
+  tab: {
+    flex: 1,
+    minHeight: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    borderRadius: 26,
+  },
+  tabFocused: { backgroundColor: colors.primarySoft },
+  label: { fontFamily: fonts.semibold, fontSize: 12, lineHeight: 16 },
+  labelFocused: { fontFamily: fonts.bold },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -10,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+  },
+  badgeText: { fontFamily: fonts.bold, fontSize: 12, lineHeight: 16, color: colors.white },
+  create: {
+    width: 56,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+    ...elevation.md,
+    shadowColor: colors.primary,
+  },
+  createPressed: { opacity: 0.85 },
+})

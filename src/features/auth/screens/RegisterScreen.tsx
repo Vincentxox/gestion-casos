@@ -1,17 +1,20 @@
+import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { zodResolver } from '@hookform/resolvers/zod'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { Controller, useForm } from 'react-hook-form'
-import { Alert, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Button } from '@/components/ui/Button'
-import { Card } from '@/components/ui/Card'
+import { Icon } from '@/components/ui/Icon'
 import { FormField } from '@/components/forms/FormField'
 import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
 import { getAuthErrorMessage } from '@/features/auth/authErrors'
+import { AuthBrand, AuthHeading } from '@/features/auth/components/AuthHeading'
 import { registrationSchema, type RegistrationInput } from '@/features/auth/schemas'
 import type { AuthStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
-import { colors, spacing, typography } from '@/theme/tokens'
+import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Register'>
 
@@ -36,111 +39,148 @@ export function RegisterScreen({ navigation }: Props) {
       const hasSession = await register(values)
 
       if (!hasSession) {
-        Alert.alert(
+        AppFeedback.show(
           'Confirma tu correo',
           'Enviamos un enlace de verificación a tu correo electrónico.',
           [{ text: 'Entendido', onPress: () => navigation.navigate('Login') }],
+          { tone: 'success' },
         )
       }
     } catch (error) {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible crear la cuenta',
         getAuthErrorMessage(
           error,
           'No fue posible crear la cuenta. Revisa los datos e inténtalo nuevamente.',
         ),
+        { tone: 'error' },
       )
     }
   })
 
   return (
-    <KeyboardFormScrollView contentContainerStyle={styles.scrollContent} style={styles.flex}>
-      <View style={styles.heading}>
-        <Text accessibilityRole="header" style={styles.title}>
-          Crear cuenta
-        </Text>
-        <Text style={styles.subtitle}>
-          Usa el correo al que recibiste la invitación. El administrador definirá tu rol y tu área.
-        </Text>
-      </View>
+    <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={styles.flex}>
+      <KeyboardFormScrollView contentContainerStyle={styles.scrollContent} style={styles.flex}>
+        <Pressable
+          accessibilityLabel="Volver"
+          accessibilityRole="button"
+          hitSlop={4}
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
+          <Icon color={colors.text} name="chevron-back" size={24} />
+        </Pressable>
 
-      <Card contentStyle={styles.card}>
-        <Controller
-          control={control}
-          name="fullName"
-          render={({ field: { onBlur, onChange, value } }) => (
-            <FormField
-              autoCapitalize="words"
-              autoComplete="name"
-              error={errors.fullName?.message}
-              label="Nombre completo"
-              onBlur={onBlur}
-              onChangeText={onChange}
-              placeholder="Nombre y apellido"
-              value={value}
+        <View style={styles.main}>
+          <AuthBrand />
+          <AuthHeading title="Crea tu cuenta">
+            Usa el correo al que recibiste la invitación. El administrador definirá tu rol y tu
+            área.
+          </AuthHeading>
+
+          <View style={styles.form}>
+            <Controller
+              control={control}
+              name="fullName"
+              render={({ field: { onBlur, onChange, value } }) => (
+                <FormField
+                  autoCapitalize="words"
+                  autoComplete="name"
+                  error={errors.fullName?.message}
+                  highContrastBorder
+                  label="Nombre completo"
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  placeholder="Nombre y apellido"
+                  value={value}
+                  variant="outlined"
+                />
+              )}
             />
-          )}
-        />
 
-        <Controller
-          control={control}
-          name="email"
-          render={({ field: { onBlur, onChange, value } }) => (
-            <FormField
-              autoCapitalize="none"
-              autoComplete="email"
-              error={errors.email?.message}
-              keyboardType="email-address"
-              label="Correo electrónico"
-              onBlur={onBlur}
-              onChangeText={onChange}
-              placeholder="nombre@empresa.com"
-              value={value}
+            <Controller
+              control={control}
+              name="email"
+              render={({ field: { onBlur, onChange, value } }) => (
+                <FormField
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  error={errors.email?.message}
+                  highContrastBorder
+                  keyboardType="email-address"
+                  label="Correo electrónico"
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  placeholder="nombre@empresa.com"
+                  value={value}
+                  variant="outlined"
+                />
+              )}
             />
-          )}
-        />
 
-        <Controller
-          control={control}
-          name="password"
-          render={({ field: { onBlur, onChange, value } }) => (
-            <FormField
-              autoCapitalize="none"
-              autoComplete="new-password"
-              error={errors.password?.message}
-              label="Contraseña"
-              onBlur={onBlur}
-              onChangeText={onChange}
-              placeholder="Mínimo 8 caracteres"
-              secureTextEntry
-              value={value}
+            <Controller
+              control={control}
+              name="password"
+              render={({ field: { onBlur, onChange, value } }) => (
+                <FormField
+                  autoCapitalize="none"
+                  autoComplete="new-password"
+                  error={errors.password?.message}
+                  highContrastBorder
+                  label="Contraseña"
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  placeholder="Mínimo 8 caracteres"
+                  secureTextEntry
+                  value={value}
+                  variant="outlined"
+                />
+              )}
             />
-          )}
-        />
 
-        <Controller
-          control={control}
-          name="passwordConfirmation"
-          render={({ field: { onBlur, onChange, value } }) => (
-            <FormField
-              autoCapitalize="none"
-              autoComplete="new-password"
-              error={errors.passwordConfirmation?.message}
-              label="Confirmar contraseña"
-              onBlur={onBlur}
-              onChangeText={onChange}
-              onSubmitEditing={() => void submit()}
-              placeholder="Repite tu contraseña"
-              returnKeyType="done"
-              secureTextEntry
-              value={value}
+            <Controller
+              control={control}
+              name="passwordConfirmation"
+              render={({ field: { onBlur, onChange, value } }) => (
+                <FormField
+                  autoCapitalize="none"
+                  autoComplete="new-password"
+                  error={errors.passwordConfirmation?.message}
+                  highContrastBorder
+                  label="Confirmar contraseña"
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  onSubmitEditing={() => void submit()}
+                  placeholder="Repite tu contraseña"
+                  returnKeyType="done"
+                  secureTextEntry
+                  value={value}
+                  variant="outlined"
+                />
+              )}
             />
-          )}
-        />
+          </View>
 
-        <Button label="Crear cuenta" loading={isSubmitting} onPress={() => void submit()} />
-      </Card>
-    </KeyboardFormScrollView>
+          <Button
+            label="Crear cuenta"
+            loading={isSubmitting}
+            onPress={() => void submit()}
+            style={styles.primaryButton}
+          />
+        </View>
+
+        <Pressable
+          accessibilityLabel="¿Ya tienes una cuenta? Inicia sesión"
+          accessibilityRole="button"
+          onPress={() => navigation.navigate('Login')}
+          style={styles.linkButton}
+        >
+          <Text style={styles.linkText}>
+            ¿Ya tienes una cuenta? <Text style={styles.linkStrong}>Inicia sesión</Text>
+          </Text>
+        </Pressable>
+      </KeyboardFormScrollView>
+    </SafeAreaView>
   )
 }
 
@@ -151,23 +191,38 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
     gap: spacing.lg,
   },
-  heading: {
-    gap: spacing.sm,
-    paddingTop: spacing.md,
+  main: { flex: 1, justifyContent: 'center', gap: spacing.lg },
+  backButton: {
+    width: 44,
+    height: 44,
+    marginLeft: -spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.pill,
   },
-  title: {
-    color: colors.text,
-    ...typography.display,
+  form: {
+    gap: spacing.md,
   },
-  subtitle: {
+  primaryButton: {
+    minHeight: 56,
+  },
+  linkButton: {
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  linkText: {
     color: colors.textMuted,
     ...typography.body,
+    textAlign: 'center',
   },
-  card: {
-    gap: spacing.md,
-    padding: spacing.lg,
+  linkStrong: {
+    color: colors.primary,
+    fontFamily: fonts.bold,
   },
 })

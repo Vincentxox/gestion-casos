@@ -1,29 +1,31 @@
+import { getErrorMessage } from '@/utils/errorMessage'
+import { AppFeedback } from '@/components/feedback/AppFeedback'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import * as WebBrowser from 'expo-web-browser'
 import { useState } from 'react'
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { RequestState } from '@/components/feedback/RequestState'
 import { Button } from '@/components/ui/Button'
+import { Icon } from '@/components/ui/Icon'
 import { Card } from '@/components/ui/Card'
-import { useCaseDetail } from '@/features/cases/useCases'
+import { useCaseActions, useCaseDetail } from '@/features/cases/useCases'
 import { ROLE_LABELS } from '@/features/auth/types'
 import { useCasePhotos } from '@/features/photos/usePhotos'
 import { useCaseUsages } from '@/features/resources/useResources'
 import type { MainStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
+import { formatMoment } from '@/theme/formatters'
 import { colors, spacing, typography } from '@/theme/tokens'
 
 import { ReportContent } from '../components/ReportContent'
 import { ReturnSheet } from '../components/ReturnSheet'
 import { SignatureSheet } from '../components/SignatureSheet'
 import { generateReportPdf, shareReportPdf, type SignatureAction } from '../reportService'
-import { getReportActions } from '../reportPermissions'
 import { getReportRequirements } from '../schemas'
 import type { FrozenReportContent } from '../types'
 import {
-  useAreaChiefs,
   useReportDraft,
   useReportSignatures,
   useReportVersions,
@@ -100,24 +102,30 @@ export function ReportReviewScreen({ navigation, route }: Props) {
   const { caseId } = route.params
   const profile = useAuthStore((state) => state.profile)
   const detail = useCaseDetail(caseId)
+  const caseActions = useCaseActions(caseId)
   const draft = useReportDraft(caseId)
   const usages = useCaseUsages(caseId)
   const photos = useCasePhotos(caseId)
   const versions = useReportVersions(caseId)
   const signatures = useReportSignatures(caseId)
-  const chiefs = useAreaChiefs()
   const sign = useSignReport(caseId)
   const returnMutation = useReturnReport(caseId)
   const [signatureAction, setSignatureAction] = useState<SignatureAction | null>(null)
   const [returnVisible, setReturnVisible] = useState(false)
   const [pdfLoading, setPdfLoading] = useState(false)
   const [shareLoading, setShareLoading] = useState(false)
-  const [showPast, setShowPast] = useState(false)
+  const [expandedPast, setExpandedPast] = useState<string | null>(null)
 
-  if (detail.isLoading || draft.isLoading || versions.isLoading || signatures.isLoading) {
+  if (
+    detail.isLoading ||
+    caseActions.isPending ||
+    draft.isLoading ||
+    versions.isLoading ||
+    signatures.isLoading
+  ) {
     return <RequestState kind="loading" title="Cargando reporte…" />
   }
-  if (!detail.data || detail.error || versions.error || signatures.error) {
+  if (!detail.data || detail.error || caseActions.error || versions.error || signatures.error) {
     return (
       <RequestState
         kind="error"
@@ -126,15 +134,18 @@ export function ReportReviewScreen({ navigation, route }: Props) {
           void detail.refetch()
           void versions.refetch()
           void signatures.refetch()
+          void caseActions.refetch()
         }}
       />
     )
   }
 
   const item = detail.data
-  const actions = getReportActions(item, profile, chiefs.data ?? [])
   const current = versions.data?.find((version) => version.status === 'vigente')
-  const isSubmitting = item.status === 'en_ejecucion' && actions.includes('submit')
+  const allowed = (
+    action: 'enviar_reporte' | 'validar_reporte' | 'aprobar_reporte' | 'devolver_reporte',
+  ) => caseActions.data?.[action]?.allowed === true
+  const isSubmitting = allowed('enviar_reporte')
   const missing = getReportRequirements(
     draft.data?.diagnosis ?? '',
     draft.data?.workDone ?? '',
@@ -148,17 +159,17 @@ export function ReportReviewScreen({ navigation, route }: Props) {
       : current?.content
   const action: SignatureAction | null = isSubmitting
     ? 'submit'
-    : actions.includes('validate')
+    : allowed('validar_reporte')
       ? 'validate'
-      : actions.includes('approve')
+      : allowed('aprobar_reporte')
         ? 'approve'
         : null
   const actionLabel =
     action === 'submit'
       ? 'Firmar y enviar'
       : action === 'validate'
-        ? 'Validar y firmar'
-        : 'Aprobar y firmar'
+        ? 'Firmar validación'
+        : 'Firmar conformidad'
   const title =
     signatureAction === 'submit'
       ? 'Firma de ejecución'
@@ -172,9 +183,10 @@ export function ReportReviewScreen({ navigation, route }: Props) {
       const url = await generateReportPdf(caseId)
       await WebBrowser.openBrowserAsync(url)
     } catch (error) {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible descargar el PDF',
-        error instanceof Error ? error.message : 'Inténtalo de nuevo.',
+        getErrorMessage(error, 'Inténtalo de nuevo.'),
+        { tone: 'error' },
       )
     } finally {
       setPdfLoading(false)
@@ -187,9 +199,10 @@ export function ReportReviewScreen({ navigation, route }: Props) {
     try {
       await shareReportPdf(caseId, item.caseNumber, current.versionNumber)
     } catch (error) {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible compartir el PDF',
-        error instanceof Error ? error.message : 'Inténtalo de nuevo.',
+        getErrorMessage(error, 'Inténtalo de nuevo.'),
+        { tone: 'error' },
       )
     } finally {
       setShareLoading(false)
@@ -197,38 +210,35 @@ export function ReportReviewScreen({ navigation, route }: Props) {
   }
 
   async function onSign(path: string) {
-    if (!signatureAction) return
+    if (!signatureAction || signatureAction !== action) return
     await sign.mutateAsync({ action: signatureAction, stroke: path })
     setSignatureAction(null)
-    Alert.alert(
+    AppFeedback.toast(
       signatureAction === 'submit'
         ? 'Reporte enviado'
         : signatureAction === 'validate'
           ? 'Reporte validado'
           : 'Solicitud aprobada y cerrada',
+      { tone: 'success' },
     )
     navigation.popTo('CaseDetail', { caseId })
   }
 
   async function onReturn(reason: string) {
+    if (!allowed('devolver_reporte')) return
     await returnMutation.mutateAsync(reason)
     setReturnVisible(false)
-    Alert.alert('Reporte devuelto')
+    AppFeedback.toast('Reporte devuelto', { tone: 'info' })
     navigation.popTo('CaseDetail', { caseId })
   }
 
   return (
     <SafeAreaView edges={['bottom']} style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text accessibilityRole="header" style={styles.title}>
-          {item.caseNumber}
-        </Text>
-        {action ? (
+        {action === 'submit' ? (
           <Card contentStyle={styles.notice}>
             <Text style={styles.text}>
-              {action === 'submit'
-                ? 'Al firmar, este contenido queda congelado y no se podrá editar.'
-                : 'Tu firma confirma que revisaste esta versión.'}
+              Al firmar, este contenido queda congelado y no se podrá editar.
             </Text>
           </Card>
         ) : null}
@@ -238,6 +248,9 @@ export function ReportReviewScreen({ navigation, route }: Props) {
         {content ? (
           <ReportContent
             content={content}
+            caseStatus={item.status}
+            currentAction={action}
+            verificationHash={current?.contentHash}
             signatures={
               current ? signatures.data?.filter((entry) => entry.versionId === current.id) : []
             }
@@ -246,36 +259,29 @@ export function ReportReviewScreen({ navigation, route }: Props) {
         {!content && !isSubmitting ? (
           <RequestState kind="empty" title="No hay una versión vigente del reporte" />
         ) : null}
-        {(versions.data?.filter((version) => version.status === 'devuelta').length ?? 0) > 0 ? (
-          <Card contentStyle={styles.notice}>
-            <Button
-              label={`${showPast ? 'Ocultar' : 'Ver'} versiones devueltas`}
-              variant="secondary"
-              onPress={() => setShowPast(!showPast)}
-            />
-            {showPast
-              ? versions.data
-                  ?.filter((version) => version.status === 'devuelta')
-                  .map((version) => (
-                    <View key={version.id} style={styles.past}>
-                      <Text style={styles.text}>
-                        Versión {version.versionNumber} · {version.returnedByName ?? 'Sin nombre'} ·{' '}
-                        {version.returnedAt
-                          ? new Date(version.returnedAt).toLocaleString('es-GT')
-                          : ''}
-                      </Text>
-                      <Text style={styles.muted}>{version.returnReason}</Text>
-                      <ReportContent
-                        content={version.content}
-                        signatures={signatures.data?.filter(
-                          (entry) => entry.versionId === version.id,
-                        )}
-                      />
-                    </View>
-                  ))
-              : null}
-          </Card>
-        ) : null}
+        {versions.data
+          ?.filter((version) => version.status === 'devuelta')
+          .map((version) => (
+            <Card key={version.id} contentStyle={styles.notice}>
+              <Button
+                label={`Versión ${version.versionNumber} · ${expandedPast === version.id ? 'Ocultar' : 'Ver'} reporte devuelto`}
+                variant="secondary"
+                onPress={() => setExpandedPast(expandedPast === version.id ? null : version.id)}
+              />
+              <Text style={styles.muted}>
+                Devuelta por {version.returnedByName ?? 'Sin nombre'} ·{' '}
+                {version.returnedAt ? formatMoment(version.returnedAt) : ''}
+              </Text>
+              <Text style={styles.text}>{version.returnReason}</Text>
+              {expandedPast === version.id ? (
+                <ReportContent
+                  content={version.content}
+                  verificationHash={version.contentHash}
+                  signatures={signatures.data?.filter((entry) => entry.versionId === version.id)}
+                />
+              ) : null}
+            </Card>
+          ))}
       </ScrollView>
       {action && content ? (
         <View style={styles.sticky}>
@@ -286,7 +292,17 @@ export function ReportReviewScreen({ navigation, route }: Props) {
                 </Text>
               ))
             : null}
+          <Text style={styles.consent}>Tu firma confirma que revisaste esta versión.</Text>
           <View style={styles.actionRow}>
+            {allowed('devolver_reporte') ? (
+              <View style={styles.returnCell}>
+                <Button
+                  label="Devolver"
+                  variant="secondary"
+                  onPress={() => setReturnVisible(true)}
+                />
+              </View>
+            ) : null}
             <View style={styles.actionCell}>
               <Button
                 label={actionLabel}
@@ -294,41 +310,49 @@ export function ReportReviewScreen({ navigation, route }: Props) {
                 onPress={() => setSignatureAction(action)}
               />
             </View>
-            {actions.includes('return') ? (
-              <View style={styles.actionCell}>
-                <Button label="Devolver" variant="danger" onPress={() => setReturnVisible(true)} />
-              </View>
-            ) : null}
           </View>
         </View>
       ) : item.status === 'aprobado' ? (
         <View style={styles.sticky}>
-          <Button
-            label={pdfLoading ? 'Generando PDF…' : 'Descargar PDF'}
-            icon="download-outline"
-            loading={pdfLoading}
-            disabled={shareLoading}
-            onPress={() => void downloadPdf()}
-          />
-          {current ? (
-            <>
-              <Button
-                label={shareLoading ? 'Preparando PDF…' : 'Compartir PDF'}
-                icon="share-social-outline"
-                variant="secondary"
-                loading={shareLoading}
-                showLabelWhileLoading
-                disabled={pdfLoading}
+          <View style={styles.pdfActions}>
+            <Button
+              label={pdfLoading ? 'Generando PDF…' : 'Descargar PDF'}
+              icon="download-outline"
+              loading={pdfLoading}
+              disabled={shareLoading}
+              onPress={() => void downloadPdf()}
+              containerStyle={styles.pdfPrimary}
+            />
+            {current ? (
+              <Pressable
+                accessibilityLabel="Compartir PDF"
+                accessibilityRole="button"
+                accessibilityState={{ busy: shareLoading, disabled: shareLoading || pdfLoading }}
+                disabled={shareLoading || pdfLoading}
                 onPress={() => void sharePdf()}
-              />
-            </>
-          ) : null}
+                style={styles.pdfShare}
+              >
+                {shareLoading ? (
+                  <ActivityIndicator color={colors.primary} />
+                ) : (
+                  <Icon name="share-outline" color={colors.primary} size={22} />
+                )}
+              </Pressable>
+            ) : null}
+          </View>
         </View>
       ) : null}
       <SignatureSheet
         key={signatureAction ?? 'closed'}
-        visible={Boolean(signatureAction)}
+        visible={Boolean(signatureAction && signatureAction === action)}
         title={title}
+        buttonLabel={
+          signatureAction === 'submit'
+            ? 'Firmar y enviar'
+            : signatureAction === 'validate'
+              ? 'Firmar validación'
+              : 'Firmar conformidad'
+        }
         name={profile?.fullName || 'Usuario'}
         role={profile?.role ? ROLE_LABELS[profile.role] : ''}
         loading={sign.isPending}
@@ -336,9 +360,10 @@ export function ReportReviewScreen({ navigation, route }: Props) {
         onSign={onSign}
       />
       <ReturnSheet
-        visible={returnVisible}
+        visible={returnVisible && allowed('devolver_reporte')}
         loading={returnMutation.isPending}
         label={action === 'validate' ? 'Devolver al técnico' : 'Devolver'}
+        nextVersion={(current?.versionNumber ?? 0) + 1}
         onClose={() => setReturnVisible(false)}
         onReturn={onReturn}
       />
@@ -348,12 +373,11 @@ export function ReportReviewScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { gap: spacing.md, padding: spacing.lg, paddingBottom: spacing.xl },
-  title: { ...typography.caption, color: colors.textMuted },
+  content: { gap: spacing.md, padding: spacing.lg, paddingBottom: 96 },
   notice: { gap: spacing.sm },
   text: { ...typography.body, color: colors.text },
   muted: { ...typography.body, color: colors.textMuted },
-  past: { gap: spacing.sm, paddingTop: spacing.md },
+  consent: { ...typography.caption, color: colors.textMuted, textAlign: 'center' },
   sticky: {
     gap: spacing.sm,
     padding: spacing.md,
@@ -362,5 +386,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   actionRow: { flexDirection: 'row', gap: spacing.sm },
+  pdfActions: { flexDirection: 'row', gap: spacing.sm },
+  pdfPrimary: { flex: 1 },
+  pdfShare: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: colors.surfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   actionCell: { flex: 1 },
+  returnCell: { flex: 0.5 },
 })

@@ -1,5 +1,17 @@
 import { QueryClient } from '@tanstack/react-query'
 
+export function isExpiredAuthError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const candidate = error as {
+    status?: number | string
+    statusCode?: number | string
+    code?: string
+    context?: { status?: number }
+  }
+  const status = Number(candidate.status ?? candidate.statusCode ?? candidate.context?.status)
+  return status === 401 || candidate.code === 'PGRST301' || candidate.code === 'PGRST303'
+}
+
 export function shouldRetryQuery(failureCount: number, error: unknown): boolean {
   if (failureCount >= 3) return false
   if (!error || typeof error !== 'object') return true
@@ -16,7 +28,7 @@ export function shouldRetryQuery(failureCount: number, error: unknown): boolean 
   if (
     candidate.code &&
     (/^(22|23|28)/.test(candidate.code) ||
-      ['42501', 'PGRST116', 'PGRST301'].includes(candidate.code) ||
+      ['42501', 'PGRST116', 'PGRST301', 'PGRST303'].includes(candidate.code) ||
       (Number(candidate.code) >= 400 && Number(candidate.code) < 500))
   )
     return false
@@ -30,5 +42,5 @@ export function shouldRetryQuery(failureCount: number, error: unknown): boolean 
 }
 
 export const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: shouldRetryQuery } },
+  defaultOptions: { queries: { retry: shouldRetryQuery, staleTime: 30_000 } },
 })

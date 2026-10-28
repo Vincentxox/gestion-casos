@@ -1,9 +1,9 @@
 import { supabase } from '@/services/supabase/client'
+import { listFormerMemberNames } from '@/services/supabase/formerMembers'
 
 import {
   generateReportPdf,
   getReportDraft,
-  listAreaChiefs,
   listReportSignatures,
   listReportVersions,
   returnReport,
@@ -13,6 +13,10 @@ import {
 
 jest.mock('@/services/supabase/client', () => ({
   supabase: { from: jest.fn(), rpc: jest.fn(), functions: { invoke: jest.fn() } },
+}))
+jest.mock('@/services/supabase/formerMembers', () => ({
+  listFormerMemberNames: jest.fn(),
+  memberDisplayName: jest.requireActual('@/services/supabase/formerMembers').memberDisplayName,
 }))
 
 const from = supabase.from as jest.Mock
@@ -39,6 +43,7 @@ const input = { diagnosis: ' Diag ', workDone: ' Done ', cause: '', observations
 
 beforeEach(() => {
   jest.clearAllMocks()
+  ;(listFormerMemberNames as jest.Mock).mockResolvedValue(new Map())
   from.mockReturnValue(query)
   for (const method of ['select', 'eq', 'insert', 'update'] as const)
     query[method].mockReturnValue(query)
@@ -115,14 +120,29 @@ test('lee versiones congeladas, firmas y jefes de área', async () => {
   await expect(listReportSignatures('case-1')).resolves.toMatchObject([
     { signerName: 'Ana', type: 'ejecucion' },
   ])
-  query.eq.mockResolvedValueOnce({
+})
+
+test('muestra el nombre histórico del firmante dado de baja', async () => {
+  ;(listFormerMemberNames as jest.Mock).mockResolvedValue(new Map([['user-1', 'Ana']]))
+  query.order.mockResolvedValue({
     data: [
-      { id: 'u1', area_id: 'a1' },
-      { id: 'u2', area_id: null },
+      {
+        id: 'signature-1',
+        version_id: 'version-1',
+        signature_type: 'ejecucion',
+        signer_id: 'user-1',
+        signer_role: 'tecnico',
+        signed_at: '2026-09-24',
+        consent_text: 'Consent',
+        stroke_path: 'M 1 1 L 4 4',
+        signer: null,
+      },
     ],
     error: null,
   })
-  await expect(listAreaChiefs()).resolves.toEqual([{ id: 'u1', areaId: 'a1' }])
+  await expect(listReportSignatures('case-1')).resolves.toMatchObject([
+    { signerName: 'Ana (dado de baja)' },
+  ])
 })
 
 test('firma y devuelve solo mediante las RPC contratadas', async () => {

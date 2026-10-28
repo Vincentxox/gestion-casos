@@ -13,6 +13,12 @@ export const googleAuthRedirectUrl = makeRedirectUri({
   path: 'auth/callback',
 })
 
+/**
+ * Página web intermedia: en el teléfono reenvía a gestion-casos://auth/reset con el token, y en la
+ * computadora pide abrir el enlace en el teléfono (fuente en la rama gh-pages).
+ */
+export const passwordResetRedirectUrl = 'https://vincentxox.github.io/gestion-casos/auth/reset/'
+
 interface ProfileRow {
   id: string
   full_name: string
@@ -21,7 +27,7 @@ interface ProfileRow {
   area_id: string | null
   area: { name: string } | null
   organization_id: string | null
-  organization: { name: string } | null
+  organization: { name: string; is_active: boolean } | null
 }
 
 function isAppRole(value: string): value is AppRole {
@@ -42,6 +48,7 @@ function mapProfile(row: ProfileRow): Profile {
     areaName: row.area?.name ?? null,
     organizationId: row.organization_id,
     organizationName: row.organization?.name ?? null,
+    organizationActive: row.organization?.is_active ?? null,
   }
 }
 
@@ -59,7 +66,7 @@ export async function getProfile(userId: string) {
   const { data, error } = await supabase
     .from('profiles')
     .select(
-      'id, full_name, avatar_url, role, area_id, area:areas(name), organization_id, organization:organizations(name)',
+      'id, full_name, avatar_url, role, area_id, area:areas(name), organization_id, organization:organizations!profiles_organization_id_fkey(name, is_active)',
     )
     .eq('id', userId)
     .single<ProfileRow>()
@@ -84,7 +91,10 @@ export async function signIn(email: string, password: string) {
   return data.session
 }
 
-function getOAuthTokens(callbackUrl: string) {
+export function getOAuthTokens(
+  callbackUrl: string,
+  invalidSessionMessage = 'Google no devolvió una sesión válida',
+) {
   const url = new URL(callbackUrl)
   const query = new URLSearchParams(url.search)
   const fragment = new URLSearchParams(url.hash.replace(/^#/, ''))
@@ -99,10 +109,30 @@ function getOAuthTokens(callbackUrl: string) {
   const refreshToken = params.get('refresh_token')
 
   if (!accessToken || !refreshToken) {
-    throw new Error('Google no devolvió una sesión válida')
+    throw new Error(invalidSessionMessage)
   }
 
   return { access_token: accessToken, refresh_token: refreshToken }
+}
+
+export async function requestPasswordReset(email: string) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+    redirectTo: passwordResetRedirectUrl,
+  })
+  if (error) throw error
+}
+
+export async function setPasswordRecoverySession(callbackUrl: string) {
+  const { data, error } = await supabase.auth.setSession(
+    getOAuthTokens(callbackUrl, 'El enlace venció o ya se usó. Pide uno nuevo.'),
+  )
+  if (error) throw error
+  return data.session
+}
+
+export async function updatePassword(password: string) {
+  const { error } = await supabase.auth.updateUser({ password })
+  if (error) throw error
 }
 
 export async function signInWithGoogle() {
@@ -123,7 +153,9 @@ export async function signInWithGoogle() {
     throw new Error('No fue posible iniciar la autorización con Google')
   }
 
-  const result = await WebBrowser.openAuthSessionAsync(data.url, googleAuthRedirectUrl)
+  const result = await WebBrowser.openAuthSessionAsync(data.url, googleAuthRedirectUrl, {
+    createTask: false,
+  })
 
   if (result.type !== 'success') {
     return null
@@ -164,6 +196,11 @@ export async function signOut() {
   if (error) {
     throw error
   }
+}
+
+/** After account deletion Auth may already reject the user, so callers ignore its error. */
+export async function signOutDeletedAccount() {
+  return supabase.auth.signOut({ scope: 'local' })
 }
 
 export async function resolveSessionProfile(session: Session | null) {

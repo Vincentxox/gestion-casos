@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { Icon, type IconName } from '@/components/ui/Icon'
-import { colors, fonts, radius, spacing } from '@/theme/tokens'
+import { colors, radius, spacing, tone as tonePalette, typography } from '@/theme/tokens'
 
 type Tone = 'neutral' | 'info' | 'success' | 'warning' | 'danger'
 
@@ -10,6 +10,7 @@ export function Chip({
   tone = 'neutral',
   selected = false,
   icon,
+  outlined = false,
   accessibilityLabel,
   onPress,
 }: {
@@ -17,18 +18,17 @@ export function Chip({
   tone?: Tone
   selected?: boolean
   icon?: IconName
+  outlined?: boolean
   accessibilityLabel?: string
   onPress?: () => void
 }) {
-  const toneStyles = {
-    neutral: [colors.neutralSoft, colors.neutral],
-    info: [colors.infoSoft, colors.info],
-    success: [colors.successSoft, colors.success],
-    warning: [colors.warningSoft, colors.warning],
-    danger: [colors.dangerSoft, colors.error],
-  } as const
-  const [backgroundColor, color] = toneStyles[tone]
-  const foreground = selected ? colors.white : color
+  const foreground = outlined
+    ? colors.textMuted
+    : selected
+      ? colors.white
+      : onPress
+        ? colors.ink
+        : tonePalette[tone].text
   const content = (
     <>
       {icon ? <Icon name={icon} size="inline" color={foreground} /> : null}
@@ -36,7 +36,16 @@ export function Chip({
     </>
   )
   if (!onPress) {
-    return <View style={[styles.chip, { backgroundColor }]}>{content}</View>
+    return (
+      <View
+        style={[
+          styles.chip,
+          outlined ? styles.outlined : { backgroundColor: tonePalette[tone].bg },
+        ]}
+      >
+        {content}
+      </View>
+    )
   }
 
   return (
@@ -49,7 +58,10 @@ export function Chip({
       style={[
         styles.chip,
         styles.interactive,
-        { backgroundColor: selected ? colors.primary : colors.surface },
+        {
+          backgroundColor: selected ? colors.ink : colors.surface,
+          borderColor: selected ? colors.ink : colors.chipBorder,
+        },
       ]}
     >
       {content}
@@ -59,7 +71,7 @@ export function Chip({
 
 const styles = StyleSheet.create({
   chip: {
-    minHeight: 36,
+    minHeight: 28,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
@@ -67,8 +79,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: radius.pill,
     paddingHorizontal: spacing.base,
-    paddingVertical: spacing.xs,
   },
-  interactive: { borderWidth: 1, borderColor: colors.border },
-  label: { fontFamily: fonts.semibold, fontSize: 13 },
+  interactive: {
+    minHeight: 36,
+    paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.chipBorder,
+  },
+  label: typography.label,
+  outlined: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
 })

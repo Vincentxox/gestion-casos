@@ -1,344 +1,163 @@
-import type { Profile } from '@/features/auth/types'
-import type { ScopeFilter, StatusFilter } from '@/features/cases/caseListPresentation'
-import type { CaseRecord, CaseStatus } from '@/features/cases/types'
+import type { CaseStatus } from '@/features/cases/types'
+import type { CaseStatusCount } from '@/features/cases/caseSearch'
+import { OPEN_CASE_STATUSES } from '@/features/cases/caseSearch'
+import type { AppRole } from '@/features/auth/types'
+import type { ScopeFilter } from '@/features/cases/caseListPresentation'
 import type { IconName } from '@/components/ui/Icon'
 import type { phaseColors } from '@/theme/tokens'
 import { plural } from '@/theme/formatters'
 
-import type { HomeSummary } from './homeService'
+import type { HomeSummary, NextStepAction, NextStepCase } from './homeService'
+import type { AppNotification } from '@/features/notifications/notificationService'
 
-export interface HomeTile {
-  id:
-    | 'reportes_por_validar'
-    | 'reportes_por_aprobar'
-    | 'por_aceptar'
-    | 'sin_asignar'
-    | 'por_iniciar'
-    | 'en_ejecucion'
-    | 'en_espera'
-    | 'cerradas_30_dias'
-    | 'alta_prioridad'
-    | 'activas_mi_area'
-    | 'en_curso'
+export const NEXT_STEP_LABELS: Record<NextStepAction, string> = {
+  aceptar: 'Aceptar solicitud',
+  asignar: 'Asignar técnico',
+  iniciar: 'Iniciar trabajo',
+  enviar_reporte: 'Completar reporte',
+  validar_reporte: 'Validar reporte',
+  aprobar_reporte: 'Aprobar reporte',
+}
+
+export const NEXT_STEP_BUTTON_LABELS: Record<NextStepAction, string> = {
+  aceptar: 'Revisar',
+  asignar: 'Asignar',
+  iniciar: 'Iniciar',
+  enviar_reporte: 'Completar',
+  validar_reporte: 'Revisar',
+  aprobar_reporte: 'Revisar',
+}
+
+export const NEXT_STEP_VISUALS: Record<
+  NextStepAction,
+  { icon: IconName; phase: keyof typeof phaseColors }
+> = {
+  aceptar: { icon: 'checkmark-circle-outline', phase: 'nueva' },
+  asignar: { icon: 'person-add-outline', phase: 'curso' },
+  iniciar: { icon: 'play-circle-outline', phase: 'curso' },
+  enviar_reporte: { icon: 'document-text-outline', phase: 'revision' },
+  validar_reporte: { icon: 'checkmark-done-outline', phase: 'revision' },
+  aprobar_reporte: { icon: 'ribbon-outline', phase: 'cerrada' },
+}
+
+export function getHomeCaseView(
+  role: AppRole,
+  areaKind: 'solicitante' | 'tecnica' | null,
+): { title: string; scope: ScopeFilter } | null {
+  if (role === 'tecnico') return { title: 'Tu área', scope: 'mi_area' }
+  if (role === 'jefe_area' && areaKind === 'tecnica')
+    return { title: 'Tu área', scope: 'area_atiende' }
+  if (role === 'solicitante' || (role === 'jefe_area' && areaKind === 'solicitante'))
+    return { title: 'Tus solicitudes', scope: 'mias' }
+  if (role === 'jefe_area') return null
+  return { title: 'Solicitudes', scope: 'todas' }
+}
+
+const IN_PROGRESS_STATUSES: CaseStatus[] = ['aceptado', 'asignado', 'en_ejecucion', 'en_espera']
+
+const HOME_CASE_CARD_DEFINITIONS: {
+  key: 'vencidas' | 'por_aceptar' | 'en_curso' | 'en_revision'
   label: string
-  value: number
-  icon: IconName
-  phase: keyof typeof phaseColors
-  emphasis?: boolean
+  statuses: CaseStatus[]
+  filter:
+    { overdueOnly: true } | { quick: 'por_aceptar' | 'en_revision' } | { statuses: CaseStatus[] }
+  tone: 'danger' | 'new' | 'course' | 'review'
+}[] = [
+  {
+    key: 'vencidas',
+    label: 'Vencidas',
+    statuses: OPEN_CASE_STATUSES,
+    filter: { overdueOnly: true },
+    tone: 'danger',
+  },
+  {
+    key: 'por_aceptar',
+    label: 'Por aceptar',
+    statuses: ['solicitado'],
+    filter: { quick: 'por_aceptar' },
+    tone: 'new',
+  },
+  {
+    key: 'en_curso',
+    label: 'En curso',
+    statuses: IN_PROGRESS_STATUSES,
+    filter: { statuses: IN_PROGRESS_STATUSES },
+    tone: 'course',
+  },
+  {
+    key: 'en_revision',
+    label: 'En revisión',
+    statuses: ['reporte_enviado', 'validado'],
+    filter: { quick: 'en_revision' },
+    tone: 'review',
+  },
+]
+
+export function getHomeCaseCards(counts: CaseStatusCount[]) {
+  const byStatus = new Map(counts.map((row) => [row.status, row]))
+  return HOME_CASE_CARD_DEFINITIONS.map((card) => ({
+    ...card,
+    count: card.statuses.reduce(
+      (total, status) =>
+        total +
+        (card.key === 'vencidas'
+          ? (byStatus.get(status)?.overdue ?? 0)
+          : (byStatus.get(status)?.total ?? 0)),
+      0,
+    ),
+  }))
 }
 
-export function getGreeting(hour: number) {
-  if (hour < 12) return 'Buenos días'
-  if (hour < 18) return 'Buenas tardes'
-  return 'Buenas noches'
+export function nextStepDueMeta(item: Pick<NextStepCase, 'dueAt'>, now: Date) {
+  if (!item.dueAt) return 'sin plazo'
+  const difference = new Date(item.dueAt).getTime() - now.getTime()
+  if (!Number.isFinite(difference)) return 'sin plazo'
+  const minutes = Math.ceil(Math.abs(difference) / 60_000)
+  if (minutes === 0) return 'vence ahora'
+  const amount =
+    minutes < 60
+      ? `${minutes} min`
+      : minutes < 24 * 60
+        ? `${Math.ceil(minutes / 60)} h`
+        : `${Math.ceil(minutes / 1_440)} ${Math.ceil(minutes / 1_440) === 1 ? 'día' : 'días'}`
+  return difference < 0 ? `venció hace ${amount}` : `vence en ${amount}`
 }
 
-export function getHomeHero(profile: Profile, summary: HomeSummary) {
-  if (profile.role === 'auditor') return null
-  const reportsToValidate = summary.inbox.reportes_por_validar
-  const reportsToApprove = summary.inbox.reportes_por_aprobar
-  if (
-    (profile.role === 'jefe_area' && summary.area_kind === 'tecnica') ||
-    profile.role === 'administrador' ||
-    (profile.role === 'jefe_area' && reportsToValidate + reportsToApprove > 0)
-  ) {
-    const count =
-      reportsToValidate + reportsToApprove + summary.inbox.por_aceptar + summary.inbox.sin_asignar
-    const detail = [
-      reportsToValidate > 0
-        ? {
-            id: 'reportes_por_validar' as const,
-            label: `${reportsToValidate} ${plural(reportsToValidate, 'reporte por validar', 'reportes por validar')}`,
-          }
-        : null,
-      reportsToApprove > 0
-        ? {
-            id: 'reportes_por_aprobar' as const,
-            label: `${reportsToApprove} ${plural(reportsToApprove, 'reporte por aprobar', 'reportes por aprobar')}`,
-          }
-        : null,
-      summary.inbox.por_aceptar > 0
-        ? { id: 'por_aceptar' as const, label: `${summary.inbox.por_aceptar} por aceptar` }
-        : null,
-      summary.inbox.sin_asignar > 0
-        ? { id: 'sin_asignar' as const, label: `${summary.inbox.sin_asignar} por asignar` }
-        : null,
-    ].filter((part): part is NonNullable<typeof part> => part !== null)
-    return {
-      count,
-      eyebrow: 'TU BANDEJA',
-      title: `${count} ${plural(count, 'pendiente requiere', 'pendientes requieren')} tu decisión`,
-      detail,
-      supportingText: null,
-      actionLabel: 'Revisar bandeja',
-      target: detail[0]
-        ? getHomeTileTarget(profile, detail[0].id)
-        : profile.role === 'jefe_area'
-          ? { scope: 'bandeja' as const }
-          : { scope: 'todas' as const },
-    }
-  }
-  if (profile.role === 'tecnico') {
-    const count =
-      summary.mine.trabajos_por_iniciar +
-      summary.mine.trabajos_en_ejecucion +
-      summary.mine.trabajos_en_espera
-    return {
-      count,
-      eyebrow: 'TUS TRABAJOS',
-      title: `Tienes ${count} ${plural(count, 'trabajo asignado', 'trabajos asignados')}`,
-      detail: [],
-      supportingText: 'Consulta tus tareas y continúa el trabajo',
-      actionLabel: 'Ver mis trabajos',
-      target: { scope: 'mis_trabajos' as const },
-    }
-  }
-  const count = summary.mine.solicitudes_activas
-  return {
-    count,
-    eyebrow: 'TUS SOLICITUDES',
-    title: `${count} ${plural(count, 'solicitud activa', 'solicitudes activas')}`,
-    detail: [],
-    supportingText: 'Sigue el progreso de tus solicitudes',
-    actionLabel: 'Ver solicitudes',
-    target: { scope: 'mias' as const, activeOnly: true },
-  }
-}
-
-export function getHomeRecentCases(
-  profile: Profile,
-  areaKind: HomeSummary['area_kind'],
-  cases: CaseRecord[],
+export function nextStepDeadlineLabel(
+  item: Pick<NextStepCase, 'dueAt' | 'overdueStage'>,
+  now: Date,
 ) {
-  return cases
-    .filter((item) => !['aprobado', 'rechazado', 'cancelado'].includes(item.status))
+  if (item.overdueStage) return 'Vencida'
+  if (!item.dueAt) return 'Sin plazo'
+  const minutes = Math.ceil((new Date(item.dueAt).getTime() - now.getTime()) / 60_000)
+  if (!Number.isFinite(minutes)) return 'Sin plazo'
+  if (minutes <= 0) return 'Vence ahora'
+  if (minutes < 60) return `Vence en ${minutes} min`
+  if (minutes < 48 * 60) return `Vence en ${Math.ceil(minutes / 60)} h`
+  return `Vence en ${Math.ceil(minutes / 1_440)} días`
+}
+
+export function getTodayNotifications(items: AppNotification[], now: Date) {
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime()
+  return items
     .filter((item) => {
-      if (profile.role === 'tecnico') return item.assignedTo === profile.id
-      if (profile.role === 'administrador' || profile.role === 'auditor') return true
-      if (profile.role === 'jefe_area' && areaKind === 'tecnica')
-        return item.targetAreaId === profile.areaId
-      return (
-        item.createdBy === profile.id ||
-        (profile.role === 'jefe_area' && item.requestingAreaId === profile.areaId)
-      )
+      const timestamp = new Date(item.createdAt).getTime()
+      return timestamp >= start && timestamp < end
     })
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, 3)
-}
-
-export function getHomeTileTarget(
-  profile: Profile,
-  id: HomeTile['id'],
-): {
-  scope?: ScopeFilter
-  status?: StatusFilter
-  exactStatus?: CaseStatus
-  priority?: 'alta'
-  sinceDays?: number
-  activeOnly?: boolean
-} {
-  const chief = profile.role === 'jefe_area'
-  if (id === 'reportes_por_validar' || id === 'reportes_por_aprobar')
-    return {
-      scope: chief ? 'mi_area' : 'todas',
-      exactStatus: id === 'reportes_por_validar' ? 'reporte_enviado' : 'validado',
-    }
-  if (id === 'por_aceptar')
-    return chief
-      ? { scope: 'bandeja', exactStatus: 'solicitado' }
-      : { scope: 'por_aceptar', exactStatus: 'solicitado' }
-  if (id === 'sin_asignar')
-    return chief
-      ? { scope: 'bandeja', exactStatus: 'aceptado' }
-      : { scope: 'sin_asignar', exactStatus: 'aceptado' }
-  if (id === 'por_iniciar') return { scope: 'mis_trabajos', exactStatus: 'asignado' }
-  if (id === 'en_espera')
-    return {
-      scope:
-        profile.role === 'tecnico'
-          ? 'mis_trabajos'
-          : profile.role === 'jefe_area'
-            ? 'mi_area'
-            : 'todas',
-      exactStatus: 'en_espera',
-    }
-  if (id === 'en_ejecucion')
-    return {
-      scope:
-        profile.role === 'tecnico'
-          ? 'mis_trabajos'
-          : profile.role === 'jefe_area'
-            ? 'mi_area'
-            : 'todas',
-      exactStatus: 'en_ejecucion',
-    }
-  if (id === 'cerradas_30_dias') return { status: 'cerradas', sinceDays: 30 }
-  if (id === 'alta_prioridad') return { scope: 'mi_area', priority: 'alta', activeOnly: true }
-  if (id === 'activas_mi_area') return { scope: 'mi_area', activeOnly: true }
-  return { scope: 'mias', activeOnly: true }
-}
-
-export function getHomeTiles(profile: Profile, summary: HomeSummary): HomeTile[] {
-  const reportTiles: HomeTile[] =
-    profile.role === 'jefe_area' || profile.role === 'administrador'
-      ? [
-          ...(summary.inbox.reportes_por_validar > 0
-            ? [
-                {
-                  id: 'reportes_por_validar' as const,
-                  label: 'Por validar',
-                  value: summary.inbox.reportes_por_validar,
-                  icon: 'document-text-outline' as const,
-                  phase: 'revision' as const,
-                  emphasis: true,
-                },
-              ]
-            : []),
-          ...(summary.inbox.reportes_por_aprobar > 0
-            ? [
-                {
-                  id: 'reportes_por_aprobar' as const,
-                  label: 'Por aprobar',
-                  value: summary.inbox.reportes_por_aprobar,
-                  icon: 'checkmark-circle-outline' as const,
-                  phase: 'revision' as const,
-                  emphasis: true,
-                },
-              ]
-            : []),
-        ]
-      : []
-  if (profile.role === 'tecnico') {
-    return [
-      {
-        id: 'por_iniciar',
-        label: 'Por iniciar',
-        value: summary.mine.trabajos_por_iniciar,
-        icon: 'play-circle-outline',
-        phase: 'curso',
-      },
-      {
-        id: 'en_ejecucion',
-        label: 'En ejecución',
-        value: summary.mine.trabajos_en_ejecucion,
-        icon: 'construct-outline',
-        phase: 'curso',
-      },
-      {
-        id: 'en_espera',
-        label: 'En espera',
-        value: summary.mine.trabajos_en_espera,
-        icon: 'pause-circle-outline',
-        phase: 'detenida',
-      },
-    ]
-  }
-  if (profile.role === 'jefe_area' && summary.area_kind === 'tecnica') {
-    return [
-      ...reportTiles,
-      {
-        id: 'por_aceptar',
-        label: 'Por aceptar',
-        value: summary.inbox.por_aceptar,
-        icon: 'file-tray-outline',
-        phase: 'nueva',
-        emphasis: summary.inbox.por_aceptar > 0,
-      },
-      {
-        id: 'sin_asignar',
-        label: 'Sin asignar',
-        value: summary.inbox.sin_asignar,
-        icon: 'person-add-outline',
-        phase: 'curso',
-        emphasis: summary.inbox.sin_asignar > 0,
-      },
-      {
-        id: 'en_espera',
-        label: 'En espera',
-        value: summary.cases.en_espera,
-        icon: 'pause-circle-outline',
-        phase: 'detenida',
-      },
-      {
-        id: 'alta_prioridad',
-        label: 'Alta prioridad activas',
-        value: summary.cases.alta_prioridad_activas,
-        icon: 'flag-outline',
-        phase: 'rechazada',
-      },
-    ]
-  }
-  if (profile.role === 'administrador' || profile.role === 'auditor') {
-    return [
-      ...reportTiles,
-      {
-        id: 'por_aceptar',
-        label: 'Por aceptar',
-        value: summary.inbox.por_aceptar,
-        icon: 'file-tray-outline',
-        phase: 'nueva',
-      },
-      {
-        id: 'sin_asignar',
-        label: 'Sin asignar',
-        value: summary.inbox.sin_asignar,
-        icon: 'person-add-outline',
-        phase: 'curso',
-      },
-      {
-        id: 'en_ejecucion',
-        label: 'En ejecución',
-        value: summary.cases.en_ejecucion,
-        icon: 'construct-outline',
-        phase: 'curso',
-      },
-      {
-        id: 'en_espera',
-        label: 'En espera',
-        value: summary.cases.en_espera,
-        icon: 'pause-circle-outline',
-        phase: 'detenida',
-      },
-      {
-        id: 'cerradas_30_dias',
-        label: 'Cerradas en 30 días',
-        value: summary.cases.cerradas_30_dias,
-        icon: 'checkmark-done-outline',
-        phase: 'cerrada',
-      },
-    ]
-  }
-  return profile.role === 'jefe_area'
-    ? [
-        ...reportTiles,
-        {
-          id: 'en_curso',
-          label: 'En curso',
-          value: summary.mine.solicitudes_activas,
-          icon: 'list-outline',
-          phase: 'curso',
-        },
-        {
-          id: 'activas_mi_area',
-          label: 'Activas en mi área',
-          value: summary.cases.activas,
-          icon: 'list-outline',
-          phase: 'curso',
-        },
-      ]
-    : [
-        {
-          id: 'en_curso',
-          label: 'En curso',
-          value: summary.mine.solicitudes_activas,
-          icon: 'list-outline',
-          phase: 'curso',
-        },
-      ]
 }
 
 export function getAdminAlerts(admin: NonNullable<HomeSummary['admin']>) {
   return [
+    ...(admin.conformidades_sin_firmante > 0
+      ? [
+          {
+            label: `${admin.conformidades_sin_firmante} ${plural(admin.conformidades_sin_firmante, 'reporte', 'reportes')} sin firmante de conformidad`,
+            screen: 'Users' as const,
+          },
+        ]
+      : []),
     ...admin.areas_tecnicas_sin_jefe.map((name) => ({
       label: `${name} no tiene jefe de área`,
       screen: 'Users' as const,

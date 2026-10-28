@@ -123,3 +123,16 @@ export const actionMeta = {
   string,
   { label: string; description: string; verb: string; phase: Phase; icon: IconName }
 >
+
+export const actionToastMeta = {
+  aceptar: { message: 'Solicitud aceptada', tone: 'success' },
+  rechazar: { message: 'Solicitud rechazada', tone: 'info' },
+  cancelar: { message: 'Solicitud cancelada', tone: 'info' },
+  asignar: { message: 'Personal asignado', tone: 'success' },
+  iniciar: { message: 'Trabajo iniciado', tone: 'success' },
+  pausar: { message: 'Trabajo en pausa', tone: 'success' },
+  reanudar: { message: 'Trabajo reanudado', tone: 'success' },
+} as const satisfies Record<
+  'aceptar' | 'rechazar' | 'cancelar' | 'asignar' | 'iniciar' | 'pausar' | 'reanudar',
+  { message: string; tone: 'success' | 'info' }
+>

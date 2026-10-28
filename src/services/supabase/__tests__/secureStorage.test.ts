@@ -45,7 +45,7 @@ describe('almacenamiento seguro de sesión', () => {
 
   test('devuelve null si falta un fragmento', async () => {
     await secureSessionStorage.setItem('auth-token', 'a'.repeat(1000))
-    mockValues.delete('auth-token.1')
+    mockValues.delete('auth-token.0.1')
 
     await expect(secureSessionStorage.getItem('auth-token')).resolves.toBeNull()
   })
@@ -55,7 +55,36 @@ describe('almacenamiento seguro de sesión', () => {
     await secureSessionStorage.setItem('auth-token', 'nuevo-valor')
 
     await expect(secureSessionStorage.getItem('auth-token')).resolves.toBe('nuevo-valor')
-    expect(mockValues.has('auth-token.1')).toBe(false)
+    expect([...mockValues.keys()].sort()).toEqual(['auth-token.1.0', 'auth-token.meta'])
+  })
+
+  test('conserva la sesión anterior si la escritura se interrumpe', async () => {
+    await secureSessionStorage.setItem('auth-token', 'a'.repeat(1000))
+    jest
+      .mocked(SecureStore.setItemAsync)
+      .mockImplementationOnce(async (key: string, value: string) => {
+        mockValues.set(key, value)
+      })
+      .mockRejectedValueOnce(new Error('app cerrada'))
+
+    await expect(secureSessionStorage.setItem('auth-token', 'b'.repeat(1000))).rejects.toThrow(
+      'app cerrada',
+    )
+
+    await expect(secureSessionStorage.getItem('auth-token')).resolves.toBe('a'.repeat(1000))
+  })
+
+  test('lee y reemplaza una sesión guardada con el formato anterior', async () => {
+    mockValues.set('auth-token.meta', '2')
+    mockValues.set('auth-token.0', 'sesion-')
+    mockValues.set('auth-token.1', 'anterior')
+
+    await expect(secureSessionStorage.getItem('auth-token')).resolves.toBe('sesion-anterior')
+
+    await secureSessionStorage.setItem('auth-token', 'nueva')
+
+    await expect(secureSessionStorage.getItem('auth-token')).resolves.toBe('nueva')
+    expect([...mockValues.keys()].sort()).toEqual(['auth-token.0.0', 'auth-token.meta'])
   })
 
   test('elimina completamente una sesión', async () => {

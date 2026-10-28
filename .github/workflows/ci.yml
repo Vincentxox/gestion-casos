@@ -4,11 +4,13 @@ on:
   push:
     branches:
       - main
+      - develop
       - 'feature/**'
       - 'agent/**'
   pull_request:
     branches:
       - main
+      - develop
       - 'feature/**'
   workflow_dispatch:
 
@@ -103,8 +105,14 @@ jobs:
           deno-version: v2.x
 
       - name: Verificar tipos de las funciones
+        # Las funciones solo usan importaciones npm: propias. Sin esto, Deno instala también
+        # las dependencias de la app desde package.json y rechaza cualquier versión de Expo
+        # publicada hace menos de 24 horas (política de antigüedad mínima de Deno 2).
+        env:
+          DENO_NO_PACKAGE_JSON: '1'
         run: >-
           deno check --node-modules-dir=auto
           supabase/functions/generate-report-pdf/index.ts
           supabase/functions/send-push/index.ts
           supabase/functions/cleanup-photos/index.ts
+          supabase/functions/delete-account/index.ts

@@ -1,10 +1,21 @@
 import type { NavigatorScreenParams } from '@react-navigation/native'
 import type { CaseAction, CaseStatus } from '@/features/cases/types'
 import type { ScopeFilter, StatusFilter } from '@/features/cases/caseListPresentation'
+import type { QuickStatusFilter } from '@/features/cases/caseSearch'
+import type {
+  OrganizationCreationInput,
+  PlatformOrganizationRequest,
+} from '@/features/auth/organizationRequestService'
 
 export type AuthStackParamList = {
   Login: undefined
   Register: undefined
+  ForgotPassword: { email?: string } | undefined
+}
+
+export type PendingOrganizationStackParamList = {
+  PendingHome: undefined
+  RequestOrganization: { prefill?: Partial<OrganizationCreationInput> } | undefined
 }
 
 export type MainStackParamList = {
@@ -13,6 +24,9 @@ export type MainStackParamList = {
         scope?: ScopeFilter
         status?: StatusFilter
         exactStatus?: CaseStatus
+        quick?: QuickStatusFilter
+        overdueOnly?: boolean
+        statuses?: CaseStatus[]
         priority?: 'alta'
         sinceDays?: number
         activeOnly?: boolean
@@ -26,6 +40,13 @@ export type MainStackParamList = {
   CaseResources: { caseId: string }
   CaseReport: { caseId: string }
   ReportReview: { caseId: string }
+  Notifications: undefined
+  Indicators: undefined
+}
+
+export type RootStackParamList = {
+  MainTabs: NavigatorScreenParams<MainTabParamList> | undefined
+  NotificationsFlow: undefined
 }
 
 export type AdministrationStackParamList = {
@@ -37,11 +58,20 @@ export type AdministrationStackParamList = {
   Organization: undefined
   Resources: undefined
   AccessRequests: undefined
+  PriorityTargets: undefined
+}
+
+export type ProfileStackParamList = {
+  ProfileHome: undefined
+  DeleteAccount: undefined
+  OrganizationRequests: undefined
+  OrganizationRequestDetail: { request: PlatformOrganizationRequest }
 }
 
 export type MainTabParamList = {
   Home: undefined
   CasesTab: NavigatorScreenParams<MainStackParamList> | undefined
-  Profile: undefined
+  Help: { section?: 'case-card' } | undefined
+  Profile: NavigatorScreenParams<ProfileStackParamList> | undefined
   Administration: NavigatorScreenParams<AdministrationStackParamList> | undefined
 }

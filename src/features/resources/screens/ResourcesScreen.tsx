@@ -1,29 +1,22 @@
+import { getErrorMessage } from '@/utils/errorMessage'
+import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { Ionicons } from '@expo/vector-icons'
-import { useState } from 'react'
-import {
-  Alert,
-  FlatList,
-  Modal,
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { useRef, useState } from 'react'
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
 
-import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollView'
+import { BottomSheet } from '@/components/sheets/BottomSheet'
 import { CatalogActionSheet } from '@/components/actions/CatalogActionSheet'
-import { Button } from '@/components/ui/Button'
+import { useNavigation } from '@react-navigation/native'
 import { Card } from '@/components/ui/Card'
 import { Chip } from '@/components/ui/Chip'
 import { IconTile } from '@/components/ui/IconTile'
 import { ScreenContainer } from '@/components/ui/ScreenContainer'
+import { ScreenHeader } from '@/components/ui/ScreenHeader'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { RequestState } from '@/components/feedback/RequestState'
 import { SkeletonList } from '@/components/ui/SkeletonList'
 import { formatQuetzales } from '@/theme/formatters'
-import { colors, radius, spacing, typography } from '@/theme/tokens'
+import { colors, spacing, typography } from '@/theme/tokens'
 
 import { ResourceForm } from '../components/ResourceForm'
 import { RESOURCE_KIND_LABELS, type ResourceInput, type ResourceRecord } from '../types'
@@ -35,6 +28,7 @@ import {
 } from '../useResources'
 
 export function ResourcesScreen() {
+  const navigation = useNavigation()
   const resources = useResources()
   const create = useCreateResource()
   const update = useUpdateResource()
@@ -42,6 +36,7 @@ export function ResourcesScreen() {
   const [editing, setEditing] = useState<ResourceRecord | null>(null)
   const [actionResource, setActionResource] = useState<ResourceRecord | null>(null)
   const [formVisible, setFormVisible] = useState(false)
+  const formSubmit = useRef<(() => void) | null>(null)
 
   function openForm(resource?: ResourceRecord) {
     setEditing(resource ?? null)
@@ -55,15 +50,16 @@ export function ResourcesScreen() {
       setFormVisible(false)
       setEditing(null)
     } catch (error) {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible guardar el recurso',
-        error instanceof Error ? error.message : 'Comprueba la conexión y los datos.',
+        getErrorMessage(error, 'Comprueba la conexión y los datos.'),
+        { tone: 'error' },
       )
     }
   }
 
   function toggle(resource: ResourceRecord) {
-    Alert.alert(
+    AppFeedback.show(
       `${resource.isActive ? 'Desactivar' : 'Activar'} recurso`,
       `¿Deseas cambiar la disponibilidad de ${resource.name}?`,
       [
@@ -74,18 +70,25 @@ export function ResourcesScreen() {
             void active
               .mutateAsync({ resourceId: resource.id, isActive: !resource.isActive })
               .catch((error) =>
-                Alert.alert(
+                AppFeedback.show(
                   'No fue posible actualizar el recurso',
-                  error instanceof Error ? error.message : 'Comprueba la conexión.',
+                  getErrorMessage(error, 'Comprueba la conexión.'),
+                  { tone: 'error' },
                 ),
               ),
         },
       ],
+      { tone: 'warning' },
     )
   }
 
   return (
     <ScreenContainer edges={['bottom']} padded={false}>
+      <ScreenHeader
+        title="Recursos"
+        onBack={() => navigation.goBack()}
+        action={{ label: 'Nuevo', icon: 'add', onPress: () => openForm() }}
+      />
       <View style={styles.container}>
         <Text style={styles.subtitle}>Materiales, herramientas y equipos de tu empresa.</Text>
         {resources.isLoading ? (
@@ -122,7 +125,7 @@ export function ResourcesScreen() {
                 <IconTile icon="cube-outline" />
                 <View style={styles.cardContent}>
                   <View style={styles.nameRow}>
-                    <Text numberOfLines={1} style={styles.name}>
+                    <Text numberOfLines={2} style={styles.name}>
                       {item.name}
                     </Text>
                     <Chip
@@ -151,9 +154,6 @@ export function ResourcesScreen() {
             )}
           />
         )}
-        <View style={styles.floatingAction}>
-          <Button label="Nuevo recurso" icon="add" onPress={() => openForm()} />
-        </View>
       </View>
       <CatalogActionSheet
         name={actionResource?.name ?? ''}
@@ -163,45 +163,33 @@ export function ResourcesScreen() {
         onEdit={() => actionResource && openForm(actionResource)}
         onToggle={() => actionResource && toggle(actionResource)}
       />
-      <Modal
-        animationType="fade"
-        onRequestClose={() => setFormVisible(false)}
-        transparent
+      <BottomSheet
+        title={editing ? 'Editar recurso' : 'Nuevo recurso'}
         visible={formVisible}
+        onClose={() => setFormVisible(false)}
+        form
+        footerAction={{
+          label: 'Guardar recurso',
+          loading: create.isPending || update.isPending,
+          onPress: () => formSubmit.current?.(),
+        }}
       >
-        <View style={styles.backdrop}>
-          <SafeAreaView edges={['bottom']} style={styles.modal}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{editing ? 'Editar recurso' : 'Nuevo recurso'}</Text>
-              <Pressable
-                accessibilityLabel="Cerrar formulario"
-                accessibilityRole="button"
-                onPress={() => setFormVisible(false)}
-                style={styles.iconButton}
-              >
-                <Ionicons color={colors.text} name="close" size={24} />
-              </Pressable>
-            </View>
-            <KeyboardFormScrollView contentContainerStyle={styles.modalContent}>
-              <ResourceForm
-                key={editing?.id ?? 'new'}
-                resource={editing ?? undefined}
-                loading={create.isPending || update.isPending}
-                onSubmit={(input) => void save(input)}
-              />
-            </KeyboardFormScrollView>
-          </SafeAreaView>
-        </View>
-      </Modal>
+        <ResourceForm
+          key={editing?.id ?? 'new'}
+          resource={editing ?? undefined}
+          loading={create.isPending || update.isPending}
+          onSubmit={(input) => void save(input)}
+          submitRef={formSubmit}
+        />
+      </BottomSheet>
     </ScreenContainer>
   )
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, gap: spacing.lg, padding: spacing.lg },
+  container: { flex: 1, gap: spacing.lg, padding: spacing.lg, paddingTop: spacing.md },
   subtitle: { ...typography.body, color: colors.textMuted },
-  floatingAction: { position: 'absolute', right: spacing.lg, bottom: spacing.lg },
-  list: { gap: spacing.md, paddingBottom: 96 },
+  list: { gap: spacing.md, paddingBottom: spacing.md },
   card: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -209,26 +197,9 @@ const styles = StyleSheet.create({
     minHeight: 88,
   },
   cardContent: { flex: 1, gap: spacing.xs },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  name: { ...typography.heading, color: colors.text, flex: 1 },
+  nameRow: { alignItems: 'flex-start', gap: spacing.xs },
+  name: { ...typography.heading, color: colors.text },
   meta: { ...typography.caption, color: colors.textMuted },
   description: { ...typography.caption, color: colors.textMuted },
   iconButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.backdrop },
-  modal: {
-    height: '80%',
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    backgroundColor: colors.background,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  modalTitle: { ...typography.title, color: colors.text },
-  modalContent: { flexGrow: 1, padding: spacing.lg },
 })

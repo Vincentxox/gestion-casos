@@ -1,8 +1,13 @@
-import { Alert } from 'react-native'
+import { AppFeedback } from '@/components/feedback/AppFeedback'
 
 export function confirmLogout(onConfirm: () => void) {
-  Alert.alert('¿Cerrar sesión?', undefined, [
-    { text: 'Cancelar', style: 'cancel' },
-    { text: 'Cerrar sesión', style: 'destructive', onPress: onConfirm },
-  ])
+  AppFeedback.show(
+    '¿Cerrar sesión?',
+    'Tendrás que volver a ingresar con tu cuenta para ver tus solicitudes.',
+    [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Cerrar sesión', style: 'destructive', onPress: onConfirm },
+    ],
+    { tone: 'danger', icon: 'log-out-outline' },
+  )
 }

@@ -1,5 +1,6 @@
+import { AppFeedback } from '@/components/feedback/AppFeedback'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
-import { Alert, StyleSheet, Text } from 'react-native'
+import { StyleSheet, Text } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import type { MainStackParamList } from '@/navigation/types'
@@ -18,9 +19,10 @@ export function CreateCaseScreen({ navigation }: Props) {
 
   async function handleSubmit(input: CreateCaseInput) {
     if (!profile?.areaId) {
-      Alert.alert(
+      AppFeedback.show(
         'Necesitas un área',
         'Pide al administrador que asigne tu área antes de crear solicitudes.',
+        { tone: 'warning' },
       )
       return
     }
@@ -28,20 +30,18 @@ export function CreateCaseScreen({ navigation }: Props) {
     try {
       const created = await mutation.mutateAsync(input)
       navigation.replace('CaseDetail', { caseId: created.id })
-      Alert.alert('Solicitud enviada', `${created.caseNumber} quedó registrada.`)
+      AppFeedback.toast(`${created.caseNumber} quedó registrada.`, { tone: 'success' })
     } catch {
-      Alert.alert(
+      AppFeedback.show(
         'No fue posible crear la solicitud',
         'Comprueba tus permisos, el área y la conexión.',
+        { tone: 'error' },
       )
     }
   }
 
   return (
     <SafeAreaView edges={['bottom']} style={styles.safeArea}>
-      <Text style={styles.subtitle}>
-        Completa los datos obligatorios para iniciar el seguimiento.
-      </Text>
       {!profile?.areaId ? (
         <Text style={styles.subtitle}>
           No tienes un área asignada. El administrador debe asignarla antes de crear solicitudes.

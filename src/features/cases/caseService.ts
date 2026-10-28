@@ -1,16 +1,23 @@
 import { supabase } from '@/services/supabase/client'
+import { isExpiredAuthError } from '@/config/queryClient'
+import { listFormerMemberNames, memberDisplayName } from '@/services/supabase/formerMembers'
 import { statusMeta } from '@/theme/statusMeta'
+import { CASE_ACTION_NAMES } from './types'
 
 import type {
   AssignableProfile,
   CaseRecord,
+  CaseActionPermissions,
   CaseStatus,
   CaseStatusHistoryRecord,
   ChangeCaseStatusInput,
   CreateCaseInput,
   UpdateCaseInput,
 } from './types'
+import type { CaseSearchFilters, CaseStatusCount } from './caseSearch'
+import { caseCreatedRangeSchema, caseSearchTextSchema } from './schemas'
 
+// Incluye campos calculados de PostgREST que no aparecen como columnas en database.types.ts.
 interface CaseRow {
   id: string
   case_number: string
@@ -26,24 +33,26 @@ interface CaseRow {
   priority: CaseRecord['priority']
   status: CaseStatus
   created_by: string
-  creator: { full_name: string } | null
+  creator: { full_name: string; avatar_url: string | null } | null
   assigned_to: string | null
-  assignee: { full_name: string } | null
+  assignee: { full_name: string; avatar_url: string | null } | null
   created_at: string
   accepted_at: string | null
   assigned_at: string | null
   started_at: string | null
   updated_at: string
+  due_at: string | null
+  overdue_stage: 'aceptacion' | 'resolucion' | null
 }
 
 const caseSelection = `id, case_number, title, description, category_id,
   category:categories!cases_category_id_fkey(name,min_after_photos),
   requesting_area_id, requesting_area:areas!cases_requesting_area_id_fkey(name),
   target_area_id, target_area:areas!cases_target_area_id_fkey(name),
-  location, priority, status, created_by, creator:profiles!cases_created_by_fkey(full_name),
-  assigned_to, assignee:profiles!cases_assigned_to_fkey(full_name), created_at, accepted_at, assigned_at, started_at, updated_at`
+  location, priority, status, created_by, creator:profiles!cases_created_by_fkey(full_name,avatar_url),
+  assigned_to, assignee:profiles!cases_assigned_to_fkey(full_name,avatar_url), created_at, accepted_at, assigned_at, started_at, updated_at, due_at, overdue_stage`
 
-function mapCase(row: CaseRow): CaseRecord {
+function mapCase(row: CaseRow, formerNames: ReadonlyMap<string, string>): CaseRecord {
   return {
     id: row.id,
     caseNumber: row.case_number,
@@ -60,25 +69,107 @@ function mapCase(row: CaseRow): CaseRecord {
     priority: row.priority,
     status: row.status,
     createdBy: row.created_by,
-    creatorName: row.creator?.full_name || 'Usuario sin nombre',
+    creatorName: memberDisplayName(
+      row.created_by,
+      row.creator?.full_name,
+      formerNames,
+      'Usuario sin nombre',
+    ),
+    creatorAvatarPath: row.creator?.avatar_url ?? null,
     assignedTo: row.assigned_to,
-    assigneeName: row.assignee?.full_name ?? null,
+    assigneeName: row.assigned_to
+      ? memberDisplayName(
+          row.assigned_to,
+          row.assignee?.full_name,
+          formerNames,
+          'Usuario sin nombre',
+        )
+      : null,
+    assigneeAvatarPath: row.assignee?.avatar_url ?? null,
     createdAt: row.created_at,
     acceptedAt: row.accepted_at,
     assignedAt: row.assigned_at,
     startedAt: row.started_at,
     updatedAt: row.updated_at,
+    dueAt: row.due_at,
+    overdueStage: row.overdue_stage,
   }
 }
 
-export async function listCases(): Promise<CaseRecord[]> {
-  const { data, error } = await supabase
-    .from('cases')
-    .select(caseSelection)
-    .order('created_at', { ascending: false })
-    .limit(100)
-  if (error) throw error
-  return (data as unknown as CaseRow[]).map(mapCase)
+async function mapCases(values: unknown[]): Promise<CaseRecord[]> {
+  const rows = values as CaseRow[]
+  const missingIds = rows.flatMap((row) => [
+    !row.creator ? row.created_by : null,
+    !row.assignee ? row.assigned_to : null,
+  ])
+  const formerNames = await listFormerMemberNames(missingIds)
+  return rows.map((row) => mapCase(row, formerNames))
+}
+
+export const CASE_PAGE_SIZE = 30
+
+async function withSessionRetry<T>(request: () => Promise<T>): Promise<T> {
+  try {
+    return await request()
+  } catch (error) {
+    if (!isExpiredAuthError(error)) throw error
+    const { data, error: refreshError } = await supabase.auth.refreshSession()
+    if (refreshError || !data.session) throw error
+    return request()
+  }
+}
+
+function searchArgs(filters: CaseSearchFilters) {
+  caseCreatedRangeSchema.parse({ createdFrom: filters.createdFrom, createdTo: filters.createdTo })
+  return {
+    scope: filters.scope,
+    statuses: filters.statuses,
+    priorities: filters.priorities,
+    created_from: filters.createdFrom,
+    created_to: filters.createdTo,
+    overdue_only: filters.overdueOnly,
+    search_text:
+      filters.searchText === null ? null : caseSearchTextSchema.parse(filters.searchText),
+  }
+}
+
+export async function listCases(filters: CaseSearchFilters, page: number): Promise<CaseRecord[]> {
+  const from = page * CASE_PAGE_SIZE
+  const args = searchArgs(filters)
+  return withSessionRetry(async () => {
+    let query = supabase.rpc('search_cases', args).select(caseSelection)
+    if (filters.unassignedOnly) query = query.is('assigned_to', null)
+    if (filters.sort === 'prioridad') query = query.order('priority', { ascending: true })
+    if (filters.sort === 'vencen_antes')
+      query = query.order('due_at', { ascending: true, nullsFirst: false })
+    if (filters.sort === 'antiguas') query = query.order('created_at', { ascending: true })
+    if (filters.sort === 'recientes' || filters.sort === 'prioridad')
+      query = query.order('created_at', { ascending: false })
+    const { data, error } = await query
+      .order('id', { ascending: false })
+      .range(from, from + CASE_PAGE_SIZE - 1)
+    if (error) throw error
+    return mapCases(data)
+  })
+}
+
+export async function countCasesByStatus(filters: CaseSearchFilters): Promise<CaseStatusCount[]> {
+  caseCreatedRangeSchema.parse({ createdFrom: filters.createdFrom, createdTo: filters.createdTo })
+  const args = {
+    scope: filters.scope,
+    statuses: filters.statuses,
+    priorities: filters.priorities,
+    created_from: filters.createdFrom,
+    created_to: filters.createdTo,
+    overdue_only: filters.overdueOnly,
+    search_text:
+      filters.searchText === null ? null : caseSearchTextSchema.parse(filters.searchText),
+  }
+  return withSessionRetry(async () => {
+    const { data, error } = await supabase.rpc('count_cases_by_status', args)
+    if (error) throw error
+    return filters.unassignedOnly ? data.map((row) => ({ ...row, total: row.unassigned })) : data
+  })
 }
 
 export async function getCase(caseId: string): Promise<CaseRecord> {
@@ -88,7 +179,30 @@ export async function getCase(caseId: string): Promise<CaseRecord> {
     .eq('id', caseId)
     .single()
   if (error) throw error
-  return mapCase(data as unknown as CaseRow)
+  return (await mapCases([data]))[0]!
+}
+
+export async function getCaseActions(caseId: string): Promise<CaseActionPermissions> {
+  const { data, error } = await supabase.rpc('get_case_actions', { target_case_id: caseId })
+  if (error) throw error
+  const result: CaseActionPermissions = {}
+  for (const row of data ?? []) {
+    if (!CASE_ACTION_NAMES.some((name) => name === row.action)) continue
+    result[row.action as keyof CaseActionPermissions] = {
+      allowed: row.allowed,
+      reason: row.reason,
+    }
+  }
+  return result
+}
+
+export async function sendCaseMessage(caseId: string, message: string): Promise<number> {
+  const { data, error } = await supabase.rpc('send_case_message', {
+    target_case_id: caseId,
+    message: message.trim(),
+  })
+  if (error) throw error
+  return data
 }
 
 export async function createCase(input: CreateCaseInput): Promise<CaseRecord> {
@@ -104,7 +218,7 @@ export async function createCase(input: CreateCaseInput): Promise<CaseRecord> {
     .select(caseSelection)
     .single()
   if (error) throw error
-  return mapCase(data as unknown as CaseRow)
+  return (await mapCases([data]))[0]!
 }
 
 export async function updateCase(caseId: string, input: UpdateCaseInput): Promise<CaseRecord> {
@@ -124,7 +238,7 @@ export async function updateCase(caseId: string, input: UpdateCaseInput): Promis
     throw new Error('La solicitud ya no se puede editar; actualiza la pantalla')
   }
   if (error) throw error
-  return mapCase(data as unknown as CaseRow)
+  return (await mapCases([data]))[0]!
 }
 
 export async function changeCaseStatus(
@@ -140,11 +254,16 @@ export async function changeCaseStatus(
   return getCase((data as { id: string }).id)
 }
 
-export async function assignCase(caseId: string, assignedTo: string): Promise<CaseRecord> {
+export async function assignCase(
+  caseId: string,
+  assignedTo: string,
+  comment = '',
+): Promise<CaseRecord> {
   const { data, error } = await supabase.rpc('transition_case', {
     target_case_id: caseId,
     requested_action: 'asignar',
     new_assignee_id: assignedTo,
+    action_comment: comment.trim() || null,
   })
   if (error) throw error
   return getCase((data as { id: string }).id)
@@ -153,7 +272,7 @@ export async function assignCase(caseId: string, assignedTo: string): Promise<Ca
 export async function listAssignableProfiles(targetAreaId: string): Promise<AssignableProfile[]> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, full_name, role, area_id, area:areas(name)')
+    .select('id, full_name, avatar_url, role, area_id, area:areas(name)')
     .eq('area_id', targetAreaId)
     .in('role', ['tecnico', 'jefe_area'])
     .order('full_name', { ascending: true })
@@ -162,6 +281,7 @@ export async function listAssignableProfiles(targetAreaId: string): Promise<Assi
     data as unknown as {
       id: string
       full_name: string
+      avatar_url: string | null
       role: AssignableProfile['role']
       area_id: string
       area: { name: string } | null
@@ -169,6 +289,7 @@ export async function listAssignableProfiles(targetAreaId: string): Promise<Assi
   ).map((row) => ({
     id: row.id,
     fullName: row.full_name || 'Usuario sin nombre',
+    avatarPath: row.avatar_url,
     role: row.role,
     areaId: row.area_id,
     areaName: row.area?.name ?? null,
@@ -183,29 +304,38 @@ export async function listCaseHistory(caseId: string): Promise<CaseStatusHistory
   const { data, error } = await supabase
     .from('case_events')
     .select(
-      'id, action, from_status, to_status, comment, created_at, actor:profiles!case_events_actor_id_fkey(full_name), assignee:profiles!case_events_assignee_id_fkey(full_name)',
+      'id, action, from_status, to_status, comment, created_at, actor_id, assignee_id, actor:profiles!case_events_actor_id_fkey(full_name,avatar_url), assignee:profiles!case_events_assignee_id_fkey(full_name)',
     )
     .eq('case_id', caseId)
     .order('created_at', { ascending: false })
   if (error) throw error
-  return (
-    data as unknown as {
-      id: number
-      action: string
-      from_status: CaseStatus | null
-      to_status: CaseStatus
-      comment: string | null
-      created_at: string
-      actor: { full_name: string } | null
-      assignee: { full_name: string } | null
-    }[]
-  ).map((row) => ({
+  const formerNames = await listFormerMemberNames(
+    data.flatMap((row) => [
+      !row.actor ? row.actor_id : null,
+      !row.assignee ? row.assignee_id : null,
+    ]),
+  )
+  return data.map((row) => ({
     id: row.id,
     action: row.action,
+    actorId: row.actor_id ?? undefined,
     previousStatus: row.from_status,
     newStatus: row.to_status,
-    actorName: row.actor?.full_name || 'Usuario sin nombre',
-    assigneeName: row.assignee?.full_name ?? null,
+    actorName: memberDisplayName(
+      row.actor_id,
+      row.actor?.full_name,
+      formerNames,
+      'Usuario sin nombre',
+    ),
+    actorAvatarPath: row.actor?.avatar_url ?? null,
+    assigneeName: row.assignee_id
+      ? memberDisplayName(
+          row.assignee_id,
+          row.assignee?.full_name,
+          formerNames,
+          'Usuario sin nombre',
+        )
+      : null,
     comment: row.comment,
     createdAt: row.created_at,
   }))

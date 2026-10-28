@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
 import { feedback } from '@/services/feedback'
-import { colors, elevation, fonts, radius, spacing, typography } from '@/theme/tokens'
+import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
 
 export interface Segment<T extends string> {
   value: T
@@ -45,12 +45,7 @@ export function SegmentedControl<T extends string>({
             }}
             style={[styles.segment, active && styles.active]}
           >
-            <Text
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.85}
-              style={[styles.label, active && styles.activeLabel]}
-            >
+            <Text numberOfLines={1} style={[styles.label, active && styles.activeLabel]}>
               {segment.label}
             </Text>
             {segment.count === undefined ? null : (
@@ -73,8 +68,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.xs,
     padding: spacing.xs,
-    borderRadius: radius.md,
-    backgroundColor: colors.neutralSoft,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceMuted,
   },
   segment: {
     minHeight: 44,
@@ -84,22 +79,33 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.xs,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
   },
-  active: { backgroundColor: colors.surface, ...elevation.sm },
+  active: { backgroundColor: colors.ink },
   label: {
     ...typography.caption,
     color: colors.text,
     textAlign: 'center',
     flexShrink: 0,
   },
-  activeLabel: { color: colors.text, fontFamily: fonts.bold },
+  activeLabel: { color: colors.white, fontFamily: fonts.bold },
   count: {
+    minWidth: 22,
+    height: 22,
     borderRadius: radius.pill,
     backgroundColor: colors.surface,
     paddingHorizontal: spacing.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  activeCount: { backgroundColor: colors.primarySoft },
-  countText: { ...typography.caption, color: colors.textMuted, fontFamily: fonts.semibold },
+  activeCount: { backgroundColor: colors.primary },
+  countText: {
+    ...typography.caption,
+    color: colors.textMuted,
+    fontFamily: fonts.semibold,
+    lineHeight: typography.caption.fontSize,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+  },
 })

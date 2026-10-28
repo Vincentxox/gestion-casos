@@ -14,6 +14,8 @@ type Props = PropsWithChildren<{
   contentContainerStyle?: ScrollViewProps['contentContainerStyle']
   keyboardVerticalOffset?: number
   style?: StyleProp<ViewStyle>
+  testID?: string
+  refreshControl?: ScrollViewProps['refreshControl']
 }>
 
 /**
@@ -25,6 +27,8 @@ export function KeyboardFormScrollView({
   contentContainerStyle,
   keyboardVerticalOffset = 0,
   style,
+  testID,
+  refreshControl,
 }: Props) {
   const [androidKeyboardHeight, setAndroidKeyboardHeight] = useState(0)
 
@@ -51,6 +55,8 @@ export function KeyboardFormScrollView({
       style={[styles.container, style]}
     >
       <ScrollView
+        testID={testID}
+        refreshControl={refreshControl}
         contentContainerStyle={[
           contentContainerStyle,
           androidKeyboardHeight > 0 ? { paddingBottom: androidKeyboardHeight } : null,

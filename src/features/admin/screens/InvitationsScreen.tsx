@@ -1,5 +1,7 @@
+import { getErrorMessage } from '@/utils/errorMessage'
+import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { useState } from 'react'
-import { Alert, Share, StyleSheet, Text, View } from 'react-native'
+import { Share, StyleSheet, Text, View } from 'react-native'
 
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -40,7 +42,11 @@ export function InvitationsScreen() {
 
   async function shareNotice(invitationEmail: string, invitationRole: AppRole) {
     if (!organizationName?.trim()) {
-      Alert.alert('No fue posible compartir', 'No se pudo identificar el nombre de la empresa.')
+      AppFeedback.show(
+        'No fue posible compartir',
+        'No se pudo identificar el nombre de la empresa.',
+        { tone: 'error' },
+      )
       return
     }
     try {
@@ -52,27 +58,37 @@ export function InvitationsScreen() {
         }),
       })
     } catch {
-      Alert.alert('No fue posible compartir', 'Inténtalo de nuevo desde la invitación registrada.')
+      AppFeedback.show(
+        'No fue posible compartir',
+        'Inténtalo de nuevo desde la invitación registrada.',
+        { tone: 'error' },
+      )
     }
   }
 
   async function submit() {
     const result = invitationSchema.safeParse({ email, role, areaId: selectedAreaId })
     if (!result.success) {
-      Alert.alert('Revisa la invitación', result.error.issues[0]?.message ?? 'Datos inválidos')
+      AppFeedback.show(
+        'Revisa la invitación',
+        result.error.issues[0]?.message ?? 'Datos inválidos',
+        { tone: 'warning' },
+      )
       return
     }
     if (
       role === 'tecnico' &&
       areas.data?.find((area) => area.id === selectedAreaId)?.kind !== 'tecnica'
     ) {
-      Alert.alert('Área incorrecta', 'Un técnico debe pertenecer a un área técnica.')
+      AppFeedback.show('Área incorrecta', 'Un técnico debe pertenecer a un área técnica.', {
+        tone: 'warning',
+      })
       return
     }
     try {
       await create.mutateAsync(result.data)
       setEmail('')
-      Alert.alert(
+      AppFeedback.show(
         'Invitación creada',
         'La persona quedará vinculada al registrarse y confirmar este correo. Comparte el aviso para informarle.',
         [
@@ -82,27 +98,34 @@ export function InvitationsScreen() {
             onPress: () => void shareNotice(result.data.email, result.data.role),
           },
         ],
+        { tone: 'success' },
       )
     } catch (error) {
-      Alert.alert(
-        'No fue posible invitar',
-        error instanceof Error ? error.message : 'Inténtalo de nuevo.',
-      )
+      AppFeedback.show('No fue posible invitar', getErrorMessage(error, 'Inténtalo de nuevo.'), {
+        tone: 'error',
+      })
     }
   }
 
   function confirmRevoke(id: string) {
-    Alert.alert('Revocar invitación', '¿Deseas cancelar esta invitación?', [
-      { text: 'Volver', style: 'cancel' },
-      {
-        text: 'Revocar',
-        style: 'destructive',
-        onPress: () =>
-          void revoke
-            .mutateAsync(id)
-            .catch(() => Alert.alert('No fue posible revocar la invitación.')),
-      },
-    ])
+    AppFeedback.show(
+      'Revocar invitación',
+      '¿Deseas cancelar esta invitación?',
+      [
+        { text: 'Mantener invitación', style: 'cancel' },
+        {
+          text: 'Revocar invitación',
+          style: 'destructive',
+          onPress: () =>
+            void revoke.mutateAsync(id).catch(() =>
+              AppFeedback.show('No fue posible revocar la invitación.', undefined, {
+                tone: 'error',
+              }),
+            ),
+        },
+      ],
+      { tone: 'danger', icon: 'trash-outline' },
+    )
   }
 
   return (
@@ -215,7 +238,7 @@ export function InvitationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { flexGrow: 1, gap: spacing.md, padding: spacing.lg },
+  content: { flexGrow: 1, gap: spacing.md, padding: spacing.lg, paddingTop: spacing.md },
   muted: { color: colors.textMuted, lineHeight: 21 },
   label: { ...typography.body, color: colors.text },
   sectionTitle: { ...typography.title, color: colors.text },

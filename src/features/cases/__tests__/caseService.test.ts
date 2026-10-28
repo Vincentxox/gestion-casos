@@ -1,25 +1,38 @@
 import { supabase } from '@/services/supabase/client'
+import { listFormerMemberNames } from '@/services/supabase/formerMembers'
 
 import {
   assignCase,
   changeCaseStatus,
+  countCasesByStatus,
   createCase,
   getCase,
+  getCaseActions,
   getStatusLabel,
   listAssignableProfiles,
   listCaseHistory,
   listCases,
+  sendCaseMessage,
   updateCase,
 } from '../caseService'
 
-jest.mock('@/services/supabase/client', () => ({ supabase: { from: jest.fn(), rpc: jest.fn() } }))
+jest.mock('@/services/supabase/client', () => ({
+  supabase: { from: jest.fn(), rpc: jest.fn(), auth: { refreshSession: jest.fn() } },
+}))
+jest.mock('@/services/supabase/formerMembers', () => ({
+  listFormerMemberNames: jest.fn(),
+  memberDisplayName: jest.requireActual('@/services/supabase/formerMembers').memberDisplayName,
+}))
 
 const from = supabase.from as jest.Mock
 const rpc = supabase.rpc as jest.Mock
+const refreshSession = supabase.auth.refreshSession as jest.Mock
 const query = {
   select: jest.fn(),
   eq: jest.fn(),
+  is: jest.fn(),
   order: jest.fn(),
+  range: jest.fn(),
   limit: jest.fn(),
   single: jest.fn(),
   insert: jest.fn(),
@@ -41,27 +54,150 @@ const row = {
   priority: 'media',
   status: 'solicitado',
   created_by: 'u1',
-  creator: { full_name: 'Ana' },
+  creator: { full_name: 'Ana', avatar_url: 'org/u1/photo.jpg' },
   assigned_to: null,
   assignee: null,
   created_at: '2026-01-01',
   updated_at: '2026-01-01',
+  due_at: '2026-01-01T08:00:00Z',
+  overdue_stage: 'aceptacion',
+}
+const filters = {
+  scope: 'mi_area' as const,
+  statuses: ['solicitado' as const],
+  priorities: ['alta' as const, 'media' as const],
+  createdFrom: '2026-10-10T00:00:00.000Z',
+  createdTo: null,
+  overdueOnly: true,
+  unassignedOnly: false,
+  searchText: '  energía  ',
+  sort: 'prioridad' as const,
 }
 
 beforeEach(() => {
   jest.clearAllMocks()
+  ;(listFormerMemberNames as jest.Mock).mockResolvedValue(new Map())
   from.mockReturnValue(query)
-  for (const method of ['select', 'eq', 'order', 'insert', 'update', 'in'] as const)
+  rpc.mockReturnValue(query)
+  refreshSession.mockResolvedValue({ data: { session: {} }, error: null })
+  for (const method of ['select', 'eq', 'is', 'order', 'insert', 'update', 'in'] as const)
     query[method].mockReturnValue(query)
   query.single.mockResolvedValue({ data: row, error: null })
   query.limit.mockResolvedValue({ data: [row], error: null })
+  query.range.mockResolvedValue({ data: [row], error: null })
 })
 
-test('lista y mapea solicitudes con nombres de relaciones', async () => {
-  await expect(listCases()).resolves.toMatchObject([
-    { category: 'Equipos', creatorName: 'Ana', targetAreaName: 'Tecnología' },
+test('mapea las acciones del servidor y conserva una respuesta vacía como sin acciones', async () => {
+  rpc.mockResolvedValueOnce({
+    data: [
+      { action: 'aceptar', allowed: true, reason: null },
+      { action: 'rechazar', allowed: false, reason: 'No puedes rechazar' },
+      { action: 'mensaje', allowed: true, reason: null },
+    ],
+    error: null,
+  })
+  await expect(getCaseActions('case-1')).resolves.toEqual({
+    aceptar: { allowed: true, reason: null },
+    rechazar: { allowed: false, reason: 'No puedes rechazar' },
+    mensaje: { allowed: true, reason: null },
+  })
+  expect(rpc).toHaveBeenCalledWith('get_case_actions', { target_case_id: 'case-1' })
+  rpc.mockResolvedValueOnce({ data: [], error: null })
+  await expect(getCaseActions('case-1')).resolves.toEqual({})
+})
+
+test('envía el mensaje recortado por RPC y devuelve el id del evento', async () => {
+  rpc.mockResolvedValueOnce({ data: 42, error: null })
+  await expect(sendCaseMessage('case-1', '  Hola equipo.  ')).resolves.toBe(42)
+  expect(rpc).toHaveBeenCalledWith('send_case_message', {
+    target_case_id: 'case-1',
+    message: 'Hola equipo.',
+  })
+  const error = { code: 'P0001', message: 'La solicitud está cerrada' }
+  rpc.mockResolvedValueOnce({ data: null, error })
+  await expect(sendCaseMessage('case-1', 'Hola')).rejects.toBe(error)
+})
+
+test('propaga el error al consultar acciones', async () => {
+  const error = { code: 'PGRST116', message: 'Sin acceso' }
+  rpc.mockResolvedValueOnce({ data: null, error })
+  await expect(getCaseActions('case-1')).rejects.toBe(error)
+})
+
+test('pagina y ordena solicitudes en el servidor y conserva los nombres de relaciones', async () => {
+  await expect(listCases(filters, 2)).resolves.toMatchObject([
+    {
+      category: 'Equipos',
+      creatorName: 'Ana',
+      creatorAvatarPath: 'org/u1/photo.jpg',
+      targetAreaName: 'Tecnología',
+      dueAt: '2026-01-01T08:00:00Z',
+      overdueStage: 'aceptacion',
+    },
   ])
-  expect(query.limit).toHaveBeenCalledWith(100)
+  expect(rpc).toHaveBeenCalledWith('search_cases', {
+    scope: 'mi_area',
+    statuses: ['solicitado'],
+    priorities: ['alta', 'media'],
+    created_from: '2026-10-10T00:00:00.000Z',
+    created_to: null,
+    overdue_only: true,
+    search_text: 'energía',
+  })
+  expect(query.range).toHaveBeenCalledWith(60, 89)
+  expect(query.order.mock.calls).toEqual([
+    ['priority', { ascending: true }],
+    ['created_at', { ascending: false }],
+    ['id', { ascending: false }],
+  ])
+  expect(query.select.mock.calls[0]?.[0]).toContain('due_at, overdue_stage')
+})
+
+test('ordena por fecha e id y cuenta con los filtros nuevos', async () => {
+  await listCases({ ...filters, sort: 'recientes' }, 0)
+  expect(query.order.mock.calls.map(([field]) => field)).toEqual(['created_at', 'id'])
+  rpc.mockResolvedValue({
+    data: [{ status: 'solicitado', total: 4, overdue: 2, unassigned: 4 }],
+    error: null,
+  })
+  await expect(countCasesByStatus(filters)).resolves.toEqual([
+    { status: 'solicitado', total: 4, overdue: 2, unassigned: 4 },
+  ])
+  expect(rpc).toHaveBeenLastCalledWith('count_cases_by_status', {
+    scope: 'mi_area',
+    statuses: ['solicitado'],
+    priorities: ['alta', 'media'],
+    created_from: '2026-10-10T00:00:00.000Z',
+    created_to: null,
+    overdue_only: true,
+    search_text: 'energía',
+  })
+})
+
+test('Sin asignar conserva el alcance y usa la columna unassigned de aceptadas', async () => {
+  const unassigned = { ...filters, statuses: ['aceptado' as const], unassignedOnly: true }
+  await listCases(unassigned, 0)
+  expect(query.is).toHaveBeenCalledWith('assigned_to', null)
+  expect(rpc).toHaveBeenCalledWith(
+    'search_cases',
+    expect.objectContaining({ scope: 'mi_area', statuses: ['aceptado'] }),
+  )
+  rpc.mockResolvedValue({
+    data: [{ status: 'aceptado', total: 5, overdue: 1, unassigned: 2 }],
+    error: null,
+  })
+  await expect(countCasesByStatus(unassigned)).resolves.toEqual([
+    { status: 'aceptado', total: 2, overdue: 1, unassigned: 2 },
+  ])
+})
+
+test('una página conserva los nombres históricos de integrantes dados de baja', async () => {
+  ;(listFormerMemberNames as jest.Mock).mockResolvedValue(new Map([['u1', 'Ana anterior']]))
+  query.range.mockResolvedValue({ data: [{ ...row, creator: null }], error: null })
+  await expect(listCases(filters, 0)).resolves.toMatchObject([
+    { creatorName: 'Ana anterior (dado de baja)' },
+  ])
+  expect(listFormerMemberNames).toHaveBeenCalledWith(['u1', null])
 })
 
 test('lee una solicitud por id', async () => {
@@ -108,6 +244,14 @@ test('transiciona mediante RPC sin actualizar status directamente', async () => 
     target_case_id: 'case-1',
     requested_action: 'asignar',
     new_assignee_id: 'tech-1',
+    action_comment: null,
+  })
+  await assignCase('case-1', 'tech-2', '  Cambio de turno  ')
+  expect(rpc).toHaveBeenCalledWith('transition_case', {
+    target_case_id: 'case-1',
+    requested_action: 'asignar',
+    new_assignee_id: 'tech-2',
+    action_comment: 'Cambio de turno',
   })
   expect(query.update).not.toHaveBeenCalled()
 })
@@ -142,16 +286,55 @@ test('lee eventos inmutables con nombre de actor y asignado', async () => {
         to_status: 'asignado',
         comment: null,
         created_at: '2026-01-01',
-        actor: { full_name: 'Jefe' },
+        actor_id: 'jefe-1',
+        assignee_id: 'tech-1',
+        actor: { full_name: 'Jefe', avatar_url: 'org/jefe-1/photo.jpg' },
         assignee: { full_name: 'Tomás' },
       },
     ],
     error: null,
   })
   await expect(listCaseHistory('case-1')).resolves.toMatchObject([
-    { action: 'asignar', actorName: 'Jefe', assigneeName: 'Tomás' },
+    {
+      action: 'asignar',
+      actorName: 'Jefe',
+      actorAvatarPath: 'org/jefe-1/photo.jpg',
+      assigneeName: 'Tomás',
+    },
   ])
   expect(from).toHaveBeenCalledWith('case_events')
+})
+
+test('recupera del historial los nombres de personas dadas de baja', async () => {
+  ;(listFormerMemberNames as jest.Mock).mockResolvedValue(
+    new Map([
+      ['jefe-1', 'Jefa anterior'],
+      ['tech-1', 'Técnico anterior'],
+    ]),
+  )
+  query.order.mockResolvedValue({
+    data: [
+      {
+        id: 2,
+        action: 'reasignar',
+        from_status: 'en_ejecucion',
+        to_status: 'en_ejecucion',
+        comment: 'Cambio de turno',
+        created_at: '2026-10-15',
+        actor_id: 'jefe-1',
+        assignee_id: 'tech-1',
+        actor: null,
+        assignee: null,
+      },
+    ],
+    error: null,
+  })
+  await expect(listCaseHistory('case-1')).resolves.toMatchObject([
+    {
+      actorName: 'Jefa anterior (dado de baja)',
+      assigneeName: 'Técnico anterior (dado de baja)',
+    },
+  ])
 })
 
 test('traduce los diez estados', () => {
@@ -161,10 +344,50 @@ test('traduce los diez estados', () => {
 
 test('propaga errores del listado y del detalle', async () => {
   const error = new Error('sin conexión')
-  query.limit.mockResolvedValue({ data: null, error })
-  await expect(listCases()).rejects.toBe(error)
+  query.range.mockResolvedValue({ data: null, error })
+  await expect(listCases(filters, 0)).rejects.toBe(error)
   query.single.mockResolvedValue({ data: null, error })
   await expect(getCase('case-1')).rejects.toBe(error)
+})
+
+test.each([401, 'PGRST301', 'PGRST303'])(
+  'renueva la sesión una vez y reintenta una vez el listado con error %s',
+  async (failure) => {
+    const error = typeof failure === 'number' ? { status: failure } : { code: failure }
+    query.range
+      .mockResolvedValueOnce({ data: null, error })
+      .mockResolvedValueOnce({ data: [row], error: null })
+    await expect(listCases(filters, 0)).resolves.toHaveLength(1)
+    expect(refreshSession).toHaveBeenCalledTimes(1)
+    expect(rpc).toHaveBeenCalledTimes(2)
+    expect(query.range).toHaveBeenCalledTimes(2)
+  },
+)
+
+test('no vuelve a intentar si el JWT sigue fallando después de renovar', async () => {
+  const error = { code: 'PGRST303', message: 'JWT expired' }
+  query.range.mockResolvedValue({ data: null, error })
+  await expect(listCases(filters, 0)).rejects.toBe(error)
+  expect(refreshSession).toHaveBeenCalledTimes(1)
+  expect(query.range).toHaveBeenCalledTimes(2)
+})
+
+test('no reintenta el conteo si falla la renovación de sesión', async () => {
+  const error = { status: 401, message: 'JWT expired' }
+  rpc.mockResolvedValue({ data: null, error })
+  refreshSession.mockResolvedValueOnce({ data: { session: null }, error: new Error('offline') })
+  await expect(countCasesByStatus(filters)).rejects.toBe(error)
+  expect(refreshSession).toHaveBeenCalledTimes(1)
+  expect(rpc).toHaveBeenCalledTimes(1)
+})
+
+test('propaga errores de conteo y no envía búsquedas de más de 100 caracteres', async () => {
+  const error = new Error('sin conexión')
+  rpc.mockResolvedValue({ data: null, error })
+  await expect(countCasesByStatus(filters)).rejects.toBe(error)
+  await expect(listCases({ ...filters, searchText: 'x'.repeat(101) }, 0)).rejects.toThrow(
+    'La búsqueda no puede exceder 100 caracteres',
+  )
 })
 
 test('propaga errores de escritura y de transición', async () => {
@@ -215,6 +438,15 @@ test('usa nombres de reserva cuando faltan relaciones visibles', async () => {
     category: 'Tipo no disponible',
     requestingAreaName: 'Área no disponible',
   })
+})
+
+test('muestra el nombre histórico sin leer el perfil de otra empresa', async () => {
+  ;(listFormerMemberNames as jest.Mock).mockResolvedValue(new Map([['u1', 'Ana histórica']]))
+  query.single.mockResolvedValue({ data: { ...row, creator: null }, error: null })
+  await expect(getCase('case-1')).resolves.toMatchObject({
+    creatorName: 'Ana histórica (dado de baja)',
+  })
+  expect(listFormerMemberNames).toHaveBeenCalledWith(['u1', null])
 })
 
 test('propaga errores de personal e historial', async () => {

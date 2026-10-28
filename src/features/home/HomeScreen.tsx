@@ -1,68 +1,145 @@
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs'
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useFocusEffect } from '@react-navigation/native'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-import { StatTile } from '@/components/stats/StatTile'
-import { Avatar } from '@/components/ui/Avatar'
-import { Button } from '@/components/ui/Button'
-import { Card } from '@/components/ui/Card'
-import { Icon } from '@/components/ui/Icon'
-import { IconTile } from '@/components/ui/IconTile'
-import { EmptyState } from '@/components/feedback/EmptyState'
-import { OfflineBanner } from '@/components/feedback/OfflineBanner'
-import { hasPermission } from '@/features/auth/permissions'
+import { NexoLogo } from '@/components/branding/NexoLogo'
 import { ROLE_LABELS } from '@/features/auth/types'
-import { useCases } from '@/features/cases/useCases'
-import { CaseCard } from '@/features/cases/components/CaseCard'
-import { SectionHeader } from '@/components/ui/SectionHeader'
-import { SkeletonList } from '@/components/ui/SkeletonList'
-import type { MainTabParamList } from '@/navigation/types'
+import { OfflineBanner } from '@/components/feedback/OfflineBanner'
+import { UndoSnackbar } from '@/components/feedback/UndoSnackbar'
+import { RequestState } from '@/components/feedback/RequestState'
+import { Icon } from '@/components/ui/Icon'
+import { Avatar } from '@/components/ui/Avatar'
+import { OPEN_CASE_STATUSES } from '@/features/cases/caseSearch'
+import { useCaseCounts } from '@/features/cases/useCases'
+import { getTutorialFor } from '@/features/help/helpContent'
+import { TourTarget } from '@/features/help/tour/TourTarget'
+import { useGuidedTour } from '@/features/help/tour/useGuidedTour'
+import { getTourProgress } from '@/features/help/tour/tourProgress'
+import { notificationTimeLabel } from '@/features/notifications/notificationPresentation'
+import { useNotifications } from '@/features/notifications/useNotifications'
+import type { MainTabParamList, RootStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
-import { colors, fonts, phaseColors, radius, spacing, typography } from '@/theme/tokens'
+import { colors, fonts, phaseColors, radius, spacing, tone, typography } from '@/theme/tokens'
 
 import {
-  getAdminAlerts,
-  getGreeting,
-  getHomeHero,
-  getHomeRecentCases,
-  getHomeTileTarget,
-  getHomeTiles,
+  getHomeCaseCards,
+  getHomeCaseView,
+  getTodayNotifications,
+  NEXT_STEP_BUTTON_LABELS,
+  NEXT_STEP_LABELS,
 } from './homePresentation'
+import { useApprovedOrganizationNotice } from './useApprovedOrganizationNotice'
 import { useHomeSummary } from './useHomeSummary'
+import { useNextSteps } from './useNextSteps'
 
 type Props = BottomTabScreenProps<MainTabParamList, 'Home'>
 
+const CARD_TONES = {
+  danger: colors.error,
+  new: phaseColors.nueva.fg,
+  course: phaseColors.curso.fg,
+  review: phaseColors.revision.fg,
+} as const
+
 export function HomeScreen({ navigation }: Props) {
   const profile = useAuthStore((state) => state.profile)
-  const summary = useHomeSummary(Boolean(profile?.organizationId))
-  const showRecent = Boolean(profile?.organizationId)
-  const cases = useCases(showRecent)
-  const [today] = useState(() => new Date())
+  useApprovedOrganizationNotice(profile)
+  const tourReady = useGuidedTour((state) => state.ready)
+  const tourSeen = useGuidedTour((state) => state.seen)
+  const tourStarted = useGuidedTour((state) => state.started)
+  const tourHiddenOnHome = useGuidedTour((state) => state.hiddenOnHome)
+  const startTour = useGuidedTour((state) => state.start)
+  const hideTourOnHome = useGuidedTour((state) => state.hideOnHome)
+  const showTourOnHome = useGuidedTour((state) => state.showOnHome)
+  const [showTourUndo, setShowTourUndo] = useState(false)
+  const tourUndoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(
+    () => () => {
+      if (tourUndoTimer.current) clearTimeout(tourUndoTimer.current)
+    },
+    [],
+  )
+  const enabled = Boolean(profile?.organizationId)
+  const summary = useHomeSummary(enabled)
+  const nextSteps = useNextSteps(enabled)
+  const notifications = useNotifications()
+  const homeCaseView = profile
+    ? getHomeCaseView(profile.role, summary.data?.area_kind ?? null)
+    : null
+  const countScope = homeCaseView?.scope
+  const counts = useCaseCounts(
+    {
+      scope: countScope ?? 'todas',
+      statuses: OPEN_CASE_STATUSES,
+      priorities: null,
+      createdFrom: null,
+      createdTo: null,
+      overdueOnly: false,
+      unassignedOnly: false,
+      searchText: null,
+      sort: 'recientes',
+    },
+    enabled && Boolean(countScope),
+  )
+  const [now, setNow] = useState(() => new Date())
   const refetchSummary = summary.refetch
-  const refetchCases = cases.refetch
+  const refetchNext = nextSteps.refetch
+  const refetchCounts = counts.refetch
+  const refetchNotifications = notifications.refetch
   useFocusEffect(
     useCallback(() => {
-      void refetchSummary()
-      if (showRecent) void refetchCases()
-    }, [refetchSummary, refetchCases, showRecent]),
+      setNow(new Date())
+      if (enabled) {
+        void refetchSummary()
+        void refetchNext()
+        if (countScope) void refetchCounts()
+        void refetchNotifications()
+      }
+    }, [enabled, countScope, refetchSummary, refetchNext, refetchCounts, refetchNotifications]),
   )
+  const openNotifications = () =>
+    navigation
+      .getParent<NativeStackNavigationProp<RootStackParamList>>()
+      ?.navigate('NotificationsFlow')
+  const items = nextSteps.data?.items ?? []
+  const currentStep = items[0]
+  const caseCards = getHomeCaseCards(counts.data ?? [])
+  const overdueCount = caseCards.find((card) => card.key === 'vencidas')?.count ?? 0
+  const inProgressCount = caseCards.find((card) => card.key === 'en_curso')?.count ?? 0
+  const attentionLoading = homeCaseView
+    ? counts.isLoading || nextSteps.isLoading
+    : summary.isLoading
+  const attentionError = counts.isError || nextSteps.isError || (!homeCaseView && summary.isError)
+  const attentionReady = Boolean(homeCaseView) && !attentionLoading && !attentionError
   if (!profile) return null
-
-  const canCreate = hasPermission(profile.role, 'cases.create') && Boolean(profile.areaId)
-  const alerts = summary.data?.admin ? getAdminAlerts(summary.data.admin) : []
-  const tiles = summary.data ? getHomeTiles(profile, summary.data).slice(0, 4) : []
-  const hero = summary.data ? getHomeHero(profile, summary.data) : null
-  const rawFirstName = profile.fullName.trim().split(/\s+/)[0] || 'usuario'
-  const firstName = rawFirstName.charAt(0).toLocaleUpperCase('es-GT') + rawFirstName.slice(1)
-  const rawDateLabel = new Intl.DateTimeFormat('es-GT', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  }).format(today)
-  const dateLabel = rawDateLabel.charAt(0).toLocaleUpperCase('es-GT') + rawDateLabel.slice(1)
-  const recentCases = getHomeRecentCases(profile, summary.data?.area_kind ?? null, cases.data ?? [])
+  const overdueMessage =
+    profile.role === 'solicitante'
+      ? overdueCount === 1
+        ? 'Pasó su plazo; el área técnica ya fue avisada'
+        : 'Pasaron su plazo; el área técnica ya fue avisada'
+      : overdueCount === 1
+        ? 'Pasó su plazo; atiéndela primero'
+        : 'Pasaron su plazo; atiéndelas primero'
+  const today = getTodayNotifications(notifications.data ?? [], now)
+  const areaName = profile.areaName || 'Administración'
+  const tutorialSteps = getTutorialFor(profile.role, '', Boolean(profile.areaId))
+  const tourProgress = getTourProgress(tutorialSteps, tourSeen)
+  const tourAction = tourStarted ? 'Sigue' : 'Empezar'
+  function hideTourCard() {
+    void hideTourOnHome()
+    if (tourUndoTimer.current) clearTimeout(tourUndoTimer.current)
+    setShowTourUndo(true)
+    tourUndoTimer.current = setTimeout(() => setShowTourUndo(false), 5000)
+  }
+  function undoHideTourCard() {
+    if (tourUndoTimer.current) clearTimeout(tourUndoTimer.current)
+    tourUndoTimer.current = null
+    setShowTourUndo(false)
+    void showTourOnHome()
+  }
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
@@ -73,247 +150,531 @@ export function HomeScreen({ navigation }: Props) {
             refreshing={summary.isRefetching}
             onRefresh={() => {
               void summary.refetch()
-              if (showRecent) void cases.refetch()
+              void nextSteps.refetch()
+              if (countScope) void counts.refetch()
+              void notifications.refetch()
             }}
           />
         }
       >
-        <View style={styles.header}>
-          <View style={styles.headerTop}>
-            <View style={styles.identity}>
-              <Text style={styles.eyebrow}>{dateLabel}</Text>
-              <Text accessibilityRole="header" style={styles.title}>
-                {getGreeting(today.getHours())}, {firstName}
+        <View style={styles.brandRow}>
+          <View style={styles.brand}>
+            <NexoLogo size={30} />
+            <View>
+              <Text accessibilityRole="header" style={styles.areaName}>
+                {areaName}
               </Text>
-              <Text style={styles.subtitle}>
-                {ROLE_LABELS[profile.role]} · {profile.areaName || 'Sin área asignada'}
-              </Text>
+              <Text style={styles.roleName}>{ROLE_LABELS[profile.role]}</Text>
             </View>
-            <Avatar name={profile.fullName} id={profile.id} size={44} />
+          </View>
+          <View style={styles.headerActions}>
+            <TourTarget id="home-bell">
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={
+                  summary.isError
+                    ? 'Avisos, conteo no disponible'
+                    : `Avisos, ${summary.data?.notificaciones_sin_leer ?? 0} sin leer`
+                }
+                onPress={openNotifications}
+                style={styles.bell}
+              >
+                <Icon name="notifications-outline" color={colors.text} size={21} />
+                {(summary.data?.notificaciones_sin_leer ?? 0) > 0 ? (
+                  <Text style={styles.bellCount}>{summary.data?.notificaciones_sin_leer}</Text>
+                ) : null}
+              </Pressable>
+            </TourTarget>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Abrir perfil"
+              onPress={() => navigation.navigate('Profile')}
+              style={styles.profileAction}
+            >
+              <Avatar
+                name={profile.fullName}
+                id={profile.id}
+                avatarPath={profile.avatarUrl}
+                size={36}
+              />
+            </Pressable>
           </View>
         </View>
 
         <OfflineBanner />
-
-        {summary.isLoading ? <SkeletonList count={2} /> : null}
-        {summary.isError ? (
-          <View style={styles.notice}>
-            <Text style={styles.noticeTitle}>No pudimos cargar el Inicio</Text>
+        <TourTarget id="home-attention">
+          {attentionLoading && !attentionError ? (
+            <View
+              accessibilityLabel="Cargando atención de Inicio"
+              style={styles.attentionLoading}
+            />
+          ) : null}
+          {attentionReady && overdueCount > 0 ? (
             <Pressable
               accessibilityRole="button"
-              onPress={() => void summary.refetch()}
-              style={styles.link}
+              accessibilityLabel={`${overdueCount} ${overdueCount === 1 ? 'solicitud vencida' : 'solicitudes vencidas'}. ${overdueMessage}`}
+              onPress={() =>
+                navigation.navigate('CasesTab', {
+                  screen: 'Cases',
+                  params: { scope: homeCaseView!.scope, status: 'abiertas', overdueOnly: true },
+                })
+              }
+              style={({ pressed }) => [
+                styles.attentionCard,
+                styles.attentionDanger,
+                pressed && styles.pressedRow,
+              ]}
             >
-              <Text style={styles.linkText}>Reintentar</Text>
+              <View style={[styles.attentionIcon, styles.attentionDangerIcon]}>
+                <Icon name="warning-outline" color={colors.dangerText} size={22} />
+              </View>
+              <View style={styles.attentionCopy}>
+                <Text style={[styles.attentionTitle, styles.attentionDangerText]}>
+                  {overdueCount} {overdueCount === 1 ? 'solicitud vencida' : 'solicitudes vencidas'}
+                </Text>
+                <Text style={styles.attentionDescription}>{overdueMessage}</Text>
+              </View>
+              <Icon name="chevron-forward" color={colors.dangerText} size="inline" />
+            </Pressable>
+          ) : null}
+          {attentionReady && overdueCount === 0 && currentStep ? (
+            <View style={styles.attentionGroup}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${NEXT_STEP_LABELS[currentStep.action]}. ${currentStep.title}. ${NEXT_STEP_BUTTON_LABELS[currentStep.action]}, abre el detalle`}
+                onPress={() =>
+                  navigation.navigate('CasesTab', {
+                    screen: 'CaseDetail',
+                    params: { caseId: currentStep.id },
+                    initial: false,
+                  })
+                }
+                style={[styles.attentionCard, styles.attentionInfo]}
+              >
+                <View style={[styles.attentionIcon, styles.attentionInfoIcon]}>
+                  <Icon name="arrow-forward-circle-outline" color={colors.primary} size={22} />
+                </View>
+                <View style={styles.attentionCopy}>
+                  <Text style={[styles.attentionTitle, styles.attentionInfoText]}>
+                    {NEXT_STEP_LABELS[currentStep.action]}
+                  </Text>
+                  <Text style={styles.attentionDescription} numberOfLines={2}>
+                    {currentStep.title}
+                  </Text>
+                </View>
+              </Pressable>
+              {(nextSteps.data?.total ?? items.length) > 1 ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Ver ${(nextSteps.data?.total ?? items.length) - 1} ${(nextSteps.data?.total ?? items.length) === 2 ? 'paso' : 'pasos'} más en Solicitudes`}
+                  onPress={() =>
+                    navigation.navigate('CasesTab', {
+                      screen: 'Cases',
+                      params: { scope: homeCaseView!.scope, status: 'abiertas' },
+                    })
+                  }
+                  style={styles.moreSteps}
+                >
+                  <Text style={styles.actionText}>
+                    y {(nextSteps.data?.total ?? items.length) - 1} más ›
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
+          {attentionReady && overdueCount === 0 && !currentStep ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Todo a tiempo. ${inProgressCount === 0 ? 'Nada en curso' : `${inProgressCount} ${inProgressCount === 1 ? 'trabajo en curso' : 'trabajos en curso'}, ninguno vencido`}. Ver`}
+              onPress={() =>
+                navigation.navigate('CasesTab', {
+                  screen: 'Cases',
+                  params: { scope: homeCaseView!.scope, status: 'abiertas' },
+                })
+              }
+              style={({ pressed }) => [
+                styles.attentionCard,
+                styles.attentionSuccess,
+                pressed && styles.pressedRow,
+              ]}
+            >
+              <View style={[styles.attentionIcon, styles.attentionSuccessIcon]}>
+                <Icon name="checkmark" color={colors.success} size={22} />
+              </View>
+              <View style={styles.attentionCopy}>
+                <Text style={[styles.attentionTitle, styles.attentionSuccessText]}>
+                  Todo a tiempo
+                </Text>
+                <Text style={styles.attentionDescription}>
+                  {inProgressCount === 0
+                    ? 'Nada en curso'
+                    : `${inProgressCount} ${inProgressCount === 1 ? 'trabajo en curso' : 'trabajos en curso'}, ninguno vencido`}
+                </Text>
+              </View>
+            </Pressable>
+          ) : null}
+        </TourTarget>
+        <View style={styles.section}>
+          <View style={styles.sectionTitleRow}>
+            <Text accessibilityRole="header" style={styles.sectionTitle}>
+              {homeCaseView?.title ?? 'Solicitudes'}
+            </Text>
+            {homeCaseView ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Ver todas las solicitudes abiertas"
+                onPress={() =>
+                  navigation.navigate('CasesTab', {
+                    screen: 'Cases',
+                    params: { scope: homeCaseView.scope, status: 'abiertas' },
+                  })
+                }
+                style={styles.smallAction}
+              >
+                <Text style={styles.actionText}>Ver todas</Text>
+              </Pressable>
+            ) : null}
+          </View>
+          {!homeCaseView && summary.isError ? (
+            <RequestState
+              kind="error"
+              title="No pudimos cargar tus solicitudes"
+              onRetry={() => void summary.refetch()}
+            />
+          ) : !homeCaseView || counts.isLoading ? (
+            <RequestState kind="loading" title="Cargando tus solicitudes…" />
+          ) : null}
+          {counts.isError ? (
+            <RequestState
+              kind="error"
+              title="No pudimos cargar tus solicitudes"
+              onRetry={() => void counts.refetch()}
+            />
+          ) : null}
+          {homeCaseView && !counts.isLoading && !counts.isError ? (
+            <TourTarget id="home-area-grid" style={styles.caseGrid}>
+              {caseCards
+                .filter((card) => card.key !== 'vencidas')
+                .map((card) => (
+                  <Pressable
+                    key={card.key}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${card.label}, ${card.count} ${card.count === 1 ? 'solicitud' : 'solicitudes'}`}
+                    onPress={() =>
+                      navigation.navigate('CasesTab', {
+                        screen: 'Cases',
+                        params: {
+                          scope: homeCaseView.scope,
+                          status: 'abiertas',
+                          ...card.filter,
+                        },
+                      })
+                    }
+                    style={({ pressed }) => [styles.caseTile, pressed && styles.pressedRow]}
+                  >
+                    <Text maxFontSizeMultiplier={1.3} style={styles.caseCount}>
+                      {card.count}
+                    </Text>
+                    <View style={styles.caseTileLabel}>
+                      <View style={[styles.caseDot, { backgroundColor: CARD_TONES[card.tone] }]} />
+                      <Text numberOfLines={2} maxFontSizeMultiplier={1.3} style={styles.caseLabel}>
+                        {card.label}
+                      </Text>
+                    </View>
+                  </Pressable>
+                ))}
+            </TourTarget>
+          ) : null}
+        </View>
+
+        {tourReady && !tourHiddenOnHome && !tourProgress.complete && tourProgress.nextStep ? (
+          <View style={styles.firstStepsCard}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Aprende Nexo en ${tutorialSteps.length} pasos, ${tourProgress.seenCount} de ${tutorialSteps.length}. ${tourAction}: ${tourProgress.nextStep.title}`}
+              onPress={() => void startTour(tutorialSteps, tourProgress.nextIndex)}
+              style={({ pressed }) => [
+                styles.firstStepsAction,
+                pressed && styles.firstStepsPressed,
+              ]}
+            >
+              <View style={styles.firstStepsCopy}>
+                <View style={styles.firstStepsHeading}>
+                  <Text style={styles.firstStepsTitle}>
+                    Aprende Nexo en {tutorialSteps.length} pasos
+                  </Text>
+                  <Text style={styles.firstStepsCount}>
+                    {tourProgress.seenCount} de {tutorialSteps.length}
+                  </Text>
+                </View>
+                <View style={styles.firstStepsTrack}>
+                  <View
+                    style={[
+                      styles.firstStepsFill,
+                      { width: `${(tourProgress.seenCount / tutorialSteps.length) * 100}%` },
+                    ]}
+                  />
+                </View>
+                <Text numberOfLines={1} style={styles.firstStepsNext}>
+                  {tourAction}: {tourProgress.nextStep.title} ›
+                </Text>
+              </View>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Ocultar Aprende Nexo"
+              onPress={hideTourCard}
+              style={styles.firstStepsHide}
+            >
+              <Icon name="close" color={colors.textMuted} />
             </Pressable>
           </View>
         ) : null}
 
-        {!summary.isLoading && hero ? (
-          hero.count > 0 ? (
-            <View style={styles.hero}>
-              <Text style={styles.heroEyebrow}>{hero.eyebrow}</Text>
-              <Text style={styles.heroTitle}>{hero.title}</Text>
-              {hero.detail.length > 0 ? (
-                <View style={styles.heroDetails}>
-                  {hero.detail.map((part) => (
-                    <Pressable
-                      accessibilityLabel={part.label}
-                      accessibilityRole="button"
-                      key={part.id}
-                      onPress={() =>
-                        navigation.navigate('CasesTab', {
-                          screen: 'Cases',
-                          params: getHomeTileTarget(profile, part.id),
-                        })
-                      }
-                      style={[styles.heroTag, part.id.startsWith('reportes_') && styles.reportTag]}
-                    >
-                      <Text
-                        style={[
-                          styles.heroDetail,
-                          part.id.startsWith('reportes_') && styles.reportTagText,
-                        ]}
-                      >
-                        {part.label}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              ) : null}
-              {hero.supportingText ? (
-                <Text style={styles.heroSupport}>{hero.supportingText}</Text>
-              ) : null}
-              <View style={styles.heroButton}>
-                <Button
-                  label={hero.actionLabel}
-                  icon="arrow-forward"
-                  variant="secondary"
-                  onPress={() =>
-                    navigation.navigate('CasesTab', { screen: 'Cases', params: hero.target })
-                  }
-                />
-              </View>
-            </View>
-          ) : (
-            <Card>
-              <EmptyState
-                title="Todo al día"
-                message="No tienes solicitudes pendientes en este momento."
-                variant="allDone"
-                compact
-              />
-            </Card>
-          )
-        ) : null}
-
-        {alerts.length > 0 ? (
-          <View style={styles.notice}>
-            <View style={styles.alertHeading}>
-              <IconTile icon="warning-outline" phase="detenida" size={36} />
-              <Text style={styles.noticeTitle}>Completa la configuración</Text>
-            </View>
-            {alerts.map((alert) => (
-              <Pressable
-                accessibilityRole="button"
-                key={`${alert.screen}-${alert.label}`}
-                onPress={() => navigation.navigate('Administration', { screen: alert.screen })}
-                style={styles.alertRow}
-              >
-                <Icon name="alert-circle-outline" size="inline" color={colors.warning} />
-                <Text style={styles.alertText}>{alert.label}</Text>
-                <Icon name="chevron-forward" size="inline" color={colors.textMuted} />
-              </Pressable>
-            ))}
-          </View>
-        ) : null}
-
-        {!summary.isLoading && tiles.length > 0 ? (
-          <View style={styles.section}>
-            <SectionHeader title="Tus números" />
-            <View style={styles.tileGrid}>
-              {tiles.map((tile) => (
-                <StatTile
-                  key={tile.id}
-                  {...tile}
-                  onPress={() =>
-                    navigation.navigate('CasesTab', {
-                      screen: 'Cases',
-                      params: getHomeTileTarget(profile, tile.id),
-                    })
-                  }
-                />
-              ))}
-            </View>
-          </View>
-        ) : null}
-
-        {!profile.areaId && profile.role !== 'administrador' && profile.role !== 'auditor' ? (
-          <View style={styles.notice}>
-            <Text style={styles.noticeTitle}>Área pendiente de asignación</Text>
-            <Text style={styles.message}>
-              Tu administrador aún no te asignó un área. Sin área no puedes crear solicitudes.
+        <View style={styles.section}>
+          <View style={styles.sectionTitleRow}>
+            <Text accessibilityRole="header" style={styles.sectionTitle}>
+              Hoy
             </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Ver todos los avisos"
+              onPress={openNotifications}
+              style={styles.smallAction}
+            >
+              <Text style={styles.actionText}>Ver todo</Text>
+            </Pressable>
           </View>
-        ) : null}
-        {canCreate ? (
-          <Button
-            label="Nueva solicitud"
-            icon="add"
-            onPress={() => navigation.navigate('CasesTab', { screen: 'CreateCase' })}
-          />
-        ) : null}
-        {showRecent ? (
-          <View style={styles.section}>
-            <View style={styles.recentHeading}>
-              <SectionHeader title="Lo que te toca hoy" />
-              <Button
-                label="Ver todo"
-                variant="text"
-                onPress={() => navigation.navigate('CasesTab', { screen: 'Cases' })}
-              />
-            </View>
-            {cases.isError ? (
-              <Pressable accessibilityRole="button" onPress={() => void cases.refetch()}>
-                <Text style={styles.linkText}>No fue posible cargar la lista. Reintentar</Text>
-              </Pressable>
-            ) : cases.isLoading ? (
-              <SkeletonList count={3} />
-            ) : recentCases.length === 0 ? (
-              <EmptyState
-                title="Sin solicitudes recientes"
-                message="Aquí aparecerán las solicitudes que puedas consultar."
-                variant="allDone"
-                compact
-              />
-            ) : (
-              recentCases.map((item) => (
-                <CaseCard
-                  key={item.id}
-                  item={item}
-                  onPress={() =>
-                    navigation.navigate('CasesTab', {
-                      screen: 'CaseDetail',
-                      params: { caseId: item.id },
-                      initial: false,
-                    })
-                  }
-                />
-              ))
-            )}
-          </View>
-        ) : null}
+          {notifications.isLoading ? (
+            <RequestState kind="loading" title="Cargando novedades…" />
+          ) : null}
+          {notifications.isError ? (
+            <RequestState
+              kind="error"
+              title="No pudimos cargar las novedades"
+              onRetry={() => void notifications.refetch()}
+            />
+          ) : null}
+          {!notifications.isLoading && !notifications.isError && today.length === 0 ? (
+            <Text style={styles.quietEmpty}>Sin novedades hoy</Text>
+          ) : null}
+          {today.map((item) => (
+            <Pressable
+              key={item.id}
+              accessibilityRole="button"
+              accessibilityLabel={`${item.title}, ${item.caseNumber ?? 'solicitud'}`}
+              onPress={() =>
+                navigation.navigate('CasesTab', {
+                  screen: 'CaseDetail',
+                  params: { caseId: item.caseId },
+                  initial: false,
+                })
+              }
+              style={({ pressed }) => [styles.todayRow, pressed && styles.pressedRow]}
+            >
+              {item.actorName ? (
+                <Avatar name={item.actorName} id={item.actorId ?? item.actorName} size={44} />
+              ) : (
+                <View style={styles.todayIcon}>
+                  <Icon
+                    name={
+                      item.action === 'mensaje' ? 'chatbubble-outline' : 'notifications-outline'
+                    }
+                    size={20}
+                    color={colors.primary}
+                  />
+                </View>
+              )}
+              <View style={styles.todayCopy}>
+                <Text style={styles.todayTitle}>
+                  {item.action === 'mensaje' && item.actorName
+                    ? `${item.actorName} escribió en ${item.caseNumber ?? item.caseTitle ?? 'una solicitud'}`
+                    : item.title}
+                </Text>
+                {item.comment ? (
+                  <Text numberOfLines={2} style={styles.todayComment}>
+                    «{item.comment}»
+                  </Text>
+                ) : null}
+                <Text style={styles.todayMeta}>
+                  {item.action === 'mensaje' && item.actorName
+                    ? ''
+                    : `${item.caseNumber ?? item.caseTitle ?? 'Solicitud'} · `}
+                  {notificationTimeLabel(item.createdAt, now)}
+                </Text>
+              </View>
+              <Icon name="chevron-forward" size="inline" color={colors.textMuted} />
+            </Pressable>
+          ))}
+        </View>
       </ScrollView>
+      <UndoSnackbar
+        count={showTourUndo ? 1 : 0}
+        message="Lo encuentras siempre en Ayuda"
+        onUndo={undoHideTourCard}
+      />
     </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
-  content: { gap: spacing.lg, padding: spacing.lg, paddingBottom: spacing.xl },
-  header: { gap: spacing.sm },
-  headerTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.base },
-  identity: { flex: 1, gap: spacing.xs },
-  eyebrow: { color: colors.primary, ...typography.overline },
-  title: { color: colors.text, ...typography.display },
-  subtitle: { color: colors.textMuted, ...typography.caption },
-  hero: {
-    gap: spacing.base,
-    padding: spacing.lg,
-    borderRadius: radius.xl,
-    backgroundColor: colors.primary,
+  content: {
+    gap: spacing.lg,
+    paddingHorizontal: spacing.compact,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xl * 3,
   },
-  heroTitle: { ...typography.title, color: colors.white },
-  heroEyebrow: { ...typography.overline, color: colors.white },
-  heroDetails: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  heroTag: {
-    minHeight: 44,
+  brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  brand: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  areaName: { ...typography.heading, color: colors.ink },
+  roleName: { ...typography.caption, color: colors.textMuted },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  profileAction: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  bell: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.white,
-    paddingHorizontal: spacing.base,
-    paddingVertical: spacing.xs,
+    backgroundColor: colors.surfaceMuted,
   },
-  heroDetail: { ...typography.caption, color: colors.white },
-  reportTag: { backgroundColor: phaseColors.revision.bg, borderColor: phaseColors.revision.fg },
-  reportTagText: { color: phaseColors.revision.fg },
-  heroSupport: { ...typography.body, color: colors.white },
-  heroButton: { width: '100%' },
-  section: { gap: spacing.md },
-  tileGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  recentHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  notice: {
+  bellCount: {
+    position: 'absolute',
+    top: 2,
+    right: 0,
+    minWidth: 18,
+    textAlign: 'center',
+    borderRadius: radius.pill,
+    overflow: 'hidden',
+    backgroundColor: colors.sky,
+    color: colors.white,
+    ...typography.caption,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  attentionLoading: {
+    minHeight: 100,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surfaceMuted,
+  },
+  attentionGroup: { gap: spacing.xs },
+  attentionCard: {
+    minHeight: 100,
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.sm,
     padding: spacing.md,
+    borderWidth: 1,
     borderRadius: radius.lg,
-    backgroundColor: colors.warningSoft,
   },
-  noticeTitle: { color: colors.text, ...typography.heading },
-  alertHeading: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  message: { color: colors.textMuted, ...typography.body },
-  alertRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  alertText: { flex: 1, color: colors.text, ...typography.body },
-  link: { minHeight: 44, justifyContent: 'center' },
-  linkText: { ...typography.body, fontFamily: fonts.bold, color: colors.primary },
+  attentionDanger: { backgroundColor: tone.danger.bg, borderColor: tone.danger.border },
+  attentionInfo: { backgroundColor: tone.info.bg, borderColor: tone.info.border },
+  attentionSuccess: { backgroundColor: tone.success.bg, borderColor: tone.success.border },
+  attentionIcon: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.pill,
+  },
+  attentionDangerIcon: { backgroundColor: colors.surface },
+  attentionInfoIcon: { backgroundColor: colors.surface },
+  attentionSuccessIcon: { backgroundColor: colors.surface },
+  attentionCopy: { flex: 1, gap: spacing.xs },
+  attentionTitle: { ...typography.heading },
+  attentionDangerText: { color: tone.danger.text },
+  attentionInfoText: { color: tone.info.text },
+  attentionSuccessText: { color: tone.success.text },
+  attentionDescription: { ...typography.caption, color: colors.textMuted },
+  moreSteps: { minHeight: 44, alignSelf: 'flex-end', justifyContent: 'center' },
+  section: { gap: spacing.sm },
+  sectionTitleRow: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sectionTitle: { ...typography.title, color: colors.ink },
+  smallAction: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  actionText: { ...typography.caption, fontFamily: fonts.bold, color: colors.primary },
+  firstStepsCard: {
+    borderRadius: radius.lg,
+    backgroundColor: tone.info.bg,
+    overflow: 'hidden',
+  },
+  firstStepsAction: {
+    minHeight: 88,
+    padding: spacing.md,
+    paddingRight: 56,
+  },
+  firstStepsHide: {
+    position: 'absolute',
+    top: spacing.xs,
+    right: spacing.xs,
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  firstStepsPressed: { backgroundColor: colors.surfaceMuted },
+  pressedRow: { backgroundColor: colors.surfaceMuted },
+  firstStepsCopy: { gap: spacing.sm },
+  firstStepsHeading: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  firstStepsTitle: { ...typography.heading, color: colors.ink, flexShrink: 1 },
+  firstStepsTrack: {
+    height: 5,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+    overflow: 'hidden',
+  },
+  firstStepsFill: { height: '100%', backgroundColor: colors.primary },
+  firstStepsCount: { ...typography.caption, fontFamily: fonts.semibold, color: colors.primary },
+  firstStepsNext: { ...typography.caption, fontFamily: fonts.semibold, color: colors.primary },
+  quietEmpty: { ...typography.body, color: colors.textMuted, paddingVertical: spacing.sm },
+  caseGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  caseTile: {
+    flexBasis: '30%',
+    flexGrow: 1,
+    height: 128,
+    justifyContent: 'space-between',
+    padding: spacing.md,
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+  },
+  caseCount: { ...typography.display, color: colors.ink },
+  caseTileLabel: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs },
+  caseDot: { width: 8, height: 8, borderRadius: radius.pill, marginTop: 4 },
+  caseLabel: { ...typography.caption, color: colors.textMuted, flexShrink: 1 },
+  todayRow: {
+    minHeight: 64,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+  },
+  todayIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primarySoft,
+  },
+  todayCopy: { flex: 1, gap: spacing.xs },
+  todayTitle: { ...typography.caption, fontFamily: fonts.bold, color: colors.text },
+  todayComment: { ...typography.caption, color: colors.text },
+  todayMeta: { ...typography.caption, color: colors.textMuted },
 })
