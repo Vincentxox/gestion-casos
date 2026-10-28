@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import {
   AccessibilityInfo,
   Modal,
@@ -49,7 +49,11 @@ export function GuidedTourOverlay({
   state: tabs,
   navigation,
 }: Pick<BottomTabBarProps, 'state' | 'navigation'>) {
-  const { width, height } = useWindowDimensions()
+  const windowSize = useWindowDimensions()
+  // On Android the window can end above the navigation bar while the modal covers the full screen,
+  // so use the modal's own size once it is laid out.
+  const [modalSize, setModalSize] = useState<{ width: number; height: number } | null>(null)
+  const { width, height } = modalSize ?? windowSize
   const active = useGuidedTour((state) => state.active)
   const steps = useGuidedTour((state) => state.steps)
   const index = useGuidedTour((state) => state.index)
@@ -105,7 +109,15 @@ export function GuidedTourOverlay({
       statusBarTranslucent
       onRequestClose={() => void skip()}
     >
-      <View accessibilityViewIsModal style={styles.root}>
+      <View
+        accessibilityViewIsModal
+        onLayout={(event) => {
+          const { width: layoutWidth, height: layoutHeight } = event.nativeEvent.layout
+          if (layoutWidth !== modalSize?.width || layoutHeight !== modalSize?.height)
+            setModalSize({ width: layoutWidth, height: layoutHeight })
+        }}
+        style={styles.root}
+      >
         {hole ? (
           <>
             <View style={[styles.dim, { left: 0, top: 0, right: 0, height: hole.y }]} />
