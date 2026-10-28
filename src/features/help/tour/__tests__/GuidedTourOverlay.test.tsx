@@ -8,7 +8,9 @@ const steps = getTutorialFor('tecnico')
 const routes = ['Home', 'CasesTab', 'Help'].map((name) => ({ name, key: name }))
 const navigation = { navigate: jest.fn() }
 
-function show(index = 0) {
+const visible = { x: 20, y: 100, width: 300, height: 80 }
+
+function show(index = 0, rect: typeof visible | null = visible) {
   useGuidedTour.setState({
     userId: 'person',
     ready: true,
@@ -19,7 +21,7 @@ function show(index = 0) {
     index,
     active: true,
     target: steps[index]!.target,
-    rect: null,
+    rect,
   })
 }
 
@@ -37,6 +39,9 @@ describe('GuidedTourOverlay', () => {
     expect(screen.getByText('Lo urgente, primero')).toBeTruthy()
     await fireEvent.press(screen.getByText('Siguiente'))
     await waitFor(() => expect(useGuidedTour.getState().seen).toContain('inicio'))
+    await act(() => {
+      useGuidedTour.setState({ rect: visible })
+    })
     expect(screen.getByText('Tus avisos')).toBeTruthy()
   })
 
@@ -58,12 +63,14 @@ describe('GuidedTourOverlay', () => {
   test('navega a Solicitudes y usa su pestaña si no encuentra el control', async () => {
     jest.useFakeTimers()
     await act(async () => {
-      show(2)
+      show(2, null)
     })
     const screen = await render(
       <GuidedTourOverlay state={{ routes, index: 0 } as never} navigation={navigation as never} />,
     )
     expect(navigation.navigate).toHaveBeenCalledWith('CasesTab', { screen: 'Cases' })
+    // The bubble waits for the control instead of showing in the center first.
+    expect(screen.queryByText(/PASO 3 DE/)).toBeNull()
     await act(() => {
       jest.advanceTimersByTime(1500)
     })

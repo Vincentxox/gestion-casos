@@ -78,7 +78,7 @@ export function GuidedTourOverlay({
     const timer = setTimeout(() => {
       const fallbackTarget = `tab:${step.tab}` as typeof target
       if (target !== fallbackTarget) setTarget(fallbackTarget)
-    }, 1500)
+    }, 1000)
     return () => clearTimeout(timer)
   }, [step, target, rect, origin, width, height, setTarget])
 
@@ -91,6 +91,9 @@ export function GuidedTourOverlay({
 
   if (!step) return null
   const hole = visibleRect(rect, origin, width, height)
+  // While the step's control is still being looked for, keep the bubble hidden so it appears once
+  // in its final place instead of jumping from the center to the fallback tab.
+  const waiting = !hole && !fallback
   const bubbleBelow = Boolean(hole && hole.y + hole.height + 12 + 230 < height)
   const bubbleTop = hole
     ? bubbleBelow
@@ -144,48 +147,53 @@ export function GuidedTourOverlay({
         ) : (
           <View style={[styles.dim, StyleSheet.absoluteFill]} />
         )}
-        <View
-          style={[
-            styles.bubble,
-            { left: spacing.md, right: spacing.md, top: bubbleTop, maxHeight: height - 48 },
-          ]}
-        >
-          {hole ? (
-            <View
-              pointerEvents="none"
-              style={[
-                styles.arrow,
-                { left: arrowLeft },
-                bubbleBelow ? styles.arrowTop : styles.arrowBottom,
-              ]}
-            />
-          ) : null}
-          <Text style={styles.overline}>
-            PASO {index + 1} DE {steps.length}
-          </Text>
-          <Text accessibilityRole="header" style={styles.title}>
-            {step.title}
-          </Text>
-          <Text style={styles.detail}>{step.detail}</Text>
-          <View style={styles.footer}>
-            <View accessibilityLabel={`Paso ${index + 1} de ${steps.length}`} style={styles.dots}>
-              {steps.map((item, dotIndex) => (
-                <View key={item.id} style={[styles.dot, dotIndex === index && styles.dotActive]} />
-              ))}
+        {waiting ? null : (
+          <View
+            style={[
+              styles.bubble,
+              { left: spacing.md, right: spacing.md, top: bubbleTop, maxHeight: height - 48 },
+            ]}
+          >
+            {hole ? (
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.arrow,
+                  { left: arrowLeft },
+                  bubbleBelow ? styles.arrowTop : styles.arrowBottom,
+                ]}
+              />
+            ) : null}
+            <Text style={styles.overline}>
+              PASO {index + 1} DE {steps.length}
+            </Text>
+            <Text accessibilityRole="header" style={styles.title}>
+              {step.title}
+            </Text>
+            <Text style={styles.detail}>{step.detail}</Text>
+            <View style={styles.footer}>
+              <View accessibilityLabel={`Paso ${index + 1} de ${steps.length}`} style={styles.dots}>
+                {steps.map((item, dotIndex) => (
+                  <View
+                    key={item.id}
+                    style={[styles.dot, dotIndex === index && styles.dotActive]}
+                  />
+                ))}
+              </View>
+              <Pressable accessibilityRole="button" onPress={() => void skip()} style={styles.skip}>
+                <Text style={styles.skipText}>Saltar</Text>
+              </Pressable>
+              <Pressable accessibilityRole="button" onPress={() => void next()} style={styles.next}>
+                <Text style={styles.nextText}>
+                  {index === steps.length - 1 ? 'Terminar' : 'Siguiente'}
+                </Text>
+              </Pressable>
             </View>
-            <Pressable accessibilityRole="button" onPress={() => void skip()} style={styles.skip}>
-              <Text style={styles.skipText}>Saltar</Text>
-            </Pressable>
-            <Pressable accessibilityRole="button" onPress={() => void next()} style={styles.next}>
-              <Text style={styles.nextText}>
-                {index === steps.length - 1 ? 'Terminar' : 'Siguiente'}
-              </Text>
-            </Pressable>
+            {fallback ? (
+              <Text style={styles.fallback}>Encuentra esta opción en {step.where}.</Text>
+            ) : null}
           </View>
-          {fallback ? (
-            <Text style={styles.fallback}>Encuentra esta opción en {step.where}.</Text>
-          ) : null}
-        </View>
+        )}
       </View>
     </Modal>
   )
