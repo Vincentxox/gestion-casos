@@ -28,6 +28,7 @@ import { AuthNavigator } from '@/navigation/AuthNavigator'
 import { MainRootNavigator } from '@/navigation/MainNavigator'
 import { PendingOrganizationNavigator } from '@/navigation/PendingOrganizationNavigator'
 import { registerAuthAutoRefresh, supabase } from '@/services/supabase/client'
+import { TourOriginProbe } from '@/features/help/tour/TourTarget'
 import { useAuthStore } from '@/store/authStore'
 import { colors } from '@/theme/tokens'
 
@@ -145,6 +146,7 @@ export default function App() {
           <QueryClientProvider client={queryClient}>
             <View style={styles.container}>
               <StatusBar style="dark" />
+              <TourOriginProbe />
               <RootContent fontsReady={fontsLoaded || Boolean(fontError)} />
             </View>
           </QueryClientProvider>

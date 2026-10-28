@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect } from 'react'
 import {
   AccessibilityInfo,
   Modal,
@@ -61,14 +61,7 @@ export function GuidedTourOverlay({
   const step = active ? steps[index] : undefined
   const fallback = Boolean(step && target !== step.target)
   const tab = tabs.routes[tabs.index]?.name
-  // Android can report window positions below the status bar while this full-screen modal starts
-  // at the top of the screen. Measuring the modal root with the same API gives the shift to undo.
-  const rootRef = useRef<View>(null)
-  const [origin, setOrigin] = useState({ x: 0, y: 0 })
-  const measureOrigin = () =>
-    rootRef.current?.measureInWindow((x, y) => {
-      if (x !== origin.x || y !== origin.y) setOrigin({ x, y })
-    })
+  const origin = useGuidedTour((state) => state.origin)
 
   useEffect(() => {
     if (!step) return
@@ -112,13 +105,7 @@ export function GuidedTourOverlay({
       statusBarTranslucent
       onRequestClose={() => void skip()}
     >
-      <View
-        ref={rootRef}
-        collapsable={false}
-        onLayout={measureOrigin}
-        accessibilityViewIsModal
-        style={styles.root}
-      >
+      <View accessibilityViewIsModal style={styles.root}>
         {hole ? (
           <>
             <View style={[styles.dim, { left: 0, top: 0, right: 0, height: hole.y }]} />
