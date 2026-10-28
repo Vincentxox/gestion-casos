@@ -59,6 +59,8 @@ export function NotificationsScreen({ navigation }: Props) {
   const rootRef = useRef<View>(null)
   const [undoIds, setUndoIds] = useState<number[]>([])
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [restoredIds, setRestoredIds] = useState<number[]>([])
+  const restoredTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [now] = useState(() => new Date())
   const allItems = notifications.data ?? []
   const unreadCount = allItems.filter((item) => !item.readAt).length
@@ -83,6 +85,7 @@ export function NotificationsScreen({ navigation }: Props) {
   useEffect(
     () => () => {
       if (undoTimer.current) clearTimeout(undoTimer.current)
+      if (restoredTimer.current) clearTimeout(restoredTimer.current)
     },
     [],
   )
@@ -137,7 +140,16 @@ export function NotificationsScreen({ navigation }: Props) {
     const ids = undoIds
     if (undoTimer.current) clearTimeout(undoTimer.current)
     setUndoIds([])
-    restore.mutate(ids)
+    if (restoredTimer.current) clearTimeout(restoredTimer.current)
+    // Rows mounted while their ID is here play the return animation.
+    setRestoredIds(ids)
+    restore.mutate(ids, {
+      onSuccess: () => {
+        feedback.toast(ids.length === 1 ? 'Aviso restaurado' : `${ids.length} avisos restaurados`)
+        restoredTimer.current = setTimeout(() => setRestoredIds([]), 3000)
+      },
+      onError: () => setRestoredIds([]),
+    })
   }
 
   const showRowMenu = (item: AppNotification, windowRect: NotificationRowRect) => {
@@ -250,6 +262,7 @@ export function NotificationsScreen({ navigation }: Props) {
                     item={item}
                     now={now}
                     divider={index < group.items.length - 1}
+                    restored={restoredIds.includes(item.id)}
                     onOpen={() => {
                       if (!item.readAt) markRead([item.id])
                       navigation.navigate('CaseDetail', { caseId: item.caseId })

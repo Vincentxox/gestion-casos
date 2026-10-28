@@ -16,6 +16,7 @@ const mockRefetch = jest.fn()
 const mockDismiss = jest.fn().mockResolvedValue(1)
 const mockRestore = jest.fn()
 const mockConfirm = jest.fn().mockResolvedValue(false)
+const mockToast = jest.fn()
 const mockReadRefetch = jest.fn()
 let mockItems: AppNotification[] = []
 const mockMeasureNotificationView = jest.fn()
@@ -41,7 +42,7 @@ jest.mock('../useNotifications', () => ({
 }))
 
 jest.mock('@/components/feedback/AppFeedback', () => ({
-  useFeedback: () => ({ confirm: mockConfirm }),
+  useFeedback: () => ({ confirm: mockConfirm, toast: mockToast }),
 }))
 
 const item: AppNotification = {
@@ -59,12 +60,12 @@ const item: AppNotification = {
   readAt: null,
 }
 
-function renderScreen() {
+function screenElement() {
   const props = {
     navigation: { navigate: mockNavigate, goBack: mockGoBack, setOptions: mockSetOptions },
     route: { key: 'Notifications', name: 'Notifications' },
   } as unknown as Parameters<typeof NotificationsScreen>[0]
-  return render(
+  return (
     <SafeAreaProvider
       initialMetrics={{
         frame: { x: 0, y: 0, width: 400, height: 800 },
@@ -72,8 +73,12 @@ function renderScreen() {
       }}
     >
       <NotificationsScreen {...props} />
-    </SafeAreaProvider>,
+    </SafeAreaProvider>
   )
+}
+
+function renderScreen() {
+  return render(screenElement())
 }
 
 beforeEach(() => {
@@ -84,7 +89,8 @@ beforeEach(() => {
   mockSetOptions.mockClear()
   mockMark.mockClear()
   mockDismiss.mockClear()
-  mockRestore.mockClear()
+  mockRestore.mockReset()
+  mockToast.mockClear()
   mockConfirm.mockReset().mockResolvedValue(false)
   mockReadRefetch.mockImplementation(async () => ({
     data: mockItems.filter((item) => item.readAt).map((item) => item.id),
@@ -241,7 +247,34 @@ test('la acción accesible borra un leído y Deshacer lo restaura', async () => 
   expect(mockDismiss).toHaveBeenCalledWith([2])
   expect(await screen.findByText('Aviso borrado')).toBeTruthy()
   await fireEvent.press(screen.getByRole('button', { name: 'Deshacer' }))
-  expect(mockRestore).toHaveBeenCalledWith([2])
+  expect(mockRestore).toHaveBeenCalledWith([2], expect.anything())
+  animation.mockRestore()
+})
+
+test('Deshacer devuelve el aviso resaltado y confirma con un toast', async () => {
+  const readItem = { ...item, readAt: '2026-10-16T12:10:00Z' }
+  mockItems = [readItem]
+  const animation = jest.spyOn(Animated, 'timing').mockImplementation(
+    () =>
+      ({
+        start: (callback?: (result: { finished: boolean }) => void) =>
+          callback?.({ finished: true }),
+      }) as Animated.CompositeAnimation,
+  )
+  const screen = await renderScreen()
+  expect(screen.queryByTestId('notification-restored-highlight')).toBeNull()
+  const row = screen.getByRole('button', { name: /Reporte enviado/ })
+  await fireEvent(row, 'accessibilityAction', { nativeEvent: { actionName: 'delete' } })
+  // The deleted row leaves the list and comes back as a new row once restored.
+  mockItems = []
+  await screen.rerender(screenElement())
+  await fireEvent.press(screen.getByRole('button', { name: 'Deshacer' }))
+  expect(mockRestore).toHaveBeenCalledWith([2], expect.anything())
+  mockItems = [readItem]
+  await screen.rerender(screenElement())
+  expect(screen.getByTestId('notification-restored-highlight')).toBeTruthy()
+  await act(async () => mockRestore.mock.lastCall?.[1].onSuccess())
+  expect(mockToast).toHaveBeenCalledWith('Aviso restaurado')
   animation.mockRestore()
 })
 

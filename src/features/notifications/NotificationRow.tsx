@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native'
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable'
 import type { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable'
@@ -135,6 +135,7 @@ export function NotificationRow({
   item,
   now,
   divider,
+  restored = false,
   onOpen,
   onMarkRead,
   onDelete,
@@ -143,6 +144,7 @@ export function NotificationRow({
   item: AppNotification
   now: Date
   divider: boolean
+  restored?: boolean
   onOpen: () => void
   onMarkRead: () => void
   onDelete: () => Promise<boolean>
@@ -158,6 +160,27 @@ export function NotificationRow({
   const [removing, setRemoving] = useState(false)
   const [collapse] = useState(() => new Animated.Value(1))
   const reduceMotion = useReducedMotion()
+  // Only the value at mount matters: a restored notice comes back as a new row.
+  const [returning] = useState(restored)
+  const [entrance] = useState(() => new Animated.Value(returning && !reduceMotion ? 0 : 1))
+  const [highlight] = useState(() => new Animated.Value(returning ? 1 : 0))
+
+  useEffect(() => {
+    if (!returning) return
+    Animated.parallel([
+      Animated.timing(entrance, {
+        toValue: 1,
+        duration: reduceMotion ? 0 : 280,
+        useNativeDriver: true,
+      }),
+      Animated.timing(highlight, {
+        toValue: 0,
+        delay: 700,
+        duration: 900,
+        useNativeDriver: true,
+      }),
+    ]).start()
+  }, [entrance, highlight, reduceMotion, returning])
 
   const deleteRow = () => {
     if (removing) return
@@ -198,62 +221,78 @@ export function NotificationRow({
         },
       ]}
     >
-      <ReanimatedSwipeable
-        ref={swipe}
-        leftThreshold={width * 0.4}
-        rightThreshold={width * 0.4}
-        dragOffsetFromLeftEdge={20}
-        dragOffsetFromRightEdge={20}
-        overshootLeft={false}
-        overshootRight={false}
-        onSwipeableOpen={(direction) => {
-          if (direction === 'right' && unread) {
-            onMarkRead()
-            swipe.current?.close()
-          } else if (direction === 'left' && !unread) deleteRow()
-          else swipe.current?.close()
+      <Animated.View
+        style={{
+          opacity: entrance,
+          transform: [
+            { translateX: entrance.interpolate({ inputRange: [0, 1], outputRange: [-32, 0] }) },
+          ],
         }}
-        renderLeftActions={
-          unread
-            ? (_progress, translation) => (
-                <SwipeAction direction="left" width={width} translation={translation} />
-              )
-            : undefined
-        }
-        renderRightActions={
-          !unread
-            ? (_progress, translation) => (
-                <SwipeAction direction="right" width={width} translation={translation} />
-              )
-            : undefined
-        }
       >
-        <Pressable
-          ref={rowRef}
-          accessibilityRole="button"
-          accessibilityLabel={`${unread ? 'Sin leer. ' : ''}${item.title}. ${caseLabel}${item.actorName ? `. por ${item.actorName}` : ''}`}
-          accessibilityHint="Mantén presionado para ver opciones"
-          accessibilityActions={[
+        <ReanimatedSwipeable
+          ref={swipe}
+          leftThreshold={width * 0.4}
+          rightThreshold={width * 0.4}
+          dragOffsetFromLeftEdge={20}
+          dragOffsetFromRightEdge={20}
+          overshootLeft={false}
+          overshootRight={false}
+          onSwipeableOpen={(direction) => {
+            if (direction === 'right' && unread) {
+              onMarkRead()
+              swipe.current?.close()
+            } else if (direction === 'left' && !unread) deleteRow()
+            else swipe.current?.close()
+          }}
+          renderLeftActions={
             unread
-              ? { name: 'markRead', label: 'Marcar como leído' }
-              : { name: 'delete', label: 'Borrar' },
-          ]}
-          onAccessibilityAction={(event) => {
-            if (event.nativeEvent.actionName === 'delete' && !unread) deleteRow()
-            if (event.nativeEvent.actionName === 'markRead' && unread) onMarkRead()
-          }}
-          onPress={onOpen}
-          onLongPress={() => {
-            measureNotificationView(rowRef.current, (x, y, measuredWidth, measuredHeight) => {
-              void feedback.selection()
-              onLongPress({ x, y, width: measuredWidth, height: measuredHeight })
-            })
-          }}
-          style={[styles.row, unread && styles.unreadRow]}
+              ? (_progress, translation) => (
+                  <SwipeAction direction="left" width={width} translation={translation} />
+                )
+              : undefined
+          }
+          renderRightActions={
+            !unread
+              ? (_progress, translation) => (
+                  <SwipeAction direction="right" width={width} translation={translation} />
+                )
+              : undefined
+          }
         >
-          <RowContent item={item} now={now} />
-        </Pressable>
-      </ReanimatedSwipeable>
+          <Pressable
+            ref={rowRef}
+            accessibilityRole="button"
+            accessibilityLabel={`${unread ? 'Sin leer. ' : ''}${item.title}. ${caseLabel}${item.actorName ? `. por ${item.actorName}` : ''}`}
+            accessibilityHint="Mantén presionado para ver opciones"
+            accessibilityActions={[
+              unread
+                ? { name: 'markRead', label: 'Marcar como leído' }
+                : { name: 'delete', label: 'Borrar' },
+            ]}
+            onAccessibilityAction={(event) => {
+              if (event.nativeEvent.actionName === 'delete' && !unread) deleteRow()
+              if (event.nativeEvent.actionName === 'markRead' && unread) onMarkRead()
+            }}
+            onPress={onOpen}
+            onLongPress={() => {
+              measureNotificationView(rowRef.current, (x, y, measuredWidth, measuredHeight) => {
+                void feedback.selection()
+                onLongPress({ x, y, width: measuredWidth, height: measuredHeight })
+              })
+            }}
+            style={[styles.row, unread && styles.unreadRow]}
+          >
+            <RowContent item={item} now={now} />
+          </Pressable>
+        </ReanimatedSwipeable>
+        {returning ? (
+          <Animated.View
+            testID="notification-restored-highlight"
+            pointerEvents="none"
+            style={[styles.restoredHighlight, { opacity: highlight }]}
+          />
+        ) : null}
+      </Animated.View>
     </Animated.View>
   )
 }
@@ -268,6 +307,11 @@ const styles = StyleSheet.create({
   deleteAction: { backgroundColor: colors.error },
   actionIcon: { width: 24, height: 24 },
   absoluteIcon: { position: 'absolute', top: 0, left: 0 },
+  restoredHighlight: {
+    ...StyleSheet.absoluteFill,
+    // Translucent so the restored content stays readable under the highlight.
+    backgroundColor: `${colors.primary}29`,
+  },
   rowDivider: { borderBottomColor: colors.cardBorder, borderBottomWidth: 1 },
   row: {
     flexDirection: 'row',
