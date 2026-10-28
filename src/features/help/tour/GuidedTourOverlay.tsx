@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   AccessibilityInfo,
   Modal,
@@ -14,7 +14,17 @@ import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
 
 import { useGuidedTour, type TourRect } from './useGuidedTour'
 
-function visibleRect(rect: TourRect | null, width: number, height: number): TourRect | null {
+export function visibleRect(
+  measured: TourRect | null,
+  origin: { x: number; y: number },
+  width: number,
+  height: number,
+): TourRect | null {
+  const rect = measured && {
+    ...measured,
+    x: measured.x - origin.x,
+    y: measured.y - origin.y,
+  }
   if (
     !rect ||
     rect.width < 1 ||
@@ -51,6 +61,14 @@ export function GuidedTourOverlay({
   const step = active ? steps[index] : undefined
   const fallback = Boolean(step && target !== step.target)
   const tab = tabs.routes[tabs.index]?.name
+  // Android can report window positions below the status bar while this full-screen modal starts
+  // at the top of the screen. Measuring the modal root with the same API gives the shift to undo.
+  const rootRef = useRef<View>(null)
+  const [origin, setOrigin] = useState({ x: 0, y: 0 })
+  const measureOrigin = () =>
+    rootRef.current?.measureInWindow((x, y) => {
+      if (x !== origin.x || y !== origin.y) setOrigin({ x, y })
+    })
 
   useEffect(() => {
     if (!step) return
@@ -59,13 +77,13 @@ export function GuidedTourOverlay({
   }, [step, tab, navigation])
 
   useEffect(() => {
-    if (!step || target !== step.target || visibleRect(rect, width, height)) return
+    if (!step || target !== step.target || visibleRect(rect, origin, width, height)) return
     const timer = setTimeout(() => {
       const fallbackTarget = `tab:${step.tab}` as typeof target
       if (target !== fallbackTarget) setTarget(fallbackTarget)
     }, 1500)
     return () => clearTimeout(timer)
-  }, [step, target, rect, width, height, setTarget])
+  }, [step, target, rect, origin, width, height, setTarget])
 
   useEffect(() => {
     if (!step) return
@@ -75,7 +93,7 @@ export function GuidedTourOverlay({
   }, [step, index, steps.length])
 
   if (!step) return null
-  const hole = visibleRect(rect, width, height)
+  const hole = visibleRect(rect, origin, width, height)
   const bubbleBelow = Boolean(hole && hole.y + hole.height + 12 + 230 < height)
   const bubbleTop = hole
     ? bubbleBelow
@@ -94,7 +112,13 @@ export function GuidedTourOverlay({
       statusBarTranslucent
       onRequestClose={() => void skip()}
     >
-      <View accessibilityViewIsModal style={styles.root}>
+      <View
+        ref={rootRef}
+        collapsable={false}
+        onLayout={measureOrigin}
+        accessibilityViewIsModal
+        style={styles.root}
+      >
         {hole ? (
           <>
             <View style={[styles.dim, { left: 0, top: 0, right: 0, height: hole.y }]} />

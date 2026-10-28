@@ -1,7 +1,7 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native'
 
 import { getTutorialFor } from '../../helpContent'
-import { GuidedTourOverlay } from '../GuidedTourOverlay'
+import { GuidedTourOverlay, visibleRect } from '../GuidedTourOverlay'
 import { useGuidedTour } from '../useGuidedTour'
 
 const steps = getTutorialFor('tecnico')
@@ -70,5 +70,17 @@ describe('GuidedTourOverlay', () => {
     expect(useGuidedTour.getState().target).toBe('tab:CasesTab')
     expect(screen.getByText(/Encuentra esta opción en Solicitudes/)).toBeTruthy()
     jest.useRealTimers()
+  })
+
+  test('alinea el recuadro aunque la ventana mida desde debajo de la barra de estado', () => {
+    const rect = { x: 20, y: 100, width: 300, height: 80 }
+    // Android can place the full-screen modal root 30 points above the measured window.
+    expect(visibleRect(rect, { x: 0, y: -30 }, 400, 800)).toEqual({
+      x: 16,
+      y: 126,
+      width: 308,
+      height: 88,
+    })
+    expect(visibleRect(rect, { x: 0, y: 0 }, 400, 800)?.y).toBe(96)
   })
 })
