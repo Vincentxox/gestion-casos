@@ -33,3 +33,22 @@ export function TourTarget({
     </View>
   )
 }
+
+/**
+ * Android can measure the main app from below the status bar while the tour's full-screen modal
+ * starts at the top of the screen. This probe sits at the screen's top-left corner of the main app
+ * so the overlay can undo that shift.
+ */
+export function TourOriginProbe() {
+  const ref = useRef<View>(null)
+  const setOrigin = useGuidedTour((state) => state.setOrigin)
+  return (
+    <View
+      ref={ref}
+      collapsable={false}
+      pointerEvents="none"
+      onLayout={() => ref.current?.measureInWindow((x, y) => setOrigin({ x, y }))}
+      style={{ position: 'absolute', top: 0, left: 0, width: 1, height: 1 }}
+    />
+  )
+}

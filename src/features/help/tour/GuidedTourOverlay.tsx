@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import {
   AccessibilityInfo,
   Modal,
@@ -14,7 +14,17 @@ import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
 
 import { useGuidedTour, type TourRect } from './useGuidedTour'
 
-function visibleRect(rect: TourRect | null, width: number, height: number): TourRect | null {
+export function visibleRect(
+  measured: TourRect | null,
+  origin: { x: number; y: number },
+  width: number,
+  height: number,
+): TourRect | null {
+  const rect = measured && {
+    ...measured,
+    x: measured.x - origin.x,
+    y: measured.y - origin.y,
+  }
   if (
     !rect ||
     rect.width < 1 ||
@@ -39,7 +49,11 @@ export function GuidedTourOverlay({
   state: tabs,
   navigation,
 }: Pick<BottomTabBarProps, 'state' | 'navigation'>) {
-  const { width, height } = useWindowDimensions()
+  const windowSize = useWindowDimensions()
+  // On Android the window can end above the navigation bar while the modal covers the full screen,
+  // so use the modal's own size once it is laid out.
+  const [modalSize, setModalSize] = useState<{ width: number; height: number } | null>(null)
+  const { width, height } = modalSize ?? windowSize
   const active = useGuidedTour((state) => state.active)
   const steps = useGuidedTour((state) => state.steps)
   const index = useGuidedTour((state) => state.index)
@@ -51,6 +65,7 @@ export function GuidedTourOverlay({
   const step = active ? steps[index] : undefined
   const fallback = Boolean(step && target !== step.target)
   const tab = tabs.routes[tabs.index]?.name
+  const origin = useGuidedTour((state) => state.origin)
 
   useEffect(() => {
     if (!step) return
@@ -59,13 +74,13 @@ export function GuidedTourOverlay({
   }, [step, tab, navigation])
 
   useEffect(() => {
-    if (!step || target !== step.target || visibleRect(rect, width, height)) return
+    if (!step || target !== step.target || visibleRect(rect, origin, width, height)) return
     const timer = setTimeout(() => {
       const fallbackTarget = `tab:${step.tab}` as typeof target
       if (target !== fallbackTarget) setTarget(fallbackTarget)
-    }, 1500)
+    }, 1000)
     return () => clearTimeout(timer)
-  }, [step, target, rect, width, height, setTarget])
+  }, [step, target, rect, origin, width, height, setTarget])
 
   useEffect(() => {
     if (!step) return
@@ -75,7 +90,10 @@ export function GuidedTourOverlay({
   }, [step, index, steps.length])
 
   if (!step) return null
-  const hole = visibleRect(rect, width, height)
+  const hole = visibleRect(rect, origin, width, height)
+  // While the step's control is still being looked for, keep the bubble hidden so it appears once
+  // in its final place instead of jumping from the center to the fallback tab.
+  const waiting = !hole && !fallback
   const bubbleBelow = Boolean(hole && hole.y + hole.height + 12 + 230 < height)
   const bubbleTop = hole
     ? bubbleBelow
@@ -94,7 +112,15 @@ export function GuidedTourOverlay({
       statusBarTranslucent
       onRequestClose={() => void skip()}
     >
-      <View accessibilityViewIsModal style={styles.root}>
+      <View
+        accessibilityViewIsModal
+        onLayout={(event) => {
+          const { width: layoutWidth, height: layoutHeight } = event.nativeEvent.layout
+          if (layoutWidth !== modalSize?.width || layoutHeight !== modalSize?.height)
+            setModalSize({ width: layoutWidth, height: layoutHeight })
+        }}
+        style={styles.root}
+      >
         {hole ? (
           <>
             <View style={[styles.dim, { left: 0, top: 0, right: 0, height: hole.y }]} />
@@ -121,48 +147,53 @@ export function GuidedTourOverlay({
         ) : (
           <View style={[styles.dim, StyleSheet.absoluteFill]} />
         )}
-        <View
-          style={[
-            styles.bubble,
-            { left: spacing.md, right: spacing.md, top: bubbleTop, maxHeight: height - 48 },
-          ]}
-        >
-          {hole ? (
-            <View
-              pointerEvents="none"
-              style={[
-                styles.arrow,
-                { left: arrowLeft },
-                bubbleBelow ? styles.arrowTop : styles.arrowBottom,
-              ]}
-            />
-          ) : null}
-          <Text style={styles.overline}>
-            PASO {index + 1} DE {steps.length}
-          </Text>
-          <Text accessibilityRole="header" style={styles.title}>
-            {step.title}
-          </Text>
-          <Text style={styles.detail}>{step.detail}</Text>
-          <View style={styles.footer}>
-            <View accessibilityLabel={`Paso ${index + 1} de ${steps.length}`} style={styles.dots}>
-              {steps.map((item, dotIndex) => (
-                <View key={item.id} style={[styles.dot, dotIndex === index && styles.dotActive]} />
-              ))}
+        {waiting ? null : (
+          <View
+            style={[
+              styles.bubble,
+              { left: spacing.md, right: spacing.md, top: bubbleTop, maxHeight: height - 48 },
+            ]}
+          >
+            {hole ? (
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.arrow,
+                  { left: arrowLeft },
+                  bubbleBelow ? styles.arrowTop : styles.arrowBottom,
+                ]}
+              />
+            ) : null}
+            <Text style={styles.overline}>
+              PASO {index + 1} DE {steps.length}
+            </Text>
+            <Text accessibilityRole="header" style={styles.title}>
+              {step.title}
+            </Text>
+            <Text style={styles.detail}>{step.detail}</Text>
+            <View style={styles.footer}>
+              <View accessibilityLabel={`Paso ${index + 1} de ${steps.length}`} style={styles.dots}>
+                {steps.map((item, dotIndex) => (
+                  <View
+                    key={item.id}
+                    style={[styles.dot, dotIndex === index && styles.dotActive]}
+                  />
+                ))}
+              </View>
+              <Pressable accessibilityRole="button" onPress={() => void skip()} style={styles.skip}>
+                <Text style={styles.skipText}>Saltar</Text>
+              </Pressable>
+              <Pressable accessibilityRole="button" onPress={() => void next()} style={styles.next}>
+                <Text style={styles.nextText}>
+                  {index === steps.length - 1 ? 'Terminar' : 'Siguiente'}
+                </Text>
+              </Pressable>
             </View>
-            <Pressable accessibilityRole="button" onPress={() => void skip()} style={styles.skip}>
-              <Text style={styles.skipText}>Saltar</Text>
-            </Pressable>
-            <Pressable accessibilityRole="button" onPress={() => void next()} style={styles.next}>
-              <Text style={styles.nextText}>
-                {index === steps.length - 1 ? 'Terminar' : 'Siguiente'}
-              </Text>
-            </Pressable>
+            {fallback ? (
+              <Text style={styles.fallback}>Encuentra esta opción en {step.where}.</Text>
+            ) : null}
           </View>
-          {fallback ? (
-            <Text style={styles.fallback}>Encuentra esta opción en {step.where}.</Text>
-          ) : null}
-        </View>
+        )}
       </View>
     </Modal>
   )

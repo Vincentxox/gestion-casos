@@ -29,6 +29,8 @@ interface GuidedTourState {
   active: boolean
   target: TourTargetId | null
   rect: TourRect | null
+  /** Window position of the screen's top-left corner, as measured in the main app. */
+  origin: { x: number; y: number }
   hydrate: (userId: string | undefined) => Promise<void>
   start: (steps: TutorialStep[], index?: number, repeat?: boolean) => Promise<void>
   next: () => Promise<void>
@@ -37,6 +39,7 @@ interface GuidedTourState {
   showOnHome: () => Promise<void>
   setTarget: (target: TourTargetId | null) => void
   setRect: (target: TourTargetId, rect: TourRect | null) => void
+  setOrigin: (origin: { x: number; y: number }) => void
 }
 
 function keyFor(userId: string) {
@@ -64,6 +67,7 @@ export const useGuidedTour = create<GuidedTourState>((set, get) => ({
   active: false,
   target: null,
   rect: null,
+  origin: { x: 0, y: 0 },
   async hydrate(userId) {
     if (!userId) {
       set({
@@ -152,5 +156,9 @@ export const useGuidedTour = create<GuidedTourState>((set, get) => ({
   },
   setRect(target, rect) {
     if (get().target === target) set({ rect })
+  },
+  setOrigin(origin) {
+    const current = get().origin
+    if (current.x !== origin.x || current.y !== origin.y) set({ origin })
   },
 }))
