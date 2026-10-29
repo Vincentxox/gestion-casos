@@ -3,7 +3,7 @@
     "name": "Nexo Casos",
     "slug": "gestion-casos",
     "description": "Conecta cada caso con su seguimiento y solución.",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "platforms": ["android", "ios"],
     "scheme": "gestion-casos",
     "orientation": "portrait",

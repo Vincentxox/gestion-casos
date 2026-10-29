@@ -28,7 +28,7 @@ jest.mock('@/features/auth/authService', () => ({
 
 jest.mock('expo-constants', () => ({
   __esModule: true,
-  default: { expoConfig: { version: '1.0.0' } },
+  default: { expoConfig: { version: '1.0.1' } },
 }))
 
 jest.mock('../accessService', () => ({
@@ -115,8 +115,11 @@ test('el inicio de sesión muestra la marca, el título y lleva a crear cuenta',
   expect(screen.getByRole('header', { name: 'Inicia sesión' })).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Ingresar' })).toBeTruthy()
   expect(screen.queryByText('Accede de forma segura a tus casos y documentos.')).toBeNull()
-  expect(screen.getByText('versión 1.0.0')).toBeTruthy()
+  expect(screen.getByText('versión 1.0.1')).toBeTruthy()
   expect(screen.getByLabelText('Google')).toBeTruthy()
+  expect(screen.getByTestId('legal-consent-copy').props.children[0]).toBe(
+    'Al continuar con Google aceptas los ',
+  )
 
   await fireEvent.press(screen.getByRole('button', { name: '¿No tienes una cuenta? Crear cuenta' }))
   expect(navigate).toHaveBeenCalledWith('Register')
@@ -242,6 +245,9 @@ test('crear cuenta tiene su propio botón para volver y enlace a iniciar sesión
   const screen = await renderWithSafeArea(<RegisterScreen {...props} />)
 
   expect(screen.getByRole('header', { name: 'Crea tu cuenta' })).toBeTruthy()
+  expect(screen.getByTestId('legal-consent-copy').props.children[0]).toBe(
+    'Al crear tu cuenta aceptas los ',
+  )
   await fireEvent.press(screen.getByRole('button', { name: 'Volver' }))
   expect(goBack).toHaveBeenCalledTimes(1)
 
