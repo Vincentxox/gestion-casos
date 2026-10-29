@@ -1,11 +1,12 @@
 import { fireEvent, render, waitFor } from '@testing-library/react-native'
 import * as ImagePicker from 'expo-image-picker'
-import { StyleSheet } from 'react-native'
+import { Linking, StyleSheet } from 'react-native'
 
 import { AppFeedback } from '@/components/feedback/AppFeedback'
 import { useAuthStore } from '@/store/authStore'
 import type { Profile } from '@/features/auth/types'
 import { colors, radius } from '@/theme/tokens'
+import { PRIVACY_POLICY_URL, TERMS_URL } from '@/config/legalLinks'
 
 import { ProfileScreen } from '../ProfileScreen'
 import { updateOwnName } from '../profileService'
@@ -198,6 +199,26 @@ test('Cerrar sesión es un botón accesible de contorno rojo y 52 px', async () 
   expect(StyleSheet.flatten(screen.getByText('Cerrar sesión').props.style)).toMatchObject({
     color: colors.dangerText,
   })
+})
+
+test('muestra Legal entre Ajustes y Cerrar sesión y abre ambas páginas', async () => {
+  const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined)
+  try {
+    const screen = await render(<ProfileScreen {...profileScreenProps} />)
+    expect(screen.getByText('LEGAL')).toBeTruthy()
+    expect(screen.getAllByText('Se abre en el navegador')).toHaveLength(2)
+    const privacy = screen.getByRole('link', { name: 'Abrir política de privacidad' })
+    const terms = screen.getByRole('link', { name: 'Abrir términos y condiciones' })
+    expect(privacy).toBeTruthy()
+    expect(terms).toBeTruthy()
+
+    await fireEvent.press(privacy)
+    await fireEvent.press(terms)
+    expect(openURL).toHaveBeenNthCalledWith(1, PRIVACY_POLICY_URL)
+    expect(openURL).toHaveBeenNthCalledWith(2, TERMS_URL)
+  } finally {
+    openURL.mockRestore()
+  }
 })
 
 test('el enlace de eliminación abre DeleteAccount sin competir con Cerrar sesión', async () => {

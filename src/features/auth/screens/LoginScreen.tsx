@@ -14,6 +14,7 @@ import { KeyboardFormScrollView } from '@/components/layout/KeyboardFormScrollVi
 import { getAuthErrorMessage } from '@/features/auth/authErrors'
 import { AuthBrand, AuthHeading } from '@/features/auth/components/AuthHeading'
 import { GoogleMark } from '@/features/auth/components/GoogleMark'
+import { LegalConsentText } from '@/features/auth/components/LegalConsentText'
 import { loginSchema, type LoginInput } from '@/features/auth/schemas'
 import type { AuthStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
@@ -202,6 +203,7 @@ export function LoginScreen({ navigation }: Props) {
                 {isGoogleSubmitting ? 'Conectando…' : 'Continuar con Google'}
               </Text>
             </Pressable>
+            <LegalConsentText action="google" />
           </View>
         </View>
 

@@ -8,7 +8,7 @@ import appConfig from '../../../app.json'
 
 import { Button } from '@/components/ui/Button'
 import { FormField } from '@/components/forms/FormField'
-import { Icon } from '@/components/ui/Icon'
+import { Icon, type IconName } from '@/components/ui/Icon'
 import { IconTile } from '@/components/ui/IconTile'
 import { Avatar } from '@/components/ui/Avatar'
 import { Card } from '@/components/ui/Card'
@@ -18,6 +18,7 @@ import { BottomSheet } from '@/components/sheets/BottomSheet'
 import { ROLE_ICONS, ROLE_LABELS } from '@/features/auth/types'
 import { confirmLogout } from '@/features/auth/confirmLogout'
 import { useAuthStore } from '@/store/authStore'
+import { PRIVACY_POLICY_URL, TERMS_URL } from '@/config/legalLinks'
 import type { ProfileStackParamList } from '@/navigation/types'
 import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
 import { updateOwnName } from './profileService'
@@ -307,6 +308,28 @@ export function ProfileScreen({
             onPress={() => setSetting('permissions')}
           />
         </Card>
+        <Text style={styles.sectionHeading}>LEGAL</Text>
+        <Card style={styles.settingsCard}>
+          <SettingRow
+            icon="shield-checkmark-outline"
+            label="Política de privacidad"
+            detail="Se abre en el navegador"
+            trailingIcon="open-outline"
+            accessibilityLabel="Abrir política de privacidad"
+            accessibilityRole="link"
+            onPress={() => void Linking.openURL(PRIVACY_POLICY_URL)}
+          />
+          <View style={styles.separator} />
+          <SettingRow
+            icon="document-text-outline"
+            label="Términos y condiciones"
+            detail="Se abre en el navegador"
+            trailingIcon="open-outline"
+            accessibilityLabel="Abrir términos y condiciones"
+            accessibilityRole="link"
+            onPress={() => void Linking.openURL(TERMS_URL)}
+          />
+        </Card>
         <Button
           label="Cerrar sesión"
           variant="danger"
@@ -374,16 +397,22 @@ function SettingRow({
   label,
   detail,
   onPress,
+  trailingIcon = 'chevron-forward',
+  accessibilityLabel = label,
+  accessibilityRole = 'button',
 }: {
-  icon: 'color-palette-outline' | 'notifications-outline' | 'shield-checkmark-outline'
+  icon: IconName
   label: string
   detail: string
   onPress: () => void
+  trailingIcon?: IconName
+  accessibilityLabel?: string
+  accessibilityRole?: 'button' | 'link'
 }) {
   return (
     <Pressable
-      accessibilityLabel={label}
-      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole={accessibilityRole}
       onPress={onPress}
       style={({ pressed }) => [styles.settingRow, pressed && styles.settingPressed]}
     >
@@ -392,7 +421,7 @@ function SettingRow({
         <Text style={styles.settingLabel}>{label}</Text>
         <Text style={styles.settingDetail}>{detail}</Text>
       </View>
-      <Icon name="chevron-forward" color={colors.textMuted} size={18} />
+      <Icon name={trailingIcon} color={colors.textMuted} size={18} />
     </Pressable>
   )
 }
