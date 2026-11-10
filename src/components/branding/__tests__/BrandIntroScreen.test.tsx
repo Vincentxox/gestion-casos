@@ -17,7 +17,7 @@ describe('BrandIntroScreen', () => {
 
     expect(screen.getByText('Nexo Casos').props.numberOfLines).toBe(1)
     expect(screen.getByText('Conecta cada caso con su solución')).toBeTruthy()
-    expect(screen.getByText('Versión 1.0.0')).toBeTruthy()
+    expect(screen.getByText('Versión 1.0.1')).toBeTruthy()
     expect(screen.getByLabelText('Cargando sesión')).toBeTruthy()
     await waitFor(() => expect(screen.getByLabelText('Cargando sesión').children).toHaveLength(1))
     expect(onFinish).not.toHaveBeenCalled()
