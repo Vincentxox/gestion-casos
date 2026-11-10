@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/Button'
 import { Icon, type IconName } from '@/components/ui/Icon'
 import type { ProfileStackParamList } from '@/navigation/types'
 import { useAuthStore } from '@/store/authStore'
+import { PRIVACY_POLICY_URL } from '@/config/legalLinks'
 import { colors, fonts, radius, spacing, typography } from '@/theme/tokens'
 
 import {
@@ -168,9 +169,7 @@ export function DeleteAccountScreen({ navigation }: Props) {
           <Text style={styles.note}>Son registros del trabajo de tu empresa.</Text>
           <Pressable
             accessibilityRole="link"
-            onPress={() =>
-              void Linking.openURL('https://vincentxox.github.io/gestion-casos/privacidad/')
-            }
+            onPress={() => void Linking.openURL(PRIVACY_POLICY_URL)}
             style={styles.privacyLink}
           >
             <Text style={styles.privacyText}>Política de privacidad</Text>
