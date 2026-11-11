@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nexo Casos · Solicitudes de mantenimiento en tu empresa</title>
+<meta name="description" content="Nexo Casos ordena las solicitudes de mantenimiento dentro de tu empresa: cada área pide lo que necesita, el área técnica lo atiende y todo queda registrado hasta el reporte firmado.">
+<meta property="og:title" content="Nexo Casos">
+<meta property="og:description" content="Pide mantenimiento entre áreas, sigue cada caso y cierra con reporte firmado.">
+<meta property="og:image" content="https://vincentxox.github.io/gestion-casos/img/captura-1.webp">
+<link rel="icon" href="img/icono-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--marino:#13305e;--nexo:#1366d6;--cielo:#1ba6e8;--noche:#0a1426;--text:#13203a;--muted:#5a6780;--bg:#f7f9fc;--surface:#fff;--border:#e3e8f0;--soft:#eef4fd}
+*{box-sizing:border-box}
+img{height:auto}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Onest,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;line-height:1.55}
+a{color:var(--nexo)}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+/* cabecera */
+.top{display:flex;align-items:center;justify-content:space-between;padding:20px 0}
+.brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:20px;color:#fff;text-decoration:none}
+.brand small{font-size:11px;font-weight:600;letter-spacing:.24em;color:#8fd3f7;text-transform:uppercase}
+.top nav a{color:#cfe0f7;text-decoration:none;font-size:15px;font-weight:500;margin-left:20px}
+.top nav a:hover{color:#fff}
+/* portada */
+.hero{background:linear-gradient(180deg,#13305e 0%,#1252b0 100%);color:#fff;overflow:hidden}
+.hero-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center;padding:40px 0 0}
+.hero h1{font-size:46px;line-height:1.1;margin:0 0 16px;letter-spacing:-.01em}
+.hero p.lead{font-size:19px;color:#d6e4f8;margin:0 0 28px;max-width:520px}
+.ctas{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.play{display:inline-flex;align-items:center;gap:10px;background:#fff;color:var(--marino);border-radius:14px;padding:10px 18px;text-decoration:none;font-weight:600}
+.play svg{flex:none}
+.play span{display:flex;flex-direction:column;line-height:1.15}
+.play span small{font-size:11px;font-weight:500;color:var(--muted)}
+.ghost{color:#fff;border:1.5px solid rgba(255,255,255,.45);border-radius:14px;padding:13px 18px;text-decoration:none;font-weight:600}
+.ghost:hover{border-color:#fff}
+.note{font-size:13px;color:#aac4ea;margin-top:14px}
+.hero-shot{display:flex;justify-content:center;align-self:end}
+.hero-shot img{width:100%;max-width:360px;display:block;border-radius:24px 24px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25)}
+/* secciones */
+section{padding:64px 0}
+h2{font-size:32px;line-height:1.2;color:var(--marino);margin:0 0 10px;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:17px;margin:0 0 32px;max-width:640px}
+.flow{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;counter-reset:p;list-style:none;padding:0;margin:0}
+.flow li{counter-increment:p;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px}
+.flow li::before{content:counter(p);display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:14px;background:var(--soft);color:var(--nexo);font-weight:700;font-size:14px;margin-bottom:10px}
+.flow b{display:block;color:var(--marino);font-size:15px}
+.flow span{font-size:14px;color:var(--muted)}
+.roles{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.role{background:var(--surface);border-radius:20px;padding:24px;box-shadow:0 8px 24px rgba(19,48,94,.06)}
+.role h3{margin:0 0 12px;color:var(--marino);font-size:19px}
+.role .tag{display:inline-block;font-size:12px;font-weight:600;color:var(--nexo);background:var(--soft);border-radius:8px;padding:2px 8px;margin-bottom:10px}
+.role ul{margin:0;padding:0;list-style:none}
+.role li{position:relative;padding-left:22px;margin-bottom:8px;font-size:15px}
+.role li::before{content:"";position:absolute;left:0;top:7px;width:10px;height:10px;border-radius:5px;background:var(--cielo)}
+.shots{background:linear-gradient(180deg,#13305e,#1252b0);color:#fff}
+.shots h2{color:#fff}
+.shots .sub{color:#cfe0f7}
+.gallery{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.gallery img{width:100%;display:block;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.trust{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.trust div{border:1px solid var(--border);border-radius:16px;padding:20px;background:var(--surface)}
+.trust b{display:block;color:var(--marino);margin-bottom:4px}
+.trust p{margin:0;font-size:15px;color:var(--muted)}
+.cta-box{background:var(--soft);border-radius:24px;padding:36px;display:flex;justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap}
+.cta-box h2{margin:0 0 6px;font-size:26px}
+.cta-box p{margin:0;color:var(--muted)}
+.btn{display:inline-block;background:var(--nexo);color:#fff;text-decoration:none;font-weight:600;border-radius:14px;padding:13px 22px}
+footer{border-top:1px solid var(--border);padding:28px 0 40px;font-size:14px;color:var(--muted)}
+footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+footer a{color:var(--muted);text-decoration:none;margin-right:18px}
+footer a:hover{color:var(--nexo)}
+@media (max-width:900px){
+ .hero-grid{grid-template-columns:1fr;padding-top:24px;gap:32px}
+ .hero h1{font-size:36px}
+ .flow{grid-template-columns:1fr 1fr}
+ .roles,.trust{grid-template-columns:1fr}
+ .gallery{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:560px){
+ .wrap{padding:0 16px}
+ .top nav{display:none}
+ .hero h1{font-size:31px}
+ .hero p.lead{font-size:17px}
+ .hero-shot img{max-width:280px}
+ section{padding:48px 0}
+ h2{font-size:26px}
+ .flow{grid-template-columns:1fr}
+ .gallery{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:12px;padding-bottom:8px}
+ .gallery img{flex:0 0 70%;width:70%;scroll-snap-align:center}
+ .cta-box{padding:24px}
+}
+</style>
+</head>
+<body>
+<header class="hero">
+ <div class="wrap">
+  <div class="top">
+   <a class="brand" href="./"><svg width="32" height="32" viewBox="0 0 40 40" aria-hidden="true"><path d="M10 31V11" stroke="#fff" stroke-width="7" stroke-linecap="round" fill="none"/><path d="M30 29V9" stroke="#fff" stroke-width="7" stroke-linecap="round" fill="none"/><path d="M10 11L30 29" stroke="#8fd3f7" stroke-width="7" stroke-linecap="round" fill="none"/><circle cx="10" cy="9" r="5.5" fill="#fff"/><circle cx="31" cy="31" r="6.5" fill="#1BA6E8"/><path d="M28.3 31.2l1.9 1.9 3.6-3.8" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg><span>nexo</span><small>Casos</small></a>
+   <nav><a href="#como-funciona">Cómo funciona</a><a href="#para-quien">Para quién</a><a href="#contacto">Contacto</a></nav>
+  </div>
+  <div class="hero-grid">
+   <div>
+    <h1>El mantenimiento de tu empresa, en orden.</h1>
+    <p class="lead">Cada área pide lo que necesita, el área técnica lo atiende y todo queda registrado, desde la solicitud hasta el reporte firmado.</p>
+    <div class="ctas">
+     <span class="play" aria-label="Próximamente en Google Play"><svg width="26" height="28" viewBox="0 0 26 28" aria-hidden="true"><path d="M1.2.6 14.4 13.9 1.2 27.3C.8 27 .5 26.4.5 25.7V2.2C.5 1.5.8.9 1.2.6Z" fill="#1ba6e8"/><path d="m18.8 9.5-4.4 4.4 4.4 4.4 5-2.8c1.4-.8 1.4-2.4 0-3.2l-5-2.8Z" fill="#f2b705"/><path d="M14.4 13.9 1.2 27.3c.5.4 1.2.4 2 0l15.6-9L14.4 13.9Z" fill="#e5484d"/><path d="M1.2.6 14.4 13.9l4.4-4.4L3.2.5C2.4.1 1.7.1 1.2.6Z" fill="#2fb36e"/></svg><span><small>Muy pronto en</small>Google Play</span></span>
+     <a class="ghost" href="#contacto">Quiero usarlo en mi empresa</a>
+    </div>
+    <p class="note">App para Android. Necesita una cuenta de tu empresa.</p>
+   </div>
+   <div class="hero-shot"><img src="img/captura-1.webp" alt="Pantalla de inicio de Nexo Casos con lo urgente primero" width="540" height="960"></div>
+  </div>
+ </div>
+</header>
+
+<main>
+ <section id="como-funciona">
+  <div class="wrap">
+   <h2>Cómo funciona</h2>
+   <p class="sub">Un caso pasa por cinco pasos y todos ven en cuál va.</p>
+   <ol class="flow">
+    <li><b>Se pide</b><span>El área crea la solicitud con fotos y prioridad.</span></li>
+    <li><b>Se acepta</b><span>El área técnica la recibe y la acepta.</span></li>
+    <li><b>Se asigna</b><span>Se elige al técnico que la atiende.</span></li>
+    <li><b>Se ejecuta</b><span>Se registra diagnóstico, fotos y recursos.</span></li>
+    <li><b>Se firma</b><span>El reporte en PDF se revisa y se firma.</span></li>
+   </ol>
+  </div>
+ </section>
+
+ <section id="para-quien" style="padding-top:0">
+  <div class="wrap">
+   <h2>Para cada persona del equipo</h2>
+   <p class="sub">Cada quien ve lo que le toca, según su rol.</p>
+   <div class="roles">
+    <div class="role"><span class="tag">Quien pide</span><h3>Pide y sigue tu caso</h3><ul><li>Crea una solicitud en segundos, con fotos y prioridad.</li><li>Mira en qué paso va y quién la atiende.</li><li>Conversa con el técnico dentro del caso.</li><li>Recibe y firma el reporte desde el teléfono.</li></ul></div>
+    <div class="role"><span class="tag">Área técnica</span><h3>Atiende lo urgente primero</h3><ul><li>Ve primero lo urgente, lo vencido y lo que está en curso.</li><li>Registra diagnóstico, fotos, recursos y mano de obra.</li><li>Genera el reporte en PDF y pide la firma.</li></ul></div>
+    <div class="role"><span class="tag">Administración</span><h3>Organiza tu empresa</h3><ul><li>Invita a tu equipo con un código o por correo.</li><li>Organiza áreas, tipos de servicio y recursos.</li><li>Revisa indicadores de tiempos y carga de trabajo.</li></ul></div>
+   </div>
+  </div>
+ </section>
+
+ <section class="shots">
+  <div class="wrap">
+   <h2>Así se ve</h2>
+   <p class="sub">Desde que se pide hasta el reporte firmado, todo en la misma app.</p>
+   <div class="gallery">
+    <img src="img/captura-1.webp" alt="Inicio: lo urgente primero" width="540" height="960" loading="lazy">
+    <img src="img/captura-2.webp" alt="Lista de solicitudes con búsqueda y filtros" width="540" height="960" loading="lazy">
+    <img src="img/captura-3.webp" alt="Seguimiento de los pasos de un caso" width="540" height="960" loading="lazy">
+    <img src="img/captura-4.webp" alt="Mensajes dentro de un caso" width="540" height="960" loading="lazy">
+   </div>
+  </div>
+ </section>
+
+ <section>
+  <div class="wrap">
+   <h2>Tus datos, de tu empresa</h2>
+   <p class="sub">Pensado para que cada empresa tenga su información separada y bajo control.</p>
+   <div class="trust">
+    <div><b>Cada empresa ve solo lo suyo</b><p>Nadie de otra empresa puede ver tus solicitudes ni tus reportes.</p></div>
+    <div><b>Reportes con evidencia</b><p>Cada firma guarda quién firmó y cuándo, para que el reporte tenga respaldo.</p></div>
+    <div><b>Tu cuenta, tu decisión</b><p>Puedes eliminar tu cuenta cuando quieras, desde la app o <a href="cuenta/eliminar/">desde la web</a>.</p></div>
+   </div>
+  </div>
+ </section>
+
+ <section id="contacto" style="padding-top:0">
+  <div class="wrap">
+   <div class="cta-box">
+    <div><h2>¿Tu empresa aún no usa Nexo Casos?</h2><p>Escríbenos y te ayudamos a empezar. También puedes solicitarlo desde la app.</p></div>
+    <a class="btn" href="mailto:nexocasos.app@gmail.com?subject=Quiero%20usar%20Nexo%20Casos">nexocasos.app@gmail.com</a>
+   </div>
+  </div>
+ </section>
+</main>
+
+<footer>
+ <div class="wrap">
+  <div><a href="privacidad/">Privacidad</a><a href="terminos/">Términos</a><a href="cuenta/eliminar/">Eliminar cuenta</a></div>
+  <div>© 2026 Nexo Casos</div>
+ </div>
+</footer>
+</body>
+</html>
